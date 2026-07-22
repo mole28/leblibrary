@@ -1,10 +1,6 @@
 from django.contrib.sitemaps import Sitemap
-from django.urls import reverse
+from django.urls import reverse, NoReverseMatch
 from articles.models import Article
-
-# (שחרר מהערה את השורה הבאה אם מודל הספרים גם נמצא באפליקציית articles)
-# from articles.models import Book
-
 
 class StaticViewSitemap(Sitemap):
     """מפת אתר לעמודים רגילים שאין להם מודל במסד הנתונים"""
@@ -15,30 +11,26 @@ class StaticViewSitemap(Sitemap):
         return ['about', 'contact', 'terms', 'calculator', 'volume_calculator', 'weight_calculator']
 
     def location(self, item):
-        return reverse(item)
+        try:
+            # מנסה לאתר את הקישור ללא קידומת
+            return reverse(item)
+        except NoReverseMatch:
+            # אם יש Namespace (כמו app_name='articles'), הוא יוסיף את הקידומת אוטומטית
+            return reverse(f'articles:{item}')
 
 
 class ArticleSitemap(Sitemap):
     """מפת אתר דינמית ששולפת אוטומטית את כל המאמרים ממסד הנתונים"""
-    priority = 0.9  # עדיפות גבוהה יותר לתוכן האמיתי של האתר
+    priority = 0.9  
     changefreq = 'daily'
 
     def items(self):
         return Article.objects.all()
 
     def location(self, item):
-        # מניח ששם הנתיב של מאמר ב-urls.py שלך הוא 'detail' והוא מקבל pk
-        return reverse('detail', kwargs={'pk': item.pk})
-
-
-# class BookSitemap(Sitemap):
-#     """מפת אתר דינמית לספרים (אופציונלי)"""
-#     priority = 0.9
-#     changefreq = 'daily'
-#
-#     def items(self):
-#         return Book.objects.all()
-#
-#     def location(self, item):
-#         # מניח ששם הנתיב ב-urls.py הוא 'book_detail'
-#         return reverse('book_detail', kwargs={'pk': item.pk})
+        try:
+            # מנסה לאתר את קישור המאמר ללא קידומת
+            return reverse('detail', kwargs={'pk': item.pk})
+        except NoReverseMatch:
+            # עם קידומת
+            return reverse('articles:detail', kwargs={'pk': item.pk})
