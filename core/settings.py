@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sitemaps',  # <--- התוספת למפת האתר
     'sslserver',  # נוסף עבור הרצת שרת HTTPS מקומי לבדיקות
     'ckeditor',
     'articles',
