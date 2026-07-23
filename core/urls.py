@@ -5,6 +5,8 @@ from django.conf.urls.static import static
 from django.http import HttpResponse
 from django.contrib.sitemaps.views import sitemap
 from django.views.generic import TemplateView
+from django.contrib.sitemaps.views import sitemap
+from articles.sitemaps import sitemaps
 
 # === התיקון כאן: הייבוא מגיע מתיקיית articles ולא מ-core ===
 from articles.sitemaps import StaticViewSitemap, ArticleSitemap
