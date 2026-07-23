@@ -5,7 +5,7 @@ from django.urls import reverse
 @pytest.mark.django_db
 def test_article_list_view_loads_successfully(client):
     # 'client' הוא דפדפן וירטואלי ש-pytest מספק לנו
-    url = reverse('list')  # ודא שזה אכן ה-name של הנתיב ב-urls.py שלך
+    url = reverse('articles:list')
     response = client.get(url)
     
     # הבדיקה עצמה: האם השרת החזיר קוד 200 (הכל תקין)?
