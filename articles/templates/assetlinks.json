@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "il.co.leblibrary.twa",
+        "sha256_cert_fingerprints": ["53:46:92:B9:B6:0E:40:31:78:D9:92:BA:C4:6F:87:1D:64:54:CD:21:B2:D3:AE:23:26:5D:4D:CC:4D:38:B6:33"]
+      }
+    }]

@@ -35,6 +35,7 @@ urlpatterns = [
     path('robots.txt', robots_txt, name='robots_file'),
     path('manifest.json', TemplateView.as_view(template_name="articles/manifest.json", content_type="application/json")),
     path('service-worker.js', TemplateView.as_view(template_name="articles/sw.js", content_type="application/javascript")),
+    path('.well-known/assetlinks.json', TemplateView.as_view(template_name="assetlinks.json", content_type="application/json")),
 ]
 
 # הוספת נתיב לטעינת קבצי מדיה (תמונות) בסביבת פיתוח
