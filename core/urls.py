@@ -2,15 +2,16 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.contrib.sitemaps.views import sitemap
 from django.views.generic import TemplateView
-from articles.sitemaps import StaticViewSitemap, ArticleSitemap
+from articles.sitemaps import StaticViewSitemap, ArticleSitemap, BookSitemap
 
-# איחוד כל מפות האתר למילון אחד
+# איחוד כל מפות האתר למילון אחד (כולל מפת הספרים)
 sitemaps = {
     'static': StaticViewSitemap,
     'articles': ArticleSitemap,
+    'books': BookSitemap,
 }
 
 # פונקציה שמייצרת את קובץ ה-robots.txt ומפנה למפת האתר
@@ -26,12 +27,71 @@ def robots_txt(request):
     ]
     return HttpResponse("\n".join(lines), content_type="text/plain")
 
+# פונקציה שמייצרת את סכמת ה-OpenAPI עבור Custom GPT ב-OpenAI
+def openapi_schema(request):
+    schema = {
+        "openapi": "3.1.0",
+        "info": {
+            "title": "ספריית לייבוביץ - API חיפוש תורני",
+            "description": "ממשק חיפוש פתוח למאמרים, סוגיות וספרים תורניים מתוך ספריית לייבוביץ.",
+            "version": "1.0.0"
+        },
+        "servers": [
+            {
+                "url": "https://leblibrary.co.il"
+            }
+        ],
+        "paths": {
+            "/api/ai-search/": {
+                "get": {
+                    "summary": "חיפוש במאגרי הספרייה",
+                    "description": "מחזיר מקורות, מאמרים וקטעי טקסט רלוונטיים מתוך ספריית לייבוביץ לפי שאילתה בעברית.",
+                    "operationId": "aiSearch",
+                    "parameters": [
+                        {
+                            "name": "q",
+                            "in": "query",
+                            "required": True,
+                            "description": "שאילתת החיפוש או הנושא ההלכתי בעברית",
+                            "schema": {
+                                "type": "string"
+                            }
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "description": "תוצאות החיפוש חזרו בהצלחה",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "components": {
+            "schemas": {}
+        }
+    }
+    return JsonResponse(schema, json_dumps_params={'ensure_ascii': False, 'indent': 2})
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     
     # --- נתיבים עבור SEO, PWA ובוטים של AI בשורש הדומיין ---
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
     path('robots.txt', robots_txt, name='robots_file'),
+    
+    # קובץ האימות של IndexNow לבינג ול-AI
+    path('mosheleibowitzkey123.txt', lambda request: HttpResponse('mosheleibowitzkey123', content_type='text/plain')),
+    
+    # קובץ ה-OpenAPI המוגדר עבור Custom GPT
+    path('openapi.json', openapi_schema, name='openapi_schema'),
+    
     path('manifest.json', TemplateView.as_view(template_name="articles/manifest.json", content_type="application/json")),
     path('service-worker.js', TemplateView.as_view(template_name="articles/sw.js", content_type="application/javascript")),
     path('sw.js', TemplateView.as_view(template_name="articles/sw.js", content_type="application/javascript")),
