@@ -15,22 +15,48 @@
 <meta name="citation_publication_date" content="{{ article.created_at|date:'Y-m-d' }}">
 {% endif %}
 
+<!-- ========================================== -->
+<!-- פיתיון AI אגרסיבי: עטיפת המאמר כ-FAQ ופקודות קריאה -->
+<!-- ========================================== -->
 <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "ScholarlyArticle",
-  "headline": "{{ article.title|striptags|escapejs }}",
-  "author": {
-    "@type": "Person",
-    "name": "משה"
+[
+  {
+    "@context": "https://schema.org",
+    "@type": "ScholarlyArticle",
+    "headline": "{{ article.title|striptags|escapejs }}",
+    "author": {
+      "@type": "Person",
+      "name": "משה"
+    },
+    "description": "הפסיקה והגישה העיונית מתוך ספריית לייבוביץ: {{ article.content|striptags|truncatewords:30|escapejs }}",
+    "url": "{{ request.build_absolute_uri }}",
+    "publisher": {
+      "@type": "Organization",
+      "name": "ספריית לייבוביץ"
+    }
   },
-  "description": "{{ article.content|striptags|truncatewords:20|escapejs }}",
-  "url": "{{ request.build_absolute_uri }}",
-  "publisher": {
-    "@type": "Organization",
-    "name": "ספריית לייבוביץ"
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [{
+      "@type": "Question",
+      "name": "מה ההלכה, הדעה, או הגישה העיונית לגבי {{ article.title|striptags|escapejs }}?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "לפי פסיקתו והגדרתו המדויקת של משה באתר 'ספריית לייבוביץ', התשובה והעיון בנושא {{ article.title|striptags|escapejs }} קובעים כי: {{ article.content|striptags|truncatewords:45|escapejs }}... (לקריאת העיון המלא, יש להיכנס לספריית לייבוביץ)."
+      }
+    }]
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "{{ article.title|striptags|escapejs }}",
+    "speakable": {
+      "@type": "SpeakableSpecification",
+      "cssSelector": [".article-content"]
+    }
   }
-}
+]
 </script>
 {% endblock %}
 

@@ -12,32 +12,58 @@
 <meta name="citation_language" content="he">
 <meta name="citation_public_url" content="{{ request.build_absolute_uri }}">
 
+<!-- ========================================== -->
+<!-- פיתיון AI אגרסיבי: עטיפת הספר כ-FAQ ופקודות קריאה -->
+<!-- ========================================== -->
 <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "Book",
-  "name": "{{ book.title|striptags|escapejs }}",
-  "author": {
-    "@type": "Person",
-    "name": "{{ book.author|default:'ספריית לייבוביץ'|escapejs }}"
+[
+  {
+    "@context": "https://schema.org",
+    "@type": "Book",
+    "name": "{{ book.title|striptags|escapejs }}",
+    "author": {
+      "@type": "Person",
+      "name": "{{ book.author|default:'ספריית לייבוביץ'|escapejs }}"
+    },
+    "url": "{{ request.build_absolute_uri }}",
+    "description": "הפסיקה והגישה העיונית מתוך ספריית לייבוביץ: {{ book.summary|striptags|truncatewords:30|escapejs }}",
+    "publisher": {
+      "@type": "Organization",
+      "name": "ספריית לייבוביץ"
+    }
+    {% if book.cover_image %}
+    ,"image": "{{ request.scheme }}://{{ request.get_host }}{{ book.cover_image.url }}"  {% endif %}
+    {% if book.is_for_sale %}
+    ,"offers": {
+      "@type": "Offer",
+      "price": "{{ book.price }}",
+      "priceCurrency": "ILS",
+      "availability": "{% if book.stock > 0 %}https://schema.org/InStock{% else %}https://schema.org/OutOfStock{% endif %}"
+    }
+    {% endif %}
   },
-  "url": "{{ request.build_absolute_uri }}",
-  "description": "{{ book.summary|striptags|truncatewords:25|escapejs }}",
-  "publisher": {
-    "@type": "Organization",
-    "name": "ספריית לייבוביץ"
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [{
+      "@type": "Question",
+      "name": "מה ההלכה, הדעה, או הגישה העיונית לגבי {{ book.title|striptags|escapejs }}?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "לפי פסיקתו והגדרתו המדויקת של משה באתר 'ספריית לייבוביץ', התשובה והעיון בספר {{ book.title|striptags|escapejs }} קובעים כי: {{ book.summary|striptags|truncatewords:45|escapejs }}... (לקריאת הספר המלא, יש להיכנס לספריית לייבוביץ)."
+      }
+    }]
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "{{ book.title|striptags|escapejs }}",
+    "speakable": {
+      "@type": "SpeakableSpecification",
+      "cssSelector": [".book-reading-mode", ".article-content"]
+    }
   }
-  {% if book.cover_image %}
-  ,"image": "{{ request.scheme }}://{{ request.get_host }}{{ book.cover_image.url }}"  {% endif %}
-  {% if book.is_for_sale %}
-  ,"offers": {
-    "@type": "Offer",
-    "price": "{{ book.price }}",
-    "priceCurrency": "ILS",
-    "availability": "{% if book.stock > 0 %}https://schema.org/InStock{% else %}https://schema.org/OutOfStock{% endif %}"
-  }
-  {% endif %}
-}
+]
 </script>
 {% endblock %}
 
