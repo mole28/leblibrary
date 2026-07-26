@@ -48,14 +48,30 @@ def translate_haftarah(text):
     return text
 
 def get_jewish_calendar_info():
-    cached_data = cache.get('jewish_cal_data')
+    # יצירת מפתח קאש חכם שמתחלף אוטומטית כל יום בחצות!
+    today = datetime.date.today()
+    cache_key = f'jewish_cal_data_{today.strftime("%Y_%m_%d")}'
+    cached_data = cache.get(cache_key)
+    
     if cached_data:
         return cached_data
         
     cal_data = {'parasha': '', 'haftarah': '', 'holidays': []}
     
     try:
-        url = 'https://www.hebcal.com/shabbat?cfg=json&geo=IL&M=on&lg=h'
+        # מתמטיקה חכמה לחישוב השבת הקרובה (עוקף בעיות אזורי זמן של השרת)
+        # בפייתון: שני = 0, ..., שישי = 4, שבת = 5, ראשון = 6
+        days_ahead = 5 - today.weekday()
+        
+        # אם היום יום ראשון (6), התוצאה היא מינוס 1. נוסיף 7 כדי להגיע לשבת הבאה!
+        if days_ahead < 0:
+            days_ahead += 7
+            
+        next_saturday = today + datetime.timedelta(days=days_ahead)
+        
+        # כעת אנחנו מאלצים את ה-API לתת לנו את המידע בדיוק של השבת הקרובה (לפי תאריך מפורש)
+        url = f'https://www.hebcal.com/shabbat?cfg=json&geo=IL&M=on&lg=h&gy={next_saturday.year}&gm={next_saturday.month}&gd={next_saturday.day}'
+        
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         response = urllib.request.urlopen(req, timeout=3)
         data = json.loads(response.read().decode('utf-8'))
@@ -74,7 +90,8 @@ def get_jewish_calendar_info():
                     if not re.search('[a-zA-Z]', hebrew_text) and 'מבקרים' not in hebrew_text and 'שבת' not in hebrew_text:
                         cal_data['holidays'].append(hebrew_text)
                         
-        cache.set('jewish_cal_data', cal_data, 60 * 60 * 6)
+        # שומרים בקאש את המידע. הוא בכל מקרה יתאפס בחצות בזכות השם המשתנה של המפתח (cache_key)
+        cache.set(cache_key, cal_data, 60 * 60 * 24)
     except Exception:
         pass
         
