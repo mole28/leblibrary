@@ -1,8 +1,21 @@
 from django.contrib.sitemaps import Sitemap
 from django.urls import reverse, NoReverseMatch
-from articles.models import Article
+from articles.models import Article, Book  # הוספתי כאן את מודל הספרים
 
-class StaticViewSitemap(Sitemap):
+class BaseSitemap(Sitemap):
+    """
+    מחלקה בסיסית שפותרת את בעיית ה-example.com של ג'נגו
+    וכופה את הדומיין והפרוטוקול האמיתיים של האתר על כל המפות
+    """
+    protocol = 'https'
+    
+    def get_urls(self, page=1, site=None, protocol=None):
+        class SiteMock:
+            domain = 'leblibrary.co.il'
+            name = 'leblibrary.co.il'
+        return super().get_urls(page, site=SiteMock(), protocol=self.protocol)
+
+class StaticViewSitemap(BaseSitemap):
     """מפת אתר לעמודים רגילים שאין להם מודל במסד הנתונים"""
     priority = 0.8
     changefreq = 'weekly'
@@ -12,14 +25,11 @@ class StaticViewSitemap(Sitemap):
 
     def location(self, item):
         try:
-            # מנסה לאתר את הקישור ללא קידומת
             return reverse(item)
         except NoReverseMatch:
-            # אם יש Namespace (כמו app_name='articles'), הוא יוסיף את הקידומת אוטומטית
             return reverse(f'articles:{item}')
 
-
-class ArticleSitemap(Sitemap):
+class ArticleSitemap(BaseSitemap):
     """מפת אתר דינמית ששולפת אוטומטית את כל המאמרים ממסד הנתונים"""
     priority = 0.9  
     changefreq = 'daily'
@@ -29,24 +39,44 @@ class ArticleSitemap(Sitemap):
 
     def location(self, item):
         try:
-            # מנסה לאתר את קישור המאמר ללא קידומת
             return reverse('detail', kwargs={'pk': item.pk})
         except NoReverseMatch:
-            # עם קידומת
             return reverse('articles:detail', kwargs={'pk': item.pk})
 
-    # =====================================
-    # התוספת המנצחת עבור SEO - מתי עודכן?
-    # =====================================
     def lastmod(self, obj):
-        # אם יש לך שדה 'updated_at' במודל, נשתמש בו. 
-        # אם קראת לשדה התאריך אחרת (למשל 'created_at' או 'publish_date'), שנה את זה כאן בהתאם.
         if hasattr(obj, 'updated_at'):
             return obj.updated_at
         elif hasattr(obj, 'created_at'):
             return obj.created_at
         return None
-    
+
+class BookSitemap(BaseSitemap):
+    """מפת אתר דינמית ששולפת אוטומטית את כל הספרים ממסד הנתונים"""
+    priority = 0.8
+    changefreq = 'weekly'
+
+    def items(self):
+        return Book.objects.all()
+
+    def location(self, item):
+        try:
+            # ודא שהשם 'book_detail' תואם לשם ה-URL ב-urls.py שלך
+            return reverse('book_detail', kwargs={'pk': item.pk})
+        except NoReverseMatch:
+            return reverse('articles:book_detail', kwargs={'pk': item.pk})
+
+    def lastmod(self, obj):
+        if hasattr(obj, 'updated_at'):
+            return obj.updated_at
+        elif hasattr(obj, 'created_at'):
+            return obj.created_at
+        return None
+
+# =====================================
+# המילון שמאגד את כל מפות האתר
+# =====================================
 sitemaps = {
+    'static': StaticViewSitemap,
     'articles': ArticleSitemap,
+    'books': BookSitemap,
 }
