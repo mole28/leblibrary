@@ -48,9 +48,9 @@ def translate_haftarah(text):
     return text
 
 def get_jewish_calendar_info():
-    # יצירת מפתח קאש חכם שמתחלף אוטומטית כל יום בחצות!
     today = datetime.date.today()
-    cache_key = f'jewish_cal_data_{today.strftime("%Y_%m_%d")}'
+    # שינוי שם המפתח ל-v3 כדי לאלץ שבירת קאש ישן בשרת באופן מיידי
+    cache_key = f'jewish_cal_data_v3_{today.strftime("%Y_%m_%d")}'
     cached_data = cache.get(cache_key)
     
     if cached_data:
@@ -59,21 +59,22 @@ def get_jewish_calendar_info():
     cal_data = {'parasha': '', 'haftarah': '', 'holidays': []}
     
     try:
-        # מתמטיקה חכמה לחישוב השבת הקרובה (עוקף בעיות אזורי זמן של השרת)
-        # בפייתון: שני = 0, ..., שישי = 4, שבת = 5, ראשון = 6
+        # חישוב התאריך של השבת הקרובה
         days_ahead = 5 - today.weekday()
-        
-        # אם היום יום ראשון (6), התוצאה היא מינוס 1. נוסיף 7 כדי להגיע לשבת הבאה!
         if days_ahead < 0:
             days_ahead += 7
             
         next_saturday = today + datetime.timedelta(days=days_ahead)
         
-        # כעת אנחנו מאלצים את ה-API לתת לנו את המידע בדיוק של השבת הקרובה (לפי תאריך מפורש)
-        url = f'https://www.hebcal.com/shabbat?cfg=json&geo=IL&M=on&lg=h&gy={next_saturday.year}&gm={next_saturday.month}&gd={next_saturday.day}'
+        # שימוש ב-API הראשי של hebcal עם טווח תאריכים מדויק מהיום עד שבת
+        # זה מבטל לחלוטין בעיות של אזורי זמן וקובע חלון מפורש לחיפוש הפרשה והמועדים
+        start_date = today.strftime('%Y-%m-%d')
+        end_date = next_saturday.strftime('%Y-%m-%d')
+        
+        url = f'https://www.hebcal.com/hebcal?v=1&cfg=json&geo=IL&lg=h&s=on&maj=on&min=on&start={start_date}&end={end_date}'
         
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        response = urllib.request.urlopen(req, timeout=3)
+        response = urllib.request.urlopen(req, timeout=5)
         data = json.loads(response.read().decode('utf-8'))
         
         for item in data.get('items', []):
@@ -90,9 +91,10 @@ def get_jewish_calendar_info():
                     if not re.search('[a-zA-Z]', hebrew_text) and 'מבקרים' not in hebrew_text and 'שבת' not in hebrew_text:
                         cal_data['holidays'].append(hebrew_text)
                         
-        # שומרים בקאש את המידע. הוא בכל מקרה יתאפס בחצות בזכות השם המשתנה של המפתח (cache_key)
+        # שומרים את הנתונים החדשים
         cache.set(cache_key, cal_data, 60 * 60 * 24)
-    except Exception:
+    except Exception as e:
+        print(f"Hebcal API Error: {e}")
         pass
         
     return cal_data
