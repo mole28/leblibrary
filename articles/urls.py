@@ -41,6 +41,7 @@ urlpatterns = [
     path('contact/', views.contact, name='contact'),
     path('api/ai-chat/', views.ai_chat_endpoint, name='ai_chat'),
     path('api/live-search/', views.live_search, name='live_search'),
+    path('api/ai-search/', views.ai_open_search, name='ai_open_search'), # <-- נקודת הקצה הפתוחה של ה-AI
     
     # ==========================
     # חנות ועגלת קניות (E-commerce)

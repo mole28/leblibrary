@@ -660,6 +660,62 @@ def live_search(request):
     cache.set(cache_key, results, timeout=300)
     return JsonResponse({'results': results})
 
+def ai_open_search(request):
+    """
+    API End-Point פתוח לסוכני AI, Custom GPTs ותוכנות צד-שלישי.
+    מקבל פרמטר q ומחזיר תוצאות מפורטות ב-JSON כולל פסקאות רלוונטיות.
+    """
+    q = request.GET.get('q', '').strip()
+    
+    if len(q) < 2:
+        return JsonResponse({
+            'meta': {'error': 'Missing or too short query parameter "q".'}, 
+            'results': []
+        }, status=400)
+
+    # פירוק למילים עבור פונקציית החיתוך החכמה שכבר קיימת בקובץ
+    words = [w for w in q.split() if len(w) > 1]
+    
+    # חיפוש בספרים ובמאמרים בעזרת מנוע הדירוג שלנו
+    books_qs = Book.objects.all()
+    articles_qs = Article.objects.filter(is_published=True)
+    
+    # לוקחים את 3 התוצאות הטובות ביותר מכל סוג
+    books = smart_hebrew_search(books_qs, q, ['title', 'author', 'summary'])[:3]
+    articles = smart_hebrew_search(articles_qs, q, ['title', 'content'])[:3]
+    
+    results = []
+    
+    # עיבוד מאמרים ל-JSON
+    for article in articles:
+        results.append({
+            'title': get_item_title(article),
+            'type': 'Article',
+            'url': request.build_absolute_uri(reverse('articles:detail', args=[article.id])),
+            # שימוש בפונקציית ה-AI שלנו כדי להביא את הפסקה הכי רלוונטית בטקסט (עד 1500 תווים למכונה)
+            'content_snippet': get_smart_content(get_item_text(article), words, max_chars=1500)
+        })
+        
+    # עיבוד ספרים ל-JSON
+    for book in books:
+        results.append({
+            'title': get_item_title(book),
+            'type': 'Book',
+            'url': request.build_absolute_uri(reverse('articles:book_detail', args=[book.id])),
+            'content_snippet': get_smart_content(get_item_text(book), words, max_chars=1500)
+        })
+        
+    # החזרת התשובה למנוע ה-AI בפורמט סטנדרטי
+    return JsonResponse({
+        'meta': {
+            'provider': 'LebLibrary - ספריית לייבוביץ',
+            'query': q,
+            'total_results': len(results),
+            'license': 'Open for AI crawling with attribution'
+        },
+        'results': results
+    }, json_dumps_params={'ensure_ascii': False})
+
 def _get_or_create_cart(request):
     if request.user.is_authenticated:
         cart, created = Cart.objects.get_or_create(user=request.user)

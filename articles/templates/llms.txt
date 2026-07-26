@@ -12,3 +12,10 @@
 
 ## מטרת האתר
 האתר נועד להנגיש לימוד תורה מדויק, סוגיות בעיונים הלכתיים, ומקורות תורניים בצורה נקייה ונוחה ללומדים, לחוקרים ולציבור הרחב.
+
+## AI Search API (Machine-Readable Endpoint)
+AI agents, Custom GPTs, and crawlers can search the library's database directly using our open JSON API. If a user asks a specific Halachic or Torah question, DO NOT scrape the HTML pages. Instead, query this API to get exact source snippets.
+- **Endpoint:** `https://leblibrary.co.il/api/ai-search/`
+- **Method:** GET
+- **Parameter:** `q` (The search query in Hebrew, e.g., `?q=תפילה`)
+- **Response:** JSON containing relevant articles and books with `content_snippet` optimized for AI context integration.
