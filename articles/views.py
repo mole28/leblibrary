@@ -6,6 +6,8 @@ import random
 import datetime
 import concurrent.futures
 import os
+import time
+from functools import wraps
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -26,6 +28,46 @@ from .models import Article, Book, Chapter, Section, Cart, CartItem, Order, Orde
 from .emails import send_order_confirmation
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
+
+# ==========================================
+# מנגנון Rate Limiting מבוסס Cache להגנה על ה-API
+# ==========================================
+def ratelimit(rate=30, timeout=60):
+    """
+    מגביל קצב בקשות לכתובת IP לפי מטמון (Cache).
+    ברירת מחדל: עד 30 בקשות בתוך חלון זמן של 60 שניות.
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def _wrapped_view(request, *args, **kwargs):
+            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+            if x_forwarded_for:
+                ip = x_forwarded_for.split(',')[0].strip()
+            else:
+                ip = request.META.get('REMOTE_ADDR', 'unknown')
+
+            cache_key = f"api_ratelimit_{ip}"
+            history = cache.get(cache_key, [])
+            now = time.time()
+            
+            # סינון בקשות ישנות מחוץ לחלון הזמן
+            history = [t for t in history if now - t < timeout]
+            
+            if len(history) >= rate:
+                return JsonResponse({
+                    'meta': {
+                        'error': 'Rate limit exceeded. Maximum 30 requests per minute allowed.',
+                        'retry_after_seconds': timeout
+                    },
+                    'results': []
+                }, status=429) # סטטוס 429: Too Many Requests
+            
+            history.append(now)
+            cache.set(cache_key, history, timeout)
+            
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+    return decorator
 
 # ==========================================
 # פונקציות לוח שנה עברי (פרשה, הפטרה, מועדים)
@@ -49,7 +91,6 @@ def translate_haftarah(text):
 
 def get_jewish_calendar_info():
     today = datetime.date.today()
-    # שינוי שם המפתח ל-v3 כדי לאלץ שבירת קאש ישן בשרת באופן מיידי
     cache_key = f'jewish_cal_data_v3_{today.strftime("%Y_%m_%d")}'
     cached_data = cache.get(cache_key)
     
@@ -59,15 +100,12 @@ def get_jewish_calendar_info():
     cal_data = {'parasha': '', 'haftarah': '', 'holidays': []}
     
     try:
-        # חישוב התאריך של השבת הקרובה
         days_ahead = 5 - today.weekday()
         if days_ahead < 0:
             days_ahead += 7
             
         next_saturday = today + datetime.timedelta(days=days_ahead)
         
-        # שימוש ב-API הראשי של hebcal עם טווח תאריכים מדויק מהיום עד שבת
-        # זה מבטל לחלוטין בעיות של אזורי זמן וקובע חלון מפורש לחיפוש הפרשה והמועדים
         start_date = today.strftime('%Y-%m-%d')
         end_date = next_saturday.strftime('%Y-%m-%d')
         
@@ -91,7 +129,6 @@ def get_jewish_calendar_info():
                     if not re.search('[a-zA-Z]', hebrew_text) and 'מבקרים' not in hebrew_text and 'שבת' not in hebrew_text:
                         cal_data['holidays'].append(hebrew_text)
                         
-        # שומרים את הנתונים החדשים
         cache.set(cache_key, cal_data, 60 * 60 * 24)
     except Exception as e:
         print(f"Hebcal API Error: {e}")
@@ -100,7 +137,7 @@ def get_jewish_calendar_info():
     return cal_data
 
 # ==========================================
-# אלגוריתמים לחילוץ וסריקה דינמית מספרי Django Admin (תוקן!)
+# אלגוריתמים לחילוץ וסריקה דינמית מספרי Django Admin
 # ==========================================
 def generate_word_variations(word):
     variations = set([word])
@@ -173,7 +210,6 @@ def get_item_text(item):
                     text += val + "\n"
     except Exception:
         pass
-    # ניקוי HTML אגרסיבי כדי שהתגיות לא ישברו את מנוע החיפוש במילים סמוכות
     text = re.sub(r'<[^>]+>', ' ', text)
     return re.sub(r'\s+', ' ', text).strip()
 
@@ -189,16 +225,13 @@ def ai_document_search(queryset, search_query, search_fields, words, limit=4):
             for field in search_fields:
                 word_q |= Q(**{f"{field}__icontains": var})
         main_q_or |= word_q
-        # התיקון הגאוני: מסד הנתונים מנקד *בעצמו* את ההתאמות לפני שהוא חותך את הרשימה!
         score_expr += Case(When(word_q, then=Value(1)), default=Value(0), output_field=IntegerField())
 
-    # עכשיו ה-DB יביא תמיד למעלה את הספרים שמכילים הכי הרבה מילים מתאימות, בלי קשר לכמה הם ישנים
     candidates = list(queryset.filter(main_q_or).distinct().annotate(match_score=score_expr).order_by('-match_score', '-pk')[:40])
     
     if not candidates: return []
         
     def get_score(item):
-        # דירוג נוסף בפייתון לדיוק מקסימלי
         score = getattr(item, 'match_score', 0) * 1000
         title = get_item_title(item).lower()
         content = get_item_text(item).lower()
@@ -222,7 +255,6 @@ def get_smart_content(text, query_words, max_chars=40000):
     if len(text) <= max_chars: return text
     if not query_words: return text[:max_chars]
     
-    # אלגוריתם שסורק ספרים ארוכים וקורא בדיוק את הפסקה הרלוונטית כדי למנוע חיתוך התשובה
     best_idx = 0
     max_score = -1
     chunk_size = max_chars
@@ -291,7 +323,6 @@ def ai_chat_endpoint(request):
                 search_query = " ".join(valid_words)
 
                 if search_query:
-                    # הזרקת המודלים בצורה ישירה וקשיחה לוודא סריקה של כל מה שקיים באדמין
                     models_to_search = [Article, Section, Chapter, Book]
                     try:
                         from .models import QA
@@ -660,10 +691,14 @@ def live_search(request):
     cache.set(cache_key, results, timeout=300)
     return JsonResponse({'results': results})
 
+# ==========================================
+# ה-API הפתוח ל-AI עם הגנת Rate Limiting (עד 30 בקשות בדקה)
+# ==========================================
+@ratelimit(rate=30, timeout=60)
 def ai_open_search(request):
     """
     API End-Point פתוח לסוכני AI, Custom GPTs ותוכנות צד-שלישי.
-    מקבל פרמטר q ומחזיר תוצאות מפורטות ב-JSON כולל פסקאות רלוונטיות.
+    מוגן כעת מפני הצפות ומתקפות בעזרת Rate Limiting (עד 30 בקשות בדקה לכל IP).
     """
     q = request.GET.get('q', '').strip()
     
@@ -673,30 +708,26 @@ def ai_open_search(request):
             'results': []
         }, status=400)
 
-    # פירוק למילים עבור פונקציית החיתוך החכמה שכבר קיימת בקובץ
+    # פירוק למילים עבור פונקציית החיתוך החכמה
     words = [w for w in q.split() if len(w) > 1]
     
     # חיפוש בספרים ובמאמרים בעזרת מנוע הדירוג שלנו
     books_qs = Book.objects.all()
     articles_qs = Article.objects.filter(is_published=True)
     
-    # לוקחים את 3 התוצאות הטובות ביותר מכל סוג
     books = smart_hebrew_search(books_qs, q, ['title', 'author', 'summary'])[:3]
     articles = smart_hebrew_search(articles_qs, q, ['title', 'content'])[:3]
     
     results = []
     
-    # עיבוד מאמרים ל-JSON
     for article in articles:
         results.append({
             'title': get_item_title(article),
             'type': 'Article',
             'url': request.build_absolute_uri(reverse('articles:detail', args=[article.id])),
-            # שימוש בפונקציית ה-AI שלנו כדי להביא את הפסקה הכי רלוונטית בטקסט (עד 1500 תווים למכונה)
             'content_snippet': get_smart_content(get_item_text(article), words, max_chars=1500)
         })
         
-    # עיבוד ספרים ל-JSON
     for book in books:
         results.append({
             'title': get_item_title(book),
@@ -705,7 +736,6 @@ def ai_open_search(request):
             'content_snippet': get_smart_content(get_item_text(book), words, max_chars=1500)
         })
         
-    # החזרת התשובה למנוע ה-AI בפורמט סטנדרטי
     return JsonResponse({
         'meta': {
             'provider': 'LebLibrary - ספריית לייבוביץ',
