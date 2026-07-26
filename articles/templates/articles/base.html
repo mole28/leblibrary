@@ -38,7 +38,7 @@
     <meta property="og:image" content="https://leblibrary.co.il/static/images/icon-512x512.png">
     <meta name="msvalidate.01" content="4F414ADD88881F3E5922BC3D6B34104C" />
 
-        <!-- Google tag (gtag.js) -->
+    <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-SNRBLJZYFT"></script>
     <script>
     window.dataLayer = window.dataLayer || [];
@@ -116,7 +116,7 @@
         .grecaptcha-badge { z-index: 1040 !important; }
 
         /* ========================================== */
-        /* סרגל התקדמות קריאה & אנימציות ריחוף */
+        /* פס התקדמות קריאה & אנימציות ריחוף */
         /* ========================================== */
         #reading-progress-container { position: fixed; top: 0; left: 0; width: 100%; height: 4px; background: transparent; z-index: 9999; pointer-events: none; }
         #reading-progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #a67c52, #d4af37); box-shadow: 0 0 8px rgba(212, 175, 55, 0.8); transition: width 0.15s ease-out; }
@@ -158,12 +158,11 @@
         .nav-link-custom.active i { color: #d4af37; text-shadow: 0 0 12px rgba(212, 175, 55, 0.8); }
 
         @media (min-width: 1381px) {
-            /* מבטל את ההסתרה של בוטסטראפ בדסקטופ ושומר על מבנה ה-Flex המקורי */
             .mobile-nav-header, #navbarCollapseContent { display: contents !important; }
             .collapse:not(.show) { display: contents !important; } 
         }
 
-        /* שבירת תפריט לטאבלט ומובייל - תיקון תצוגה אטומה ובולטת מעל הכל */
+        /* שבירת תפריט לטאבלט ומובייל */
         @media (max-width: 1380px) {
             .top-navbar { padding: 15px 0; align-items: flex-start; position: relative !important; overflow: visible !important; }
             .nav-aligned-container { flex-direction: column; align-items: stretch; padding: 0 20px; width: 100%; position: relative !important; }
@@ -173,7 +172,6 @@
             
             #navbarCollapseContent.collapse:not(.show) { display: none !important; }
             
-            /* הפיכת התפריט הנפתח במובייל לקופסה אטומה ובולטת מעל הכל */
             #navbarCollapseContent.collapse.show,
             #navbarCollapseContent.show { 
                 display: flex !important; 
@@ -534,7 +532,6 @@
         <span class="ai-side-text">עוזר AI להתמצאות באתר</span>
     </button>
 
-    <!-- הוספנו id="draggableQaPill" לחלונית ה-AI של השאלות ותשובות כדי שנוכל לגרור אותה -->
     <div id="draggableQaPill" class="qa-floating-pill">
         <div class="qa-pill-icon"><i class="bi bi-robot"></i></div>
         <div class="qa-pill-text">
@@ -550,7 +547,6 @@
         </div>
         {% endblock %}
         
-        <!-- *** תיקון רספונסיביות: שינוי שוליים במסכים קטנים (px-2 במקום px-4 קבוע) *** -->
         <main class="pt-4 px-2 px-md-4 container-main">
             {% block breadcrumbs %}{% endblock %}
             {% block content %}
@@ -718,7 +714,7 @@
             const observer = new IntersectionObserver((entries, observer) => { entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('is-visible'); observer.unobserve(entry.target); } }); }, observerOptions);
             document.querySelectorAll('.reveal-up').forEach((el) => { observer.observe(el); });
             
-            // --- תוספת: מנגנון גרירה (Drag) לחלונית ה-AI ---
+            // --- מנגנון גרירה (Drag) לחלונית ה-AI ---
             const dragEl = document.getElementById('draggableQaPill');
             let isDragging = false, isClick = true;
             let currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
@@ -737,7 +733,7 @@
 
             function drag(e) {
                 if (isDragging) {
-                    e.preventDefault(); isClick = false; // ברגע שזזנו - זה גרירה ולא לחיצה
+                    e.preventDefault(); isClick = false; 
                     if (e.type === "touchmove") { currentX = e.touches[0].clientX - initialX; currentY = e.touches[0].clientY - initialY; } 
                     else { currentX = e.clientX - initialX; currentY = e.clientY - initialY; }
                     xOffset = currentX; yOffset = currentY;
@@ -747,7 +743,6 @@
 
             function setTranslate(xPos, yPos, el) { el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`; }
 
-            // מאזיני עכבר ומגע לגרירה
             document.addEventListener("touchstart", dragStart, {passive: false});
             document.addEventListener("touchend", dragEnd, {passive: false});
             document.addEventListener("touchmove", drag, {passive: false});
@@ -756,7 +751,6 @@
             document.addEventListener("mouseup", dragEnd);
             document.addEventListener("mousemove", drag);
             
-            // פתיחת המודל (הצ'אט) רק אם זו לחיצה ולא גרירה
             dragEl.addEventListener('click', function(e) {
                 if (isClick) {
                     var aiModal = new bootstrap.Modal(document.getElementById('aiQAModal'));
@@ -766,14 +760,12 @@
                 }
             });
 
-            // רישום Service Worker עבור PWA (מעודכן לנתיב השורש)
+            // רישום Service Worker עבור PWA
             if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                    navigator.serviceWorker.register('/sw.js').then(function(registration) {
-                        console.log('ServiceWorker registered with scope:', registration.scope);
-                    }).catch(function(err) {
-                        console.log('ServiceWorker registration failed:', err);
-                    });
+                navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                    console.log('ServiceWorker registered with scope:', registration.scope);
+                }).catch(function(err) {
+                    console.log('ServiceWorker registration failed:', err);
                 });
             }
         });
@@ -784,9 +776,9 @@
             const progressBar = document.getElementById("reading-progress-bar"); if (progressBar) { progressBar.style.width = scrolled + "%"; }
         });
     </script>
-    <!-- תחילת תיקון גלובלי לסמל האבטחה של גוגל לכל עמודי האתר -->
+    
+    <!-- תיקון גלובלי לסמל האבטחה של גוגל לכל עמודי האתר -->
     <style>
-        /* מוודא שההזזה של הסמל החוצה לא תיצור פס גלילה תחתון מציק באתר */
         body {
             overflow-x: hidden !important;
         }
@@ -797,23 +789,15 @@
             visibility: visible !important;
             position: fixed !important;
             bottom: 25px !important;
-            
-            /* מחזירים לרוחב המקורי המלא */
             width: 256px !important; 
-            
-            /* מצמידים לימין */
             right: 0px !important; 
-            
-            /* דוחפים את הטקסט הימני 186 פיקסלים מחוץ למסך, ומשאירים בדיוק את 70 הפיקסלים של הגלגל בפנים */
             transform: translateX(186px) !important;
-            
             transition: transform 0.3s ease-in-out !important;
             z-index: 2147483647 !important; 
             border-radius: 8px 0 0 8px !important;
             box-shadow: -2px 0px 10px rgba(0,0,0,0.1) !important;
         }
 
-        /* במעבר עכבר - מחליקים את הכל בחזרה למיקום ה-0 התקין */
         body > .grecaptcha-badge:hover,
         .grecaptcha-badge:hover {
             transform: translateX(0px) !important; 
@@ -822,7 +806,6 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // עוקר את הסמל מכל קונטיינר שחותך אותו, ומעביר אותו ישירות ל-body
             const breakOutInterval = setInterval(() => {
                 const badge = document.querySelector('.grecaptcha-badge');
                 if (badge) {
@@ -834,17 +817,5 @@
             }, 100);
         });
     </script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js').then(function(registration) {
-                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                }, function(err) {
-                    console.log('ServiceWorker registration failed: ', err);
-                });
-            });
-        }
-    </script>
-    <!-- סוף תיקון גלובלי -->
 </body>
 </html>

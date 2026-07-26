@@ -1,3 +1,4 @@
+import re
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -6,6 +7,7 @@ from django.http import HttpResponse, JsonResponse
 from django.contrib.sitemaps.views import sitemap
 from django.views.generic import TemplateView
 from articles.sitemaps import StaticViewSitemap, ArticleSitemap, BookSitemap
+from articles.models import Article, Book
 
 # איחוד כל מפות האתר למילון אחד (כולל מפת הספרים)
 sitemaps = {
@@ -14,10 +16,22 @@ sitemaps = {
     'books': BookSitemap,
 }
 
-# פונקציה שמייצרת את קובץ ה-robots.txt ומפנה למפת האתר
+# פונקציה שמייצרת את קובץ ה-robots.txt עם הרשאות מפורשות לבוטי AI
 def robots_txt(request):
     lines = [
         "User-agent: *",
+        "Allow: /",
+        "",
+        "User-agent: GPTBot",
+        "Allow: /",
+        "",
+        "User-agent: ChatGPT-User",
+        "Allow: /",
+        "",
+        "User-agent: PerplexityBot",
+        "Allow: /",
+        "",
+        "User-agent: ClaudeBot",
         "Allow: /",
         "",
         "User-agent: Google-Extended",
@@ -26,6 +40,25 @@ def robots_txt(request):
         "Sitemap: https://leblibrary.co.il/sitemap.xml"
     ]
     return HttpResponse("\n".join(lines), content_type="text/plain")
+
+# פונקציה שמייצרת את קובץ ה-llms-full.txt המלא דינמית מתוך מסד הנתונים
+def llms_full_txt(request):
+    articles = Article.objects.filter(is_published=True).order_by('-created_at')[:50]
+    books = Book.objects.all()
+    
+    content = "# ספריית לייבוביץ - מאגר תוכן מלא לבינה מלאכותית\n\n"
+    
+    content += "## ספרים בספרייה:\n"
+    for book in books:
+        content += f"- **{book.title}** (מחבר: {getattr(book, 'author', 'לא צוין')})\n"
+        
+    content += "\n## מאמרים אחרונים:\n"
+    for article in articles:
+        content += f"### {article.title}\n"
+        clean_text = re.sub(r'<[^>]+>', '', article.content)[:300] if article.content else ""
+        content += f"{clean_text}...\n\n"
+        
+    return HttpResponse(content, content_type='text/plain; charset=utf-8')
 
 # פונקציה שמייצרת את סכמת ה-OpenAPI עבור Custom GPT ב-OpenAI
 def openapi_schema(request):
@@ -91,6 +124,9 @@ urlpatterns = [
     
     # קובץ ה-OpenAPI המוגדר עבור Custom GPT
     path('openapi.json', openapi_schema, name='openapi_schema'),
+    
+    # קובץ התוכן המלא לבוטים של AI
+    path('llms-full.txt', llms_full_txt, name='llms_full_txt'),
     
     path('manifest.json', TemplateView.as_view(template_name="articles/manifest.json", content_type="application/json")),
     path('service-worker.js', TemplateView.as_view(template_name="articles/sw.js", content_type="application/javascript")),
