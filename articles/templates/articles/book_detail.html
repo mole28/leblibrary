@@ -2,6 +2,36 @@
 
 {% block title %}{{ book.title|striptags }} - הספרייה התורנית{% endblock %}
 
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Book",
+  "name": "{{ book.title|striptags|escapejs }}",
+  "author": {
+    "@type": "Person",
+    "name": "{{ book.author|default:'ספריית לייבוביץ'|escapejs }}"
+  },
+  "url": "{{ request.build_absolute_uri }}",
+  "description": "{{ book.summary|striptags|truncatewords:25|escapejs }}",
+  "publisher": {
+    "@type": "Organization",
+    "name": "ספריית לייבוביץ"
+  }
+  {% if book.cover_image %}
+  ,"image": "{{ request.scheme }}://{{ request.get_host }}{{ book.cover_image.url }}"  {% endif %}
+  {% if book.is_for_sale %}
+  ,"offers": {
+    "@type": "Offer",
+    "price": "{{ book.price }}",
+    "priceCurrency": "ILS",
+    "availability": "{% if book.stock > 0 %}https://schema.org/InStock{% else %}https://schema.org/OutOfStock{% endif %}"
+  }
+  {% endif %}
+}
+</script>
+{% endblock %}
+
 {% block breadcrumbs %}
 <div class="container-fluid" style="max-width: 1400px;">
     <nav aria-label="breadcrumb" class="mb-2 mt-4">

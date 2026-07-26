@@ -1,7 +1,25 @@
 {% extends 'articles/base.html' %}
 
 {% block title %}{{ article.title|striptags }} - הספרייה התורנית{% endblock %}
-
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ScholarlyArticle",
+  "headline": "{{ article.title|striptags|escapejs }}",
+  "author": {
+    "@type": "Person",
+    "name": "משה"
+  },
+  "description": "{{ article.content|striptags|truncatewords:20|escapejs }}",
+  "url": "{{ request.build_absolute_uri }}",
+  "publisher": {
+    "@type": "Organization",
+    "name": "ספריית לייבוביץ"
+  }
+}
+</script>
+{% endblock %}
 {% block breadcrumbs %}
 <div class="container-fluid" style="max-width: 1400px;">
     <nav aria-label="breadcrumb" class="mb-2 mt-4">
