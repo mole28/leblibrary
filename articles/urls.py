@@ -60,6 +60,7 @@ urlpatterns = [
 
     path('manifest.json', TemplateView.as_view(template_name='manifest.json', content_type='application/json')),
     path('sw.js', TemplateView.as_view(template_name='sw.js', content_type='application/javascript')),
+    path('llms.txt', TemplateView.as_view(template_name='llms.txt', content_type='text/plain')),
 
     path('61b4763967a849e6aae88315f9092c0d.txt', lambda request: HttpResponse('61b4763967a849e6aae88315f9092c0d')),
 ]
