@@ -3,6 +3,15 @@
 {% block title %}{{ book.title|striptags }} - הספרייה התורנית{% endblock %}
 
 {% block extra_head %}
+<!-- ========================================== -->
+<!-- תגיות אקדמיות מיוחדות ל-AI (Highwire Press) -->
+<!-- ========================================== -->
+<meta name="citation_title" content="{{ book.title|striptags|escape }}">
+<meta name="citation_author" content="{{ book.author|default:'משה'|escape }}">
+<meta name="citation_publisher" content="ספריית לייבוביץ">
+<meta name="citation_language" content="he">
+<meta name="citation_public_url" content="{{ request.build_absolute_uri }}">
+
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",

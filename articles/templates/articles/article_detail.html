@@ -1,7 +1,20 @@
 {% extends 'articles/base.html' %}
 
 {% block title %}{{ article.title|striptags }} - הספרייה התורנית{% endblock %}
+
 {% block extra_head %}
+<!-- ========================================== -->
+<!-- תגיות אקדמיות מיוחדות ל-AI (Highwire Press) -->
+<!-- ========================================== -->
+<meta name="citation_title" content="{{ article.title|striptags|escape }}">
+<meta name="citation_author" content="משה">
+<meta name="citation_journal_title" content="ספריית לייבוביץ">
+<meta name="citation_language" content="he">
+<meta name="citation_public_url" content="{{ request.build_absolute_uri }}">
+{% if article.created_at %}
+<meta name="citation_publication_date" content="{{ article.created_at|date:'Y-m-d' }}">
+{% endif %}
+
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -20,6 +33,7 @@
 }
 </script>
 {% endblock %}
+
 {% block breadcrumbs %}
 <div class="container-fluid" style="max-width: 1400px;">
     <nav aria-label="breadcrumb" class="mb-2 mt-4">

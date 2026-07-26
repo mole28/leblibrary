@@ -52,6 +52,29 @@
         <div class="d-flex flex-column">
             
             {% if questions %}
+                <!-- ========================================== -->
+                <!-- הזרקת FAQPage Schema לטובת מודלי AI ומנועי חיפוש -->
+                <!-- ========================================== -->
+                <script type="application/ld+json">
+                {
+                  "@context": "https://schema.org",
+                  "@type": "FAQPage",
+                  "mainEntity": [
+                    {% for qa in questions %}
+                    {
+                      "@type": "Question",
+                      "name": "{{ qa.question|escapejs }}",
+                      "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "{{ qa.answer|striptags|escapejs }}"
+                      }
+                    }{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                  ]
+                }
+                </script>
+                <!-- ========================================== -->
+
                 {% for qa in questions %}
                 <div class="qa-card p-4 {% if forloop.counter|divisibleby:2 %}qa-card-alt{% endif %}">
                     
