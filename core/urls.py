@@ -53,6 +53,9 @@ urlpatterns = [
 ## מטרת האתר
 האתר נועד להנגיש לימוד תורה מדויק, סוגיות בעיונים הלכתיים, ומקורות תורניים בצורה נקייה ונוחה ללומדים, לחוקרים ולציבור הרחב.""", content_type='text/plain; charset=utf-8')),
 
+    # קובץ ה-humans.txt הפיזי מתוך תיקיית ה-templates
+    path('humans.txt', TemplateView.as_view(template_name='humans.txt', content_type='text/plain; charset=utf-8')),
+
     # הכללת כל שאר הניתובים של האפליקציה (מאמרים, ספרים, חנות וכו')
     path('', include('articles.urls')),
 ]
