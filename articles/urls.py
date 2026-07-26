@@ -1,6 +1,5 @@
 from django.urls import path
 from . import views
-from django.views.generic import TemplateView
 from django.http import HttpResponse
 
 # השם הזה חשוב, בגלל שאנחנו קוראים לקישורים בתבניות בצורה כזו: 'articles:about'
@@ -57,10 +56,6 @@ urlpatterns = [
     path('about/', views.about, name='about'),
     path('terms/', views.terms, name='terms'),
     path('recently-added/', views.recently_added, name='recently_added'),
-
-    path('manifest.json', TemplateView.as_view(template_name='manifest.json', content_type='application/json')),
-    path('sw.js', TemplateView.as_view(template_name='sw.js', content_type='application/javascript')),
-    path('llms.txt', TemplateView.as_view(template_name='llms.txt', content_type='text/plain')),
 
     path('61b4763967a849e6aae88315f9092c0d.txt', lambda request: HttpResponse('61b4763967a849e6aae88315f9092c0d')),
 ]

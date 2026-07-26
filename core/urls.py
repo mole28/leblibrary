@@ -5,10 +5,6 @@ from django.conf.urls.static import static
 from django.http import HttpResponse
 from django.contrib.sitemaps.views import sitemap
 from django.views.generic import TemplateView
-from django.contrib.sitemaps.views import sitemap
-from articles.sitemaps import sitemaps
-
-# === התיקון כאן: הייבוא מגיע מתיקיית articles ולא מ-core ===
 from articles.sitemaps import StaticViewSitemap, ArticleSitemap
 
 # איחוד כל מפות האתר למילון אחד
@@ -32,14 +28,33 @@ def robots_txt(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('articles.urls')),
     
-    # --- נתיבים עבור SEO ובוטים של AI ---
+    # --- נתיבים עבור SEO, PWA ובוטים של AI בשורש הדומיין ---
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
     path('robots.txt', robots_txt, name='robots_file'),
     path('manifest.json', TemplateView.as_view(template_name="articles/manifest.json", content_type="application/json")),
     path('service-worker.js', TemplateView.as_view(template_name="articles/sw.js", content_type="application/javascript")),
+    path('sw.js', TemplateView.as_view(template_name="articles/sw.js", content_type="application/javascript")),
     path('.well-known/assetlinks.json', TemplateView.as_view(template_name="assetlinks.json", content_type="application/json")),
+    
+    # קובץ ה-llms.txt מוגש ישירות עם UTF-8 נקי למניעת ג'יבריש
+    path('llms.txt', lambda request: HttpResponse("""# ספריית לייבוביץ
+
+> ספריית לייבוביץ היא ספרייה תורנית מתקדמת המרכזת מאמרים, ספרים, וסוגיות הלכתיות ועיוניות מעמיקות פרי עטו של משה וכותבים נוספים, לצד מחשבוני חז"ל וכלים תורניים.
+
+## עמודים מרכזיים ומאגר התוכן
+- [עמוד הבית](https://leblibrary.co.il/): השער הראשי לספרייה, למאמרים האחרונים ולספרים.
+- [מאמרים הלכתיים ועיוניים](https://leblibrary.co.il/): אינדקס המאמרים המלא של האתר המתעדכן באופן שוטף.
+- [ספריית הספרים](https://leblibrary.co.il/books/): ספרים תורניים מלאים המחולקים לפרקים ולסעיפים, כולל אפשרות רכישה וצפייה מתקדמת.
+- [שאלות ותשובות](https://leblibrary.co.il/qa/): מאגר מענה הלכתי ושאלות נפוצות.
+- [פרשת השבוע](https://leblibrary.co.il/parasha/): מאמרים ודברי תורה מותאמים לפרשת השבוע.
+- [מחשבוני חז"ל](https://leblibrary.co.il/calculator/): כלים לחישובים הלכתיים מדויקים (מידות, שיעורים וכדומה).
+
+## מטרת האתר
+האתר נועד להנגיש לימוד תורה מדויק, סוגיות בעיונים הלכתיים, ומקורות תורניים בצורה נקייה ונוחה ללומדים, לחוקרים ולציבור הרחב.""", content_type='text/plain; charset=utf-8')),
+
+    # הכללת כל שאר הניתובים של האפליקציה (מאמרים, ספרים, חנות וכו')
+    path('', include('articles.urls')),
 ]
 
 # הוספת נתיב לטעינת קבצי מדיה (תמונות) בסביבת פיתוח
