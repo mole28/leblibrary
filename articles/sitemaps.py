@@ -30,12 +30,13 @@ class StaticViewSitemap(BaseSitemap):
             return reverse(f'articles:{item}')
 
 class ArticleSitemap(BaseSitemap):
-    """מפת אתר דינמית ששולפת אוטומטית את כל המאמרים ממסד הנתונים"""
+    """מפת אתר דינמית ששולפת אוטומטית את כל המאמרים המפורסמים ממסד הנתונים"""
     priority = 0.9  
     changefreq = 'daily'
 
     def items(self):
-        return Article.objects.all()
+        # תיקון: שולף אך ורק מאמרים מפורסמים כדי לא לחשוף טיוטות לזוחלים
+        return Article.objects.filter(is_published=True)
 
     def location(self, item):
         try:
