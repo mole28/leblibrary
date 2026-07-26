@@ -57,10 +57,11 @@
 <div class="container-fluid mt-2 mb-5" style="max-width: 1400px;">
     <div class="row">
         
-        <!-- תפריט צדדי: תוכן עניינים מרחף (יוסתר במצב זן) -->
-        <div class="col-lg-3 d-none d-lg-block hide-in-zen" id="toc-column">
+        <!-- תפריט צדדי: תוכן עניינים מעודכן כ-nav סמנטי -->
+        <nav aria-label="תוכן עניינים" class="col-lg-3 d-none d-lg-block hide-in-zen" id="toc-column">
             <div class="sticky-top shadow-sm rounded content-card-bg p-3" style="top: 100px; max-height: 80vh; overflow-y: auto; scroll-behavior: smooth;" id="toc-container">
-                <h4 class="fw-bold mb-3 border-bottom pb-2 text-primary">תוכן עניינים</h4>
+                <!-- כותרת תוכן העניינים הותאמה ל-h2 עם שמירת נראות h4 באמצעות fs-4 -->
+                <h2 class="fw-bold mb-3 border-bottom pb-2 text-primary fs-4">תוכן עניינים</h2>
                 <div class="list-group list-group-flush" id="toc-list">
                     
                     {% if book.chapters.all or book.chapter_set.all %}
@@ -69,15 +70,10 @@
                                 {{ chapter.title }}
                             </a>
                             {% for section in chapter.sections.all %}
-                                <!-- מעלים את השורות המיותרות מהתפריט -->
                                 {% if "גדר" in section.title and "נכתב" in section.title %}
-                                    <!-- מוסתר -->
                                 {% elif section.title == "מבוא" or section.title == " מבוא" or section.title == "מבוא " or section.title == chapter.title %}
-                                    <!-- מוסתר -->
                                 {% elif "תוכן הנספח" in section.title %}
-                                    <!-- מוסתר -->
                                 {% else %}
-                                    <!-- מציג את השאר כרגיל -->
                                     {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
                                         <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;">{{ section.title }}</a>
                                     {% else %}
@@ -93,11 +89,8 @@
                             </a>
                             {% for section in chapter.sections.all %}
                                 {% if "גדר" in section.title and "נכתב" in section.title %}
-                                    <!-- מוסתר -->
                                 {% elif section.title == "מבוא" or section.title == " מבוא" or section.title == "מבוא " or section.title == chapter.title %}
-                                    <!-- מוסתר -->
                                 {% elif "תוכן הנספח" in section.title %}
-                                    <!-- מוסתר -->
                                 {% else %}
                                     {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
                                         <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;">{{ section.title }}</a>
@@ -111,10 +104,10 @@
                     
                 </div>
             </div>
-        </div>
+        </nav>
 
-        <!-- אזור הקריאה הראשי -->
-        <div class="col-lg-8 offset-lg-1 content-card-bg shadow-sm p-4 p-md-5 rounded" id="main-content-col">
+        <!-- אזור הקריאה הראשי מעודכן כ-article סמנטי -->
+        <article class="col-lg-8 offset-lg-1 content-card-bg shadow-sm p-4 p-md-5 rounded" id="main-content-col">
             
             {% if messages %}
                 {% for message in messages %}
@@ -125,7 +118,6 @@
                 {% endfor %}
             {% endif %}
 
-            <!-- כפתורי פעולה - יוסתרו במצב זן -->
             <div class="d-flex justify-content-end gap-3 mb-1 hide-in-zen">
                 <button onclick="copyCitation()" class="btn-print btn btn-outline-warning border shadow-sm" title="העתק קישור למקור" style="color: #a67c52; border-color: #a67c52;">
                     <i class="bi bi-link-45deg"></i> העתק מקור
@@ -135,13 +127,14 @@
                 </button>
             </div>
 
-            <div class="text-center mb-5 mt-2">
+            <!-- אזור הכותרת הראשית עטוף ב-header -->
+            <header class="text-center mb-5 mt-2">
                 <h1 class="display-4 fw-bold text-dark" style="font-family: 'Frank Ruhl Libre', serif;">{{ book.title|safe }}</h1>
                 <p class="text-muted fs-5">מאת: {{ book.author }}</p>
                 <hr class="w-25 mx-auto opacity-75">
-            </div>
+            </header>
 
-            <!-- כרטיסיית המכירה/תקציר - תוסתר במצב זן -->
+            <!-- כרטיסיית המכירה/תקציר -->
             {% if book.is_for_sale or book.cover_image %}
             <div class="card mb-5 border-0 shadow-sm hide-in-zen" style="border-radius: 16px; overflow: hidden; border: 1px solid rgba(212,175,55,0.2) !important; background-color: transparent;">
                 <div class="row g-0">
@@ -155,7 +148,8 @@
                         
                         {% if book.chapters.all or book.chapter_set.all %}
                             {% if book.summary %}
-                                <h4 class="fw-bold mb-3" style="color: #a88132;"><i class="bi bi-info-circle me-2"></i>על הספר</h4>
+                                <!-- הותאם ל-h2 סמנטי -->
+                                <h2 class="fw-bold mb-3 fs-4" style="color: #a88132;"><i class="bi bi-info-circle me-2"></i>על הספר</h2>
                                 <div class="mb-4 text-dark" style="font-size: 1.15rem; line-height: 1.6;">
                                     {{ book.summary|safe }}
                                 </div>
@@ -194,22 +188,18 @@
                             {% for section in chapter.sections.all %}
                                 
                                 <div class="section-content mb-4 scrollspy-target" id="section-{{ section.id }}">
-                                    <!-- מעלים את הכותרות המיותרות מגוף הספר -->
                                     {% if "גדר" in section.title and "נכתב" in section.title %}
-                                        <!-- מוסתר -->
                                     {% elif section.title == "מבוא" or section.title == " מבוא" or section.title == "מבוא " or section.title == chapter.title %}
-                                        <!-- מוסתר -->
                                     {% elif "תוכן הנספח" in section.title %}
-                                        <!-- מוסתר -->
                                     {% else %}
                                         {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
                                             <h3 class="fw-bold text-dark mb-3 mt-5" style="border-bottom: 2px solid #a67c52; padding-bottom: 5px; display: inline-block;">{{ section.title }}</h3>
                                         {% else %}
-                                            <h4 class="fw-semibold text-secondary mb-3">{{ section.title }}</h4>
+                                            <!-- הותאם מ-h4 ל-h3 תקני לשמירת היררכיה תחת ה-h2 של הפרק -->
+                                            <h3 class="fw-semibold text-secondary mb-3 fs-4">{{ section.title }}</h3>
                                         {% endif %}
                                     {% endif %}
                                     
-                                    <!-- הטקסט עצמו -->
                                     <div class="article-content">
                                         {% if section.content %}{{ section.content|safe }}{% endif %}
                                         {% if section.text %}{{ section.text|safe }}{% endif %}
@@ -226,16 +216,13 @@
                             <h2 class="fw-bold text-primary mb-4 border-bottom pb-2">{{ chapter.title }}</h2>
                             {% for section in chapter.sections.all %}
                                 {% if "גדר" in section.title and "נכתב" in section.title %}
-                                    <!-- מוסתר -->
                                 {% elif section.title == "מבוא" or section.title == " מבוא" or section.title == "מבוא " or section.title == chapter.title %}
-                                    <!-- מוסתר -->
                                 {% elif "תוכן הנספח" in section.title %}
-                                    <!-- מוסתר -->
                                 {% else %}
                                     {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
                                         <h3 class="fw-bold text-dark mb-3 mt-5" style="border-bottom: 2px solid #a67c52; padding-bottom: 5px; display: inline-block;">{{ section.title }}</h3>
                                     {% else %}
-                                        <h4 class="fw-semibold text-secondary mb-3">{{ section.title }}</h4>
+                                        <h3 class="fw-semibold text-secondary mb-3 fs-4">{{ section.title }}</h3>
                                     {% endif %}
                                 {% endif %}
                                 <div class="article-content">
@@ -259,7 +246,7 @@
                 {% endif %}
                 
             </div>
-        </div>
+        </article>
     </div>
 </div>
 
@@ -289,12 +276,12 @@
     body.dark-mode .article-content { color: #cbd5e1 !important; }
 
     /* ============================================== */
-    /* מערכת מצב קריאה נקי (Zen Mode)                 */
+    /* מערכת מצב קריאה נקי (Zen Mode)                  */
     /* ============================================== */
     .zen-toggle-btn {
         position: fixed;
-        bottom: 110px; /* הועלה למעלה כדי לא להסתיר את כפתור החזרה לראש העמוד */
-        left: 35px;    /* יושב בדיוק בקו אחד מעל כפתור החזרה למעלה */
+        bottom: 110px;
+        left: 35px;
         width: 60px;
         height: 60px;
         border-radius: 50%;
@@ -313,7 +300,6 @@
     html[dir="ltr"] .zen-toggle-btn { left: auto; right: 35px; }
     .zen-toggle-btn:hover { transform: scale(1.1); box-shadow: 0 6px 20px rgba(212, 175, 55, 0.6); }
     
-    /* הסתרת כל רעשי הרקע */
     body.zen-mode .top-navbar,
     body.zen-mode .site-footer,
     body.zen-mode .hero-section,
@@ -326,7 +312,6 @@
         display: none !important;
     }
     
-    /* עיצוב הדף למצב קריאה בספר */
     body.zen-mode { background-color: #fdfbf7 !important; }
     body.dark-mode.zen-mode { background-color: #0f172a !important; }
     
@@ -336,7 +321,6 @@
         border: none !important;
     }
     
-    /* מירכוז תוכן הספר */
     body.zen-mode #main-content-col {
         max-width: 850px !important;
         margin: 0 auto !important;

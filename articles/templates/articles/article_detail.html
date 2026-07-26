@@ -44,8 +44,8 @@
 
 <div class="container-fluid mt-2 mb-5" style="max-width: 1400px;">
     <div class="row justify-content-center">
-        <!-- אזור הקריאה הראשי -->
-        <div class="col-lg-10 content-card-bg shadow-sm p-4 p-md-5 rounded" id="main-content-col">
+        <!-- אזור הקריאה הראשי מעודכן כ-article סמנטי -->
+        <article class="col-lg-10 content-card-bg shadow-sm p-4 p-md-5 rounded" id="main-content-col">
             
             <!-- כפתורי הפעולה יוסתרו במצב קריאה (hide-in-zen) -->
             <div class="d-flex justify-content-end gap-3 mb-4 hide-in-zen">
@@ -61,11 +61,15 @@
                 {% endif %}
             </div>
 
-            <div class="text-center mb-5">
+            <!-- אזור הכותרת והמטא-דאטה מעודכן כ-header סמנטי -->
+            <header class="text-center mb-5">
                 <h1 class="display-4 fw-bold text-dark" style="font-family: 'Frank Ruhl Libre', serif;">{{ article.title|safe }}</h1>
                 
                 <p class="text-muted fs-5 mt-3">
-                    <i class="bi bi-calendar3"></i> {{ article.hebrew_date }}
+                    <i class="bi bi-calendar3"></i> 
+                    <!-- תאריך ממוחשב בתגית time תקנית -->
+                    <time datetime="{% if article.created_at %}{{ article.created_at|date:'Y-m-d' }}{% endif %}">{{ article.hebrew_date }}</time>
+                    
                     {% if article.parasha and article.parasha != 'general' and article.parasha != ',general,' %}
                         <span class="ms-3 hide-in-zen">
                             <i class="bi bi-book"></i> 
@@ -74,14 +78,14 @@
                     {% endif %}
                 </p>
                 <hr class="w-25 mx-auto opacity-75" style="border-color: #d4af37; border-width: 2px;">
-            </div>
+            </header>
 
             <!-- תוכן המאמר -->
             <div class="article-content book-reading-mode">
                 {{ article.content|safe }}
             </div>
             
-        </div>
+        </article>
     </div>
 </div>
 
@@ -127,13 +131,13 @@
     body.dark-mode .article-content { color: #cbd5e1 !important; }
 
     /* ============================================== */
-    /* מערכת מצב קריאה נקי (Zen Mode)                 */
+    /* מערכת מצב קריאה נקי (Zen Mode)                  */
     /* ============================================== */
     
     .zen-toggle-btn {
         position: fixed;
-        bottom: 110px; /* הועלה למעלה כדי לא להסתיר את כפתור החזרה לראש העמוד */
-        left: 35px;    /* יושב בדיוק מעל כפתור החזרה למעלה */
+        bottom: 110px;
+        left: 35px;
         width: 60px;
         height: 60px;
         border-radius: 50%;
@@ -157,7 +161,6 @@
         box-shadow: 0 6px 20px rgba(212, 175, 55, 0.6);
     }
     
-    /* הסתרת רעשי רקע */
     body.zen-mode .top-navbar,
     body.zen-mode .site-footer,
     body.zen-mode .hero-section,
@@ -170,18 +173,15 @@
         display: none !important;
     }
     
-    /* הפיכת הדף לנקי ורחב במידה האידיאלית לקריאה */
     body.zen-mode { background-color: #fdfbf7 !important; }
     body.dark-mode.zen-mode { background-color: #0f172a !important; }
     
-    /* מחיקת המסגרת והצל מהכרטיסייה במצב זן, ליצירת תחושה של "דף פתוח" */
     body.zen-mode .content-card-bg {
         box-shadow: none !important;
         background-color: transparent !important;
         border: none !important;
     }
     
-    /* מירכוז הטקסט והתאמת הרוחב */
     body.zen-mode #main-content-col {
         max-width: 850px !important;
         margin: 0 auto !important;
