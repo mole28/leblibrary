@@ -544,7 +544,9 @@ def article_detail(request, pk):
 def article_create(request):
     if request.method == 'POST':
         form = ArticleForm(request.POST)
-        if form.is_valid(): form.save()
+        if form.is_valid(): 
+            article = form.save()
+            ping_indexnow(request.build_absolute_uri(reverse('articles:detail', args=[article.pk])))
         return redirect('articles:list')
     return render(request, 'articles/article_form.html', {'form': ArticleForm(), 'current_page': 'articles'})
 
@@ -553,7 +555,9 @@ def article_edit(request, pk):
     article = get_object_or_404(Article, pk=pk)
     if request.method == 'POST':
         form = ArticleForm(request.POST, instance=article)
-        if form.is_valid(): form.save()
+        if form.is_valid(): 
+            article = form.save()
+            ping_indexnow(request.build_absolute_uri(reverse('articles:detail', args=[article.pk])))
         return redirect('articles:detail', pk=article.pk)
     return render(request, 'articles/article_form.html', {'form': ArticleForm(instance=article), 'current_page': 'articles'})
 
@@ -807,6 +811,21 @@ def checkout(request):
         except Exception: pass
         return render(request, 'articles/order_success.html', {'order': order})
     return render(request, 'articles/checkout.html', {'items': items, 'total_price': total_price, 'current_page': 'cart'})
+
+# ==========================================
+# פרוטוקול IndexNow לדחיפה מיידית ל-Bing ול-ChatGPT Search
+# ==========================================
+def ping_indexnow(article_url):
+    """
+    מדווח באופן אוטומטי למנועי החיפוש ולחיפוש של ChatGPT על מאמרים חדשים או מעודכנים.
+    """
+    host = "leblibrary.co.il"
+    key = "mosheleibowitzkey123"
+    url = f"https://api.indexnow.org/indexnow?url={urllib.parse.quote(article_url)}&key={key}&keyLocation=https://{host}/{key}.txt"
+    try:
+        urllib.request.urlopen(url, timeout=5)
+    except Exception:
+        pass
 
 @receiver([post_save, post_delete], sender=Article)
 @receiver([post_save, post_delete], sender=Book)
