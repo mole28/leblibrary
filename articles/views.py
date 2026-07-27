@@ -844,24 +844,6 @@ def clear_cache_on_db_change(sender, instance, **kwargs):
 # מנוע הקראה קולית (Text-to-Speech) מבוסס AI - עם עיבוד מקדים של סוכן חכם
 # ==========================================
 
-def generate_audio_sync(text, file_path):
-    """פונקציה בטוחה להרצת הקריין ללא קריסות של השרת"""
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode='w', encoding='utf-8') as f:
-        f.write(text)
-        temp_filename = f.name
-        
-    try:
-        command = [
-            sys.executable, "-m", "edge_tts", 
-            "-f", temp_filename, 
-            "--voice", "he-IL-AvriNeural", 
-            "--write-media", file_path
-        ]
-        subprocess.run(command, check=True)
-    finally:
-        if os.path.exists(temp_filename):
-            os.remove(temp_filename)
-
 def clean_torah_text_fallback(text):
     """גיבוי למקרה שה-AI לא זמין (Regex רגיל)"""
     text = strip_tags(text)
@@ -882,50 +864,88 @@ def clean_torah_text_fallback(text):
     text = re.sub(r'\.+', '.', text)
     return re.sub(r'\s+', ' ', text).strip()
 
-def smart_ai_phonetic_rewrite(text):
-    """
-    הסוכן החכם: משתמש ב-Gemini כדי לקרוא את הטקסט, להבין את ההקשר, 
-    לפתוח ראשי תיבות בצורה חכמה ולהכין אותו להקראה קולית מושלמת.
-    """
-    # ניקוי בסיסי של HTML לפני שליחה ל-AI
-    text = strip_tags(text.replace('><', '> <').replace('</p>', '\n\n').replace('</li>', '\n'))
-    text = unescape(text)
-    
-    # אם הטקסט קצר מדי או ה-API חסר, השתמש בגיבוי הרגיל
-    API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
-    if not API_KEY or len(text) < 20:
-        return clean_torah_text_fallback(text)
-
-    prompt = f"""
-אתה תלמיד חכם וקריין מקצועי. המשימה שלך היא לקחת את הטקסט התורני הבא, ולהכין אותו להקראה קולית רובוטית (Text-to-Speech) כך שישמע טבעי לחלוטין.
-חובה להקפיד על הכללים הבאים:
-1. קרא את הטקסט והבן את ההקשר. פתח את כל ראשי התיבות למילים מלאות על פי ההקשר המדויק.
-2. המר מילים וביטויים בארמית לעברית פשוטה וברורה, או כתוב אותן בצורה פונטית (איך שהן נשמעות בעברית).
-3. הוסף פסיקים (,) ונקודות (.) כדי להכריח את הקריין לעצור ולנשום במקומות הנכונים, כדי לייצר 'ניגון' של לימוד הלכה וגמרא.
-4. הסר תווים מיוחדים (כמו כוכביות, סוגריים מרובעים).
-5. אל תוסיף שום מילת הקדמה או סיום משלך! החזר אך ורק את הטקסט המוכן להקראה.
+def process_chunk_with_ai(chunk, api_key):
+    """מעבד חתיכת טקסט אחת מול Gemini"""
+    if len(chunk) < 10:
+        return chunk
+    prompt = f"""אתה תלמיד חכם וקריין מקצועי. המשימה שלך היא להכין את הטקסט התורני הבא להקראה קולית (TTS).
+חובה להקפיד:
+1. פתח ראשי תיבות למילים מלאות לפי ההקשר המדויק.
+2. תרגם ארמית לעברית, או כתוב פונטית כפי שנהגה.
+3. הוסף פסיקים ונקודות לנשימות נכונות ב'ניגון' תורני.
+4. אל תוסיף שום טקסט, סיכום או הקדמה משלך! החזר נטו את הטקסט בלבד!
 
 הטקסט:
-{text[:10000]} 
-"""
+{chunk}"""
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key={API_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key={api_key}"
         payload = {"contents": [{"parts": [{"text": prompt}]}]}
         data_bytes = json.dumps(payload, ensure_ascii=False).encode('utf-8')
         req = urllib.request.Request(url, data=data_bytes, headers={'Content-Type': 'application/json'})
-        response = urllib.request.urlopen(req, timeout=30)
+        response = urllib.request.urlopen(req, timeout=12) # הגבלת זמן כדי למנוע קריסה
         resp_data = json.loads(response.read().decode('utf-8'))
         
-        ai_processed_text = resp_data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
-        
-        if ai_processed_text and len(ai_processed_text) > 20:
-            return ai_processed_text.strip()
-    except Exception as e:
-        print(f"AI Pre-processing error: {e}")
+        ai_text = resp_data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+        if ai_text:
+            ai_text = ai_text.replace("```", "").strip()
+            if ai_text.startswith("טקסט:"): ai_text = ai_text[5:]
+            return ai_text.strip()
+    except Exception:
         pass
-        
-    return clean_torah_text_fallback(text)
+    return clean_torah_text_fallback(chunk)
 
+def smart_ai_phonetic_rewrite(text):
+    """חותך את המאמר לחתיכות ומריץ מול ה-AI במקביל כדי למנוע קריסה וזמני המתנה ארוכים"""
+    text = strip_tags(text.replace('><', '> <').replace('</p>', '\n\n').replace('</li>', '\n'))
+    text = unescape(text)
+    
+    API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
+    if not API_KEY or len(text) < 20:
+        return clean_torah_text_fallback(text)
+        
+    # פיצול לנתחים של כ-1500 תווים
+    sentences = re.split(r'(?<=[.?!:\n])\s+', text)
+    chunks = []
+    current_chunk = ""
+    for s in sentences:
+        if len(current_chunk) + len(s) > 1500:
+            if current_chunk: chunks.append(current_chunk)
+            current_chunk = s
+        else:
+            current_chunk += " " + s if current_chunk else s
+    if current_chunk:
+        chunks.append(current_chunk)
+        
+    processed_chunks = [""] * len(chunks)
+    
+    # שליחת כל החתיכות ל-AI במקביל! (מהיר פי 5)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_index = {executor.submit(process_chunk_with_ai, chunk, API_KEY): i for i, chunk in enumerate(chunks)}
+        for future in concurrent.futures.as_completed(future_to_index):
+            index = future_to_index[future]
+            try:
+                processed_chunks[index] = future.result()
+            except Exception:
+                processed_chunks[index] = clean_torah_text_fallback(chunks[index])
+                
+    return " ".join(processed_chunks)
+
+def generate_audio_sync(text, file_path):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode='w', encoding='utf-8') as f:
+        f.write(text)
+        temp_filename = f.name
+        
+    try:
+        command = [
+            sys.executable, "-m", "edge_tts", 
+            "-f", temp_filename, 
+            "--voice", "he-IL-AvriNeural", 
+            "--write-media", file_path
+        ]
+        subprocess.run(command, check=True)
+    finally:
+        if os.path.exists(temp_filename):
+            os.remove(temp_filename)
 
 def get_article_audio(request, article_id):
     try:
@@ -944,7 +964,6 @@ def get_article_audio(request, article_id):
 
     if not os.path.exists(file_path):
         raw_text = f"{article.title}. {article.content}"
-        # קריאה לסוכן החכם שיכין את הטקסט להקראה
         final_text = smart_ai_phonetic_rewrite(raw_text)
         try:
             generate_audio_sync(final_text, file_path)
@@ -972,7 +991,6 @@ def get_book_audio(request, book_id):
         raw_text = f"{book.title}. "
         if book.summary:
             raw_text += book.summary
-        # קריאה לסוכן החכם שיכין את הטקסט להקראה
         final_text = smart_ai_phonetic_rewrite(raw_text)
         try:
             generate_audio_sync(final_text, file_path)
