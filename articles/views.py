@@ -9,7 +9,6 @@ import os
 import time
 import asyncio
 import edge_tts
-import subprocess
 from html import unescape
 from functools import wraps
 
@@ -842,6 +841,19 @@ def clear_cache_on_db_change(sender, instance, **kwargs):
 # מנוע הקראה קולית (Text-to-Speech) מבוסס AI
 # גרסה נקייה ויציבה עם הבנת הקשרים בעברית
 # ==========================================
+def generate_audio_sync(text, file_path):
+    """פונקציה בטוחה להרצת אסינכרוניות בתוך תהליך סינכרוני בלי לקרוס על מגבלות אורך"""
+    async def _amain():
+        communicate = edge_tts.Communicate(text, "he-IL-AvriNeural")
+        await communicate.save(file_path)
+        
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(_amain())
+    finally:
+        loop.close()
+
 def clean_torah_text(text):
     if not text:
         return ""
@@ -916,14 +928,10 @@ def get_article_audio(request, article_id):
     if not os.path.exists(file_path):
         raw_text = f"{article.title}. {article.content}"
         final_text = clean_torah_text(raw_text)
-        
-        command = [
-            "edge-tts", 
-            "--text", final_text, 
-            "--voice", "he-IL-AvriNeural", 
-            "--write-media", file_path
-        ]
-        subprocess.run(command, check=True)
+        try:
+            generate_audio_sync(final_text, file_path)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'audio_url': audio_url})
 
@@ -947,13 +955,9 @@ def get_book_audio(request, book_id):
         if book.summary:
             raw_text += book.summary
         final_text = clean_torah_text(raw_text)
-        
-        command = [
-            "edge-tts", 
-            "--text", final_text, 
-            "--voice", "he-IL-AvriNeural", 
-            "--write-media", file_path
-        ]
-        subprocess.run(command, check=True)
+        try:
+            generate_audio_sync(final_text, file_path)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'audio_url': audio_url})
