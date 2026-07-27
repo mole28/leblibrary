@@ -11,6 +11,7 @@ import asyncio
 import edge_tts
 import subprocess
 import tempfile
+import sys
 from html import unescape
 from functools import wraps
 
@@ -851,7 +852,7 @@ def generate_audio_sync(text, file_path):
         
     try:
         command = [
-            "edge-tts", 
+            sys.executable, "-m", "edge_tts", 
             "-f", temp_filename, 
             "--voice", "he-IL-AvriNeural", 
             "--write-media", file_path
