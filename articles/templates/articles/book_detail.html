@@ -164,8 +164,12 @@
                 {% endfor %}
             {% endif %}
 
-            <!-- כפתורי פעולה כולל כפתור שיתוף יוקרתי -->
+            <!-- כפתורי פעולה כולל כפתור שיתוף והאזנה קולית -->
             <div class="d-flex justify-content-end gap-3 mb-1 hide-in-zen flex-wrap align-items-center">
+                <!-- כפתור האזנה קולית -->
+                <button onclick="toggleSpeech()" id="speechBtn" class="btn-print btn btn-outline-warning border shadow-sm" title="האזנה לספר" style="color: #a67c52; border-color: #a67c52;">
+                    <i class="bi bi-volume-up-fill" id="speechIcon"></i> <span id="speechText">האזנה לקריאה</span>
+                </button>
                 <button onclick="openShareModal()" class="btn-print btn btn-outline-warning border shadow-sm" title="שתף ספר זה" style="color: #a67c52; border-color: #a67c52;">
                     <i class="bi bi-share-fill"></i> שיתוף
                 </button>
@@ -297,7 +301,7 @@
     </div>
 </div>
 
-<!-- חלונית מודאל יוקרתית לשיתוף (Modal) -->
+<!-- חלונית מודאל גלובלית לשיתוף -->
 <div class="modal fade" id="luxShareModal" tabindex="-1" aria-hidden="true" dir="rtl">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 450px;">
         <div class="modal-content lux-modal-content">
@@ -456,6 +460,51 @@
 </style>
 
 <script>
+    // פונקציית הקראה קולית (Text-to-Speech)
+    let isSpeaking = false;
+
+    function toggleSpeech() {
+        const speechText = document.getElementById('speechText');
+        const speechIcon = document.getElementById('speechIcon');
+
+        if (!('speechSynthesis' in window)) {
+            alert("הדפדפן שלך אינו תומך בהקראה קולית.");
+            return;
+        }
+
+        if (isSpeaking) {
+            window.speechSynthesis.cancel();
+            isSpeaking = false;
+            speechText.innerText = 'האזנה לקריאה';
+            speechIcon.className = 'bi bi-volume-up-fill';
+        } else {
+            const title = document.querySelector('h1').innerText;
+            const content = document.querySelector('.book-reading-mode').innerText;
+            const fullText = title + ". " + content;
+
+            const utterance = new SpeechSynthesisUtterance(fullText);
+            utterance.lang = 'he-IL';
+            utterance.rate = 1.0;
+
+            utterance.onend = function() {
+                isSpeaking = false;
+                speechText.innerText = 'האזנה לקריאה';
+                speechIcon.className = 'bi bi-volume-up-fill';
+            };
+
+            window.speechSynthesis.speak(utterance);
+            isSpeaking = true;
+            speechText.innerText = 'עצור הקראה';
+            speechIcon.className = 'bi bi-stop-fill';
+        }
+    }
+
+    window.addEventListener('beforeunload', () => {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+        }
+    });
+
     // פונקציית שיתוף חכמה (Web Share API למובייל ומודאל לדסקטופ)
     function openShareModal() {
         const shareData = {
