@@ -9,6 +9,8 @@ import os
 import time
 import asyncio
 import edge_tts
+import subprocess
+import tempfile
 from html import unescape
 from functools import wraps
 
@@ -842,17 +844,22 @@ def clear_cache_on_db_change(sender, instance, **kwargs):
 # ==========================================
 
 def generate_audio_sync(text, file_path):
-    """פונקציה בטוחה להרצת אסינכרוניות בתוך תהליך סינכרוני בלי לקרוס על מגבלות אורך"""
-    async def _amain():
-        communicate = edge_tts.Communicate(text, "he-IL-AvriNeural")
-        await communicate.save(file_path)
+    """פונקציה בטוחה להרצת הקריין ללא קריסות של השרת"""
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode='w', encoding='utf-8') as f:
+        f.write(text)
+        temp_filename = f.name
         
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
     try:
-        loop.run_until_complete(_amain())
+        command = [
+            "edge-tts", 
+            "-f", temp_filename, 
+            "--voice", "he-IL-AvriNeural", 
+            "--write-media", file_path
+        ]
+        subprocess.run(command, check=True)
     finally:
-        loop.close()
+        if os.path.exists(temp_filename):
+            os.remove(temp_filename)
 
 def clean_torah_text_fallback(text):
     """גיבוי למקרה שה-AI לא זמין (Regex רגיל)"""
@@ -898,7 +905,7 @@ def smart_ai_phonetic_rewrite(text):
 5. אל תוסיף שום מילת הקדמה או סיום משלך! החזר אך ורק את הטקסט המוכן להקראה.
 
 הטקסט:
-{text[:20000]} 
+{text[:10000]} 
 """
     try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key={API_KEY}"
