@@ -16,7 +16,7 @@ sitemaps = {
     'books': BookSitemap,
 }
 
-# פונקציה שמייצרת את קובץ ה-robots.txt עם הרשאות מפורשות לבוטי AI
+# פונקציה שמייצרת את קובץ ה-robots.txt
 def robots_txt(request):
     lines = [
         "User-agent: *",
@@ -41,7 +41,7 @@ def robots_txt(request):
     ]
     return HttpResponse("\n".join(lines), content_type="text/plain")
 
-# פונקציה שמייצרת את קובץ ה-llms-full.txt המלא דינמית מתוך מסד הנתונים
+# פונקציה שמייצרת את קובץ ה-llms-full.txt
 def llms_full_txt(request):
     articles = Article.objects.filter(is_published=True).order_by('-created_at')[:50]
     books = Book.objects.all()
@@ -60,7 +60,7 @@ def llms_full_txt(request):
         
     return HttpResponse(content, content_type='text/plain; charset=utf-8')
 
-# פונקציה שמייצרת את סכמת ה-OpenAPI עבור Custom GPT ב-OpenAI
+# פונקציה שמייצרת את סכמת ה-OpenAPI
 def openapi_schema(request):
     schema = {
         "openapi": "3.1.0",
@@ -69,11 +69,7 @@ def openapi_schema(request):
             "description": "ממשק חיפוש פתוח למאמרים, סוגיות וספרים תורניים מתוך ספריית לייבוביץ.",
             "version": "1.0.0"
         },
-        "servers": [
-            {
-                "url": "https://leblibrary.co.il"
-            }
-        ],
+        "servers": [{"url": "https://leblibrary.co.il"}],
         "paths": {
             "/api/ai-search/": {
                 "get": {
@@ -86,9 +82,7 @@ def openapi_schema(request):
                             "in": "query",
                             "required": True,
                             "description": "שאילתת החיפוש או הנושא ההלכתי בעברית",
-                            "schema": {
-                                "type": "string"
-                            }
+                            "schema": {"type": "string"}
                         }
                     ],
                     "responses": {
@@ -96,9 +90,7 @@ def openapi_schema(request):
                             "description": "תוצאות החיפוש חזרו בהצלחה",
                             "content": {
                                 "application/json": {
-                                    "schema": {
-                                        "type": "object"
-                                    }
+                                    "schema": {"type": "object"}
                                 }
                             }
                         }
@@ -106,11 +98,51 @@ def openapi_schema(request):
                 }
             }
         },
-        "components": {
-            "schemas": {}
-        }
+        "components": {"schemas": {}}
     }
     return JsonResponse(schema, json_dumps_params={'ensure_ascii': False, 'indent': 2})
+
+# הפונקציה החדשה שתפתור את השגיאה של ה-manifest.json
+def manifest_json(request):
+    manifest = {
+      "name": "ספריית לייבוביץ",
+      "short_name": "לייבוביץ",
+      "description": "ספרייה תורנית מתקדמת המרכזת מאמרים, ספרים, וסוגיות הלכתיות.",
+      "id": "/",
+      "categories": ["books", "education", "utilities"],
+      "start_url": "/",
+      "display": "standalone",
+      "background_color": "#ffffff",
+      "theme_color": "#3f4050",
+      "orientation": "portrait-primary",
+      "icons": [
+        {
+          "src": "/static/images/icon-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        },
+        {
+          "src": "/static/images/icon-512x512.png",
+          "sizes": "512x512",
+          "type": "image/png"
+        }
+      ],
+      "related_applications": [],
+      "prefer_related_applications": False,
+      "shortcuts": [],
+      "wakelock": False,
+      "display_override": ["window-controls-overlay"],
+      "handle_links": "preferred",
+      "dir": "rtl",
+      "lang": "he",
+      "iarc_rating_id": "",
+      "serviceworker": {
+        "src": "/sw.js",
+        "scope": "/"
+      },
+      "android_package_name": "il.co.leblibrary.v2"
+    }
+    return JsonResponse(manifest, json_dumps_params={'ensure_ascii': False, 'indent': 2})
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -128,9 +160,11 @@ urlpatterns = [
     # קובץ התוכן המלא לבוטים של AI
     path('llms-full.txt', llms_full_txt, name='llms_full_txt'),
     
-    path('manifest.json', TemplateView.as_view(template_name="articles/manifest.json", content_type="application/json")),
-    path('service-worker.js', TemplateView.as_view(template_name="articles/sw.js", content_type="application/javascript")),
-    path('sw.js', TemplateView.as_view(template_name="articles/sw.js", content_type="application/javascript")),
+    # === התיקון שלנו: עוקפים את התבניות ומגישים את המניפסט ישירות ===
+    path('manifest.json', manifest_json, name='manifest_json'),
+    
+    path('service-worker.js', TemplateView.as_view(template_name="sw.js", content_type="application/javascript")),
+    path('sw.js', TemplateView.as_view(template_name="sw.js", content_type="application/javascript")),
     path('.well-known/assetlinks.json', TemplateView.as_view(template_name="assetlinks.json", content_type="application/json")),
     
     # קובץ ה-llms.txt מוגש ישירות עם UTF-8 נקי למניעת ג'יבריש
