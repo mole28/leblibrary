@@ -865,20 +865,24 @@ def clean_torah_text_fallback(text):
     return re.sub(r'\s+', ' ', text).strip()
 
 def process_chunk_with_ai(chunk, api_key):
-    """מעבד חתיכת טקסט אחת מול Gemini"""
+    """מעבד חתיכת טקסט אחת מול מודל מתקדם וחכם יותר"""
     if len(chunk) < 10:
         return chunk
-    prompt = f"""אתה תלמיד חכם וקריין מקצועי. המשימה שלך היא להכין את הטקסט התורני הבא להקראה קולית (TTS).
-חובה להקפיד:
-1. פתח ראשי תיבות למילים מלאות לפי ההקשר המדויק.
-2. תרגם ארמית לעברית, או כתוב פונטית כפי שנהגה.
-3. הוסף פסיקים ונקודות לנשימות נכונות ב'ניגון' תורני.
-4. אל תוסיף שום טקסט, סיכום או הקדמה משלך! החזר נטו את הטקסט בלבד!
+    prompt = f"""אתה מומחה ללשון הקודש, עברית וארמית. המשימה שלך היא לשכתב את הטקסט התורני הבא כדי שקריין רדיו (TTS) יקרא אותו באופן מושלם, רהוט וללא אף שגיאת הגייה.
 
-הטקסט:
+חובה עליך ליישם את 4 הכללים הבאים:
+1. תרגום ארמית: תרגם כל מילה או ביטוי בארמית לעברית מודרנית וברורה (למשל, במקום 'קא משמע לן' כתוב 'בא להשמיע לנו').
+2. ראשי תיבות: פתח את כל ראשי התיבות למילים שלמות לפי ההקשר המדויק.
+3. ניקוד עזר למילים קשות: הוסף ניקוד (Niqqud) מלא לשמות של רבנים, ספרים, או מילים תורניות שקשה לקרוא ללא ניקוד כדי שהקריין לא יגמגם (השתמש בכתיב מלא היכן שלא ניקדת).
+4. פיסוק: הוסף פסיקים ונקודות במקומות של עצירה טבעית (כדי לייצר ניגון של לימוד).
+
+אסור לך להוסיף הערות, סיכומים או טקסט משלך. החזר רק את הטקסט המוכן לקריאה!
+
+הטקסט המקורי:
 {chunk}"""
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key={api_key}"
+        # שימוש במודל החכם gemini-1.5-flash
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
         payload = {"contents": [{"parts": [{"text": prompt}]}]}
         data_bytes = json.dumps(payload, ensure_ascii=False).encode('utf-8')
         req = urllib.request.Request(url, data=data_bytes, headers={'Content-Type': 'application/json'})
@@ -918,7 +922,7 @@ def smart_ai_phonetic_rewrite(text):
         
     processed_chunks = [""] * len(chunks)
     
-    # שליחת כל החתיכות ל-AI במקביל! (מהיר פי 5)
+    # שליחת כל החתיכות ל-AI במקביל!
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         future_to_index = {executor.submit(process_chunk_with_ai, chunk, API_KEY): i for i, chunk in enumerate(chunks)}
         for future in concurrent.futures.as_completed(future_to_index):
