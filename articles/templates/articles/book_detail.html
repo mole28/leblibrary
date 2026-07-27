@@ -107,7 +107,6 @@
         <!-- תפריט צדדי: תוכן עניינים מעודכן כ-nav סמנטי -->
         <nav aria-label="תוכן עניינים" class="col-lg-3 d-none d-lg-block hide-in-zen" id="toc-column">
             <div class="sticky-top shadow-sm rounded content-card-bg p-3" style="top: 100px; max-height: 80vh; overflow-y: auto; scroll-behavior: smooth;" id="toc-container">
-                <!-- כותרת תוכן העניינים הותאמה ל-h2 עם שמירת נראות h4 באמצעות fs-4 -->
                 <h2 class="fw-bold mb-3 border-bottom pb-2 text-primary fs-4">תוכן עניינים</h2>
                 <div class="list-group list-group-flush" id="toc-list">
                     
@@ -165,7 +164,11 @@
                 {% endfor %}
             {% endif %}
 
-            <div class="d-flex justify-content-end gap-3 mb-1 hide-in-zen">
+            <!-- כפתורי פעולה כולל כפתור שיתוף יוקרתי -->
+            <div class="d-flex justify-content-end gap-3 mb-1 hide-in-zen flex-wrap align-items-center">
+                <button onclick="openShareModal()" class="btn-print btn btn-outline-warning border shadow-sm" title="שתף ספר זה" style="color: #a67c52; border-color: #a67c52;">
+                    <i class="bi bi-share-fill"></i> שיתוף
+                </button>
                 <button onclick="copyCitation()" class="btn-print btn btn-outline-warning border shadow-sm" title="העתק קישור למקור" style="color: #a67c52; border-color: #a67c52;">
                     <i class="bi bi-link-45deg"></i> העתק מקור
                 </button>
@@ -195,7 +198,6 @@
                         
                         {% if book.chapters.all or book.chapter_set.all %}
                             {% if book.summary %}
-                                <!-- הותאם ל-h2 סמנטי -->
                                 <h2 class="fw-bold mb-3 fs-4" style="color: #a88132;"><i class="bi bi-info-circle me-2"></i>על הספר</h2>
                                 <div class="mb-4 text-dark" style="font-size: 1.15rem; line-height: 1.6;">
                                     {{ book.summary|safe }}
@@ -233,7 +235,6 @@
                         <div class="chapter-section mb-5 pb-3 scrollspy-target" id="chapter-{{ chapter.id }}">
                             <h2 class="fw-bold text-primary mb-4 border-bottom pb-2">{{ chapter.title }}</h2>
                             {% for section in chapter.sections.all %}
-                                
                                 <div class="section-content mb-4 scrollspy-target" id="section-{{ section.id }}">
                                     {% if "גדר" in section.title and "נכתב" in section.title %}
                                     {% elif section.title == "מבוא" or section.title == " מבוא" or section.title == "מבוא " or section.title == chapter.title %}
@@ -242,7 +243,6 @@
                                         {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
                                             <h3 class="fw-bold text-dark mb-3 mt-5" style="border-bottom: 2px solid #a67c52; padding-bottom: 5px; display: inline-block;">{{ section.title }}</h3>
                                         {% else %}
-                                            <!-- הותאם מ-h4 ל-h3 תקני לשמירת היררכיה תחת ה-h2 של הפרק -->
                                             <h3 class="fw-semibold text-secondary mb-3 fs-4">{{ section.title }}</h3>
                                         {% endif %}
                                     {% endif %}
@@ -297,7 +297,99 @@
     </div>
 </div>
 
+<!-- חלונית מודאל יוקרתית לשיתוף (Modal) -->
+<div class="modal fade" id="luxShareModal" tabindex="-1" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 450px;">
+        <div class="modal-content lux-modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold w-100 text-center" style="color: #d4af37; font-size: 1.4rem;">שתפו את הידע</h5>
+                <button type="button" class="btn-close btn-close-white position-absolute start-0 ms-3" data-bs-dismiss="modal" aria-label="סגור"></button>
+            </div>
+            <div class="modal-body text-center px-4 py-4">
+                <p class="text-muted mb-4" style="font-size: 1rem;">בחרו את הדרך המועדפת עליכם להפצת התוכן:</p>
+                
+                <div class="d-flex justify-content-center gap-3 mb-4 flex-wrap">
+                    <a id="shareWhatsapp" href="#" target="_blank" class="lux-share-icon-btn" style="background-color: #25d366;" title="שליחה בוואטסאפ">
+                        <i class="bi bi-whatsapp"></i>
+                    </a>
+                    <a id="shareEmail" href="#" class="lux-share-icon-btn" style="background-color: #ea4335;" title="שליחה במייל">
+                        <i class="bi bi-envelope-fill"></i>
+                    </a>
+                    <a id="shareFacebook" href="#" target="_blank" class="lux-share-icon-btn" style="background-color: #1877f2;" title="שיתוף בפייסבוק">
+                        <i class="bi bi-facebook"></i>
+                    </a>
+                    <a id="shareTwitter" href="#" target="_blank" class="lux-share-icon-btn" style="background-color: #1da1f2;" title="שיתוף ב-X">
+                        <i class="bi bi-twitter-x"></i>
+                    </a>
+                </div>
+
+                <div class="lux-copy-box">
+                    <input type="text" id="luxShareUrl" readonly class="form-control-plaintext text-center text-secondary" style="font-size: 0.9rem; direction: ltr;">
+                    <button class="lux-copy-btn" onclick="copyShareUrl()">
+                        <i class="bi bi-clipboard" id="copyIcon"></i>
+                        <span id="copyText">העתק קישור</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
+    /* עיצוב המודאל היוקרתי לשיתוף */
+    .lux-modal-content {
+        background: linear-gradient(145deg, #1e202c 0%, #0f172a 100%);
+        border: 1px solid rgba(212, 175, 55, 0.3);
+        border-radius: 16px;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+        color: #e2e8f0;
+    }
+    .lux-share-icon-btn {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.4rem;
+        text-decoration: none;
+        transition: transform 0.2s, box-shadow 0.2s;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    .lux-share-icon-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 15px rgba(212, 175, 55, 0.4);
+        color: white;
+    }
+    .lux-copy-box {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(212, 175, 55, 0.2);
+        border-radius: 12px;
+        padding: 6px 6px 6px 15px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .lux-copy-btn {
+        background: #d4af37;
+        color: #1e202c;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: bold;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        transition: background 0.2s;
+        white-space: nowrap;
+    }
+    .lux-copy-btn:hover {
+        background: #b5952f;
+    }
+
     html { scroll-behavior: smooth; }
     .book-reading-mode { font-family: 'Frank Ruhl Libre', serif; font-size: 1.3rem; line-height: 2; color: #2c3e50; }
     .book-cover-bg { background-color: rgba(0,0,0,0.02); border-left: 1px solid rgba(0,0,0,0.05); }
@@ -322,9 +414,7 @@
     body.dark-mode .content-card-bg { background-color: #1e293b; border: 1px solid rgba(255,255,255,0.05) !important; }
     body.dark-mode .article-content { color: #cbd5e1 !important; }
 
-    /* ============================================== */
-    /* מערכת מצב קריאה נקי (Zen Mode)                 */
-    /* ============================================== */
+    /* מערכת מצב קריאה נקי (Zen Mode) */
     .zen-toggle-btn {
         position: fixed;
         bottom: 110px;
@@ -358,31 +448,60 @@
     body.zen-mode .hide-in-zen {
         display: none !important;
     }
-    
     body.zen-mode { background-color: #fdfbf7 !important; }
     body.dark-mode.zen-mode { background-color: #0f172a !important; }
-    
-    body.zen-mode .content-card-bg {
-        box-shadow: none !important;
-        background-color: transparent !important;
-        border: none !important;
-    }
-    
-    body.zen-mode #main-content-col {
-        max-width: 850px !important;
-        margin: 0 auto !important;
-        flex: 0 0 100% !important;
-        padding-top: 5vh !important;
-        padding-bottom: 15vh !important;
-    }
-    
-    body.zen-mode .zen-toggle-btn {
-        background: #3f4050;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    }
+    body.zen-mode .content-card-bg { box-shadow: none !important; background-color: transparent !important; border: none !important; }
+    body.zen-mode #main-content-col { max-width: 850px !important; margin: 0 auto !important; flex: 0 0 100% !important; padding-top: 5vh !important; padding-bottom: 15vh !important; }
+    body.zen-mode .zen-toggle-btn { background: #3f4050; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); }
 </style>
 
 <script>
+    // פונקציית שיתוף חכמה (Web Share API למובייל ומודאל לדסקטופ)
+    function openShareModal() {
+        const shareData = {
+            title: document.title,
+            text: 'קראו את התוכן המרתק בספריית לייבוביץ:',
+            url: window.location.href
+        };
+
+        if (navigator.share) {
+            navigator.share(shareData).catch(() => {});
+        } else {
+            const currentUrl = window.location.href;
+            const titleEncoded = encodeURIComponent(document.title);
+            const urlEncoded = encodeURIComponent(currentUrl);
+
+            document.getElementById('luxShareUrl').value = currentUrl;
+            document.getElementById('shareWhatsapp').href = `https://api.whatsapp.com/send?text=${titleEncoded}%20-%20${urlEncoded}`;
+            document.getElementById('shareEmail').href = `mailto:?subject=${titleEncoded}&body=מוזמנים לקרוא:%20${urlEncoded}`;
+            document.getElementById('shareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${urlEncoded}`;
+            document.getElementById('shareTwitter').href = `https://twitter.com/intent/tweet?text=${titleEncoded}&url=${urlEncoded}`;
+
+            var modal = new bootstrap.Modal(document.getElementById('luxShareModal'));
+            modal.show();
+        }
+    }
+
+    // פונקציית העתקת קישור מהמודאל
+    function copyShareUrl() {
+        const urlInput = document.getElementById('luxShareUrl');
+        urlInput.select();
+        urlInput.setSelectionRange(0, 99999);
+        
+        navigator.clipboard.writeText(urlInput.value).then(() => {
+            const copyText = document.getElementById('copyText');
+            const copyIcon = document.getElementById('copyIcon');
+            
+            copyText.innerText = 'הועתק בהצלחה!';
+            copyIcon.className = 'bi bi-check2-lg';
+            
+            setTimeout(() => {
+                copyText.innerText = 'העתק קישור';
+                copyIcon.className = 'bi bi-clipboard';
+            }, 2500);
+        });
+    }
+
     function toggleZenMode() {
         document.body.classList.toggle('zen-mode');
         const icon = document.getElementById('zenIcon');
