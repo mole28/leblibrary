@@ -841,27 +841,23 @@ def clear_cache_on_db_change(sender, instance, **kwargs):
     cache.clear()
 
 # ==========================================
-# מנוע הקראה קולית (Text-to-Speech) - אלגוריתמי ניקוי והכנה
+# מנוע הקראה קולית מקומי (ללא תלות ב-AI שקורס) - מילון מתרחב!
 # ==========================================
 
-def base_text_cleaner(text):
-    """ניקוי בסיסי של HTML והערות שוליים לפני הכל"""
-    if not text:
-        return ""
-    text = strip_tags(text.replace('><', '> <').replace('</p>', '. ').replace('</li>', '. ').replace('<br>', ' ').replace('<br/>', ' ').replace('&nbsp;', ' '))
-    text = unescape(text)
-    
-    # העלמת הערות שוליים וסוגריים מרובעים לחלוטין (כמו [1], [א]) כדי שהקריין לא יקרא אותם
-    text = re.sub(r'\[.*?\]', '', text)
-    text = re.sub(r'\(\d+\)', '', text)
-    
-    # הסרת כוכביות וקווים תחתונים
-    text = re.sub(r'[*_#]', '', text)
-    return text
-
-def final_audio_polish(text):
-    """מילון חזק במיוחד לראשי תיבות וארמית - פועל כגיבוי ל-AI ומוודא קריאה חלקה"""
-    replacements = {
+def load_tts_dictionary():
+    """
+    טוען את המילון הקשיח מקובץ json. במידה והקובץ טרם נוצר, משתמש במילון ברירת מחדל חזק.
+    """
+    dict_path = os.path.join(settings.BASE_DIR, 'tts_dictionary.json')
+    if os.path.exists(dict_path):
+        try:
+            with open(dict_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            pass
+            
+    # מילון ברירת המחדל הקשיח אם הקובץ לא נטען
+    return {
         'רמב"ם': 'רמבם', 'רש"י': 'רשי', 'שו"ע': 'שולחן ערוך', 'שו"ת': 'שאלות ותשובות',
         'רמב"ן': 'רמבן', 'רס"ג': 'רב סעדיה גאון', "תוס'": 'תוספות', "גמ'": 'גמרא',
         'וכו\'': 'וכולי', 'ע"ד': 'על דרך', 'ע"י': 'על ידי', "לכאו'": 'לכאורה',
@@ -873,91 +869,46 @@ def final_audio_polish(text):
         'זצ"ל': 'זכרונו לברכה', 'שליט"א': 'שיחיה לאורך ימים טובים אמן',
         'הקב"ה': 'הקדוש ברוך הוא', 'רבש"ע': 'ריבונו של עולם',
         'איתא': 'יש', 'ליתא': 'אין', 'הכא': 'כאן', 'התם': 'שם', 'האי': 'זה', 'הני': 'אלה',
-        'מאי': 'מה', 'אמאי': 'למה', 'בשלמא': 'בשלמא', 'אדרבה': 'אדרבה', 'אלמא': 'מכאן ש',
+        'מאי': 'מה', 'אמאי': 'למה', 'בשלמא': 'בשלמא', 'אדרבה': 'אדרבה', 'אלמא': 'מכאן ש'
     }
-    for k, v in replacements.items(): 
-        text = text.replace(k, v)
+
+def apply_tts_dictionary(text):
+    """מיישם את המילון ומנקה סוגריים מרובעים והערות"""
+    if not text:
+        return ""
         
-    # מחיקת גרשיים ומרכאות מראשי תיבות (כדי לייצר רצף קריאה אם המודל השאיר אותם)
+    # 1. ניקוי בסיסי וסילוק סוגריים (למניעת "פותח סוגריים מרובעים")
+    text = strip_tags(text.replace('><', '> <').replace('</p>', '. ').replace('</li>', '. '))
+    text = unescape(text)
+    
+    # הסרת כל הטקסט שבתוך סוגריים מרובעים (כמו [1], [א]) או מספרי הערות
+    text = re.sub(r'\[.*?\]', '', text)
+    text = re.sub(r'\(\d+\)', '', text)
+    text = re.sub(r'[*_#]', '', text)
+
+    # 2. החלפת מילים לפי המילון הקשיח שלנו
+    tts_dict = load_tts_dictionary()
+    
+    # מיון המפתחות לפי אורך כדי להחליף קודם ביטויים ארוכים (למשל 'קא משמע לן' לפני 'לן')
+    sorted_keys = sorted(tts_dict.keys(), key=len, reverse=True)
+    
+    for key in sorted_keys:
+        val = tts_dict[key]
+        if '"' in key or "'" in key or " " in key:
+            text = text.replace(key, val)
+        else:
+            # מילים שלמות בלבד (למשל "מאי" לא יחליף בתוך המילה "מאימתי")
+            text = re.sub(rf'(?<![א-ת]){key}(?![א-ת])', val, text)
+            
+    # 3. ניקוי מירכאות שנותרו (כדי שהקריין לא ייתקע)
     text = re.sub(r'([א-ת])"([א-ת])', r'\1\2', text)
     text = re.sub(r"([א-ת])'([א-ת])", r'\1\2', text)
     
     # ניקוי רווחים כפולים
     text = re.sub(r'\.+', '.', text)
     text = re.sub(r'\s+', ' ', text).strip()
+    
     return text
-
-def process_chunk_with_ai(chunk, api_key):
-    """מעבד חתיכת טקסט אחת מול מודל מתקדם וחכם יותר"""
-    if len(chunk) < 10:
-        return chunk
-    prompt = f"""אתה מומחה ללשון הקודש, עברית וארמית. המשימה שלך היא לשכתב את הטקסט התורני הבא כדי שקריין רדיו (TTS) יקרא אותו באופן מושלם, רהוט וללא אף שגיאת הגייה.
-
-חובה עליך ליישם את 4 הכללים הבאים:
-1. תרגום ארמית: תרגם כל מילה או ביטוי בארמית לעברית מודרנית וברורה (למשל, במקום 'קא משמע לן' כתוב 'בא להשמיע לנו').
-2. ראשי תיבות: פתח את כל ראשי התיבות למילים שלמות לפי ההקשר המדויק.
-3. ניקוד עזר למילים קשות: הוסף ניקוד (Niqqud) מלא לשמות של רבנים, ספרים, או מילים תורניות שקשה לקרוא ללא ניקוד כדי שהקריין לא יגמגם (השתמש בכתיב מלא היכן שלא ניקדת).
-4. פיסוק: הוסף פסיקים ונקודות במקומות של עצירה טבעית (כדי לייצר ניגון של לימוד).
-
-אסור לך להוסיף הערות, סיכומים או טקסט משלך. החזר רק את הטקסט המוכן לקריאה!
-
-הטקסט המקורי:
-{chunk}"""
-    try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-        payload = {"contents": [{"parts": [{"text": prompt}]}]}
-        data_bytes = json.dumps(payload, ensure_ascii=False).encode('utf-8')
-        req = urllib.request.Request(url, data=data_bytes, headers={'Content-Type': 'application/json'})
-        response = urllib.request.urlopen(req, timeout=12)
-        resp_data = json.loads(response.read().decode('utf-8'))
-        
-        ai_text = resp_data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
-        if ai_text:
-            ai_text = ai_text.replace("```", "").strip()
-            if ai_text.startswith("טקסט:"): ai_text = ai_text[5:]
-            return ai_text.strip()
-    except Exception:
-        pass
-    return chunk # במקרה של כשל ה-AI, נחזיר את הטקסט המקורי, והפוליש הסופי יטפל בו
-
-def smart_ai_phonetic_rewrite(text):
-    """חותך את המאמר לחתיכות ומריץ מול ה-AI במקביל כדי למנוע קריסה וזמני המתנה ארוכים"""
-    # 1. ניקוי בסיסי מוחלט של HTML, סוגריים מרובעים והערות שוליים לפני שליחה
-    text = base_text_cleaner(text)
-    
-    API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
-    if not API_KEY or len(text) < 20:
-        return final_audio_polish(text)
-        
-    # פיצול לנתחים של כ-1500 תווים
-    sentences = re.split(r'(?<=[.?!:\n])\s+', text)
-    chunks = []
-    current_chunk = ""
-    for s in sentences:
-        if len(current_chunk) + len(s) > 1500:
-            if current_chunk: chunks.append(current_chunk)
-            current_chunk = s
-        else:
-            current_chunk += " " + s if current_chunk else s
-    if current_chunk:
-        chunks.append(current_chunk)
-        
-    processed_chunks = [""] * len(chunks)
-    
-    # שליחת כל החתיכות ל-AI במקביל!
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        future_to_index = {executor.submit(process_chunk_with_ai, chunk, API_KEY): i for i, chunk in enumerate(chunks)}
-        for future in concurrent.futures.as_completed(future_to_index):
-            index = future_to_index[future]
-            try:
-                processed_chunks[index] = future.result()
-            except Exception:
-                processed_chunks[index] = chunks[index]
-                
-    combined_text = " ".join(processed_chunks)
-    
-    # 2. הרצת הפוליש הסופי כדי לוודא שאין שאריות ראשי תיבות שלא תורגמו
-    return final_audio_polish(combined_text)
 
 def generate_audio_sync(text, file_path):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode='w', encoding='utf-8') as f:
@@ -993,7 +944,8 @@ def get_article_audio(request, article_id):
 
     if not os.path.exists(file_path):
         raw_text = f"{article.title}. {article.content}"
-        final_text = smart_ai_phonetic_rewrite(raw_text)
+        # שימוש במילון הקשיח והמיידי שלנו במקום ב-AI!
+        final_text = apply_tts_dictionary(raw_text)
         try:
             generate_audio_sync(final_text, file_path)
         except Exception as e:
@@ -1020,7 +972,8 @@ def get_book_audio(request, book_id):
         raw_text = f"{book.title}. "
         if book.summary:
             raw_text += book.summary
-        final_text = smart_ai_phonetic_rewrite(raw_text)
+        # שימוש במילון הקשיח והמיידי שלנו במקום ב-AI!
+        final_text = apply_tts_dictionary(raw_text)
         try:
             generate_audio_sync(final_text, file_path)
         except Exception as e:
