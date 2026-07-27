@@ -9,6 +9,8 @@ import os
 import time
 import asyncio
 import edge_tts
+import subprocess
+from html import unescape
 from functools import wraps
 
 from django.http import JsonResponse, HttpResponse
@@ -838,18 +840,35 @@ def clear_cache_on_db_change(sender, instance, **kwargs):
 
 # ==========================================
 # מנוע הקראה קולית (Text-to-Speech) מבוסס AI
+# גרסה נקייה ויציבה עם הבנת הקשרים בעברית
 # ==========================================
 def clean_torah_text(text):
-    # הסרת תגיות HTML כדי שהקריין לא יקריא אותן
-    text = strip_tags(text)
+    if not text:
+        return ""
+        
+    # 1. הוספת רווחים ונקודות לפני הסרת HTML כדי למנוע הידבקות של סוף פסקה לתחילת פסקה
+    text = text.replace('><', '> <')
+    text = text.replace('</p>', '. ')
+    text = text.replace('</li>', '. ')
+    text = text.replace('<br>', ' ')
+    text = text.replace('<br/>', ' ')
+    text = text.replace('&nbsp;', ' ')
     
+    # 2. הסרת תגיות HTML וקידוד ישויות מיוחדות
+    text = strip_tags(text)
+    text = unescape(text)
+
+    # 3. הסרת סמני עיצוב מיותרים שיכולים להיתקע בקריין
+    text = re.sub(r'[*#_]', '', text)
+
+    # 4. מילון המרת מונחים שכיחים לעברית חלקה ללא ניקוד
     replacements = {
-        'רמב"ם': 'רַמְבַּם',
-        'רש"י': 'רַשִׁי',
-        'שו"ע': 'שֻׁלְחָן עָרוּךְ',
-        'שו"ת': 'שְׁאֵלוֹת וּתְשׁוּבוֹת',
-        'רמב"ן': 'רַמְבַּן',
-        'רס"ג': 'רַב סַעְדְּיָה גָּאוֹן',
+        'רמב"ם': 'רמבם',
+        'רש"י': 'רשי',
+        'שו"ע': 'שולחן ערוך',
+        'שו"ת': 'שאלות ותשובות',
+        'רמב"ן': 'רמבן',
+        'רס"ג': 'רב סעדיה גאון',
         "תוס'": 'תוספות',
         "גמ'": 'גמרא',
         'וכו\'': 'וכולי',
@@ -860,24 +879,24 @@ def clean_torah_text(text):
         'ע"כ': 'עד כאן',
         'קא משמע לן': 'קמא משמע לן',
         'אי נמי': 'אי נמי',
-        'מנא לן': 'מנין לנו',
-        'פשיטא': 'פָּשׁוּט הוא',
+        'מנא לן': 'מניין לנו',
+        'פשיטא': 'פשוט הוא',
         'הכי נמי': 'כך הוא גם כן',
-        'תנא': 'שָׁנָה',
+        'תנא': 'שנה חכם',
     }
     
     for k, v in replacements.items():
         text = text.replace(k, v)
         
-    import re
-    text = re.sub(r'([א-ת])"([א-ת])', r'\1 \2', text)
-    text = re.sub(r"([א-ת])'([א-ת])", r'\1 \2', text)
+    # 5. טיפול בשאר ראשי התיבות: מחיקת גרשיים בין אותיות כדי לייצר רצף
+    text = re.sub(r'([א-ת])"([א-ת])', r'\1\2', text)
+    text = re.sub(r"([א-ת])'([א-ת])", r'\1\2', text)
+    
+    # 6. ניקוי רווחים ונקודות כפולות שנוצרו
+    text = re.sub(r'\.+', '.', text)
+    text = re.sub(r'\s+', ' ', text).strip()
     
     return text
-
-async def generate_audio_async(text, output_path):
-    communicate = edge_tts.Communicate(text, "he-IL-AvriNeural", rate="-10%")
-    await communicate.save(output_path)
 
 def get_article_audio(request, article_id):
     try:
@@ -885,17 +904,26 @@ def get_article_audio(request, article_id):
     except Article.DoesNotExist:
         return JsonResponse({'error': 'Article not found'}, status=404)
 
-    audio_dir = os.path.join(settings.MEDIA_ROOT, 'audio')
+    base_media = getattr(settings, 'MEDIA_ROOT', os.path.join(settings.BASE_DIR, 'media'))
+    audio_dir = os.path.join(base_media, 'audio')
     os.makedirs(audio_dir, exist_ok=True)
     
     file_name = f"article_{article.id}.mp3"
     file_path = os.path.join(audio_dir, file_name)
-    audio_url = f"{settings.MEDIA_URL}audio/{file_name}"
+    media_url = getattr(settings, 'MEDIA_URL', '/media/')
+    audio_url = f"{media_url}audio/{file_name}"
 
     if not os.path.exists(file_path):
         raw_text = f"{article.title}. {article.content}"
         final_text = clean_torah_text(raw_text)
-        async_to_sync(generate_audio_async)(final_text, file_path)
+        
+        command = [
+            "edge-tts", 
+            "--text", final_text, 
+            "--voice", "he-IL-AvriNeural", 
+            "--write-media", file_path
+        ]
+        subprocess.run(command, check=True)
 
     return JsonResponse({'audio_url': audio_url})
 
@@ -905,18 +933,27 @@ def get_book_audio(request, book_id):
     except Book.DoesNotExist:
         return JsonResponse({'error': 'Book not found'}, status=404)
 
-    audio_dir = os.path.join(settings.MEDIA_ROOT, 'audio')
+    base_media = getattr(settings, 'MEDIA_ROOT', os.path.join(settings.BASE_DIR, 'media'))
+    audio_dir = os.path.join(base_media, 'audio')
     os.makedirs(audio_dir, exist_ok=True)
     
     file_name = f"book_{book.id}.mp3"
     file_path = os.path.join(audio_dir, file_name)
-    audio_url = f"{settings.MEDIA_URL}audio/{file_name}"
+    media_url = getattr(settings, 'MEDIA_URL', '/media/')
+    audio_url = f"{media_url}audio/{file_name}"
 
     if not os.path.exists(file_path):
         raw_text = f"{book.title}. "
         if book.summary:
             raw_text += book.summary
         final_text = clean_torah_text(raw_text)
-        async_to_sync(generate_audio_async)(final_text, file_path)
+        
+        command = [
+            "edge-tts", 
+            "--text", final_text, 
+            "--voice", "he-IL-AvriNeural", 
+            "--write-media", file_path
+        ]
+        subprocess.run(command, check=True)
 
     return JsonResponse({'audio_url': audio_url})
