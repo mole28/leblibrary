@@ -460,7 +460,7 @@
 </style>
 
 <script>
-    // פונקציית הקראה קולית (Text-to-Speech)
+    // פונקציית הקראה קולית (Text-to-Speech) עם ניקוי ראשי תיבות
     let isSpeaking = false;
 
     function toggleSpeech() {
@@ -479,7 +479,24 @@
             speechIcon.className = 'bi bi-volume-up-fill';
         } else {
             const title = document.querySelector('h1').innerText;
-            const content = document.querySelector('.book-reading-mode').innerText;
+            let content = document.querySelector('.book-reading-mode').innerText;
+            
+            // ניקוי ראשי תיבות וגרשיים כדי שהקריין לא יקרא אותם כאותיות בודדות
+            content = content
+                .replace(/רס"ג/g, 'רב סעדיה גאון')
+                .replace(/רמב"ם/g, 'רמבם')
+                .replace(/רש"י/g, 'רשי')
+                .replace(/תוס'/g, 'תוספות')
+                .replace(/שו"ע/g, 'שולחן ערוך')
+                .replace(/רמב"ן/g, 'רמבן')
+                .replace(/שו"ת/g, 'שאלות ותשובות')
+                .replace(/וכו'/g, 'וכל כיוצא בזה')
+                .replace(/ע"ד/g, 'על דרך')
+                .replace(/ע"י/g, 'על ידי')
+                .replace(/לכאו'/g, 'לכאורה')
+                .replace(/([א-ת])"([א-ת])/g, '$1 $2') 
+                .replace(/([א-ת])'([א-ת])/g, '$1 $2');
+
             const fullText = title + ". " + content;
 
             const utterance = new SpeechSynthesisUtterance(fullText);
