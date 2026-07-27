@@ -188,7 +188,7 @@
 </div>
 
 <script>
-    // פונקציית הקראה קולית (Text-to-Speech) עם ניקוי ראשי תיבות
+    // פונקציית הקראה קולית (Text-to-Speech) מתקדמת עם מילון למונחים ארמיים וראשי תיבות
     let isSpeaking = false;
 
     function toggleSpeech() {
@@ -209,27 +209,45 @@
             const title = document.querySelector('h1').innerText;
             let content = document.querySelector('.article-content').innerText;
             
-            // ניקוי ראשי תיבות וגרשיים
+            // מילון נרחב לתרגום והמרת ראשי תיבות, מונחים ארמיים וביטויים הלכתיים
             content = content
-                .replace(/רס"ג/g, 'רב סעדיה גאון')
-                .replace(/רמב"ם/g, 'רמבם')
-                .replace(/רש"י/g, 'רשי')
+                // ראשי תיבות נפוצים ותלמודיים
+                .replace(/רמב"ם/g, 'רַמְבַּם')
+                .replace(/רש"י/g, 'רַשִׁי')
+                .replace(/שו"ע/g, 'שֻׁלְחָן עָרוּךְ')
+                .replace(/שו"ת/g, 'שְׁאֵלוֹת וּתְשׁוּבוֹת')
+                .replace(/רמב"ן/g, 'רַמְבַּן')
+                .replace(/רס"ג/g, 'רַב סַעְדְּיָה גָּאוֹן')
                 .replace(/תוס'/g, 'תוספות')
-                .replace(/שו"ע/g, 'שולחן ערוך')
-                .replace(/רמב"ן/g, 'רמבן')
-                .replace(/שו"ת/g, 'שאלות ותשובות')
-                .replace(/וכו'/g, 'וכל כיוצא בזה')
+                .replace(/גמ'/g, 'גמרא')
+                .replace(/רבנן/g, 'רבנן')
+                .replace(/וכו'/g, 'וכולי')
                 .replace(/ע"ד/g, 'על דרך')
                 .replace(/ע"י/g, 'על ידי')
                 .replace(/לכאו'/g, 'לכאורה')
-                .replace(/([א-ת])"([א-ת])/g, '$1 $2') 
+                .replace(/כמו"ש/g, 'כמו שכתוב')
+                .replace(/ע"כ/g, 'עד כאן')
+                .replace(/למאי/g, 'למה')
+                // ביטויים ארמיים שכיחים בגמרא ובפוסקים
+                .replace(/אמר/g, 'אָמַר')
+                .replace(/אמר להו/g, 'אָמַר לָהֶם')
+                .replace(/אי נמי/g, 'או גם כן')
+                .replace(/מנהני מילי/g, 'מנין דברים אלו')
+                .replace(/מנא לן/g, 'מנין לנו')
+                .replace(/פשיטא/g, 'פָּשׁוּט הוא')
+                .replace(/תיובתא/g, 'קושיא חמורה')
+                .replace(/הכי נמי/g, 'כך הוא גם כן')
+                .replace(/תנא/g, 'שָׁנָה חכם')
+                .replace(/קא משמע לן/g, 'בא להשמיענו')
+                // ניקוי כללי של מרכאות וגרשיים בתוך מילים כדי שהדפדפן לא יתקע
+                .replace(/([א-ת])"([א-ת])/g, '$1 $2')
                 .replace(/([א-ת])'([א-ת])/g, '$1 $2');
 
             const fullText = title + ". " + content;
 
             const utterance = new SpeechSynthesisUtterance(fullText);
             utterance.lang = 'he-IL';
-            utterance.rate = 1.0;
+            utterance.rate = 0.9; // קצב קצת יותר איטי ומכובד שמותאם ללימוד תורה
 
             utterance.onend = function() {
                 isSpeaking = false;
