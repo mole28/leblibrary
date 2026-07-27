@@ -8,7 +8,6 @@ import concurrent.futures
 import os
 import time
 import asyncio
-import edge_tts
 import subprocess
 import tempfile
 import sys
@@ -29,7 +28,6 @@ from django.db.models import Q, Case, When, Value, IntegerField
 from django.urls import reverse
 from django.db import models
 from django.utils.html import strip_tags
-from asgiref.sync import async_to_sync
 
 from .forms import ArticleForm
 from .models import Article, Book, Chapter, Section, Cart, CartItem, Order, OrderItem
@@ -841,55 +839,63 @@ def clear_cache_on_db_change(sender, instance, **kwargs):
     cache.clear()
 
 # ==========================================
-# מנוע הקראה קולית מקומי (ללא תלות ב-AI שקורס) - מילון מתרחב!
+# מנוע הקראה קולית מקומי - מילון מתרחב וניקוי חכם
 # ==========================================
 
 def load_tts_dictionary():
     """
-    טוען את המילון הקשיח מקובץ json. במידה והקובץ טרם נוצר, משתמש במילון ברירת מחדל חזק.
+    טוען את המילון הקשיח. מחפש בתיקיית הבסיס ואז בתיקיית האפליקציה.
     """
     dict_path = os.path.join(settings.BASE_DIR, 'tts_dictionary.json')
+    if not os.path.exists(dict_path):
+        dict_path = os.path.join(settings.BASE_DIR, 'articles', 'tts_dictionary.json')
+        
     if os.path.exists(dict_path):
         try:
             with open(dict_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except Exception:
+        except Exception as e:
+            print(f"Error loading JSON dictionary: {e}")
             pass
             
-    # מילון ברירת המחדל הקשיח אם הקובץ לא נטען
+    # מילון גיבוי למקרה שהקובץ לא זמין
     return {
         'רמב"ם': 'רמבם', 'רש"י': 'רשי', 'שו"ע': 'שולחן ערוך', 'שו"ת': 'שאלות ותשובות',
         'רמב"ן': 'רמבן', 'רס"ג': 'רב סעדיה גאון', "תוס'": 'תוספות', "גמ'": 'גמרא',
         'וכו\'': 'וכולי', 'ע"ד': 'על דרך', 'ע"י': 'על ידי', "לכאו'": 'לכאורה',
-        'כמו"ש': 'כמו שכתוב', 'ע"כ': 'עד כאן', 'קא משמע לן': 'קמא משמע לן',
-        'אי נמי': 'אי נמי', 'מנא לן': 'מניין לנו', 'פשיטא': 'פשוט הוא',
-        'הכי נמי': 'כך הוא גם כן', 'תנא': 'שנה חכם', 'א"כ': 'אם כן', 'ג"כ': 'גם כן',
+        'כמו"ש': 'כמו שכתוב', 'ע"כ': 'עד כאן', 'קא משמע לן': 'קָא מַשְׁמַע לָן',
+        'אי נמי': 'אִי נַמִּי', 'מנא לן': 'מְנָא לָן', 'פשיטא': 'פְּשִׁיטָא',
+        'הכי נמי': 'הָכִי נַמִּי', 'תנא': 'תַּנָּא', 'א"כ': 'אם כן', 'ג"כ': 'גם כן',
         'אע"פ': 'אף על פי', 'בד"כ': 'בדרך כלל', 'חז"ל': 'חכמינו זיכרונם לברכה',
         'יו"ט': 'יום טוב', 'ק"ו': 'קל וחומר', 'ת"ח': 'תלמיד חכם', 'בע"ה': 'בעזרת השם',
-        'זצ"ל': 'זכרונו לברכה', 'שליט"א': 'שיחיה לאורך ימים טובים אמן',
+        'זצ"ל': 'זכר צדיק לברכה', 'שליט"א': 'שיחיה לאורך ימים טובים אמן',
         'הקב"ה': 'הקדוש ברוך הוא', 'רבש"ע': 'ריבונו של עולם',
-        'איתא': 'יש', 'ליתא': 'אין', 'הכא': 'כאן', 'התם': 'שם', 'האי': 'זה', 'הני': 'אלה',
-        'מאי': 'מה', 'אמאי': 'למה', 'בשלמא': 'בשלמא', 'אדרבה': 'אדרבה', 'אלמא': 'מכאן ש'
+        'איתא': 'אִיתָא', 'ליתא': 'לֵיתָא', 'הכא': 'הָכָא', 'התם': 'הָתָם', 'האי': 'זה', 'הני': 'אלה',
+        'מאי': 'מַאי', 'אמאי': 'אַמַּאי', 'בשלמא': 'בִּשְׁלָמָא', 'אדרבה': 'אַדְּרַבָּה', 'אלמא': 'אַלְמָא'
     }
 
 def apply_tts_dictionary(text):
-    """מיישם את המילון ומנקה סוגריים מרובעים והערות"""
+    """
+    מיישם את המילון הקשיח על הטקסט, חותך משפטים בצורה חכמה
+    ומונע מהקריין לקרוס בטקסטים ארוכים.
+    """
     if not text:
         return ""
         
-    # 1. ניקוי בסיסי וסילוק סוגריים (למניעת "פותח סוגריים מרובעים")
-    text = strip_tags(text.replace('><', '> <').replace('</p>', '. ').replace('</li>', '. '))
+    # 1. המרת תגיות HTML לירידות שורה כדי שהקריין (edge-tts) יוכל לחתוך את הקובץ
+    text = text.replace('><', '> <').replace('</p>', '.\n').replace('</li>', '.\n')
+    text = strip_tags(text)
     text = unescape(text)
     
-    # הסרת כל הטקסט שבתוך סוגריים מרובעים (כמו [1], [א]) או מספרי הערות
+    # הסרת כל הטקסט שבתוך סוגריים מרובעים או מספרי הערות כדי לא להשמיע אותם
     text = re.sub(r'\[.*?\]', '', text)
     text = re.sub(r'\(\d+\)', '', text)
     text = re.sub(r'[*_#]', '', text)
 
-    # 2. החלפת מילים לפי המילון הקשיח שלנו
+    # 2. החלפת מילים וראשי תיבות לפי המילון הקשיח שלנו
     tts_dict = load_tts_dictionary()
     
-    # מיון המפתחות לפי אורך כדי להחליף קודם ביטויים ארוכים (למשל 'קא משמע לן' לפני 'לן')
+    # מיון מהארוך לקצר כדי למנוע דריסות של מילים דומות
     sorted_keys = sorted(tts_dict.keys(), key=len, reverse=True)
     
     for key in sorted_keys:
@@ -897,20 +903,29 @@ def apply_tts_dictionary(text):
         if '"' in key or "'" in key or " " in key:
             text = text.replace(key, val)
         else:
-            # מילים שלמות בלבד (למשל "מאי" לא יחליף בתוך המילה "מאימתי")
             text = re.sub(rf'(?<![א-ת]){key}(?![א-ת])', val, text)
             
     # 3. ניקוי מירכאות שנותרו (כדי שהקריין לא ייתקע)
     text = re.sub(r'([א-ת])"([א-ת])', r'\1\2', text)
     text = re.sub(r"([א-ת])'([א-ת])", r'\1\2', text)
     
-    # ניקוי רווחים כפולים
-    text = re.sub(r'\.+', '.', text)
-    text = re.sub(r'\s+', ' ', text).strip()
+    # החלפת רווחים כפולים (ללא פגיעה בירידות שורה!)
+    text = re.sub(r'[ \t]+', ' ', text)
     
-    return text
+    # ניקוי נקודות כפולות
+    text = re.sub(r'\.+', '.', text)
+    
+    # 4. הבטחת חלוקה למנות עבור הקריין על ידי ירידת שורה בסוף כל משפט
+    text = text.replace('. ', '.\n')
+    text = text.replace(':\n', ': \n')
+    
+    # הסרת שורות ריקות מיותרות
+    text = '\n'.join([s.strip() for s in text.splitlines() if s.strip()])
+    
+    return text.strip()
 
 def generate_audio_sync(text, file_path):
+    """שומר את הטקסט לקובץ וקורא לקריין חיצוני. מנקה את הקובץ בסיום."""
     with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode='w', encoding='utf-8') as f:
         f.write(text)
         temp_filename = f.name
@@ -922,7 +937,11 @@ def generate_audio_sync(text, file_path):
             "--voice", "he-IL-AvriNeural", 
             "--write-media", file_path
         ]
-        subprocess.run(command, check=True)
+        # אנחנו תופסים את השגיאה האמיתית של הפקודה במקרה שהיא קורסת
+        result = subprocess.run(command, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise Exception(f"Edge-TTS Error: {result.stderr}")
+            
     finally:
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
@@ -944,11 +963,12 @@ def get_article_audio(request, article_id):
 
     if not os.path.exists(file_path):
         raw_text = f"{article.title}. {article.content}"
-        # שימוש במילון הקשיח והמיידי שלנו במקום ב-AI!
+        # החלפת מילים ופירוק לפסקאות
         final_text = apply_tts_dictionary(raw_text)
         try:
             generate_audio_sync(final_text, file_path)
         except Exception as e:
+            # כאן המשתמש (או חלון ה-Alert) יראה את השגיאה האמיתית במקום הודעה כללית!
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'audio_url': audio_url})
@@ -972,7 +992,7 @@ def get_book_audio(request, book_id):
         raw_text = f"{book.title}. "
         if book.summary:
             raw_text += book.summary
-        # שימוש במילון הקשיח והמיידי שלנו במקום ב-AI!
+            
         final_text = apply_tts_dictionary(raw_text)
         try:
             generate_audio_sync(final_text, file_path)
