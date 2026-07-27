@@ -1,4 +1,4 @@
-const CACHE_NAME = 'leblibrary-cache-v2';
+const CACHE_NAME = 'leblibrary-cache-v3';
 const urlsToCache = [
   '/',
   '/manifest.json',
@@ -32,6 +32,13 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   // מדלג על בקשות שלא שייכות ל-GET (כמו שליחת טפסים או צ'אט)
   if (event.request.method !== 'GET') return;
+  
+  // ==========================================
+  // התיקון לשגיאת הקונסול: התעלמות מבקשות של תוספי כרום (chrome-extension://)
+  // ==========================================
+  if (!event.request.url.startsWith('http')) {
+      return;
+  }
 
   event.respondWith(
     fetch(event.request)
