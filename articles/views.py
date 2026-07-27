@@ -841,28 +841,51 @@ def clear_cache_on_db_change(sender, instance, **kwargs):
     cache.clear()
 
 # ==========================================
-# מנוע הקראה קולית (Text-to-Speech) מבוסס AI - עם עיבוד מקדים של סוכן חכם
+# מנוע הקראה קולית (Text-to-Speech) - אלגוריתמי ניקוי והכנה
 # ==========================================
 
-def clean_torah_text_fallback(text):
-    """גיבוי למקרה שה-AI לא זמין (Regex רגיל)"""
-    text = strip_tags(text)
-    text = text.replace('><', '> <').replace('</p>', '. ').replace('</li>', '. ').replace('<br>', ' ').replace('<br/>', ' ').replace('&nbsp;', ' ')
+def base_text_cleaner(text):
+    """ניקוי בסיסי של HTML והערות שוליים לפני הכל"""
+    if not text:
+        return ""
+    text = strip_tags(text.replace('><', '> <').replace('</p>', '. ').replace('</li>', '. ').replace('<br>', ' ').replace('<br/>', ' ').replace('&nbsp;', ' '))
     text = unescape(text)
-    text = re.sub(r'[*#_]', '', text)
+    
+    # העלמת הערות שוליים וסוגריים מרובעים לחלוטין (כמו [1], [א]) כדי שהקריין לא יקרא אותם
+    text = re.sub(r'\[.*?\]', '', text)
+    text = re.sub(r'\(\d+\)', '', text)
+    
+    # הסרת כוכביות וקווים תחתונים
+    text = re.sub(r'[*_#]', '', text)
+    return text
+
+def final_audio_polish(text):
+    """מילון חזק במיוחד לראשי תיבות וארמית - פועל כגיבוי ל-AI ומוודא קריאה חלקה"""
     replacements = {
         'רמב"ם': 'רמבם', 'רש"י': 'רשי', 'שו"ע': 'שולחן ערוך', 'שו"ת': 'שאלות ותשובות',
         'רמב"ן': 'רמבן', 'רס"ג': 'רב סעדיה גאון', "תוס'": 'תוספות', "גמ'": 'גמרא',
         'וכו\'': 'וכולי', 'ע"ד': 'על דרך', 'ע"י': 'על ידי', "לכאו'": 'לכאורה',
         'כמו"ש': 'כמו שכתוב', 'ע"כ': 'עד כאן', 'קא משמע לן': 'קמא משמע לן',
         'אי נמי': 'אי נמי', 'מנא לן': 'מניין לנו', 'פשיטא': 'פשוט הוא',
-        'הכי נמי': 'כך הוא גם כן', 'תנא': 'שנה חכם',
+        'הכי נמי': 'כך הוא גם כן', 'תנא': 'שנה חכם', 'א"כ': 'אם כן', 'ג"כ': 'גם כן',
+        'אע"פ': 'אף על פי', 'בד"כ': 'בדרך כלל', 'חז"ל': 'חכמינו זיכרונם לברכה',
+        'יו"ט': 'יום טוב', 'ק"ו': 'קל וחומר', 'ת"ח': 'תלמיד חכם', 'בע"ה': 'בעזרת השם',
+        'זצ"ל': 'זכרונו לברכה', 'שליט"א': 'שיחיה לאורך ימים טובים אמן',
+        'הקב"ה': 'הקדוש ברוך הוא', 'רבש"ע': 'ריבונו של עולם',
+        'איתא': 'יש', 'ליתא': 'אין', 'הכא': 'כאן', 'התם': 'שם', 'האי': 'זה', 'הני': 'אלה',
+        'מאי': 'מה', 'אמאי': 'למה', 'בשלמא': 'בשלמא', 'אדרבה': 'אדרבה', 'אלמא': 'מכאן ש',
     }
-    for k, v in replacements.items(): text = text.replace(k, v)
+    for k, v in replacements.items(): 
+        text = text.replace(k, v)
+        
+    # מחיקת גרשיים ומרכאות מראשי תיבות (כדי לייצר רצף קריאה אם המודל השאיר אותם)
     text = re.sub(r'([א-ת])"([א-ת])', r'\1\2', text)
     text = re.sub(r"([א-ת])'([א-ת])", r'\1\2', text)
+    
+    # ניקוי רווחים כפולים
     text = re.sub(r'\.+', '.', text)
-    return re.sub(r'\s+', ' ', text).strip()
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
 
 def process_chunk_with_ai(chunk, api_key):
     """מעבד חתיכת טקסט אחת מול מודל מתקדם וחכם יותר"""
@@ -881,12 +904,11 @@ def process_chunk_with_ai(chunk, api_key):
 הטקסט המקורי:
 {chunk}"""
     try:
-        # שימוש במודל החכם gemini-1.5-flash
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
         payload = {"contents": [{"parts": [{"text": prompt}]}]}
         data_bytes = json.dumps(payload, ensure_ascii=False).encode('utf-8')
         req = urllib.request.Request(url, data=data_bytes, headers={'Content-Type': 'application/json'})
-        response = urllib.request.urlopen(req, timeout=12) # הגבלת זמן כדי למנוע קריסה
+        response = urllib.request.urlopen(req, timeout=12)
         resp_data = json.loads(response.read().decode('utf-8'))
         
         ai_text = resp_data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
@@ -896,16 +918,16 @@ def process_chunk_with_ai(chunk, api_key):
             return ai_text.strip()
     except Exception:
         pass
-    return clean_torah_text_fallback(chunk)
+    return chunk # במקרה של כשל ה-AI, נחזיר את הטקסט המקורי, והפוליש הסופי יטפל בו
 
 def smart_ai_phonetic_rewrite(text):
     """חותך את המאמר לחתיכות ומריץ מול ה-AI במקביל כדי למנוע קריסה וזמני המתנה ארוכים"""
-    text = strip_tags(text.replace('><', '> <').replace('</p>', '\n\n').replace('</li>', '\n'))
-    text = unescape(text)
+    # 1. ניקוי בסיסי מוחלט של HTML, סוגריים מרובעים והערות שוליים לפני שליחה
+    text = base_text_cleaner(text)
     
     API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
     if not API_KEY or len(text) < 20:
-        return clean_torah_text_fallback(text)
+        return final_audio_polish(text)
         
     # פיצול לנתחים של כ-1500 תווים
     sentences = re.split(r'(?<=[.?!:\n])\s+', text)
@@ -930,9 +952,12 @@ def smart_ai_phonetic_rewrite(text):
             try:
                 processed_chunks[index] = future.result()
             except Exception:
-                processed_chunks[index] = clean_torah_text_fallback(chunks[index])
+                processed_chunks[index] = chunks[index]
                 
-    return " ".join(processed_chunks)
+    combined_text = " ".join(processed_chunks)
+    
+    # 2. הרצת הפוליש הסופי כדי לוודא שאין שאריות ראשי תיבות שלא תורגמו
+    return final_audio_polish(combined_text)
 
 def generate_audio_sync(text, file_path):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode='w', encoding='utf-8') as f:
