@@ -7,9 +7,11 @@ import datetime
 import concurrent.futures
 import os
 import time
+import asyncio
+import edge_tts
 from functools import wraps
 
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
@@ -22,6 +24,8 @@ from django.views.decorators.cache import cache_page
 from django.db.models import Q, Case, When, Value, IntegerField
 from django.urls import reverse
 from django.db import models
+from django.utils.html import strip_tags
+from asgiref.sync import async_to_sync
 
 from .forms import ArticleForm
 from .models import Article, Book, Chapter, Section, Cart, CartItem, Order, OrderItem
@@ -81,7 +85,7 @@ def translate_haftarah(text):
         'Ezekiel': 'יחזקאל', 'Hosea': 'הושע', 'Joel': 'יואל', 'Amos': 'עמוס', 'Obadiah': 'עובדיה', 'Jonah': 'יונה',
         'Micah': 'מיכה', 'Nahum': 'נחום', 'Habakkuk': 'חבקוק', 'Zephaniah': 'צפניה', 'Haggai': 'חגי', 
         'Zechariah': 'זכריה', 'Malachi': 'מלאכי', 'Psalms': 'תהילים', 'Proverbs': 'משלי', 'Job': 'איוב',
-        'Song of Songs': 'שיר השירים', 'Ruth': 'רות', 'Lamentations': 'איכה', 'Ecclesiastes': 'קהלת',
+        'Song of Songs': 'שיר השירים', 'רות': 'רות', 'Lamentations': 'איכה', 'Ecclesiastes': 'קהלת',
         'Esther': 'אסתר', 'Daniel': 'דניאל', 'Ezra': 'עזרא', 'Nehemiah': 'נחמיה', 'I Chronicles': 'דברי הימים א',
         'II Chronicles': 'דברי הימים ב'
     }
@@ -831,3 +835,88 @@ def ping_indexnow(article_url):
 @receiver([post_save, post_delete], sender=Book)
 def clear_cache_on_db_change(sender, instance, **kwargs):
     cache.clear()
+
+# ==========================================
+# מנוע הקראה קולית (Text-to-Speech) מבוסס AI
+# ==========================================
+def clean_torah_text(text):
+    # הסרת תגיות HTML כדי שהקריין לא יקריא אותן
+    text = strip_tags(text)
+    
+    replacements = {
+        'רמב"ם': 'רַמְבַּם',
+        'רש"י': 'רַשִׁי',
+        'שו"ע': 'שֻׁלְחָן עָרוּךְ',
+        'שו"ת': 'שְׁאֵלוֹת וּתְשׁוּבוֹת',
+        'רמב"ן': 'רַמְבַּן',
+        'רס"ג': 'רַב סַעְדְּיָה גָּאוֹן',
+        "תוס'": 'תוספות',
+        "גמ'": 'גמרא',
+        'וכו\'': 'וכולי',
+        'ע"ד': 'על דרך',
+        'ע"י': 'על ידי',
+        "לכאו'": 'לכאורה',
+        'כמו"ש': 'כמו שכתוב',
+        'ע"כ': 'עד כאן',
+        'קא משמע לן': 'קמא משמע לן',
+        'אי נמי': 'אי נמי',
+        'מנא לן': 'מנין לנו',
+        'פשיטא': 'פָּשׁוּט הוא',
+        'הכי נמי': 'כך הוא גם כן',
+        'תנא': 'שָׁנָה',
+    }
+    
+    for k, v in replacements.items():
+        text = text.replace(k, v)
+        
+    import re
+    text = re.sub(r'([א-ת])"([א-ת])', r'\1 \2', text)
+    text = re.sub(r"([א-ת])'([א-ת])", r'\1 \2', text)
+    
+    return text
+
+async def generate_audio_async(text, output_path):
+    communicate = edge_tts.Communicate(text, "he-IL-AvriNeural", rate="-10%")
+    await communicate.save(output_path)
+
+def get_article_audio(request, article_id):
+    try:
+        article = Article.objects.get(id=article_id)
+    except Article.DoesNotExist:
+        return JsonResponse({'error': 'Article not found'}, status=404)
+
+    audio_dir = os.path.join(settings.MEDIA_ROOT, 'audio')
+    os.makedirs(audio_dir, exist_ok=True)
+    
+    file_name = f"article_{article.id}.mp3"
+    file_path = os.path.join(audio_dir, file_name)
+    audio_url = f"{settings.MEDIA_URL}audio/{file_name}"
+
+    if not os.path.exists(file_path):
+        raw_text = f"{article.title}. {article.content}"
+        final_text = clean_torah_text(raw_text)
+        async_to_sync(generate_audio_async)(final_text, file_path)
+
+    return JsonResponse({'audio_url': audio_url})
+
+def get_book_audio(request, book_id):
+    try:
+        book = Book.objects.get(id=book_id)
+    except Book.DoesNotExist:
+        return JsonResponse({'error': 'Book not found'}, status=404)
+
+    audio_dir = os.path.join(settings.MEDIA_ROOT, 'audio')
+    os.makedirs(audio_dir, exist_ok=True)
+    
+    file_name = f"book_{book.id}.mp3"
+    file_path = os.path.join(audio_dir, file_name)
+    audio_url = f"{settings.MEDIA_URL}audio/{file_name}"
+
+    if not os.path.exists(file_path):
+        raw_text = f"{book.title}. "
+        if book.summary:
+            raw_text += book.summary
+        final_text = clean_torah_text(raw_text)
+        async_to_sync(generate_audio_async)(final_text, file_path)
+
+    return JsonResponse({'audio_url': audio_url})

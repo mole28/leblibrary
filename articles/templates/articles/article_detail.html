@@ -100,7 +100,7 @@
             
             <!-- כפתורי הפעולה כולל כפתור שיתוף והאזנה קולית -->
             <div class="d-flex justify-content-end gap-3 mb-4 hide-in-zen flex-wrap align-items-center">
-                <!-- כפתור האזנה קולית חדש -->
+                <!-- כפתור האזנה קולית מחובר לשרת -->
                 <button onclick="toggleSpeech()" id="speechBtn" class="btn-print btn btn-outline-warning border shadow-sm" title="האזנה למאמר" style="color: #a67c52; border-color: #a67c52;">
                     <i class="bi bi-volume-up-fill" id="speechIcon"></i> <span id="speechText">האזנה לקריאה</span>
                 </button>
@@ -188,85 +188,65 @@
 </div>
 
 <script>
-    // פונקציית הקראה קולית (Text-to-Speech) מתקדמת עם מילון למונחים ארמיים וראשי תיבות
-    let isSpeaking = false;
+    // פונקציית הקראה קולית מבוססת שרת AI (Text-to-Speech)
+    let currentAudio = null;
+    let isPlaying = false;
 
-    function toggleSpeech() {
+    async function toggleSpeech() {
         const speechText = document.getElementById('speechText');
         const speechIcon = document.getElementById('speechIcon');
 
-        if (!('speechSynthesis' in window)) {
-            alert("הדפדפן שלך אינו תומך בהקראה קולית.");
+        // אם כבר מנגן - נעצור
+        if (isPlaying && currentAudio) {
+            currentAudio.pause();
+            isPlaying = false;
+            speechText.innerText = 'המשך הקראה';
+            speechIcon.className = 'bi bi-play-fill';
             return;
         }
 
-        if (isSpeaking) {
-            window.speechSynthesis.cancel();
-            isSpeaking = false;
-            speechText.innerText = 'האזנה לקריאה';
-            speechIcon.className = 'bi bi-volume-up-fill';
-        } else {
-            const title = document.querySelector('h1').innerText;
-            let content = document.querySelector('.article-content').innerText;
-            
-            // מילון נרחב לתרגום והמרת ראשי תיבות, מונחים ארמיים וביטויים הלכתיים
-            content = content
-                // ראשי תיבות נפוצים ותלמודיים
-                .replace(/רמב"ם/g, 'רַמְבַּם')
-                .replace(/רש"י/g, 'רַשִׁי')
-                .replace(/שו"ע/g, 'שֻׁלְחָן עָרוּךְ')
-                .replace(/שו"ת/g, 'שְׁאֵלוֹת וּתְשׁוּבוֹת')
-                .replace(/רמב"ן/g, 'רַמְבַּן')
-                .replace(/רס"ג/g, 'רַב סַעְדְּיָה גָּאוֹן')
-                .replace(/תוס'/g, 'תוספות')
-                .replace(/גמ'/g, 'גמרא')
-                .replace(/רבנן/g, 'רבנן')
-                .replace(/וכו'/g, 'וכולי')
-                .replace(/ע"ד/g, 'על דרך')
-                .replace(/ע"י/g, 'על ידי')
-                .replace(/לכאו'/g, 'לכאורה')
-                .replace(/כמו"ש/g, 'כמו שכתוב')
-                .replace(/ע"כ/g, 'עד כאן')
-                .replace(/למאי/g, 'למה')
-                // ביטויים ארמיים שכיחים בגמרא ובפוסקים
-                .replace(/אמר/g, 'אָמַר')
-                .replace(/אמר להו/g, 'אָמַר לָהֶם')
-                .replace(/אי נמי/g, 'או גם כן')
-                .replace(/מנהני מילי/g, 'מנין דברים אלו')
-                .replace(/מנא לן/g, 'מנין לנו')
-                .replace(/פשיטא/g, 'פָּשׁוּט הוא')
-                .replace(/תיובתא/g, 'קושיא חמורה')
-                .replace(/הכי נמי/g, 'כך הוא גם כן')
-                .replace(/תנא/g, 'שָׁנָה חכם')
-                .replace(/קא משמע לן/g, 'בא להשמיענו')
-                // ניקוי כללי של מרכאות וגרשיים בתוך מילים כדי שהדפדפן לא יתקע
-                .replace(/([א-ת])"([א-ת])/g, '$1 $2')
-                .replace(/([א-ת])'([א-ת])/g, '$1 $2');
-
-            const fullText = title + ". " + content;
-
-            const utterance = new SpeechSynthesisUtterance(fullText);
-            utterance.lang = 'he-IL';
-            utterance.rate = 0.9; // קצב קצת יותר איטי ומכובד שמותאם ללימוד תורה
-
-            utterance.onend = function() {
-                isSpeaking = false;
-                speechText.innerText = 'האזנה לקריאה';
-                speechIcon.className = 'bi bi-volume-up-fill';
-            };
-
-            window.speechSynthesis.speak(utterance);
-            isSpeaking = true;
+        // אם הושהה - נמשיך
+        if (!isPlaying && currentAudio) {
+            currentAudio.play();
+            isPlaying = true;
             speechText.innerText = 'עצור הקראה';
-            speechIcon.className = 'bi bi-stop-fill';
+            speechIcon.className = 'bi bi-pause-fill';
+            return;
+        }
+
+        // פעם ראשונה שלוחצים - מביא אודיו מהשרת
+        speechText.innerText = 'מכין אודיו...';
+        speechIcon.className = 'bi bi-hourglass-split';
+
+        try {
+            const response = await fetch("{% url 'articles:get_article_audio' article.id %}");
+            const data = await response.json();
+
+            if (data.audio_url) {
+                currentAudio = new Audio(data.audio_url);
+                currentAudio.play();
+                isPlaying = true;
+                
+                speechText.innerText = 'עצור הקראה';
+                speechIcon.className = 'bi bi-pause-fill';
+
+                currentAudio.onended = function() {
+                    isPlaying = false;
+                    currentAudio = null;
+                    speechText.innerText = 'האזנה לקריאה';
+                    speechIcon.className = 'bi bi-volume-up-fill';
+                };
+            } else if (data.error) {
+                alert("שגיאה ביצירת שמע: " + data.error);
+                speechText.innerText = 'שגיאה';
+                speechIcon.className = 'bi bi-exclamation-triangle';
+            }
+        } catch (error) {
+            console.error("שגיאה בהבאת קובץ השמע:", error);
+            speechText.innerText = 'שגיאה בהשמעה';
+            speechIcon.className = 'bi bi-exclamation-triangle';
         }
     }
-
-    window.addEventListener('beforeunload', () => {
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-        }
-    });
 
     // פונקציית שיתוף חכמה (Web Share API למובייל ומודאל לדסקטופ)
     function openShareModal() {
