@@ -509,7 +509,7 @@
                 <!-- כפתורי שפה, מצב לילה, עגלת קניות וכפתור שיתוף עליון -->
                 <div class="nav-left-absolute">
                     
-                    <!-- כפתור שיתוף עליון חדש -->
+                    <!-- כפתור שיתוף עליון -->
                     <button class="header-share-btn" onclick="openShareModal()" title="שיתוף העמוד">
                         <i class="bi bi-share-fill"></i>
                     </button>
@@ -519,12 +519,15 @@
                         <i class="bi bi-cart3"></i>
                     </a>
 
+                    <!-- מצב לילה -->
                     <button id="darkModeToggleBtn" class="dark-mode-toggle-btn" onclick="toggleDarkMode()" title="החלף עיצוב (מצב לילה/יום)">
                         <i class="bi bi-circle-half" id="darkModeIcon"></i>
                     </button>
                     
+                    <!-- טקסט זכויות שמורות הוחזר למקום המקורי -->
                     <div class="rights-text" data-i18n="footer_rights">כל הזכויות שמורות<br>למשה לייבוביץ</div>
                     
+                    <!-- כפתור דגל אנגלית הועבר לקצה השמאלי ביותר -->
                     <button id="lang-toggle-btn" class="lang-btn-custom" onclick="toggleLanguage()">
                         <img id="lang-flag-img" src="https://upload.wikimedia.org/wikipedia/commons/a/a4/Flag_of_the_United_States.svg" alt="English" class="lang-flag-custom">
                         <span id="lang-text" class="lang-text-custom">אנגלית</span>
@@ -641,7 +644,7 @@
         </div>
     </div>
 
-    <!-- חלונית מודאל גלובלית לשיתוף מהתפריט העליון -->
+    <!-- חלונית מודאל גלובלית לשיתוף -->
     <div class="modal fade" id="luxShareModal" tabindex="-1" aria-hidden="true" dir="rtl">
         <div class="modal-dialog modal-dialog-centered" style="max-width: 450px;">
             <div class="modal-content lux-modal-content">
@@ -714,7 +717,6 @@
         function toggleA11yClass(className) { document.body.classList.toggle(className); }
         function resetA11y() { resetFontSize(); document.body.className = ''; }
 
-        // פונקציית שיתוף גלובלית לתפריט העליון
         function openShareModal() {
             const shareData = {
                 title: document.title,
@@ -855,7 +857,6 @@
                 }
             });
 
-            // רישום Service Worker עבור PWA
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('/sw.js').then(function(registration) {
                     console.log('ServiceWorker registered with scope:', registration.scope);
@@ -864,7 +865,6 @@
                 });
             }
 
-            // התיקון לאזהרת הנגישות (aria-hidden) בסגירת מודאלים
             var aiModal = document.getElementById('aiQAModal');
             if (aiModal) {
                 aiModal.addEventListener('hide.bs.modal', function () {
