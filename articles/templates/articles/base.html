@@ -768,6 +768,26 @@
                     console.log('ServiceWorker registration failed:', err);
                 });
             }
+
+            // ==========================================
+            // התיקון לאזהרת הנגישות (aria-hidden) בסגירת מודאל ה-AI
+            // ==========================================
+            var aiModal = document.getElementById('aiQAModal');
+            if (aiModal) {
+                aiModal.addEventListener('hide.bs.modal', function () {
+                    if (document.activeElement) {
+                        document.activeElement.blur();
+                    }
+                });
+            }
+            var navModal = document.getElementById('aiGlobalNavModal');
+            if (navModal) {
+                navModal.addEventListener('hide.bs.modal', function () {
+                    if (document.activeElement) {
+                        document.activeElement.blur();
+                    }
+                });
+            }
         });
 
         window.addEventListener('scroll', function() {
