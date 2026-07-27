@@ -1,13 +1,13 @@
 {
-  "name": "Leb Library",
-  "short_name": "LebLibrary",
-  "description": "The premium library platform",
+  "name": "ספריית לייבוביץ",
+  "short_name": "לייבוביץ",
+  "description": "ספרייה תורנית מתקדמת המרכזת מאמרים, ספרים, וסוגיות הלכתיות.",
   "id": "/",
   "categories": ["books", "education", "utilities"],
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "theme_color": "#3f4050",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -27,7 +27,7 @@
   "wakelock": false,
   "display_override": ["window-controls-overlay"],
   "handle_links": "preferred",
-  "dir": "ltr",
+  "dir": "rtl",
   "lang": "he",
   "iarc_rating_id": "",
   "serviceworker": {
