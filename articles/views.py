@@ -838,9 +838,9 @@ def clear_cache_on_db_change(sender, instance, **kwargs):
     cache.clear()
 
 # ==========================================
-# מנוע הקראה קולית (Text-to-Speech) מבוסס AI
-# גרסה נקייה ויציבה עם הבנת הקשרים בעברית
+# מנוע הקראה קולית (Text-to-Speech) מבוסס AI - עם עיבוד מקדים של סוכן חכם
 # ==========================================
+
 def generate_audio_sync(text, file_path):
     """פונקציה בטוחה להרצת אסינכרוניות בתוך תהליך סינכרוני בלי לקרוס על מגבלות אורך"""
     async def _amain():
@@ -854,61 +854,70 @@ def generate_audio_sync(text, file_path):
     finally:
         loop.close()
 
-def clean_torah_text(text):
-    if not text:
-        return ""
-        
-    # 1. הוספת רווחים ונקודות לפני הסרת HTML כדי למנוע הידבקות של סוף פסקה לתחילת פסקה
-    text = text.replace('><', '> <')
-    text = text.replace('</p>', '. ')
-    text = text.replace('</li>', '. ')
-    text = text.replace('<br>', ' ')
-    text = text.replace('<br/>', ' ')
-    text = text.replace('&nbsp;', ' ')
-    
-    # 2. הסרת תגיות HTML וקידוד ישויות מיוחדות
+def clean_torah_text_fallback(text):
+    """גיבוי למקרה שה-AI לא זמין (Regex רגיל)"""
     text = strip_tags(text)
+    text = text.replace('><', '> <').replace('</p>', '. ').replace('</li>', '. ').replace('<br>', ' ').replace('<br/>', ' ').replace('&nbsp;', ' ')
     text = unescape(text)
-
-    # 3. הסרת סמני עיצוב מיותרים שיכולים להיתקע בקריין
     text = re.sub(r'[*#_]', '', text)
-
-    # 4. מילון המרת מונחים שכיחים לעברית חלקה ללא ניקוד
     replacements = {
-        'רמב"ם': 'רמבם',
-        'רש"י': 'רשי',
-        'שו"ע': 'שולחן ערוך',
-        'שו"ת': 'שאלות ותשובות',
-        'רמב"ן': 'רמבן',
-        'רס"ג': 'רב סעדיה גאון',
-        "תוס'": 'תוספות',
-        "גמ'": 'גמרא',
-        'וכו\'': 'וכולי',
-        'ע"ד': 'על דרך',
-        'ע"י': 'על ידי',
-        "לכאו'": 'לכאורה',
-        'כמו"ש': 'כמו שכתוב',
-        'ע"כ': 'עד כאן',
-        'קא משמע לן': 'קמא משמע לן',
-        'אי נמי': 'אי נמי',
-        'מנא לן': 'מניין לנו',
-        'פשיטא': 'פשוט הוא',
-        'הכי נמי': 'כך הוא גם כן',
-        'תנא': 'שנה חכם',
+        'רמב"ם': 'רמבם', 'רש"י': 'רשי', 'שו"ע': 'שולחן ערוך', 'שו"ת': 'שאלות ותשובות',
+        'רמב"ן': 'רמבן', 'רס"ג': 'רב סעדיה גאון', "תוס'": 'תוספות', "גמ'": 'גמרא',
+        'וכו\'': 'וכולי', 'ע"ד': 'על דרך', 'ע"י': 'על ידי', "לכאו'": 'לכאורה',
+        'כמו"ש': 'כמו שכתוב', 'ע"כ': 'עד כאן', 'קא משמע לן': 'קמא משמע לן',
+        'אי נמי': 'אי נמי', 'מנא לן': 'מניין לנו', 'פשיטא': 'פשוט הוא',
+        'הכי נמי': 'כך הוא גם כן', 'תנא': 'שנה חכם',
     }
-    
-    for k, v in replacements.items():
-        text = text.replace(k, v)
-        
-    # 5. טיפול בשאר ראשי התיבות: מחיקת גרשיים בין אותיות כדי לייצר רצף
+    for k, v in replacements.items(): text = text.replace(k, v)
     text = re.sub(r'([א-ת])"([א-ת])', r'\1\2', text)
     text = re.sub(r"([א-ת])'([א-ת])", r'\1\2', text)
-    
-    # 6. ניקוי רווחים ונקודות כפולות שנוצרו
     text = re.sub(r'\.+', '.', text)
-    text = re.sub(r'\s+', ' ', text).strip()
+    return re.sub(r'\s+', ' ', text).strip()
+
+def smart_ai_phonetic_rewrite(text):
+    """
+    הסוכן החכם: משתמש ב-Gemini כדי לקרוא את הטקסט, להבין את ההקשר, 
+    לפתוח ראשי תיבות בצורה חכמה ולהכין אותו להקראה קולית מושלמת.
+    """
+    # ניקוי בסיסי של HTML לפני שליחה ל-AI
+    text = strip_tags(text.replace('><', '> <').replace('</p>', '\n\n').replace('</li>', '\n'))
+    text = unescape(text)
     
-    return text
+    # אם הטקסט קצר מדי או ה-API חסר, השתמש בגיבוי הרגיל
+    API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
+    if not API_KEY or len(text) < 20:
+        return clean_torah_text_fallback(text)
+
+    prompt = f"""
+אתה תלמיד חכם וקריין מקצועי. המשימה שלך היא לקחת את הטקסט התורני הבא, ולהכין אותו להקראה קולית רובוטית (Text-to-Speech) כך שישמע טבעי לחלוטין.
+חובה להקפיד על הכללים הבאים:
+1. קרא את הטקסט והבן את ההקשר. פתח את כל ראשי התיבות למילים מלאות על פי ההקשר המדויק.
+2. המר מילים וביטויים בארמית לעברית פשוטה וברורה, או כתוב אותן בצורה פונטית (איך שהן נשמעות בעברית).
+3. הוסף פסיקים (,) ונקודות (.) כדי להכריח את הקריין לעצור ולנשום במקומות הנכונים, כדי לייצר 'ניגון' של לימוד הלכה וגמרא.
+4. הסר תווים מיוחדים (כמו כוכביות, סוגריים מרובעים).
+5. אל תוסיף שום מילת הקדמה או סיום משלך! החזר אך ורק את הטקסט המוכן להקראה.
+
+הטקסט:
+{text[:20000]} 
+"""
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key={API_KEY}"
+        payload = {"contents": [{"parts": [{"text": prompt}]}]}
+        data_bytes = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+        req = urllib.request.Request(url, data=data_bytes, headers={'Content-Type': 'application/json'})
+        response = urllib.request.urlopen(req, timeout=30)
+        resp_data = json.loads(response.read().decode('utf-8'))
+        
+        ai_processed_text = resp_data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+        
+        if ai_processed_text and len(ai_processed_text) > 20:
+            return ai_processed_text.strip()
+    except Exception as e:
+        print(f"AI Pre-processing error: {e}")
+        pass
+        
+    return clean_torah_text_fallback(text)
+
 
 def get_article_audio(request, article_id):
     try:
@@ -927,7 +936,8 @@ def get_article_audio(request, article_id):
 
     if not os.path.exists(file_path):
         raw_text = f"{article.title}. {article.content}"
-        final_text = clean_torah_text(raw_text)
+        # קריאה לסוכן החכם שיכין את הטקסט להקראה
+        final_text = smart_ai_phonetic_rewrite(raw_text)
         try:
             generate_audio_sync(final_text, file_path)
         except Exception as e:
@@ -954,7 +964,8 @@ def get_book_audio(request, book_id):
         raw_text = f"{book.title}. "
         if book.summary:
             raw_text += book.summary
-        final_text = clean_torah_text(raw_text)
+        # קריאה לסוכן החכם שיכין את הטקסט להקראה
+        final_text = smart_ai_phonetic_rewrite(raw_text)
         try:
             generate_audio_sync(final_text, file_path)
         except Exception as e:
