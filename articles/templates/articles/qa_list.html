@@ -2,6 +2,41 @@
 
 {% block title %}שאלות ותשובות | הספרייה{% endblock %}
 
+{% block extra_head %}
+<!-- ========================================== -->
+<!-- מטא-תגיות דינמיות לתצוגה מקדימה (Open Graph) -->
+<!-- ========================================== -->
+<meta property="og:title" content="שאלות ותשובות הלכתיות | ספריית לייבוביץ">
+<meta property="og:description" content="מאגר שו&quot;ת, בירורי הלכה, ומענה תורני ישיר מאת משה לייבוביץ.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{ request.build_absolute_uri }}">
+
+<!-- ========================================== -->
+<!-- הזרקת FAQPage Schema לטובת מודלי AI ומנועי חיפוש (Google PAA) -->
+<!-- ========================================== -->
+{% if questions %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "url": "{{ request.build_absolute_uri }}",
+  "mainEntity": [
+    {% for qa in questions %}
+    {
+      "@type": "Question",
+      "name": "{{ qa.question|striptags|escapejs }}",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "{{ qa.answer|striptags|escapejs }}"
+      }
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]
+}
+</script>
+{% endif %}
+{% endblock %}
+
 {% block hero %}
 <div class="hero-section" style="height: 280px;">
     <div class="hero-overlay"></div>
@@ -52,29 +87,6 @@
         <div class="d-flex flex-column">
             
             {% if questions %}
-                <!-- ========================================== -->
-                <!-- הזרקת FAQPage Schema לטובת מודלי AI ומנועי חיפוש -->
-                <!-- ========================================== -->
-                <script type="application/ld+json">
-                {
-                  "@context": "https://schema.org",
-                  "@type": "FAQPage",
-                  "mainEntity": [
-                    {% for qa in questions %}
-                    {
-                      "@type": "Question",
-                      "name": "{{ qa.question|escapejs }}",
-                      "acceptedAnswer": {
-                        "@type": "Answer",
-                        "text": "{{ qa.answer|striptags|escapejs }}"
-                      }
-                    }{% if not forloop.last %},{% endif %}
-                    {% endfor %}
-                  ]
-                }
-                </script>
-                <!-- ========================================== -->
-
                 {% for qa in questions %}
                 <div class="qa-card p-4 {% if forloop.counter|divisibleby:2 %}qa-card-alt{% endif %}">
                     

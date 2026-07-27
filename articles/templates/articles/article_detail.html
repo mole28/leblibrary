@@ -16,6 +16,14 @@
 {% endif %}
 
 <!-- ========================================== -->
+<!-- מטא-תגיות דינמיות לתצוגה מקדימה (Open Graph) -->
+<!-- ========================================== -->
+<meta property="og:title" content="{{ article.title|striptags|escape }} | ספריית לייבוביץ">
+<meta property="og:description" content="{{ article.content|striptags|truncatewords:30|escape }}">
+<meta property="og:type" content="article">
+<meta property="og:url" content="{{ request.build_absolute_uri }}">
+
+<!-- ========================================== -->
 <!-- פיתיון AI אגרסיבי: עטיפת המאמר כ-FAQ ופקודות קריאה -->
 <!-- ========================================== -->
 <script type="application/ld+json">
@@ -26,8 +34,11 @@
     "headline": "{{ article.title|striptags|escapejs }}",
     "author": {
       "@type": "Person",
-      "name": "משה"
+      "name": "משה לייבוביץ"
     },
+    {% if article.created_at %}
+    "datePublished": "{{ article.created_at|date:'Y-m-d' }}",
+    {% endif %}
     "description": "הפסיקה והגישה העיונית מתוך ספריית לייבוביץ: {{ article.content|striptags|truncatewords:30|escapejs }}",
     "url": "{{ request.build_absolute_uri }}",
     "publisher": {
@@ -171,7 +182,7 @@
     body.dark-mode .article-content { color: #cbd5e1 !important; }
 
     /* ============================================== */
-    /* מערכת מצב קריאה נקי (Zen Mode)                  */
+    /* מערכת מצב קריאה נקי (Zen Mode)                 */
     /* ============================================== */
     
     .zen-toggle-btn {

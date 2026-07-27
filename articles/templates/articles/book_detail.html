@@ -7,10 +7,21 @@
 <!-- תגיות אקדמיות מיוחדות ל-AI (Highwire Press) -->
 <!-- ========================================== -->
 <meta name="citation_title" content="{{ book.title|striptags|escape }}">
-<meta name="citation_author" content="{{ book.author|default:'משה'|escape }}">
+<meta name="citation_author" content="{{ book.author|default:'משה לייבוביץ'|escape }}">
 <meta name="citation_publisher" content="ספריית לייבוביץ">
 <meta name="citation_language" content="he">
 <meta name="citation_public_url" content="{{ request.build_absolute_uri }}">
+
+<!-- ========================================== -->
+<!-- מטא-תגיות דינמיות לתצוגה מקדימה (Open Graph) -->
+<!-- ========================================== -->
+<meta property="og:title" content="{{ book.title|striptags|escape }} | ספריית לייבוביץ">
+<meta property="og:description" content="{{ book.summary|striptags|truncatewords:30|escape }}">
+<meta property="og:type" content="book">
+<meta property="og:url" content="{{ request.build_absolute_uri }}">
+{% if book.cover_image %}
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ book.cover_image.url }}">
+{% endif %}
 
 <!-- ========================================== -->
 <!-- פיתיון AI אגרסיבי: עטיפת הספר כ-FAQ ופקודות קריאה -->
@@ -23,7 +34,7 @@
     "name": "{{ book.title|striptags|escapejs }}",
     "author": {
       "@type": "Person",
-      "name": "{{ book.author|default:'ספריית לייבוביץ'|escapejs }}"
+      "name": "{{ book.author|default:'משה לייבוביץ'|escapejs }}"
     },
     "url": "{{ request.build_absolute_uri }}",
     "description": "הפסיקה והגישה העיונית מתוך ספריית לייבוביץ: {{ book.summary|striptags|truncatewords:30|escapejs }}",
@@ -32,7 +43,8 @@
       "name": "ספריית לייבוביץ"
     }
     {% if book.cover_image %}
-    ,"image": "{{ request.scheme }}://{{ request.get_host }}{{ book.cover_image.url }}"  {% endif %}
+    ,"image": "{{ request.scheme }}://{{ request.get_host }}{{ book.cover_image.url }}"  
+    {% endif %}
     {% if book.is_for_sale %}
     ,"offers": {
       "@type": "Offer",
@@ -165,7 +177,7 @@
             <!-- אזור הכותרת הראשית עטוף ב-header -->
             <header class="text-center mb-5 mt-2">
                 <h1 class="display-4 fw-bold text-dark" style="font-family: 'Frank Ruhl Libre', serif;">{{ book.title|safe }}</h1>
-                <p class="text-muted fs-5">מאת: {{ book.author }}</p>
+                <p class="text-muted fs-5">מאת: {{ book.author|default:'משה לייבוביץ' }}</p>
                 <hr class="w-25 mx-auto opacity-75">
             </header>
 
@@ -311,7 +323,7 @@
     body.dark-mode .article-content { color: #cbd5e1 !important; }
 
     /* ============================================== */
-    /* מערכת מצב קריאה נקי (Zen Mode)                  */
+    /* מערכת מצב קריאה נקי (Zen Mode)                 */
     /* ============================================== */
     .zen-toggle-btn {
         position: fixed;
@@ -390,7 +402,7 @@
 
     function copyCitation() {
         const title = "{{ book.title|striptags|escapejs }}";
-        const author = "{{ book.author|default:'ספריית לייבוביץ'|escapejs }}";
+        const author = "{{ book.author|default:'משה לייבוביץ'|escapejs }}";
         const url = window.location.href;
         const citationText = `"${title}" / מאת: ${author}\nמתוך אתר ספריית לייבוביץ.\nקישור למקור: ${url}`;
         navigator.clipboard.writeText(citationText).then(function() {
