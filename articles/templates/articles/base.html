@@ -144,9 +144,9 @@
         .lang-flag-custom { width: 28px; height: auto; border-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); margin-bottom: 3px; }
         .lang-text-custom { color: #ffffff; font-size: 0.85rem; font-weight: 700; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); line-height: 1; }
 
-        /* כפתור מצב קריאה לילה ואייקון עגלה צידי */
-        .dark-mode-toggle-btn, .cart-icon-btn { background: transparent; border: 1px solid rgba(212, 175, 55, 0.6); color: #d4af37; width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.2); text-decoration: none; }
-        .dark-mode-toggle-btn:hover, .cart-icon-btn:hover { background: rgba(212, 175, 55, 0.15); transform: scale(1.1); box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3); color: #d4af37; }
+        /* כפתור מצב קריאה לילה, עגלת קניות וכפתור שיתוף עליון */
+        .dark-mode-toggle-btn, .cart-icon-btn, .header-share-btn { background: transparent; border: 1px solid rgba(212, 175, 55, 0.6); color: #d4af37; width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.2); text-decoration: none; }
+        .dark-mode-toggle-btn:hover, .cart-icon-btn:hover, .header-share-btn:hover { background: rgba(212, 175, 55, 0.15); transform: scale(1.1); box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3); color: #d4af37; }
         html[dir="ltr"] .dark-mode-toggle-btn { margin-left: 0; margin-right: 15px; }
 
         /* כפתור המבורגר ייעודי למובייל */
@@ -269,7 +269,7 @@
         .breadcrumb-item a:hover { color: #0d6efd; }
 
         /* ========================================== */
-        /* עיצוב חלוניות מודל AI */
+        /* עיצוב חלוניות מודל AI ושיתוף */
         /* ========================================== */
         .ai-nav-header { background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white; border-bottom: none; padding: 20px 25px !important; }
         .ai-qa-header { background: linear-gradient(145deg, #1e202c 0%, #2a2d3e 100%); color: #d4af37; border-bottom: 2px solid #d4af37; padding: 20px 25px !important; }
@@ -284,6 +284,13 @@
         .qa-chat-user { background: linear-gradient(145deg, #1e202c 0%, #2a2d3e 100%); color: #d4af37; align-self: flex-end; border-top-left-radius: 2px; }
         .btn-qa-send { background: #d4af37; color: #1e202c !important; font-weight: bold; border: none; transition: all 0.2s; }
         .btn-qa-send:hover { background: #b5952f; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4); }
+
+        .lux-modal-content { background: linear-gradient(145deg, #1e202c 0%, #0f172a 100%); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 16px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); color: #e2e8f0; }
+        .lux-share-icon-btn { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.4rem; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .lux-share-icon-btn:hover { transform: scale(1.1); box-shadow: 0 6px 15px rgba(212, 175, 55, 0.4); color: white; }
+        .lux-copy-box { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 12px; padding: 6px 6px 6px 15px; display: flex; align-items: center; justify-content: space-between; }
+        .lux-copy-btn { background: #d4af37; color: #1e202c; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; font-size: 0.95rem; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
+        .lux-copy-btn:hover { background: #b5952f; }
 
         .nav-loading-status { display: flex; align-items: center; gap: 10px; font-weight: 600; }
         .nav-spinner { width: 1.2rem; height: 1.2rem; border: 3px solid rgba(0, 0, 0, 0.1); border-radius: 50%; border-top-color: currentColor; animation: spin 1s infinite linear; }
@@ -499,10 +506,15 @@
                     <i class="bi bi-envelope"></i> <span data-i18n="nav_contact">צור קשר</span>
                 </a>
 
-                <!-- כפתורי שפה, מצב לילה ועגלת קניות -->
+                <!-- כפתורי שפה, מצב לילה, עגלת קניות וכפתור שיתוף עליון -->
                 <div class="nav-left-absolute">
                     
-                    <!-- אייקון העגלה החדש -->
+                    <!-- כפתור שיתוף עליון חדש -->
+                    <button class="header-share-btn" onclick="openShareModal()" title="שיתוף העמוד">
+                        <i class="bi bi-share-fill"></i>
+                    </button>
+
+                    <!-- אייקון העגלה -->
                     <a href="{% url 'articles:cart_detail' %}" class="cart-icon-btn" title="עגלת קניות">
                         <i class="bi bi-cart3"></i>
                     </a>
@@ -629,6 +641,44 @@
         </div>
     </div>
 
+    <!-- חלונית מודאל גלובלית לשיתוף מהתפריט העליון -->
+    <div class="modal fade" id="luxShareModal" tabindex="-1" aria-hidden="true" dir="rtl">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 450px;">
+            <div class="modal-content lux-modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold w-100 text-center" style="color: #d4af37; font-size: 1.4rem;">שתפו את הידע</h5>
+                    <button type="button" class="btn-close btn-close-white position-absolute start-0 ms-3" data-bs-dismiss="modal" aria-label="סגור"></button>
+                </div>
+                <div class="modal-body text-center px-4 py-4">
+                    <p class="text-muted mb-4" style="font-size: 1rem;">בחרו את הדרך המועדפת עליכם להפצת התוכן:</p>
+                    
+                    <div class="d-flex justify-content-center gap-3 mb-4 flex-wrap">
+                        <a id="shareWhatsapp" href="#" target="_blank" class="lux-share-icon-btn" style="background-color: #25d366;" title="שליחה בוואטסאפ">
+                            <i class="bi bi-whatsapp"></i>
+                        </a>
+                        <a id="shareEmail" href="#" class="lux-share-icon-btn" style="background-color: #ea4335;" title="שליחה במייל">
+                            <i class="bi bi-envelope-fill"></i>
+                        </a>
+                        <a id="shareFacebook" href="#" target="_blank" class="lux-share-icon-btn" style="background-color: #1877f2;" title="שיתוף בפייסבוק">
+                            <i class="bi bi-facebook"></i>
+                        </a>
+                        <a id="shareTwitter" href="#" target="_blank" class="lux-share-icon-btn" style="background-color: #1da1f2;" title="שיתוף ב-X">
+                            <i class="bi bi-twitter-x"></i>
+                        </a>
+                    </div>
+
+                    <div class="lux-copy-box">
+                        <input type="text" id="luxShareUrl" readonly class="form-control-plaintext text-center text-secondary" style="font-size: 0.9rem; direction: ltr;">
+                        <button class="lux-copy-btn" onclick="copyShareUrl()">
+                            <i class="bi bi-clipboard" id="copyIcon"></i>
+                            <span id="copyText">העתק קישור</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- טעינת סקריפטים ו-Bootstrap -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -663,6 +713,51 @@
         function resetFontSize() { currentZoom = 1.0; document.documentElement.style.fontSize = '100%'; }
         function toggleA11yClass(className) { document.body.classList.toggle(className); }
         function resetA11y() { resetFontSize(); document.body.className = ''; }
+
+        // פונקציית שיתוף גלובלית לתפריט העליון
+        function openShareModal() {
+            const shareData = {
+                title: document.title,
+                text: 'קראו את התוכן המרתק בספריית לייבוביץ:',
+                url: window.location.href
+            };
+
+            if (navigator.share) {
+                navigator.share(shareData).catch(() => {});
+            } else {
+                const currentUrl = window.location.href;
+                const titleEncoded = encodeURIComponent(document.title);
+                const urlEncoded = encodeURIComponent(currentUrl);
+
+                document.getElementById('luxShareUrl').value = currentUrl;
+                document.getElementById('shareWhatsapp').href = `https://api.whatsapp.com/send?text=${titleEncoded}%20-%20${urlEncoded}`;
+                document.getElementById('shareEmail').href = `mailto:?subject=${titleEncoded}&body=מוזמנים לקרוא:%20${urlEncoded}`;
+                document.getElementById('shareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${urlEncoded}`;
+                document.getElementById('shareTwitter').href = `https://twitter.com/intent/tweet?text=${titleEncoded}&url=${urlEncoded}`;
+
+                var modal = new bootstrap.Modal(document.getElementById('luxShareModal'));
+                modal.show();
+            }
+        }
+
+        function copyShareUrl() {
+            const urlInput = document.getElementById('luxShareUrl');
+            urlInput.select();
+            urlInput.setSelectionRange(0, 99999);
+            
+            navigator.clipboard.writeText(urlInput.value).then(() => {
+                const copyText = document.getElementById('copyText');
+                const copyIcon = document.getElementById('copyIcon');
+                
+                copyText.innerText = 'הועתק בהצלחה!';
+                copyIcon.className = 'bi bi-check2-lg';
+                
+                setTimeout(() => {
+                    copyText.innerText = 'העתק קישור';
+                    copyIcon.className = 'bi bi-clipboard';
+                }, 2500);
+            });
+        }
 
         async function sendGlobalNavMessage() {
             const inputField = document.getElementById('globalNavInput'); const chatBox = document.getElementById('globalNavChatBox'); const userText = inputField.value.trim();
@@ -769,23 +864,23 @@
                 });
             }
 
-            // ==========================================
-            // התיקון לאזהרת הנגישות (aria-hidden) בסגירת מודאל ה-AI
-            // ==========================================
+            // התיקון לאזהרת הנגישות (aria-hidden) בסגירת מודאלים
             var aiModal = document.getElementById('aiQAModal');
             if (aiModal) {
                 aiModal.addEventListener('hide.bs.modal', function () {
-                    if (document.activeElement) {
-                        document.activeElement.blur();
-                    }
+                    if (document.activeElement) { document.activeElement.blur(); }
                 });
             }
             var navModal = document.getElementById('aiGlobalNavModal');
             if (navModal) {
                 navModal.addEventListener('hide.bs.modal', function () {
-                    if (document.activeElement) {
-                        document.activeElement.blur();
-                    }
+                    if (document.activeElement) { document.activeElement.blur(); }
+                });
+            }
+            var shareModal = document.getElementById('luxShareModal');
+            if (shareModal) {
+                shareModal.addEventListener('hide.bs.modal', function () {
+                    if (document.activeElement) { document.activeElement.blur(); }
                 });
             }
         });
@@ -799,29 +894,11 @@
     
     <!-- תיקון גלובלי לסמל האבטחה של גוגל לכל עמודי האתר -->
     <style>
-        body {
-            overflow-x: hidden !important;
+        body { overflow-x: hidden !important; }
+        body > .grecaptcha-badge, .grecaptcha-badge {
+            display: block !important; visibility: visible !important; position: fixed !important; bottom: 25px !important; width: 256px !important; right: 0px !important; transform: translateX(186px) !important; transition: transform 0.3s ease-in-out !important; z-index: 2147483647 !important; border-radius: 8px 0 0 8px !important; box-shadow: -2px 0px 10px rgba(0,0,0,0.1) !important;
         }
-
-        body > .grecaptcha-badge, 
-        .grecaptcha-badge {
-            display: block !important;
-            visibility: visible !important;
-            position: fixed !important;
-            bottom: 25px !important;
-            width: 256px !important; 
-            right: 0px !important; 
-            transform: translateX(186px) !important;
-            transition: transform 0.3s ease-in-out !important;
-            z-index: 2147483647 !important; 
-            border-radius: 8px 0 0 8px !important;
-            box-shadow: -2px 0px 10px rgba(0,0,0,0.1) !important;
-        }
-
-        body > .grecaptcha-badge:hover,
-        .grecaptcha-badge:hover {
-            transform: translateX(0px) !important; 
-        }
+        body > .grecaptcha-badge:hover, .grecaptcha-badge:hover { transform: translateX(0px) !important; }
     </style>
 
     <script>
@@ -830,9 +907,7 @@
                 const badge = document.querySelector('.grecaptcha-badge');
                 if (badge) {
                     clearInterval(breakOutInterval);
-                    if (badge.parentElement !== document.body) {
-                        document.body.appendChild(badge);
-                    }
+                    if (badge.parentElement !== document.body) { document.body.appendChild(badge); }
                 }
             }, 100);
         });
