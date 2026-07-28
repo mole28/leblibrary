@@ -34,15 +34,9 @@ from .models import Article, Book, Chapter, Section, Cart, CartItem, Order, Orde
 from .emails import send_order_confirmation
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
+from .vector_store import search_similar_articles
 
-# ==========================================
-# מנגנון Rate Limiting מבוסס Cache להגנה על ה-API
-# ==========================================
 def ratelimit(rate=30, timeout=60):
-    """
-    מגביל קצב בקשות לכתובת IP לפי מטמון (Cache).
-    ברירת מחדל: עד 30 בקשות בתוך חלון זמן של 60 שניות.
-    """
     def decorator(view_func):
         @wraps(view_func)
         def _wrapped_view(request, *args, **kwargs):
@@ -56,7 +50,6 @@ def ratelimit(rate=30, timeout=60):
             history = cache.get(cache_key, [])
             now = time.time()
             
-            # סינון בקשות ישנות מחוץ לחלון הזמן
             history = [t for t in history if now - t < timeout]
             
             if len(history) >= rate:
@@ -66,7 +59,7 @@ def ratelimit(rate=30, timeout=60):
                         'retry_after_seconds': timeout
                     },
                     'results': []
-                }, status=429) # סטטוס 429: Too Many Requests
+                }, status=429)
             
             history.append(now)
             cache.set(cache_key, history, timeout)
@@ -75,9 +68,6 @@ def ratelimit(rate=30, timeout=60):
         return _wrapped_view
     return decorator
 
-# ==========================================
-# פונקציות לוח שנה עברי (פרשה, הפטרה, מועדים)
-# ==========================================
 def translate_haftarah(text):
     if not text: return ""
     books = {
@@ -137,14 +127,10 @@ def get_jewish_calendar_info():
                         
         cache.set(cache_key, cal_data, 60 * 60 * 24)
     except Exception as e:
-        print(f"Hebcal API Error: {e}")
         pass
         
     return cal_data
 
-# ==========================================
-# אלגוריתמים לחילוץ וסריקה דינמית מספרי Django Admin
-# ==========================================
 def generate_word_variations(word):
     variations = set([word])
     if len(word) > 3 and word[0] in 'הבוכשמל':
@@ -280,6 +266,7 @@ def get_smart_content(text, query_words, max_chars=40000):
 
 
 @csrf_exempt
+@ratelimit(rate=20, timeout=86400)
 def ai_chat_endpoint(request):
     if request.method == 'POST':
         try:
@@ -701,15 +688,8 @@ def live_search(request):
     cache.set(cache_key, results, timeout=300)
     return JsonResponse({'results': results})
 
-# ==========================================
-# ה-API הפתוח ל-AI עם הגנת Rate Limiting (עד 30 בקשות בדקה)
-# ==========================================
 @ratelimit(rate=30, timeout=60)
 def ai_open_search(request):
-    """
-    API End-Point פתוח לסוכני AI, Custom GPTs ותוכנות צד-שלישי.
-    מוגן כעת מפני הצפות ומתקפות בעזרת Rate Limiting (עד 30 בקשות בדקה לכל IP).
-    """
     q = request.GET.get('q', '').strip()
     
     if len(q) < 2:
@@ -718,33 +698,41 @@ def ai_open_search(request):
             'results': []
         }, status=400)
 
-    # פירוק למילים עבור פונקציית החיתוך החכמה
     words = [w for w in q.split() if len(w) > 1]
     
-    # חיפוש בספרים ובמאמרים בעזרת מנוע הדירוג שלנו
     books_qs = Book.objects.all()
     articles_qs = Article.objects.filter(is_published=True)
     
-    books = smart_hebrew_search(books_qs, q, ['title', 'author', 'summary'])[:3]
-    articles = smart_hebrew_search(articles_qs, q, ['title', 'content'])[:3]
-    
+    semantic_results = search_similar_articles(q, top_k=3)
     results = []
     
-    for article in articles:
-        results.append({
-            'title': get_item_title(article),
-            'type': 'Article',
-            'url': request.build_absolute_uri(reverse('articles:detail', args=[article.id])),
-            'content_snippet': get_smart_content(get_item_text(article), words, max_chars=1500)
-        })
+    if semantic_results:
+        for item in semantic_results:
+            results.append({
+                'title': item['title'],
+                'type': 'Article',
+                'url': request.build_absolute_uri(item['url']),
+                'content_snippet': item['content_snippet']
+            })
+    else:
+        books = smart_hebrew_search(books_qs, q, ['title', 'author', 'summary'])[:3]
+        articles = smart_hebrew_search(articles_qs, q, ['title', 'content'])[:3]
         
-    for book in books:
-        results.append({
-            'title': get_item_title(book),
-            'type': 'Book',
-            'url': request.build_absolute_uri(reverse('articles:book_detail', args=[book.id])),
-            'content_snippet': get_smart_content(get_item_text(book), words, max_chars=1500)
-        })
+        for article in articles:
+            results.append({
+                'title': get_item_title(article),
+                'type': 'Article',
+                'url': request.build_absolute_uri(reverse('articles:detail', args=[article.id])),
+                'content_snippet': get_smart_content(get_item_text(article), words, max_chars=1500)
+            })
+            
+        for book in books:
+            results.append({
+                'title': get_item_title(book),
+                'type': 'Book',
+                'url': request.build_absolute_uri(reverse('articles:book_detail', args=[book.id])),
+                'content_snippet': get_smart_content(get_item_text(book), words, max_chars=1500)
+            })
         
     return JsonResponse({
         'meta': {
@@ -818,13 +806,7 @@ def checkout(request):
         return render(request, 'articles/order_success.html', {'order': order})
     return render(request, 'articles/checkout.html', {'items': items, 'total_price': total_price, 'current_page': 'cart'})
 
-# ==========================================
-# פרוטוקול IndexNow לדחיפה מיידית ל-Bing ול-ChatGPT Search
-# ==========================================
 def ping_indexnow(article_url):
-    """
-    מדווח באופן אוטומטי למנועי החיפוש ולחיפוש של ChatGPT על מאמרים חדשים או מעודכנים.
-    """
     host = "leblibrary.co.il"
     key = "mosheleibowitzkey123"
     url = f"https://api.indexnow.org/indexnow?url={urllib.parse.quote(article_url)}&key={key}&keyLocation=https://{host}/{key}.txt"
@@ -838,14 +820,7 @@ def ping_indexnow(article_url):
 def clear_cache_on_db_change(sender, instance, **kwargs):
     cache.clear()
 
-# ==========================================
-# מנוע הקראה קולית מקומי - מילון מתרחב וניקוי חכם
-# ==========================================
-
 def load_tts_dictionary():
-    """
-    טוען את המילון הקשיח. מחפש בתיקיית הבסיס ואז בתיקיית האפליקציה.
-    """
     dict_path = os.path.join(settings.BASE_DIR, 'tts_dictionary.json')
     if not os.path.exists(dict_path):
         dict_path = os.path.join(settings.BASE_DIR, 'articles', 'tts_dictionary.json')
@@ -855,10 +830,8 @@ def load_tts_dictionary():
             with open(dict_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"Error loading JSON dictionary: {e}")
             pass
             
-    # מילון גיבוי למקרה שהקובץ לא זמין
     return {
         'רמב"ם': 'רמבם', 'רש"י': 'רשי', 'שו"ע': 'שולחן ערוך', 'שו"ת': 'שאלות ותשובות',
         'רמב"ן': 'רמבן', 'רס"ג': 'רב סעדיה גאון', "תוס'": 'תוספות', "גמ'": 'גמרא',
@@ -871,31 +844,22 @@ def load_tts_dictionary():
         'זצ"ל': 'זכר צדיק לברכה', 'שליט"א': 'שיחיה לאורך ימים טובים אמן',
         'הקב"ה': 'הקדוש ברוך הוא', 'רבש"ע': 'ריבונו של עולם',
         'איתא': 'אִיתָא', 'ליתא': 'לֵיתָא', 'הכא': 'הָכָא', 'התם': 'הָתָם', 'האי': 'זה', 'הני': 'אלה',
-        'מאי': 'מַאי', 'אמאי': 'אַמַּאי', 'בשלמא': 'בִּשְׁלָמָא', 'אדרבה': 'אַדְּרַבָּה', 'אלמא': 'אַלְמָא'
+        'מאי': 'מַאי', 'אמאי': 'אַמַּאי', 'בשלמא': 'בִּשְׁלָמָא', 'אדרבה': 'אַדְּרַבָּה', 'אלמא': 'אלמא'
     }
 
 def apply_tts_dictionary(text):
-    """
-    מיישם את המילון הקשיח על הטקסט, חותך משפטים בצורה חכמה
-    ומונע מהקריין לקרוס בטקסטים ארוכים.
-    """
     if not text:
         return ""
         
-    # 1. המרת תגיות HTML לירידות שורה כדי שהקריין (edge-tts) יוכל לחתוך את הקובץ
     text = text.replace('><', '> <').replace('</p>', '.\n').replace('</li>', '.\n')
     text = strip_tags(text)
     text = unescape(text)
     
-    # הסרת כל הטקסט שבתוך סוגריים מרובעים או מספרי הערות כדי לא להשמיע אותם
     text = re.sub(r'\[.*?\]', '', text)
     text = re.sub(r'\(\d+\)', '', text)
     text = re.sub(r'[*_#]', '', text)
 
-    # 2. החלפת מילים וראשי תיבות לפי המילון הקשיח שלנו
     tts_dict = load_tts_dictionary()
-    
-    # מיון מהארוך לקצר כדי למנוע דריסות של מילים דומות
     sorted_keys = sorted(tts_dict.keys(), key=len, reverse=True)
     
     for key in sorted_keys:
@@ -905,27 +869,20 @@ def apply_tts_dictionary(text):
         else:
             text = re.sub(rf'(?<![א-ת]){key}(?![א-ת])', val, text)
             
-    # 3. ניקוי מירכאות שנותרו (כדי שהקריין לא ייתקע)
     text = re.sub(r'([א-ת])"([א-ת])', r'\1\2', text)
     text = re.sub(r"([א-ת])'([א-ת])", r'\1\2', text)
     
-    # החלפת רווחים כפולים (ללא פגיעה בירידות שורה!)
     text = re.sub(r'[ \t]+', ' ', text)
-    
-    # ניקוי נקודות כפולות
     text = re.sub(r'\.+', '.', text)
     
-    # 4. הבטחת חלוקה למנות עבור הקריין על ידי ירידת שורה בסוף כל משפט
     text = text.replace('. ', '.\n')
     text = text.replace(':\n', ': \n')
     
-    # הסרת שורות ריקות מיותרות
     text = '\n'.join([s.strip() for s in text.splitlines() if s.strip()])
     
     return text.strip()
 
 def generate_audio_sync(text, file_path):
-    """שומר את הטקסט לקובץ וקורא לקריין חיצוני. מנקה את הקובץ בסיום."""
     with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode='w', encoding='utf-8') as f:
         f.write(text)
         temp_filename = f.name
@@ -933,11 +890,10 @@ def generate_audio_sync(text, file_path):
     try:
         command = [
             sys.executable, "-m", "edge_tts", 
-            "-f", temp_filename, 
+            -f, temp_filename, 
             "--voice", "he-IL-AvriNeural", 
             "--write-media", file_path
         ]
-        # אנחנו תופסים את השגיאה האמיתית של הפקודה במקרה שהיא קורסת
         result = subprocess.run(command, capture_output=True, text=True)
         if result.returncode != 0:
             raise Exception(f"Edge-TTS Error: {result.stderr}")
@@ -963,12 +919,10 @@ def get_article_audio(request, article_id):
 
     if not os.path.exists(file_path):
         raw_text = f"{article.title}. {article.content}"
-        # החלפת מילים ופירוק לפסקאות
         final_text = apply_tts_dictionary(raw_text)
         try:
             generate_audio_sync(final_text, file_path)
         except Exception as e:
-            # כאן המשתמש (או חלון ה-Alert) יראה את השגיאה האמיתית במקום הודעה כללית!
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'audio_url': audio_url})
