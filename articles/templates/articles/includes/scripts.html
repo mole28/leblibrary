@@ -1,4 +1,3 @@
-<!-- Scripts and Bootstrap -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     const i18n_dict = {
@@ -127,7 +126,6 @@
         const observer = new IntersectionObserver((entries, observer) => { entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('is-visible'); observer.unobserve(entry.target); } }); }, observerOptions);
         document.querySelectorAll('.reveal-up').forEach((el) => { observer.observe(el); });
         
-        // Drag Mechanism for AI Floating Pill
         const dragEl = document.getElementById('draggableQaPill');
         let isDragging = false, isClick = true;
         let currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
@@ -208,7 +206,6 @@
     });
 </script>
 
-<!-- Global fix for reCAPTCHA badge -->
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         const breakOutInterval = setInterval(() => {
@@ -221,7 +218,6 @@
     });
 </script>
 
-<!-- Footnote Tooltip System -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const popup = document.createElement('div');
@@ -307,5 +303,102 @@
                 activeLink = null;
             }
         }, { passive: true });
+    });
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const acronymDict = {
+            'אע"פ': 'אף על פי',
+            'קמ"ל': 'קא משמע לן',
+            'רמב"ם': 'רבי משה בן מימון',
+            'רמב"ן': 'רבי משה בן נחמן',
+            'רש"י': 'רבי שלמה יצחקי',
+            'חז"ל': 'חכמינו זכרונם לברכה',
+            'שו"ת': 'שאלות ותשובות',
+            'אח"כ': 'אחר כך',
+            'ב"ה': 'ברוך השם',
+            'בעז"ה': 'בעזרת השם',
+            'יו"ט': 'יום טוב',
+            'ע"ז': 'על זה / עבודה זרה',
+            'וכו\'': 'וכולי',
+            'ת"ח': 'תלמיד חכם',
+            'ע"כ': 'עד כאן',
+            'הקב"ה': 'הקדוש ברוך הוא',
+            'ד"ה': 'דיבור המתחיל',
+            'ע"פ': 'על פי',
+            'ע"י': 'על ידי',
+            'שליט"א': 'שיחיה לאורך ימים טובים אמן',
+            'זצ"ל': 'זכר צדיק לברכה',
+            'הי"ד': 'השם יקום דמו',
+            'בד"צ': 'בית דין צדק',
+            'מו"מ': 'משא ומתן',
+            'ביהמ"ק': 'בית המקדש',
+            'תנ"ך': 'תורה נביאים כתובים',
+            'ש"ס': 'שישה סדרי משנה',
+            'רבש"ע': 'ריבונו של עולם',
+            'יוה"כ': 'יום הכיפורים',
+            'חוה"מ': 'חול המועד',
+            'רז"ל': 'רבותינו זכרונם לברכה',
+            'אדמו"ר': 'אדוננו מורנו ורבנו'
+        };
+
+        const hebrewPrefixes = ['ו', 'ב', 'ל', 'מ', 'ש', 'ה', 'וכ', 'וש', 'מה', 'שה', 'לכש'];
+
+        function walkTextNodes(node) {
+            let next;
+            if (node.nodeType === 1) {
+                const tag = node.nodeName;
+                if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'A' || node.classList.contains('lux-acronym')) {
+                    return;
+                }
+                for (let child = node.firstChild; child; child = next) {
+                    next = child.nextSibling;
+                    walkTextNodes(child);
+                }
+            } else if (node.nodeType === 3) {
+                const text = node.nodeValue;
+                const regex = /([א-ת]+["'][א-ת]+|[א-ת]+')/g;
+                let match;
+                let lastIndex = 0;
+                let hasMatch = false;
+                const fragment = document.createDocumentFragment();
+
+                while ((match = regex.exec(text)) !== null) {
+                    let word = match[0];
+                    let meaning = acronymDict[word];
+                    
+                    if (!meaning && word.length > 2) {
+                        for (let prefix of hebrewPrefixes) {
+                            if (word.startsWith(prefix) && acronymDict[word.substring(prefix.length)]) {
+                                meaning = acronymDict[word.substring(prefix.length)];
+                                break;
+                            }
+                        }
+                    }
+
+                    if (meaning) {
+                        hasMatch = true;
+                        fragment.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
+                        
+                        const span = document.createElement('span');
+                        span.className = 'lux-acronym';
+                        span.setAttribute('data-meaning', meaning);
+                        span.textContent = word;
+                        fragment.appendChild(span);
+                        
+                        lastIndex = regex.lastIndex;
+                    }
+                }
+                
+                if (hasMatch) {
+                    fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+                    node.parentNode.replaceChild(fragment, node);
+                }
+            }
+        }
+
+        const contentAreas = document.querySelectorAll('.article-content');
+        contentAreas.forEach(area => walkTextNodes(area));
     });
 </script>

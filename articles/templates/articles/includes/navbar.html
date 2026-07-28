@@ -1,7 +1,6 @@
 <header class="top-navbar">
     <div class="nav-aligned-container">
         
-        <!-- Mobile top header: Logo and Hamburger -->
         <div class="mobile-nav-header">
             <a class="nav-logo" href="{% url 'articles:list' %}" data-i18n="site_title">דף הבית</a>
             
@@ -10,7 +9,6 @@
             </button>
         </div>
         
-        <!-- Mobile collapsible content -->
         <div class="collapse" id="navbarCollapseContent">
             
             <span class="nav-separator"></span> 
@@ -38,15 +36,12 @@
                 <i class="bi bi-envelope"></i> <span data-i18n="nav_contact">צור קשר</span>
             </a>
 
-            <!-- Language, Dark Mode, Cart, and Share buttons -->
             <div class="nav-left-absolute">
                 
-                <!-- Share button -->
                 <button class="header-share-btn" onclick="openShareModal()" title="שיתוף העמוד">
                     <i class="bi bi-share-fill"></i>
                 </button>
 
-                <!-- Cart icon -->
                 <a href="{% url 'articles:cart_detail' %}" class="cart-icon-btn" title="עגלת קניות">
                     <i class="bi bi-cart3"></i>
                 </a>
