@@ -308,68 +308,30 @@ def ai_chat_endpoint(request):
                 """
                 prompt = f"אתה עוזר וירטואלי חייכן ומסביר פנים באתר 'ספריית לייבוביץ'. תפקידך לעזור לגולשים לנווט באתר ולהכיר את הפונקציות שלו.\n{nav_context}\nהגולש שואל אותך: '{user_question}'\nחובה עליך לענות בנימוס ולהסביר לגולש, או להפנות לעמוד הנכון מתוך הרשימה. חשוב מאוד: שלב קישור בפורמט מרקדאון רק עם הנתיב היחסי כפי שהוא כתוב (לדוגמה: [טקסט](/contact/)), בשום אופן אל תוסיף http או כתובות דומיין כמו example.com."
             else:
-                clean_question = re.sub(r'[^\w\s]', '', user_question)
-                words = clean_question.split()
-                stopwords = ['מהי', 'מהו', 'האם', 'כיצד', 'איך', 'את', 'על', 'לי', 'תסביר', 'מתי', 'למה', 'מדוע', 'של', 'לו', 'אני', 'רוצה', 'לדעת', 'מה', 'מי', 'הוא', 'היא', 'הם', 'הן', 'יש', 'אין', 'כמו', 'לגבי', 'בבקשה', 'היי', 'שלום', 'כמה', 'זה', 'אילו', 'איזה', 'איזו', 'היכן', 'איפה', 'מאיפה', 'כדי', 'כי', 'גם', 'רק', 'כל', 'כך']
-                valid_words = [w for w in words if len(w) > 1 and w not in stopwords]
+                semantic_results = search_similar_articles(user_question, top_k=4)
                 
-                search_query = " ".join(valid_words)
-
-                if search_query:
-                    models_to_search = [Article, Section, Chapter, Book]
-                    try:
-                        from .models import QA
-                        models_to_search.append(QA)
-                    except: pass
-                        
-                    for model in models_to_search:
-                        fields = get_text_fields(model)
-                        if fields:
-                            try:
-                                items = ai_document_search(model.objects.all(), search_query, fields, valid_words, limit=4)
-                                relevant_items.extend(items)
-                            except Exception:
-                                pass
-
-                if not relevant_items:
+                if not semantic_results:
                     return JsonResponse({'answer': 'מצטער, לא הצלחתי לאתר חומרים רלוונטיים במאגרי הספרייה לשאלתך. נסה לנסח אחרת.'})
-                    
+
                 context_text = ""
-                MAX_CHARS = 40000 
-                
-                seen_items = set()
                 unique_relevant_items = []
                 
-                def get_global_score(item):
-                    score = getattr(item, 'match_score', 0) * 1000
-                    full_text = get_item_title(item).lower() + " " + get_item_text(item).lower()
-                    if search_query.lower() in full_text: score += 50000
-                    unique_matches = sum(1 for word in valid_words if word in full_text)
-                    score += (unique_matches ** 4) * 5000 
-                    return score
-
-                relevant_items.sort(key=get_global_score, reverse=True)
-                
-                for item in relevant_items:
-                    item_key = f"{item.__class__.__name__}_{item.pk}"
-                    if item_key not in seen_items:
-                        seen_items.add(item_key)
-                        unique_relevant_items.append(item)
-                        if len(unique_relevant_items) >= 4: break
-
-                for item in unique_relevant_items: 
-                    title = get_item_title(item)
-                    content = get_item_text(item)
-                    if content:
-                        context_text += f"--- מקור: '{title}' ---\n{get_smart_content(content, valid_words, MAX_CHARS)}\n\n"
+                for item in semantic_results:
+                    title = item.get('title', '')
+                    url = item.get('url', '')
+                    content_snippet = item.get('content_snippet', '')
                     
+                    if title and url and content_snippet:
+                        context_text += f"--- מקור: '{title}' ---\nקישור: {url}\n{content_snippet}\n\n"
+                        unique_relevant_items.append({'title': title, 'url': url})
+
                 prompt = f"""אתה רב וסייע תורני חכם מטעם 'ספריית לייבוביץ'.
 הגולש שואל אותך: '{user_question}'
 
 כלל ברזל 1: חובה עליך לענות **אך ורק** על סמך הטקסטים המצורפים מטה (שהם המקורות שאותרו מתוך מאגר הספרייה). 
 כלל ברזל 2: אם התשובה לשאלה אינה מופיעה במפורש בטקסטים אלו, אסור לך להמציא פסיקה, אסור לך להסתמך על ידע חיצוני שיש לך, ואסור לך לנתח את המקורות כדי להראות למה הם לא קשורים. עליך לכתוב בדיוק את המשפט הבא בלבד: "מצטער, לא מצאתי לכך התייחסות מפורשת במקורות שנסרקו בספרייה."
 
-אם התשובה כן קיימת במקורות שקיבלת, כתוב אותה בפירוט, בצורה הלכתית ומכובדת (השתמש בפסקאות לסדר את המידע). חובה עליך לציין בגוף התשובה במפורש את השם המדויק של המקור (בדיוק כפי שהוא מופיע בין המקפים בטקסט המקורות) שעליו הסתמכת.
+אם התשובה כן קיימת במקורות שקיבלת, כתוב אותה בפירוט, בצורה הלכתית ומכובדת (השתמש בפסקאות לסדר את המידע). חובה עליך לציין בגוף התשובה במפורש את השם המדויק של המקור (בדיוק כפי שהוא מופיע בין המקפים בטקסט המקורות) שעליו הסתמכת. בסוף התשובה, הוסף רשימת מקורות שבה כל מקור יהיה קישור לחיץ בפורמט HTML כך: <a href='[הקישור שהועבר]'>[שם המאמר]</a> בהתבסס על השדות שקיבלת ב-Context.
 
 מקורות הספרייה:
 {context_text}"""
@@ -416,33 +378,11 @@ def ai_chat_endpoint(request):
                     sources_list_html = ""
                     
                     for item in unique_relevant_items:
-                        title = get_item_title(item)
-                        if title and title in final_response:
-                            url = "#"
-                            try:
-                                item_model = item.__class__.__name__
-                                if item_model == 'Article':
-                                    url = reverse('articles:detail', args=[item.pk])
-                                elif item_model == 'Book':
-                                    url = reverse('articles:book_detail', args=[item.pk])
-                                elif item_model == 'Chapter':
-                                    if hasattr(item, 'book'):
-                                        url = reverse('articles:book_detail', args=[item.book.pk])
-                                elif item_model == 'Section':
-                                    if hasattr(item, 'chapter') and hasattr(item.chapter, 'book'):
-                                        url = reverse('articles:book_detail', args=[item.chapter.book.pk])
-                                    elif hasattr(item, 'book'):
-                                        url = reverse('articles:book_detail', args=[item.book.pk])
-                                else:
-                                    try:
-                                        url = reverse(f'articles:{item_model.lower()}_detail', args=[item.pk])
-                                    except: pass
-                            except Exception: 
-                                pass
-                                
-                            if url != "#":
-                                sources_list_html += f"<li style='margin-bottom: 5px;'><a href='{url}' target='_blank' style='color: #d4af37; font-weight: bold; text-decoration: underline;'>{title}</a></li>"
-                                sources_added = True
+                        title = item.get('title', '')
+                        url = item.get('url', '')
+                        if title and url and title in final_response:
+                            sources_list_html += f"<li style='margin-bottom: 5px;'><a href='{url}' target='_blank' style='color: #d4af37; font-weight: bold; text-decoration: underline;'>{title}</a></li>"
+                            sources_added = True
 
                     if sources_added:
                         sources_html = "<br><br><div style='margin-top: 15px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 0.95em;'>"
@@ -890,7 +830,7 @@ def generate_audio_sync(text, file_path):
     try:
         command = [
             sys.executable, "-m", "edge_tts", 
-            -f, temp_filename, 
+            "-f", temp_filename, 
             "--voice", "he-IL-AvriNeural", 
             "--write-media", file_path
         ]
