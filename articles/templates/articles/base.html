@@ -432,6 +432,13 @@
     
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     <meta name="google-site-verification" content="LRlTLsQG8-OTMay9PDvBPnFxzhaZJkqSTeiSekfVA1Q" />
+    
+    {% if schema_json_ld %}
+    <script type="application/ld+json">
+        {{ schema_json_ld|safe }}
+    </script>
+    {% endif %}
+    
     {% block extra_head %}{% endblock %}
 </head>
 <body>
