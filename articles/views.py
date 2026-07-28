@@ -11,6 +11,7 @@ import asyncio
 import subprocess
 import tempfile
 import sys
+import threading
 import edge_tts
 from html import unescape
 from functools import wraps
@@ -832,6 +833,30 @@ def generate_audio_sync(text, file_path):
         asyncio.run(_generate())
     except Exception as e:
         raise Exception(f"Edge-TTS Error: {str(e)}")
+
+def generate_article_audio_background(article_id):
+    try:
+        article = Article.objects.get(id=article_id)
+        if not article.is_published:
+            return
+        base_media = getattr(settings, 'MEDIA_ROOT', os.path.join(settings.BASE_DIR, 'media'))
+        audio_dir = os.path.join(base_media, 'audio')
+        os.makedirs(audio_dir, exist_ok=True)
+        
+        file_name = f"article_{article.id}.mp3"
+        file_path = os.path.join(audio_dir, file_name)
+
+        if not os.path.exists(file_path):
+            raw_text = f"{article.title}. {article.content}"
+            final_text = apply_tts_dictionary(raw_text)
+            generate_audio_sync(final_text, file_path)
+    except Exception:
+        pass
+
+@receiver(post_save, sender=Article)
+def trigger_article_audio_pregeneration(sender, instance, created, **kwargs):
+    if instance.is_published:
+        threading.Thread(target=generate_article_audio_background, args=(instance.id,)).start()
 
 def get_article_audio(request, article_id):
     try:
