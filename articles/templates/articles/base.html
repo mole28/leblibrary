@@ -980,7 +980,15 @@
 
                 if (targetElement) {
                     const showPopup = (e) => {
-                        let clone = targetElement.cloneNode(true);
+                        let contentNode = targetElement;
+                        
+                        if (targetElement.tagName.toLowerCase() === 'a' || targetElement.tagName.toLowerCase() === 'span') {
+                            if (targetElement.parentElement && targetElement.parentElement.innerText.length > targetElement.innerText.length) {
+                                contentNode = targetElement.parentElement;
+                            }
+                        }
+
+                        let clone = contentNode.cloneNode(true);
                         
                         const backLinks = clone.querySelectorAll('a[href^="#"]');
                         backLinks.forEach(bl => bl.remove());
