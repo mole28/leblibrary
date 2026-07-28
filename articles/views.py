@@ -38,6 +38,25 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .vector_store import search_similar_articles
 
+def get_base_schema_json():
+    return json.dumps({
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "LebLibrary - ספריית לייבוביץ",
+        "alternateName": ["ספריית לייבוביץ", "משה לייבוביץ", "משה ליבוביץ"],
+        "url": "https://leblibrary.co.il",
+        "author": {
+            "@type": "Person",
+            "name": "משה לייבוביץ",
+            "alternateName": "Moshe Leibowitz"
+        },
+        "founder": {
+            "@type": "Person",
+            "name": "משה לייבוביץ"
+        },
+        "description": "ספריית לייבוביץ - מאמרים, ספרים ושיעורים תורניים בעריכת משה לייבוביץ."
+    }, ensure_ascii=False)
+
 def ratelimit(rate=30, timeout=60):
     def decorator(view_func):
         @wraps(view_func)
@@ -308,7 +327,7 @@ def ai_chat_endpoint(request):
                 **ממשק ופונקציות באתר:**
                 - תאורת לילה / מצב לילה / מצב חשוך (Dark Mode): יש באתר כפתור מובנה להחלפה לתאורת לילה. אם הגולש שואל על כך, הסבר לו שהוא יכול פשוט ללחוץ על הכפתור/האייקון של תאורת הלילה שמופיע באתר (בדרך כלל למעלה בסרגל הניווט) ואין צורך בקישור לשם כך.
                 """
-                prompt = f"אתה עוזר וירטואלי חייכן ומסביר פנים באתר 'ספריית לייבוביץ'. תפקידך לעזור לגולשים לנווט באתר ולהכיר את הפונקציות שלו.\n{nav_context}\nהגולש שואל אותך: '{user_question}'\nחובה עליך לענות בנימוס ולהסביר לגולש, או להפנות לעמוד הנכון מתוך הרשימה. חשוב מאוד: שלב קישור בפורמט מרקדאון רק עם הנתיב היחסי כפי שהוא כתוב (לדוגמה: [טקסט](/contact/)), בשום אופן אל תוסיף http או כתובות דומיין כמו example.com."
+                prompt = f"אתה עוזר וירטואלי חייכן ומסביר פנים באתר 'ספריית לייבוביץ' בניהולו של משה לייבוביץ. תפקידך לעזור לגולשים לנווט באתר ולהכיר את הפונקציות שלו.\n{nav_context}\nהגולש שואל אותך: '{user_question}'\nחובה עליך לענות בנימוס ולהסביר לגולש, או להפנות לעמוד הנכון מתוך הרשימה. חשוב מאוד: שלב קישור בפורמט מרקדאון רק עם הנתיב היחסי כפי שהוא כתוב (לדוגמה: [טקסט](/contact/)), בשום אופן אל תוסיף http או כתובות דומיין כמו example.com."
             else:
                 semantic_results = search_similar_articles(user_question, top_k=4)
                 
@@ -327,7 +346,7 @@ def ai_chat_endpoint(request):
                         context_text += f"--- מקור: '{title}' ---\nקישור: {url}\n{content_snippet}\n\n"
                         unique_relevant_items.append({'title': title, 'url': url})
 
-                prompt = f"""אתה רב וסייע תורני חכם מטעם 'ספריית לייבוביץ'.
+                prompt = f"""אתה רב וסייע תורני חכם מטעם 'ספריית לייבוביץ' בניהולו של משה לייבוביץ.
 הגולש שואל אותך: '{user_question}'
 
 כלל ברזל 1: חובה עליך לענות **אך ורק** על סמך הטקסטים המצורפים מטה (שהם המקורות שאותרו מתוך מאגר הספרייה). 
@@ -411,7 +430,8 @@ def article_list(request):
         articles = smart_hebrew_search(published_articles, query, ['title', 'content'])
         return render(request, 'articles/article_list.html', {
             'articles': articles, 'latest_articles': None, 'reading_books': None, 'sale_books': None,
-            'parasha_article': None, 'jewish_cal': None, 'query': query, 'current_page': 'home'
+            'parasha_article': None, 'jewish_cal': None, 'query': query, 'current_page': 'home',
+            'schema_json_ld': get_base_schema_json()
         })
         
     today_str = str(datetime.date.today())
@@ -468,7 +488,8 @@ def article_list(request):
         'sale_books': sale_books,
         'latest_qa': latest_qa,
         'jewish_cal': jewish_cal,
-        'current_page': 'home'
+        'current_page': 'home',
+        'schema_json_ld': get_base_schema_json()
     })
 
 def article_detail(request, pk):
@@ -564,7 +585,7 @@ def weight_calculator(request):
 
 @cache_page(60 * 60 * 24)
 def about(request): 
-    return render(request, 'articles/about.html', {'current_page': 'about'})
+    return render(request, 'articles/about.html', {'current_page': 'about', 'schema_json_ld': get_base_schema_json()})
 
 @cache_page(60 * 60 * 24)
 def terms(request): 
@@ -678,7 +699,7 @@ def ai_open_search(request):
         
     return JsonResponse({
         'meta': {
-            'provider': 'LebLibrary - ספריית לייבוביץ',
+            'provider': 'LebLibrary - ספריית לייבוביץ בניהולו של משה לייבוביץ',
             'query': q,
             'total_results': len(results),
             'license': 'Open for AI crawling with attribution'
