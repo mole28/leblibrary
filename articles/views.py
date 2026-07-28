@@ -11,6 +11,7 @@ import asyncio
 import subprocess
 import tempfile
 import sys
+import edge_tts
 from html import unescape
 from functools import wraps
 
@@ -823,24 +824,14 @@ def apply_tts_dictionary(text):
     return text.strip()
 
 def generate_audio_sync(text, file_path):
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode='w', encoding='utf-8') as f:
-        f.write(text)
-        temp_filename = f.name
+    async def _generate():
+        communicate = edge_tts.Communicate(text, "he-IL-AvriNeural")
+        await communicate.save(file_path)
         
     try:
-        command = [
-            sys.executable, "-m", "edge_tts", 
-            "-f", temp_filename, 
-            "--voice", "he-IL-AvriNeural", 
-            "--write-media", file_path
-        ]
-        result = subprocess.run(command, capture_output=True, text=True)
-        if result.returncode != 0:
-            raise Exception(f"Edge-TTS Error: {result.stderr}")
-            
-    finally:
-        if os.path.exists(temp_filename):
-            os.remove(temp_filename)
+        asyncio.run(_generate())
+    except Exception as e:
+        raise Exception(f"Edge-TTS Error: {str(e)}")
 
 def get_article_audio(request, article_id):
     try:
