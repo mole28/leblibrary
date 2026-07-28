@@ -1,0 +1,145 @@
+<!-- Accessibility Menu -->
+<div id="acc-floating-toggle" class="acc-toggle-btn" onclick="toggleAccessibilityMenu()">
+    <i class="bi bi-universal-access-circle"></i>
+</div>
+
+<div id="acc-main-menu" class="acc-menu-container" style="display: none;">
+    <div class="acc-header">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-universal-access text-primary fs-4"></i>
+            <span data-i18n="acc_title">נגישות</span>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <i class="bi bi-arrow-repeat fs-5" style="cursor: pointer; color: #4e8cff;" onclick="resetA11y()" title="איפוס כל ההגדרות"></i>
+            <i class="bi bi-arrows-move" style="color: #6da361;"></i>
+            <i class="bi bi-chevron-double-down" style="cursor: pointer;" onclick="toggleAccessibilityMenu()" title="סגור תפריט"></i>
+        </div>
+    </div>
+    <ul class="acc-menu-list">
+        <li onclick="toggleAccSubMenu('acc-info')"><span data-i18n="acc_info">מידע והגדרות</span> <i class="bi bi-chevron-down"></i></li>
+        <div id="acc-info" class="acc-submenu"><button onclick="resetA11y()"><i class="bi bi-arrow-repeat"></i> <span data-i18n="acc_reset">איפוס כל הגדרות הנגישות</span></button></div>
+        <li onclick="toggleAccSubMenu('acc-text')"><span data-i18n="acc_text_size">גודל טקסט</span> <i class="bi bi-chevron-down"></i></li>
+        <div id="acc-text" class="acc-submenu"><button onclick="changeFontSize(0.1)"><i class="bi bi-zoom-in"></i> <span data-i18n="acc_zoom_in">הגדל טקסט</span></button><button onclick="changeFontSize(-0.1)"><i class="bi bi-zoom-out"></i> <span data-i18n="acc_zoom_out">הקטן טקסט</span></button><button onclick="resetFontSize()"><span data-i18n="acc_reset_text">איפוס גודל טקסט</span></button></div>
+        <li onclick="toggleAccSubMenu('acc-colors')"><span data-i18n="acc_colors">צבעים</span> <i class="bi bi-chevron-down"></i></li>
+        <div id="acc-colors" class="acc-submenu"><button onclick="toggleA11yClass('a11y-high-contrast')" data-i18n="acc_contrast">ניגודיות גבוהה</button><button onclick="toggleA11yClass('a11y-invert-colors')" data-i18n="acc_invert">היפוך צבעים</button></div>
+        <li onclick="toggleAccSubMenu('acc-display')"><span data-i18n="acc_display">תצוגה</span> <i class="bi bi-chevron-down"></i></li>
+        <div id="acc-display" class="acc-submenu"><button onclick="toggleA11yClass('a11y-readable-font')" data-i18n="acc_font">פונט קריא (גופן בסיסי)</button></div>
+        <li onclick="toggleAccSubMenu('acc-highlight')"><span data-i18n="acc_highlight">הדגשה</span> <i class="bi bi-chevron-down"></i></li>
+        <div id="acc-highlight" class="acc-submenu"><button onclick="toggleA11yClass('a11y-highlight-links')" data-i18n="acc_hl_links">הדגשת קישורים</button><button onclick="toggleA11yClass('a11y-highlight-headers')" data-i18n="acc_hl_headers">הדגשת כותרות</button></div>
+    </ul>
+</div>
+
+<!-- AI Bots Floating Buttons -->
+<button type="button" class="global-ai-side-btn" data-bs-toggle="modal" data-bs-target="#aiGlobalNavModal">
+    <div class="ai-side-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z"/>
+        </svg>
+    </div>
+    <span class="ai-side-text">עוזר AI להתמצאות באתר</span>
+</button>
+
+<div id="draggableQaPill" class="qa-floating-pill">
+    <div class="qa-pill-icon"><i class="bi bi-robot"></i></div>
+    <div class="qa-pill-text">
+        <span class="qa-pill-title">שאלות ותשובות ע"י AI</span>
+        <span class="qa-pill-subtitle">לכל התכנים שבאתר</span>
+    </div>
+</div>
+
+<!-- Chat Modal 1 (Navigation) -->
+<div class="modal fade" id="aiGlobalNavModal" tabindex="-1" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 800px; width: 95%;">
+        <div class="modal-content" style="border-radius: 16px; overflow: hidden; border: none; box-shadow: 0 25px 60px rgba(0,0,0,0.3);">
+            <div class="modal-header ai-nav-header">
+                <h5 class="modal-title fw-bold">
+                    <svg viewBox="0 0 24 24" width="26" height="26" fill="white" class="me-2" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z"/>
+                    </svg>
+                    עוזר התמצאות באתר
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="nav-chat-box m-3" id="globalNavChatBox">
+                    <div class="nav-chat-bubble nav-chat-bot">
+                        <strong style="font-size: 1.15em; color: #2575fc;">עוזר הניווט הדיגיטלי:</strong><br><br>
+                        שלום! אני מדריך האתר של ספריית לייבוביץ. מחפש להמיר מידות? רוצה לקרוא ספר ספציפי? צריכים למצוא עמוד כלשהו? שאל אותי ואכוון אותך מיד!
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 15px;">
+                <div class="input-group">
+                    <input type="text" id="globalNavInput" class="form-control" placeholder="מה תרצו למצוא באתר?..." style="border-radius: 50px 0 0 50px; padding: 15px 25px; font-size: 1.1rem;">
+                    <button class="btn-nav-send" type="button" onclick="sendGlobalNavMessage()" style="border-radius: 0 50px 50px 0; padding: 0 25px;"><i class="bi bi-search" style="font-size: 1.3rem;"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chat Modal 2 (Q&A) -->
+<div class="modal fade" id="aiQAModal" tabindex="-1" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 800px; width: 95%;">
+        <div class="modal-content" style="border-radius: 16px; overflow: hidden; border: none; box-shadow: 0 25px 60px rgba(0,0,0,0.4);">
+            <div class="modal-header ai-qa-header">
+                <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-robot fs-4"></i> שאלות ותשובות ע"י AI לכל התכנים שבאתר
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" style="filter: invert(1);"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="nav-chat-box m-3" id="globalQAChatBox">
+                    <div class="nav-chat-bubble qa-chat-bot">
+                        <strong style="font-size: 1.15em; color: #1e202c;">שאל את ה- AI - מבוסס על התכנים שבאתר <span style="font-weight: normal; font-size: 0.85em;">(אין לסמוך על זה למעשה)</span>:</strong><br><br>
+                        שלום! אני העוזר האקדמי. אני קורא את כל המאמרים והספרים שנמצאים באתר (ספריית לייבוביץ) ומעלה פסיקות, הלכות ומקורות לשאלות שלך.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 15px;">
+                <div class="input-group">
+                    <input type="text" id="globalQAInput" class="form-control" placeholder="שאל שאלות בתוכן הספרים..." style="border-radius: 50px 0 0 50px; padding: 15px 25px; font-size: 1.1rem; border: 1px solid #d4af37;">
+                    <button class="btn-qa-send" type="button" onclick="sendQAMessage()" style="border-radius: 0 50px 50px 0; padding: 0 25px;"><i class="bi bi-send" style="font-size: 1.3rem;"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Global Share Modal -->
+<div class="modal fade" id="luxShareModal" tabindex="-1" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 450px;">
+        <div class="modal-content lux-modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold w-100 text-center" style="color: #d4af37; font-size: 1.4rem;">שתפו את הידע</h5>
+                <button type="button" class="btn-close btn-close-white position-absolute start-0 ms-3" data-bs-dismiss="modal" aria-label="סגור"></button>
+            </div>
+            <div class="modal-body text-center px-4 py-4">
+                <p class="text-muted mb-4" style="font-size: 1rem;">בחרו את הדרך המועדפת עליכם להפצת התוכן:</p>
+                
+                <div class="d-flex justify-content-center gap-3 mb-4 flex-wrap">
+                    <a id="shareWhatsapp" href="#" target="_blank" class="lux-share-icon-btn" style="background-color: #25d366;" title="שליחה בוואטסאפ">
+                        <i class="bi bi-whatsapp"></i>
+                    </a>
+                    <a id="shareEmail" href="#" class="lux-share-icon-btn" style="background-color: #ea4335;" title="שליחה במייל">
+                        <i class="bi bi-envelope-fill"></i>
+                    </a>
+                    <a id="shareFacebook" href="#" target="_blank" class="lux-share-icon-btn" style="background-color: #1877f2;" title="שיתוף בפייסבוק">
+                        <i class="bi bi-facebook"></i>
+                    </a>
+                    <a id="shareTwitter" href="#" target="_blank" class="lux-share-icon-btn" style="background-color: #1da1f2;" title="שיתוף ב-X">
+                        <i class="bi bi-twitter-x"></i>
+                    </a>
+                </div>
+
+                <div class="lux-copy-box">
+                    <input type="text" id="luxShareUrl" readonly class="form-control-plaintext text-center text-secondary" style="font-size: 0.9rem; direction: ltr;">
+                    <button class="lux-copy-btn" onclick="copyShareUrl()">
+                        <i class="bi bi-clipboard" id="copyIcon"></i>
+                        <span id="copyText">העתק קישור</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
