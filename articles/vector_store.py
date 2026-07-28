@@ -1,3 +1,4 @@
+import os
 import chromadb
 from chromadb.utils import embedding_functions
 from django.conf import settings
@@ -8,14 +9,12 @@ from .models import Article
 
 chroma_client = chromadb.PersistentClient(path=str(settings.BASE_DIR / 'chroma_db'))
 
-openai_ef = embedding_functions.OpenAIEmbeddingFunction(
-    api_key=settings.OPENAI_API_KEY,
-    model_name="text-embedding-3-small"
-)
+# שימוש במנגנון הטמעה מקומי שאינו דורש מפתחות API חיצוניים
+default_ef = embedding_functions.DefaultEmbeddingFunction()
 
 collection = chroma_client.get_or_create_collection(
     name="leblibrary_articles", 
-    embedding_function=openai_ef
+    embedding_function=default_ef
 )
 
 def index_article(article: Article):
