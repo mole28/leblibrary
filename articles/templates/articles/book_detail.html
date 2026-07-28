@@ -4,7 +4,7 @@
 
 {% block extra_head %}
 <!-- ========================================== -->
-<!-- תגיות אקדמיות מיוחדות ל-AI (Highwire Press) -->
+<!-- Academic tags for AI (Highwire Press)      -->
 <!-- ========================================== -->
 <meta name="citation_title" content="{{ book.title|striptags|escape }}">
 <meta name="citation_author" content="{{ book.author|default:'משה לייבוביץ'|escape }}">
@@ -13,7 +13,7 @@
 <meta name="citation_public_url" content="{{ request.build_absolute_uri }}">
 
 <!-- ========================================== -->
-<!-- מטא-תגיות דינמיות לתצוגה מקדימה (Open Graph) -->
+<!-- Dynamic Open Graph meta tags for preview   -->
 <!-- ========================================== -->
 <meta property="og:title" content="{{ book.title|striptags|escape }} | ספריית לייבוביץ">
 <meta property="og:description" content="{{ book.summary|striptags|truncatewords:30|escape }}">
@@ -24,7 +24,7 @@
 {% endif %}
 
 <!-- ========================================== -->
-<!-- פיתיון AI אגרסיבי: עטיפת הספר כ-FAQ ופקודות קריאה -->
+<!-- Aggressive AI bait: Book as FAQ & reading commands -->
 <!-- ========================================== -->
 <script type="application/ld+json">
 [
@@ -96,7 +96,7 @@
 {% endblock %}
 
 {% block content %}
-<!-- כפתור מצב זן -->
+<!-- Zen mode button -->
 <button onclick="toggleZenMode()" id="zenToggleBtn" class="zen-toggle-btn" title="מצב קריאה נקי">
     <i id="zenIcon" class="bi bi-arrows-fullscreen"></i>
 </button>
@@ -104,7 +104,7 @@
 <div class="container-fluid mt-2 mb-5" style="max-width: 1400px;">
     <div class="row">
         
-        <!-- תפריט צדדי: תוכן עניינים מעודכן כ-nav סמנטי -->
+        <!-- Sidebar: Table of contents as semantic nav -->
         <nav aria-label="תוכן עניינים" class="col-lg-3 d-none d-lg-block hide-in-zen" id="toc-column">
             <div class="sticky-top shadow-sm rounded content-card-bg p-3" style="top: 100px; max-height: 80vh; overflow-y: auto; scroll-behavior: smooth;" id="toc-container">
                 <h2 class="fw-bold mb-3 border-bottom pb-2 text-primary fs-4">תוכן עניינים</h2>
@@ -152,7 +152,7 @@
             </div>
         </nav>
 
-        <!-- אזור הקריאה הראשי מעודכן כ-article סמנטי -->
+        <!-- Main reading area updated as semantic article -->
         <article class="col-lg-8 offset-lg-1 content-card-bg shadow-sm p-4 p-md-5 rounded" id="main-content-col">
             
             {% if messages %}
@@ -164,9 +164,9 @@
                 {% endfor %}
             {% endif %}
 
-            <!-- כפתורי פעולה כולל כפתור שיתוף יוקרתי -->
+            <!-- Action buttons including luxury share button -->
             <div class="d-flex justify-content-end gap-3 mb-1 hide-in-zen flex-wrap align-items-center">
-                <!-- כפתור האזנה קולית -->
+                <!-- Voice reading button -->
                 <button onclick="toggleSpeech()" id="speechBtn" class="btn-print btn btn-outline-warning border shadow-sm" title="האזנה לספר" style="color: #a67c52; border-color: #a67c52;">
                     <i class="bi bi-volume-up-fill" id="speechIcon"></i> <span id="speechText">האזנה לקריאה</span>
                 </button>
@@ -181,14 +181,14 @@
                 </button>
             </div>
 
-            <!-- אזור הכותרת הראשית עטוף ב-header -->
+            <!-- Main header area wrapped in header -->
             <header class="text-center mb-5 mt-2">
                 <h1 class="display-4 fw-bold text-dark" style="font-family: 'Frank Ruhl Libre', serif;">{{ book.title|safe }}</h1>
                 <p class="text-muted fs-5">מאת: {{ book.author|default:'משה לייבוביץ' }}</p>
                 <hr class="w-25 mx-auto opacity-75">
             </header>
 
-            <!-- כרטיסיית המכירה/תקציר -->
+            <!-- Sales/Summary card -->
             {% if book.is_for_sale or book.cover_image %}
             <div class="card mb-5 border-0 shadow-sm hide-in-zen" style="border-radius: 16px; overflow: hidden; border: 1px solid rgba(212,175,55,0.2) !important; background-color: transparent;">
                 <div class="row g-0">
@@ -231,7 +231,7 @@
             </div>
             {% endif %}
 
-            <!-- קריאת הספר עצמו -->
+            <!-- The book reading itself -->
             <div class="book-reading-mode">
                 
                 {% if book.chapters.all %}
@@ -301,7 +301,7 @@
     </div>
 </div>
 
-<!-- חלונית מודאל גלובלית לשיתוף -->
+<!-- Global share modal -->
 <div class="modal fade" id="luxShareModal" tabindex="-1" aria-hidden="true" dir="rtl">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 450px;">
         <div class="modal-content lux-modal-content">
@@ -340,7 +340,7 @@
 </div>
 
 <style>
-    /* עיצוב המודאל היוקרתי לשיתוף */
+    /* Luxury share modal styling */
     .lux-modal-content {
         background: linear-gradient(145deg, #1e202c 0%, #0f172a 100%);
         border: 1px solid rgba(212, 175, 55, 0.3);
@@ -418,7 +418,7 @@
     body.dark-mode .content-card-bg { background-color: #1e293b; border: 1px solid rgba(255,255,255,0.05) !important; }
     body.dark-mode .article-content { color: #cbd5e1 !important; }
 
-    /* מערכת מצב קריאה נקי (Zen Mode) */
+    /* Zen Mode system */
     .zen-toggle-btn {
         position: fixed;
         bottom: 110px;
@@ -460,7 +460,7 @@
 </style>
 
 <script>
-    // פונקציית הקראה קולית מבוססת שרת AI (Text-to-Speech)
+    // Server-based Text-to-Speech audio function
     let currentAudio = null;
     let isPlaying = false;
 
@@ -468,7 +468,7 @@
         const speechText = document.getElementById('speechText');
         const speechIcon = document.getElementById('speechIcon');
 
-        // אם כבר מנגן - נעצור
+        // Stop if already playing
         if (isPlaying && currentAudio) {
             currentAudio.pause();
             isPlaying = false;
@@ -477,7 +477,7 @@
             return;
         }
 
-        // אם הושהה - נמשיך
+        // Resume if paused
         if (!isPlaying && currentAudio) {
             currentAudio.play();
             isPlaying = true;
@@ -486,7 +486,7 @@
             return;
         }
 
-        // פעם ראשונה שלוחצים - מביא אודיו מהשרת
+        // Fetch audio on first click
         speechText.innerText = 'מכין אודיו...';
         speechIcon.className = 'bi bi-hourglass-split';
 
@@ -520,7 +520,7 @@
         }
     }
 
-    // פונקציית שיתוף חכמה (Web Share API למובייל ומודאל לדסקטופ)
+    // Smart share function (Web Share API for mobile, modal for desktop)
     function openShareModal() {
         const shareData = {
             title: document.title,
@@ -546,7 +546,7 @@
         }
     }
 
-    // פונקציית העתקת קישור מהמודאל
+    // Copy link function
     function copyShareUrl() {
         const urlInput = document.getElementById('luxShareUrl');
         urlInput.select();

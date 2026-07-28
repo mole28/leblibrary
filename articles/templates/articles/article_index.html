@@ -2,6 +2,24 @@
 
 {% block title %}אינדקס מאמרים | ספריית לייבוביץ{% endblock %}
 
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "אינדקס מאמרים | ספריית לייבוביץ",
+  "author": {
+    "@type": "Person",
+    "name": "משה לייבוביץ"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "ספריית לייבוביץ"
+  }
+}
+</script>
+{% endblock %}
+
 {% block hero %}
 <div class="hero-section" style="height: 280px;">
     <div class="hero-overlay"></div>
@@ -32,10 +50,8 @@
             <div class="col-md-4 mb-5 d-flex flex-column align-items-center">
                 
                 <div class="w-100" style="max-width: 250px;">
-                    <!-- האות המרכזית -->
                     <h2 class="text-center fw-bold mb-4" style="color: #2c3e50; font-size: 2.2rem;">{{ letter }}</h2>
                     
-                    <!-- רשימת המאמרים ששייכים לאות הזו -->
                     <ul style="list-style-type: disc; padding-right: 25px; margin: 0;">
                         {% for article in articles %}
                         <li class="mb-3" style="color: #2c3e50;">
@@ -50,7 +66,6 @@
             </div>
             
             {% empty %}
-            <!-- הודעה למקרה שהמסד נתונים ריק ממאמרים -->
             <div class="col-12 text-center py-5">
                 <h4 class="text-muted">אין מאמרים להצגה כרגע. ברגע שתוסיף מאמרים למערכת, הם יופיעו כאן אוטומטית לפי סדר א"ב.</h4>
             </div>
@@ -61,13 +76,13 @@
 </div>
 
 <style>
-    /* אפקט ריחוף (Hover) לקישורים - משנה צבע ומוסיף קו תחתון */
+    /* Hover effect */
     .article-link:hover {
         color: #2575fc !important;
         text-decoration: underline !important;
     }
     
-    /* עיצוב הנקודות (Bullets) של הרשימה שיתאימו לעיצוב הכהה */
+    /* Bullet styling */
     ul {
         color: #2c3e50;
     }

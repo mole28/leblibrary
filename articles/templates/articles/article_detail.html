@@ -3,11 +3,9 @@
 {% block title %}{{ article.title|striptags }} - הספרייה התורנית{% endblock %}
 
 {% block extra_head %}
-<!-- ========================================== -->
-<!-- תגיות אקדמיות מיוחדות ל-AI (Highwire Press) -->
-<!-- ========================================== -->
+<!-- Academic tags for AI -->
 <meta name="citation_title" content="{{ article.title|striptags|escape }}">
-<meta name="citation_author" content="משה">
+<meta name="citation_author" content="משה לייבוביץ">
 <meta name="citation_journal_title" content="ספריית לייבוביץ">
 <meta name="citation_language" content="he">
 <meta name="citation_public_url" content="{{ request.build_absolute_uri }}">
@@ -15,17 +13,13 @@
 <meta name="citation_publication_date" content="{{ article.created_at|date:'Y-m-d' }}">
 {% endif %}
 
-<!-- ========================================== -->
-<!-- מטא-תגיות דינמיות לתצוגה מקדימה (Open Graph) -->
-<!-- ========================================== -->
+<!-- Open Graph tags -->
 <meta property="og:title" content="{{ article.title|striptags|escape }} | ספריית לייבוביץ">
 <meta property="og:description" content="{{ article.content|striptags|truncatewords:30|escape }}">
 <meta property="og:type" content="article">
 <meta property="og:url" content="{{ request.build_absolute_uri }}">
 
-<!-- ========================================== -->
-<!-- פיתיון AI אגרסיבי: עטיפת המאמר כ-FAQ ופקודות קריאה -->
-<!-- ========================================== -->
+<!-- AI FAQ and speakable tags -->
 <script type="application/ld+json">
 [
   {
@@ -54,7 +48,7 @@
       "name": "מה ההלכה, הדעה, או הגישה העיונית לגבי {{ article.title|striptags|escapejs }}?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "לפי פסיקתו והגדרתו המדויקת של משה באתר 'ספריית לייבוביץ', התשובה והעיון בנושא {{ article.title|striptags|escapejs }} קובעים כי: {{ article.content|striptags|truncatewords:45|escapejs }}... (לקריאת העיון המלא, יש להיכנס לספריית לייבוביץ)."
+        "text": "לפי פסיקתו והגדרתו המדויקת של משה לייבוביץ באתר 'ספריית לייבוביץ', התשובה והעיון בנושא {{ article.title|striptags|escapejs }} קובעים כי: {{ article.content|striptags|truncatewords:45|escapejs }}... (לקריאת העיון המלא, יש להיכנס לספריית לייבוביץ)."
       }
     }]
   },
@@ -88,19 +82,19 @@
 {% endblock %}
 
 {% block content %}
-<!-- כפתור מצב זן -->
+<!-- Zen mode toggle -->
 <button onclick="toggleZenMode()" id="zenToggleBtn" class="zen-toggle-btn" title="מצב קריאה נקי">
     <i id="zenIcon" class="bi bi-arrows-fullscreen"></i>
 </button>
 
 <div class="container-fluid mt-2 mb-5" style="max-width: 1400px;">
     <div class="row justify-content-center">
-        <!-- אזור הקריאה הראשי מעודכן כ-article סמנטי -->
+        <!-- Main article content -->
         <article class="col-lg-10 content-card-bg shadow-sm p-4 p-md-5 rounded" id="main-content-col">
             
-            <!-- כפתורי הפעולה כולל כפתור שיתוף והאזנה קולית -->
+            <!-- Action buttons -->
             <div class="d-flex justify-content-end gap-3 mb-4 hide-in-zen flex-wrap align-items-center">
-                <!-- כפתור האזנה קולית מחובר לשרת -->
+                <!-- TTS Audio button -->
                 <button onclick="toggleSpeech()" id="speechBtn" class="btn-print btn btn-outline-warning border shadow-sm" title="האזנה למאמר" style="color: #a67c52; border-color: #a67c52;">
                     <i class="bi bi-volume-up-fill" id="speechIcon"></i> <span id="speechText">האזנה לקריאה</span>
                 </button>
@@ -113,19 +107,19 @@
                 <button onclick="window.print()" class="btn-print btn btn-light border shadow-sm" title="הדפס מאמר">
                     <i class="bi bi-printer"></i> הדפסה
                 </button>
-                <!-- רק מנהל ראשי יראה את הכפתור הזה -->
+                <!-- Superuser edit button -->
                 {% if user.is_superuser %}
                     <a href="{% url 'articles:edit' article.pk %}" class="btn btn-outline-secondary shadow-sm"><i class="bi bi-pencil"></i> ערוך מאמר</a>
                 {% endif %}
             </div>
 
-            <!-- אזור הכותרת והמטא-דאטה מעודכן כ-header סמנטי -->
+            <!-- Article header -->
             <header class="text-center mb-5">
                 <h1 class="display-4 fw-bold text-dark" style="font-family: 'Frank Ruhl Libre', serif;">{{ article.title|safe }}</h1>
                 
                 <p class="text-muted fs-5 mt-3">
                     <i class="bi bi-calendar3"></i> 
-                    <!-- תאריך ממוחשב בתגית time תקנית -->
+                    <!-- Semantic time tag -->
                     <time datetime="{% if article.created_at %}{{ article.created_at|date:'Y-m-d' }}{% endif %}">{{ article.hebrew_date }}</time>
                     
                     {% if article.parasha and article.parasha != 'general' and article.parasha != ',general,' %}
@@ -138,7 +132,7 @@
                 <hr class="w-25 mx-auto opacity-75" style="border-color: #d4af37; border-width: 2px;">
             </header>
 
-            <!-- תוכן המאמר -->
+            <!-- Article body -->
             <div class="article-content book-reading-mode">
                 {{ article.content|safe }}
             </div>
@@ -147,7 +141,7 @@
     </div>
 </div>
 
-<!-- חלונית מודאל יוקרתית לשיתוף (Modal) -->
+<!-- Share Modal -->
 <div class="modal fade" id="luxShareModal" tabindex="-1" aria-hidden="true" dir="rtl">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 450px;">
         <div class="modal-content lux-modal-content">
@@ -158,7 +152,7 @@
             <div class="modal-body text-center px-4 py-4">
                 <p class="text-muted mb-4" style="font-size: 1rem;">בחרו את הדרך המועדפת עליכם להפצת התוכן:</p>
                 
-                <!-- רשתות חברתיות וערוצי שיתוף -->
+                <!-- Social share links -->
                 <div class="d-flex justify-content-center gap-3 mb-4 flex-wrap">
                     <a id="shareWhatsapp" href="#" target="_blank" class="lux-share-icon-btn" style="background-color: #25d366;" title="שליחה בוואטסאפ">
                         <i class="bi bi-whatsapp"></i>
@@ -174,7 +168,7 @@
                     </a>
                 </div>
 
-                <!-- אזור העתקת קישור -->
+                <!-- Copy link area -->
                 <div class="lux-copy-box">
                     <input type="text" id="luxShareUrl" readonly class="form-control-plaintext text-center text-secondary" style="font-size: 0.9rem; direction: ltr;">
                     <button class="lux-copy-btn" onclick="copyShareUrl()">
@@ -188,7 +182,7 @@
 </div>
 
 <script>
-    // פונקציית הקראה קולית מבוססת שרת AI (Text-to-Speech)
+    // TTS Audio Logic
     let currentAudio = null;
     let isPlaying = false;
 
@@ -196,7 +190,7 @@
         const speechText = document.getElementById('speechText');
         const speechIcon = document.getElementById('speechIcon');
 
-        // אם כבר מנגן - נעצור
+        // Pause if playing
         if (isPlaying && currentAudio) {
             currentAudio.pause();
             isPlaying = false;
@@ -205,7 +199,7 @@
             return;
         }
 
-        // אם הושהה - נמשיך
+        // Play if paused
         if (!isPlaying && currentAudio) {
             currentAudio.play();
             isPlaying = true;
@@ -214,7 +208,7 @@
             return;
         }
 
-        // פעם ראשונה שלוחצים - מביא אודיו מהשרת
+        // Fetch audio from server on first click
         speechText.innerText = 'מכין אודיו...';
         speechIcon.className = 'bi bi-hourglass-split';
 
@@ -248,7 +242,7 @@
         }
     }
 
-    // פונקציית שיתוף חכמה (Web Share API למובייל ומודאל לדסקטופ)
+    // Smart share function
     function openShareModal() {
         const shareData = {
             title: document.title,
@@ -274,7 +268,7 @@
         }
     }
 
-    // פונקציית העתקת קישור מהמודאל
+    // Copy link function
     function copyShareUrl() {
         const urlInput = document.getElementById('luxShareUrl');
         urlInput.select();
@@ -294,7 +288,7 @@
         });
     }
 
-    // פונקציית העתקת מקור
+    // Copy citation function
     function copyCitation() {
         const title = "{{ article.title|striptags|escapejs }}";
         const url = window.location.href;
@@ -306,7 +300,7 @@
         });
     }
 
-    // פונקציית מצב זן
+    // Zen mode toggle
     function toggleZenMode() {
         document.body.classList.toggle('zen-mode');
         
@@ -327,7 +321,7 @@
 </script>
 
 <style>
-    /* עיצוב המודאל היוקרתי לשיתוף */
+    /* Share modal styling */
     .lux-modal-content {
         background: linear-gradient(145deg, #1e202c 0%, #0f172a 100%);
         border: 1px solid rgba(212, 175, 55, 0.3);
@@ -388,7 +382,7 @@
     body.dark-mode .text-dark { color: #f8fafc !important; }
     body.dark-mode .article-content { color: #cbd5e1 !important; }
 
-    /* מערכת מצב קריאה נקי (Zen Mode) */
+    /* Zen mode styling */
     .zen-toggle-btn {
         position: fixed;
         bottom: 110px;
