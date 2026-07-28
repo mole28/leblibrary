@@ -9,17 +9,12 @@ from .models import Article
 
 chroma_client = chromadb.PersistentClient(path=str(settings.BASE_DIR / 'chroma_db'))
 
-# שימוש בהטמעות של OpenAI - חוסך מקום עצום בדיסק ומונע את הצורך ב-PyTorch
-openai_api_key = os.environ.get('GEMINI_API_KEY', '') or os.environ.get('OPENAI_API_KEY', '')
-
-openai_ef = embedding_functions.OpenAIEmbeddingFunction(
-    api_key=openai_api_key,
-    model_name="text-embedding-3-small"
-)
+# שימוש במנגנון הטמעה מקומי של ChromaDB - ללא צורך במפתחות API חיצוניים
+default_ef = embedding_functions.DefaultEmbeddingFunction()
 
 collection = chroma_client.get_or_create_collection(
     name="leblibrary_articles", 
-    embedding_function=openai_ef
+    embedding_function=default_ef
 )
 
 def index_article(article: Article):
