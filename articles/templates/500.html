@@ -1,0 +1,17 @@
+{% extends "articles/base.html" %}
+
+{% block title %}שגיאת שרת | ספריית לייבוביץ{% endblock %}
+
+{% block content %}
+<div class="container text-center" style="margin-top: 10vh; margin-bottom: 10vh;">
+    <h1 style="font-size: 6rem; color: #dc3545; font-weight: bold;">500</h1>
+    <h2 class="mb-4">אופס! משהו השתבש בצד שלנו</h2>
+    <p class="lead mb-5">השרת נתקל בשגיאה פנימית זמנית ולא הצליח להשלים את הבקשה שלך. צוות הפיתוח שלנו עודכן. אנא נסה שוב בעוד מספר דקות.</p>
+    <button onclick="window.location.reload();" style="background-color: #2575fc; color: white; padding: 12px 25px; border-radius: 8px; border: none; font-weight: bold; font-size: 1.2rem; cursor: pointer; margin-left: 10px;">
+        <i class="bi bi-arrow-clockwise me-2"></i> נסה לרענן את העמוד
+    </button>
+    <a href="{% url 'articles:list' %}" style="background-color: #6c757d; color: white; padding: 12px 25px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 1.2rem;">
+        <i class="bi bi-house-door-fill me-2"></i> חזרה לדף הבית
+    </a>
+</div>
+{% endblock %}

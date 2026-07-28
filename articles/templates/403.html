@@ -1,0 +1,14 @@
+{% extends "articles/base.html" %}
+
+{% block title %}גישה נדחתה | ספריית לייבוביץ{% endblock %}
+
+{% block content %}
+<div class="container text-center" style="margin-top: 10vh; margin-bottom: 10vh;">
+    <h1 style="font-size: 6rem; color: #ffc107; font-weight: bold;">403</h1>
+    <h2 class="mb-4">גישה נדחתה</h2>
+    <p class="lead mb-5">אין לך הרשאות לצפות בעמוד זה או לבצע את הפעולה המבוקשת.</p>
+    <a href="{% url 'articles:list' %}" style="background-color: #2575fc; color: white; padding: 12px 25px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 1.2rem;">
+        חזרה לדף הבית
+    </a>
+</div>
+{% endblock %}
