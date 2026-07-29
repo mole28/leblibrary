@@ -77,37 +77,113 @@
     }
 
     async function sendGlobalNavMessage() {
-        const inputField = document.getElementById('globalNavInput'); const chatBox = document.getElementById('globalNavChatBox'); const userText = inputField.value.trim();
+        const inputField = document.getElementById('globalNavInput'); 
+        const chatBox = document.getElementById('globalNavChatBox'); 
+        const userText = inputField.value.trim();
+        
         if (userText === '') return;
-        chatBox.innerHTML += `<div class="nav-chat-bubble nav-chat-user">${userText}</div>`; inputField.value = ''; chatBox.scrollTop = chatBox.scrollHeight;
-        const typingId = 'nav-typing-' + Date.now(); const aiTitle = '<strong style="font-size: 1.15em; color: #2575fc;">עוזר הניווט הדיגיטלי:</strong><br><br>';
+        
+        chatBox.innerHTML += `<div class="nav-chat-bubble nav-chat-user">${userText}</div>`; 
+        inputField.value = ''; 
+        chatBox.scrollTop = chatBox.scrollHeight;
+        
+        const typingId = 'nav-typing-' + Date.now(); 
+        const aiTitle = '<strong style="font-size: 1.15em; color: #2575fc;">עוזר הניווט הדיגיטלי:</strong><br><br>';
+        
         chatBox.innerHTML += `<div class="nav-chat-bubble nav-chat-bot" id="${typingId}">${aiTitle} <div class="nav-loading-status"><div class="nav-spinner" style="border-top-color: #2575fc;"></div><span id="nav-status-text-${typingId}">מאתר את העמוד הרלוונטי...</span></div></div>`;
         chatBox.scrollTop = chatBox.scrollHeight;
+        
         try {
-            const response = await fetch('/api/ai-chat/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: userText, mode: 'nav' }) });
-            if (!response.ok) { document.getElementById(typingId).innerHTML = `${aiTitle}מצטער, הייתה בעיה זמנית בעיבוד השאלה.`; return; }
-            const data = await response.json(); const textToType = data.answer; document.getElementById(typingId).innerHTML = `${aiTitle}`; let charIndex = 0;
-            const typeInterval = setInterval(() => { if (charIndex < textToType.length) { charIndex += 4; let currentHTML = textToType.substring(0, charIndex).replace(/\n/g, '<br>'); document.getElementById(typingId).innerHTML = `${aiTitle}${currentHTML}`; chatBox.scrollTop = chatBox.scrollHeight; } else { clearInterval(typeInterval); } }, 10); 
-        } catch (error) { document.getElementById(typingId).innerHTML = `${aiTitle}מצטער, אירעה שגיאת רשת זמנית.`; }
+            const response = await fetch('/api/ai-chat/', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ question: userText, mode: 'nav' }) 
+            });
+            
+            if (!response.ok) { 
+                document.getElementById(typingId).innerHTML = `${aiTitle}מצטער, הייתה בעיה זמנית בעיבוד השאלה.`; 
+                return; 
+            }
+            
+            document.getElementById(typingId).innerHTML = aiTitle;
+            
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let done = false;
+            
+            while (!done) {
+                const { value, done: readerDone } = await reader.read();
+                done = readerDone;
+                if (value) {
+                    const chunk = decoder.decode(value, { stream: true });
+                    document.getElementById(typingId).innerHTML += chunk.replace(/\n/g, '<br>');
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+            }
+        } catch (error) { 
+            document.getElementById(typingId).innerHTML = `${aiTitle}מצטער, אירעה שגיאת רשת זמנית.`; 
+        }
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
     async function sendQAMessage() {
-        const inputField = document.getElementById('globalQAInput'); const chatBox = document.getElementById('globalQAChatBox'); const userText = inputField.value.trim();
+        const inputField = document.getElementById('globalQAInput'); 
+        const chatBox = document.getElementById('globalQAChatBox'); 
+        const userText = inputField.value.trim();
+        
         if (userText === '') return;
-        chatBox.innerHTML += `<div class="nav-chat-bubble qa-chat-user">${userText}</div>`; inputField.value = ''; chatBox.scrollTop = chatBox.scrollHeight;
-        const typingId = 'qa-typing-' + Date.now(); const aiTitle = '<strong style="font-size: 1.15em; color: #1e202c;">שאל את ה- AI - מבוסס על התכנים שבאתר <span style="font-weight: normal; font-size: 0.85em;">(אין לסמוך על זה למעשה)</span>:</strong><br><br>';
+        
+        chatBox.innerHTML += `<div class="nav-chat-bubble qa-chat-user">${userText}</div>`; 
+        inputField.value = ''; 
+        chatBox.scrollTop = chatBox.scrollHeight;
+        
+        const typingId = 'qa-typing-' + Date.now(); 
+        const aiTitle = '<strong style="font-size: 1.15em; color: #1e202c;">שאל את ה- AI - מבוסס על התכנים שבאתר <span style="font-weight: normal; font-size: 0.85em;">(אין לסמוך על זה למעשה)</span>:</strong><br><br>';
+        
         chatBox.innerHTML += `<div class="nav-chat-bubble qa-chat-bot" id="${typingId}">${aiTitle} <div class="nav-loading-status" style="color: #d4af37;"><div class="nav-spinner" style="border-top-color: #d4af37;"></div><span id="qa-status-text-${typingId}">🧠 מנתח את ההקשר ההלכתי של הטקסט...</span></div></div>`;
         chatBox.scrollTop = chatBox.scrollHeight;
-        const loadingMessages = ["🧠 מנתח את ההקשר ההלכתי של הטקסט...", "📚 סורק מקורות ופסקי הלכה...", "✍️ מנסח תשובה ברורה ומדויקת..."]; let messageIndex = 0;
-        const loadingInterval = setInterval(() => { messageIndex = (messageIndex + 1) % loadingMessages.length; const statusElement = document.getElementById(`qa-status-text-${typingId}`); if (statusElement) { statusElement.innerText = loadingMessages[messageIndex]; } }, 2000);
+        
+        const loadingMessages = ["🧠 מנתח את ההקשר ההלכתי של הטקסט...", "📚 סורק מקורות ופסקי הלכה...", "✍️ מנסח תשובה ברורה ומדויקת..."]; 
+        let messageIndex = 0;
+        const loadingInterval = setInterval(() => { 
+            messageIndex = (messageIndex + 1) % loadingMessages.length; 
+            const statusElement = document.getElementById(`qa-status-text-${typingId}`); 
+            if (statusElement) { statusElement.innerText = loadingMessages[messageIndex]; } 
+        }, 2000);
+        
         try {
-            const response = await fetch('/api/ai-chat/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: userText, mode: 'qa' }) });
+            const response = await fetch('/api/ai-chat/', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ question: userText, mode: 'qa' }) 
+            });
+            
             clearInterval(loadingInterval);
-            if (!response.ok) { document.getElementById(typingId).innerHTML = `${aiTitle}מצטער, הייתה בעיה זמנית בעיבוד השאלה.`; return; }
-            const data = await response.json(); const textToType = data.answer; document.getElementById(typingId).innerHTML = `${aiTitle}`; let charIndex = 0;
-            const typeInterval = setInterval(() => { if (charIndex < textToType.length) { charIndex += 4; let currentHTML = textToType.substring(0, charIndex).replace(/\n/g, '<br>'); document.getElementById(typingId).innerHTML = `${aiTitle}${currentHTML}`; chatBox.scrollTop = chatBox.scrollHeight; } else { clearInterval(typeInterval); } }, 10); 
-        } catch (error) { clearInterval(loadingInterval); document.getElementById(typingId).innerHTML = `${aiTitle}מצטער, אירעה שגיאת רשת זמנית.`; }
+            
+            if (!response.ok) { 
+                document.getElementById(typingId).innerHTML = `${aiTitle}מצטער, הייתה בעיה זמנית בעיבוד השאלה.`; 
+                return; 
+            }
+            
+            document.getElementById(typingId).innerHTML = aiTitle;
+            
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let done = false;
+            
+            while (!done) {
+                const { value, done: readerDone } = await reader.read();
+                done = readerDone;
+                if (value) {
+                    const chunk = decoder.decode(value, { stream: true });
+                    document.getElementById(typingId).innerHTML += chunk.replace(/\n/g, '<br>');
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+            }
+        } catch (error) { 
+            clearInterval(loadingInterval); 
+            document.getElementById(typingId).innerHTML = `${aiTitle}מצטער, אירעה שגיאת רשת זמנית.`; 
+        }
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 

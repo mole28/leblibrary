@@ -16,7 +16,7 @@ import edge_tts
 from html import unescape
 from functools import wraps
 
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
@@ -352,69 +352,63 @@ def ai_chat_endpoint(request):
 כלל ברזל 1: חובה עליך לענות **אך ורק** על סמך הטקסטים המצורפים מטה (שהם המקורות שאותרו מתוך מאגר הספרייה). 
 כלל ברזל 2: אם התשובה לשאלה אינה מופיעה במפורש בטקסטים אלו, אסור לך להמציא פסיקה, אסור לך להסתמך על ידע חיצוני שיש לך, ואסור לך לנתח את המקורות כדי להראות למה הם לא קשורים. עליך לכתוב בדיוק את המשפט הבא בלבד: "מצטער, לא מצאתי לכך התייחסות מפורשת במקורות שנסרקו בספרייה."
 
-אם התשובה כן קיימת במקורות שקיבלת, כתוב אותה בפירוט, בצורה הלכתית ומכובדת (השתמש בפסקאות לסדר את המידע). חובה עליך לציין בגוף התשובה במפורש את השם המדויק של המקור (בדיוק כפי שהוא מופיע בין המקפים בטקסט המקורות) שעליו הסתמכת. בסוף התשובה, הוסף רשימת מקורות שבה כל מקור יהיה קישור לחיץ בפורמט HTML כך: <a href='[הקישור שהועבר]'>[שם המאמר]</a> בהתבסס על השדות שקיבלת ב-Context.
+אם התשובה כן קיימת במקורות שקיבלת, כתוב אותה בפירוט, בצורה הלכתית ומכובדת (השתמש בפסקאות לסדר את המידע). חובה עליך לציין בגוף התשובה במפורש את השם המדויק של המקור (בדיוק כפי שהוא מופיע בין המקפים בטקסט המקורות) שעליו הסתמכת. 
 
 מקורות הספרייה:
 {context_text}"""
             
-            KNOWN_GOOD_MODELS = [
-                'models/gemini-flash-lite-latest',
-                'models/gemini-pro-latest'
-            ] 
-            
-            final_response = None
-            last_error = ""
-
-            def fetch_from_google(model_name):
-                url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={API_KEY}"
+            def stream_google_response():
+                # We use stream=true for SSE streaming output
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:streamGenerateContent?alt=sse&key={API_KEY}"
                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
                 data_bytes = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+                
                 req = urllib.request.Request(url, data=data_bytes, headers={'Content-Type': 'application/json'})
-                response = urllib.request.urlopen(req, timeout=25)
-                resp_data = json.loads(response.read().decode('utf-8'))
-                return resp_data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=len(KNOWN_GOOD_MODELS)) as executor:
-                future_to_model = {executor.submit(fetch_from_google, model): model for model in KNOWN_GOOD_MODELS}
                 
-                for future in concurrent.futures.as_completed(future_to_model):
-                    try:
-                        result = future.result()
-                        if result:
-                            final_response = result
-                            break
-                    except Exception as e:
-                        last_error = str(e)
+                try:
+                    with urllib.request.urlopen(req, timeout=25) as response:
+                        for line in response:
+                            decoded_line = line.decode('utf-8').strip()
+                            if decoded_line.startswith('data: '):
+                                try:
+                                    json_data = json.loads(decoded_line[6:])
+                                    text_chunk = json_data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+                                    
+                                    # Post-processing chunks
+                                    if text_chunk:
+                                        if mode == 'nav':
+                                            text_chunk = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2" target="_self" style="color: #2575fc; font-weight: bold; text-decoration: underline;">\1</a>', text_chunk)
+                                        else:
+                                            text_chunk = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2" target="_blank" style="color: #d4af37; font-weight: bold; text-decoration: underline;">\1</a>', text_chunk)
+                                        
+                                        text_chunk = text_chunk.replace('*', '')
+                                        yield text_chunk
+                                        
+                                except json.JSONDecodeError:
+                                    continue
+                                    
+                        # Finalize the QA response by attaching the sources
+                        if mode != 'nav' and unique_relevant_items:
+                            sources_list_html = ""
+                            sources_added = False
+                            for item in unique_relevant_items:
+                                title = item.get('title', '')
+                                url = item.get('url', '')
+                                if title and url:
+                                    sources_list_html += f"<li style='margin-bottom: 5px;'><a href='{url}' target='_blank' style='color: #d4af37; font-weight: bold; text-decoration: underline;'>{title}</a></li>"
+                                    sources_added = True
+                            
+                            if sources_added:
+                                sources_html = "<br><br><div style='margin-top: 15px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 0.95em;'>"
+                                sources_html += "<strong>📚 מקורות מהספרייה (לחיץ):</strong><ul style='margin-top: 8px; padding-right: 20px; list-style-type: square;'>"
+                                sources_html += sources_list_html
+                                sources_html += "</ul></div>"
+                                yield sources_html
 
-            if final_response: 
-                if mode == 'nav':
-                    final_response = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2" target="_self" style="color: #2575fc; font-weight: bold; text-decoration: underline;">\1</a>', final_response)
-                else:
-                    final_response = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2" target="_blank" style="color: #d4af37; font-weight: bold; text-decoration: underline;">\1</a>', final_response)
-                
-                final_response = final_response.replace('*', '')
+                except Exception as e:
+                    yield f"שגיאת תקשורת מול המודל: {str(e)}"
 
-                if mode != 'nav' and unique_relevant_items and "לא מצאתי לכך התייחסות מפורשת" not in final_response:
-                    sources_added = False
-                    sources_list_html = ""
-                    
-                    for item in unique_relevant_items:
-                        title = item.get('title', '')
-                        url = item.get('url', '')
-                        if title and url and title in final_response:
-                            sources_list_html += f"<li style='margin-bottom: 5px;'><a href='{url}' target='_blank' style='color: #d4af37; font-weight: bold; text-decoration: underline;'>{title}</a></li>"
-                            sources_added = True
-
-                    if sources_added:
-                        sources_html = "<br><br><div style='margin-top: 15px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 0.95em;'>"
-                        sources_html += "<strong>📚 מקורות מהספרייה (לחיץ):</strong><ul style='margin-top: 8px; padding-right: 20px; list-style-type: square;'>"
-                        sources_html += sources_list_html
-                        sources_html += "</ul></div>"
-                        final_response += sources_html
-
-                return JsonResponse({'answer': final_response})
-            else: 
-                return JsonResponse({'answer': f'שגיאה בחיבור למודלים (מקבילי). שגיאה אחרונה: {last_error}'})
+            return StreamingHttpResponse(stream_google_response(), content_type='text/plain')
                 
         except Exception as e:
             return JsonResponse({'answer': f'שגיאת שרת פנימית (views): {str(e)}'})
