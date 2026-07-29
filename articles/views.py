@@ -329,22 +329,76 @@ def ai_chat_endpoint(request):
                 """
                 prompt = f"אתה עוזר וירטואלי חייכן ומסביר פנים באתר 'ספריית לייבוביץ' בניהולו של משה לייבוביץ. תפקידך לעזור לגולשים לנווט באתר ולהכיר את הפונקציות שלו.\n{nav_context}\nהגולש שואל אותך: '{user_question}'\nחובה עליך לענות בנימוס ולהסביר לגולש, או להפנות לעמוד הנכון מתוך הרשימה. חשוב מאוד: שלב קישור בפורמט מרקדאון רק עם הנתיב היחסי כפי שהוא כתוב (לדוגמה: [טקסט](/contact/)), בשום אופן אל תוסיף http או כתובות דומיין כמו example.com."
             else:
-                semantic_results = search_similar_articles(user_question, top_k=4)
+                words = [w for w in user_question.split() if len(w) > 1]
                 
-                if not semantic_results:
-                    return JsonResponse({'answer': 'מצטער, לא הצלחתי לאתר חומרים רלוונטיים במאגרי הספרייה לשאלתך. נסה לנסח אחרת.'})
+                # 1. Semantic Search
+                semantic_results = []
+                try:
+                    semantic_results = search_similar_articles(user_question, top_k=3)
+                except Exception:
+                    pass
+                
+                # 2. DB Search (Articles + Chapters)
+                db_articles = []
+                try:
+                    db_articles = ai_document_search(Article.objects.filter(is_published=True), user_question, ['title', 'content'], words, limit=2)
+                except Exception:
+                    pass
+                    
+                db_chapters = []
+                try:
+                    db_chapters = ai_document_search(Chapter.objects.all(), user_question, ['title', 'content'], words, limit=3)
+                except Exception:
+                    pass
 
                 context_text = ""
                 unique_relevant_items = []
+                seen_urls = set()
                 
-                for item in semantic_results:
-                    title = item.get('title', '')
-                    url = item.get('url', '')
-                    content_snippet = item.get('content_snippet', '')
-                    
-                    if title and url and content_snippet:
-                        context_text += f"--- מקור: '{title}' ---\nקישור: {url}\n{content_snippet}\n\n"
+                if semantic_results:
+                    for item in semantic_results:
+                        title = item.get('title', '')
+                        url = item.get('url', '')
+                        content_snippet = item.get('content_snippet', '')
+                        
+                        if title and url and content_snippet and url not in seen_urls:
+                            seen_urls.add(url)
+                            context_text += f"--- מקור: '{title}' ---\nקישור: {url}\n{content_snippet}\n\n"
+                            unique_relevant_items.append({'title': title, 'url': url})
+
+                for a in db_articles:
+                    url = request.build_absolute_uri(reverse('articles:detail', args=[a.id]))
+                    if url not in seen_urls:
+                        seen_urls.add(url)
+                        title = get_item_title(a)
+                        snippet = get_smart_content(get_item_text(a), words, max_chars=1200)
+                        context_text += f"--- מקור: '{title}' ---\nקישור: {url}\n{snippet}\n\n"
                         unique_relevant_items.append({'title': title, 'url': url})
+
+                for c in db_chapters:
+                    try:
+                        book_id = c.book.id
+                        book_title = get_item_title(c.book)
+                    except AttributeError:
+                        book_id = getattr(c, 'book_id', '')
+                        book_title = "ספר"
+                        
+                    if book_id:
+                        try:
+                            base_book_url = request.build_absolute_uri(reverse('articles:book_detail', args=[book_id]))
+                            url = f"{base_book_url}#chapter-{c.id}"
+                            
+                            if url not in seen_urls:
+                                seen_urls.add(url)
+                                title = f"{book_title} - {get_item_title(c)}"
+                                snippet = get_smart_content(get_item_text(c), words, max_chars=1500)
+                                context_text += f"--- מקור: '{title}' ---\nקישור: {url}\n{snippet}\n\n"
+                                unique_relevant_items.append({'title': title, 'url': url})
+                        except Exception:
+                            pass
+
+                if not unique_relevant_items:
+                    return JsonResponse({'answer': 'מצטער, לא הצלחתי לאתר חומרים רלוונטיים במאגרי הספרייה לשאלתך. נסה לנסח אחרת.'})
 
                 prompt = f"""אתה רב וסייע תורני חכם מטעם 'ספריית לייבוביץ' בניהולו של משה לייבוביץ.
 הגולש שואל אותך: '{user_question}'
@@ -358,7 +412,6 @@ def ai_chat_endpoint(request):
 {context_text}"""
             
             def stream_google_response():
-                # מנגנון חכם: מנסה את המודלים אחד אחרי השני עד שאחד מתחבר בהצלחה
                 KNOWN_GOOD_MODELS = [
                     'gemini-flash-lite-latest',
                     'gemini-pro-latest',
@@ -383,7 +436,7 @@ def ai_chat_endpoint(request):
                         continue
                 
                 if not response:
-                    yield f"מצטער, שגיאת תקשורת מול השרתים (404/403). שגיאה אחרונה: {last_error}"
+                    yield f"מצטער, שגיאת תקשורת מול השרתים. נסה שוב בעוד מספר שניות. (שגיאה: {last_error})"
                     return
 
                 try:
