@@ -98,7 +98,8 @@
     body.dark-mode .live-search-dropdown .border-bottom { border-color: #334155 !important; }
     body.dark-mode .hover-bg-light:hover { background-color: #0f172a !important; }
 
-    .acronym-widget-card { background: #fdfcfb; border: 1px solid #e6dec9; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 8px 24px rgba(0,0,0,0.04), 0 2px 6px rgba(168, 137, 79, 0.05); }
+    .acronym-widget-card { background: linear-gradient(145deg, #fdfbf7 0%, #f4ebd8 100%); border: 1px solid rgba(166, 124, 82, 0.3); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08); border-radius: 16px; padding: 24px; margin-bottom: 25px; position: relative; overflow: hidden; }
+    .acronym-widget-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, #d4af37, #a67c52, #d4af37); }
     body.dark-mode .acronym-widget-card { background: #1e293b; border-color: #334155; }
     body.dark-mode .acronym-widget-card h5 { color: #f8fafc !important; }
     body.dark-mode .acronym-widget-card p { color: #94a3b8 !important; }
@@ -303,7 +304,7 @@
                     <p style="font-size: 0.85em; color: #718096; margin-bottom: 12px;">הקלד ראשי תיבות (כמו "רש"י") או מילה מתוך הפירוש:</p>
                     
                     <div style="position: relative; margin-bottom: 12px;">
-                        <input type="text" id="acronymSearchInput" placeholder="חפש ראשי תיבות או פירוש..." style="width: 100%; padding: 10px 15px; background-color: #fcfbfa; border: 1px solid #dcd3c1; border-radius: 8px; font-size: 0.95em; outline: none; transition: border-color 0.2s;">
+                        <input type="text" id="acronymSearchInput" placeholder="חפש ראשי תיבות או פירוש..." style="width: 100%; padding: 10px 15px; background-color: #ffffff; border: 1px solid #dcd3c1; border-radius: 8px; font-size: 0.95em; outline: none; transition: border-color 0.2s;">
                     </div>
                     
                     <div style="display: flex; gap: 10px; margin-bottom: 15px; font-size: 0.85em;">
@@ -315,7 +316,7 @@
                         </label>
                     </div>
 
-                    <div id="acronymResultsContainer" style="max-height: 220px; overflow-y: auto; font-size: 0.9em; background: #fdfcfb; border: 1px solid #e6dec9; border-radius: 8px; padding: 10px;">
+                    <div id="acronymResultsContainer" style="max-height: 220px; overflow-y: auto; font-size: 0.9em; background: #ffffff; border: 1px solid #dcd3c1; border-radius: 8px; padding: 10px;">
                         <div style="color: #a0aec0; text-align: center; padding: 10px; font-style: italic;">הקלד לחיפוש מהיר במאגר...</div>
                     </div>
                 </div>
@@ -472,11 +473,12 @@
                         }
 
                         let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+                        data.results.duplicates = false;
                         data.results.forEach(item => {
                             html += `
-                                <li style="padding: 8px 10px; border-bottom: 1px solid #f0e9dc; margin-bottom: 4px;">
+                                <li style="padding: 8px 10px; border-bottom: 1px solid #e6dec9; margin-bottom: 4px;">
                                     <strong style="color: #a67c52; font-size: 1.05em;">${item.short}</strong>: 
-                                    <span style="color: #4a5568;">${item.meaning}</span>
+                                    <span style="color: #2c3e50;">${item.meaning}</span>
                                 </li>
                             `;
                         });
