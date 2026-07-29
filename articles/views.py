@@ -216,7 +216,6 @@ def get_item_title(item):
 def get_item_text(item):
     text = ""
     try:
-        # פול מכל השדות הרגילים
         for f in item._meta.get_fields():
             if hasattr(f, 'get_internal_type') and f.get_internal_type() in ['CharField', 'TextField', 'RichTextField', 'RichTextUploadingField', 'HTMLField']:
                 val = getattr(item, f.name, '')
@@ -226,7 +225,6 @@ def get_item_text(item):
         pass
         
     try:
-        # הפיתרון החכם: אם הגענו לפרק (Chapter), נמשוך אוטומטית את הטקסט של הסעיפים שלו (Section)!
         if item.__class__.__name__ == 'Chapter':
             sections = None
             if hasattr(item, 'sections'):
@@ -271,17 +269,26 @@ def ai_document_search(queryset, search_query, search_fields, words, limit=4):
         content = get_item_text(item).lower()
         full_text = title + " " + content
         
-        if search_query.lower() in full_text: score += 1000000
+        if search_query.lower() in full_text: 
+            score += 1000000
         
         unique_matches = sum(1 for word in words if word in full_text)
         score += (unique_matches ** 4) * 50000 
         
+        # Penalize heavily if the query is multi-word but only 1 word was found
+        # This prevents articles matching just "ברכת" from flooding the context
+        if len(words) > 1 and unique_matches < 2:
+            score -= 100000 
+            
         for word in words:
             score += full_text.count(word) * 10 
             
         return score
         
     candidates.sort(key=get_score, reverse=True)
+    # Filter out candidates with very low scores (negative scores due to penalty)
+    candidates = [c for c in candidates if get_score(c) > 0]
+    
     return candidates[:limit]
 
 def get_smart_content(text, query_words, max_chars=40000):
@@ -328,7 +335,6 @@ def ai_chat_endpoint(request):
             if mode == 'nav':
                 nav_context = """
                 להלן מפת הקישורים והפונקציות של האתר שלנו (חובה להשתמש *אך ורק* במידע זה):
-                
                 **עמודים באתר:**
                 - דף הבית: /
                 - צור קשר / יצירת קשר: /contact/
@@ -344,18 +350,21 @@ def ai_chat_endpoint(request):
                 - פרשת שבוע: /parasha/
                 - נוספו לאחרונה: /recently_added/
                 - תנאי שימוש: /terms/
-                
-                **ממשק ופונקציות באתר:**
-                - תאורת לילה / מצב לילה / מצב חשוך (Dark Mode): יש באתר כפתור מובנה להחלפה לתאורת לילה. אם הגולש שואל על כך, הסבר לו שהוא יכול פשוט ללחוץ על הכפתור/האייקון של תאורת הלילה שמופיע באתר (בדרך כלל למעלה בסרגל הניווט) ואין צורך בקישור לשם כך.
                 """
-                prompt = f"אתה עוזר וירטואלי חייכן ומסביר פנים באתר 'ספריית לייבוביץ' בניהולו של משה לייבוביץ. תפקידך לעזור לגולשים לנווט באתר ולהכיר את הפונקציות שלו.\n{nav_context}\nהגולש שואל אותך: '{user_question}'\nחובה עליך לענות בנימוס ולהסביר לגולש, או להפנות לעמוד הנכון מתוך הרשימה. חשוב מאוד: שלב קישור בפורמט מרקדאון רק עם הנתיב היחסי כפי שהוא כתוב (לדוגמה: [טקסט](/contact/)), בשום אופן אל תוסיף http או כתובות דומיין כמו example.com."
+                prompt = f"אתה עוזר וירטואלי חייכן ומסביר פנים באתר 'ספריית לייבוביץ'. עזור לגולש לנווט באתר.\n{nav_context}\nהגולש שואל אותך: '{user_question}'\nחובה עליך לשלב קישור בפורמט מרקדאון עם הנתיב היחסי."
             else:
+                # Remove punctuation and common stop words to get high quality search targets
                 clean_question = re.sub(r'[^\w\sא-ת]', '', user_question)
-                words = [w for w in clean_question.split() if len(w) > 1]
+                stop_words = {'מהי', 'מה', 'מי', 'האם', 'מדוע', 'למה', 'איך', 'כיצד', 'מתי', 'היכן', 'איפה', 'של', 'על', 'את', 'עם'}
+                words = [w for w in clean_question.split() if len(w) > 1 and w not in stop_words]
+                
+                # Fallback if the user ONLY entered stop words (rare)
+                if not words:
+                    words = [w for w in clean_question.split() if len(w) > 1]
                 
                 semantic_results = []
                 try:
-                    semantic_results = search_similar_articles(user_question, top_k=3)
+                    semantic_results = search_similar_articles(user_question, top_k=2)
                 except Exception:
                     pass
                 
@@ -363,7 +372,7 @@ def ai_chat_endpoint(request):
                 db_articles = []
                 try:
                     if article_fields:
-                        db_articles = ai_document_search(Article.objects.filter(is_published=True), clean_question, article_fields, words, limit=3)
+                        db_articles = ai_document_search(Article.objects.filter(is_published=True), clean_question, article_fields, words, limit=2)
                 except Exception: pass
                     
                 chapter_fields = get_text_fields(Chapter)
@@ -373,12 +382,11 @@ def ai_chat_endpoint(request):
                         db_chapters = ai_document_search(Chapter.objects.all(), clean_question, chapter_fields, words, limit=3)
                 except Exception: pass
                 
-                # תוספת ישירה למציאת התוכן של הספר!
                 section_fields = get_text_fields(Section)
                 db_sections = []
                 try:
                     if section_fields:
-                        db_sections = ai_document_search(Section.objects.all(), clean_question, section_fields, words, limit=5)
+                        db_sections = ai_document_search(Section.objects.all(), clean_question, section_fields, words, limit=2)
                 except Exception: pass
 
                 context_text = ""
@@ -428,15 +436,18 @@ def ai_chat_endpoint(request):
                 if not unique_relevant_items:
                     return JsonResponse({'answer': 'מצטער, לא הצלחתי לאתר חומרים רלוונטיים במאגרי הספרייה לשאלתך. נסה לנסח אחרת.'})
 
-                prompt = f"""אתה רב וסייע תורני חכם מטעם 'ספריית לייבוביץ' בניהולו של משה לייבוביץ.
+                prompt = f"""אתה רב מומחה ופוסק הלכה באתר 'ספריית לייבוביץ'.
 הגולש שואל אותך: '{user_question}'
 
-המערכת סרקה את מאגרי הספרייה והביאה לך את הטקסטים הבאים (ספרים, פרקים, ומאמרים). 
-קרא אותם היטב. אם יש בהם מידע רלוונטי שעונה על השאלה, ענה בפירוט, בצורה הלכתית ומכובדת תוך ציטוט ולמידה מתוך הטקסטים שסופקו לך. 
-אל תציין שהטקסטים שקיבלת הם רק כותרות ואל תתלונן על חוסר מידע. פשוט ענה מהמידע שקיבלת או שתתנצל במדויק כך: "מצטער, לא מצאתי לכך התייחסות מפורשת במקורות שנסרקו בספרייה."
-חובה לציין בסוף התשובה את המקורות (ספר/סימן/פרק) עליהם הסתמכת.
+המערכת ביצעה חיפוש והביאה לך טקסטים מתוך ספרי ומאמרי הספרייה (חלקם עלולים להיות לא רלוונטיים - התעלם מהם לחלוטין).
+קרא את המקורות לעומק. אם התשובה לשאלה נמצאת בהם:
+1. ענה בצורה מדויקת, מפורטת ומכובדת, ללא צירוף ידע חיצוני.
+2. חובה לציין במפורש את שמו של המקור שעליו הסתמכת (מתוך שדה ה'כותרת'). ציון הכותרת הוא קריטי כדי שהמערכת תציג לגולש קישור.
+3. אל תציין שהמידע חלקי או שחסר לך רקע - פשוט ענה את ההלכה המצויה במקור.
 
-מקורות הספרייה:
+אם התשובה אינה מופיעה באף אחד מהמקורות (גם לא במרומז), חובה עליך להשיב בדיוק במילים אלו: "מצטער, לא מצאתי לכך התייחסות מפורשת במקורות שנסרקו בספרייה."
+
+מקורות שנסרקו:
 {context_text}"""
             
             def stream_google_response():
@@ -492,12 +503,17 @@ def ai_chat_endpoint(request):
                     if mode != 'nav' and unique_relevant_items and "לא מצאתי לכך התייחסות מפורשת" not in full_generated_text:
                         sources_list_html = ""
                         sources_added = False
+                        
+                        # Only show sources that the AI actually cited/mentioned!
                         for item in unique_relevant_items:
                             title = item.get('title', '')
                             url = item.get('url', '')
                             if title and url:
-                                sources_list_html += f"<li style='margin-bottom: 5px;'><a href='{url}' target='_blank' style='color: #d4af37; font-weight: bold; text-decoration: underline;'>{title}</a></li>"
-                                sources_added = True
+                                title_part = title.split('-')[-1].strip()
+                                # Check if the AI referenced the exact title or the chapter name
+                                if title in full_generated_text or (len(title_part) >= 4 and title_part in full_generated_text):
+                                    sources_list_html += f"<li style='margin-bottom: 5px;'><a href='{url}' target='_blank' style='color: #d4af37; font-weight: bold; text-decoration: underline;'>{title}</a></li>"
+                                    sources_added = True
                         
                         if sources_added:
                             sources_html = "<br><br><div style='margin-top: 15px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 0.95em;'>"
