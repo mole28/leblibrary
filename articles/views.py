@@ -293,13 +293,13 @@ def ai_chat_endpoint(request):
         try:
             API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
             if not API_KEY:
-                return JsonResponse({'answer': 'שגיאה: מפתח ה-API של המודל לא מוגדר בשרת.'})
+                return JsonResponse({'answer': 'Error: Missing API key.'})
 
             data = json.loads(request.body)
             user_question = data.get('question', '')
             mode = data.get('mode', 'content') 
             
-            if not user_question: return JsonResponse({'answer': 'אנא כתוב שאלה.'})
+            if not user_question: return JsonResponse({'answer': 'Please provide a question.'})
 
             prompt = ""
             relevant_items = []
@@ -358,8 +358,7 @@ def ai_chat_endpoint(request):
 {context_text}"""
             
             def stream_google_response():
-                # We use stream=true for SSE streaming output
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:streamGenerateContent?alt=sse&key={API_KEY}"
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key={API_KEY}"
                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
                 data_bytes = json.dumps(payload, ensure_ascii=False).encode('utf-8')
                 
@@ -374,7 +373,6 @@ def ai_chat_endpoint(request):
                                     json_data = json.loads(decoded_line[6:])
                                     text_chunk = json_data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
                                     
-                                    # Post-processing chunks
                                     if text_chunk:
                                         if mode == 'nav':
                                             text_chunk = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2" target="_self" style="color: #2575fc; font-weight: bold; text-decoration: underline;">\1</a>', text_chunk)
@@ -387,8 +385,7 @@ def ai_chat_endpoint(request):
                                 except json.JSONDecodeError:
                                     continue
                                     
-                        # Finalize the QA response by attaching the sources
-                        if mode != 'nav' and unique_relevant_items:
+                        if mode != 'nav' and unique_relevant_items and "לא מצאתי לכך התייחסות מפורשת" not in text_chunk:
                             sources_list_html = ""
                             sources_added = False
                             for item in unique_relevant_items:
@@ -801,7 +798,93 @@ def load_tts_dictionary():
         'זצ"ל': 'זכר צדיק לברכה', 'שליט"א': 'שיחיה לאורך ימים טובים אמן',
         'הקב"ה': 'הקדוש ברוך הוא', 'רבש"ע': 'ריבונו של עולם',
         'איתא': 'אִיתָא', 'ליתא': 'לֵיתָא', 'הכא': 'הָכָא', 'התם': 'הָתָם', 'האי': 'זה', 'הני': 'אלה',
-        'מאי': 'מַאי', 'אמאי': 'אַמַּאי', 'בשלמא': 'בִּשְׁלָמָא', 'אדרבה': 'אַדְּרַבָּה', 'אלמא': 'אלמא'
+        'מאי': 'מַאי', 'אמאי': 'אַמַּאי', 'בשלמא': 'בִּשְׁלָמָא', 'אדרבה': 'אַדְּרַבָּה', 'אלמא': 'אלמא',
+        'הפ"ש הה"ש': 'הפה שאסר הוא הפה שהתיר',
+        'ממע"ה': 'המוציא מחברו עליו הראיה',
+        'עדל"ת': 'עשה דוחה לא תעשה',
+        'הו"א': 'הוה אמינא',
+        'קיי"ל': 'קיימא לן',
+        'קי"ל': 'קיימא לן',
+        'ס"ל': 'סבירא ליה',
+        'דאו\'': 'דאורייתא',
+        'ד"ת': 'דבר תורה',
+        'דרבנן': 'מדרבנן',
+        'ד"ס': 'דברי סופרים',
+        'ל"א': 'לשון אחר',
+        'ה"ה': 'הוא הדין',
+        'הה"ה': 'הוא הדין',
+        'ס.': 'סימן',
+        'שו"פ': 'שווה פרוטה',
+        'שו"כ': 'שווה כסף',
+        'שכו"ע': 'שאר כסות ועונה',
+        'ע"ע': 'עבד עברי',
+        'ש"כ': 'שפחה כנענית',
+        'אמ"ה': 'אבר מן החי',
+        'איסוה"נ': 'איסורי הנאה',
+        'מחוק"צ': 'מחוסר קציצה',
+        'ע"ח': 'עדי חתימה',
+        'ע"מ': 'עדי מסירה',
+        'ב"א': 'בת אחת',
+        'ש"ש': 'שור שחוט',
+        'א"א': 'אשת איש',
+        'בע"ד': 'בעל דין',
+        'פס"ד': 'פסק דין',
+        'בי"ד': 'בית דין',
+        'למדה"י': 'למדינת הים',
+        'ל"ת': 'לא תעשה',
+        'אאחע"א': 'אין איסור חל על איסור',
+        'אחע"א': 'איסור חל על איסור',
+        'ריטב"א': 'רבי יום טוב בן אברהם אשבילי',
+        'רא"ש': 'רבנו אשר',
+        'ר"ן': 'רבנו נסים',
+        'תו"ר': 'תוספות רא"ש',
+        'ראמ"ה': 'רבינו אברהם מן ההר',
+        'ב"ש': 'בית שמאי',
+        'ב"ה': 'בית הלל',
+        'ר"ע': 'רבי עקיבא',
+        'ר"מ': 'רבי מאיר',
+        'ריה"ג': 'רבי יוסי הגלילי',
+        'ר"ל': 'ריש לקיש',
+        'אר"נ': 'אמר רב נחמן',
+        'ר"י': 'רבינו יצחק',
+        'ריבר"י': 'רבי יוסי בן יהודה',
+        'ריב"ח': 'רבי יהושע בן חנינא',
+        'ת"ר': 'תנו רבנן',
+        'ב"ק': 'בבא קמא',
+        'ב"מ': 'בבא מציעא',
+        'ב"ב': 'בבא בתרא',
+        'קי\'': 'קידושין',
+        'כת\'': 'כתובות',
+        'יב\'': 'יבמות',
+        'סנ\'': 'סנהדרין',
+        'פס\'': 'פסחים',
+        'מו"ק': 'מועד קטן',
+        'אוה"ע': 'אומות העולם',
+        'איסו"ב': 'איסורי ביאה',
+        'אסו"ב': 'איסורי ביאה',
+        'בד"א': 'במה דברים אמורים',
+        'פ"ח': 'פנים חדשות',
+        'פו"ר': 'פריה ורביה',
+        'פיה"מ': 'פירוש המשניות',
+        'ד"מ': 'דרכי משה',
+        'תוה"א': 'תורת האדם',
+        'פמ"ג': 'פרי מגדים',
+        'כס"מ': 'כסף משנה',
+        'לח"מ': 'לחם משנה',
+        'משל"מ': 'משנה למלך',
+        'נ"י': 'נימוקי יוסף',
+        'או"ז': 'אור זרוע',
+        'אר"ח': 'אורחות חיים',
+        'ראב"ד': 'רבנו אברהם בן דוד',
+        'רשב"א': 'רבינו שלמה בן אדרת',
+        'רשב"ג': 'רבן שמעון בן גמליאל',
+        'רי"ף': 'רבנו יצחק אלפסי',
+        'ר"ח': 'רבנו חננאל',
+        'רי"ו': 'רבינו ירוחם',
+        'מהרי"ק': 'מורנו הרב רבי יוסף קולון',
+        'ריב"ש': 'רבינו יצחק בן ששת',
+        'רדב"ז': 'רבי דוד בן זמרא',
+        'תשב"ץ': 'תשובות שמעון בן צמח'
     }
 
 def apply_tts_dictionary(text):
