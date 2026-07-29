@@ -98,7 +98,6 @@
     body.dark-mode .live-search-dropdown .border-bottom { border-color: #334155 !important; }
     body.dark-mode .hover-bg-light:hover { background-color: #0f172a !important; }
 
-    /* Acronym Widget Card */
     .acronym-widget-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     body.dark-mode .acronym-widget-card { background: #1e293b; border-color: #334155; }
     body.dark-mode .acronym-widget-card h5 { color: #f8fafc !important; }
@@ -156,6 +155,7 @@
                 </div>
             </div>
 
+            <!-- עמודה ימנית: מאמרים וספרים -->
             <div class="col-lg-8">
                 
                 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -249,10 +249,36 @@
 
             </div>
 
+            <!-- עמודה שמאלית: מחשבונים, ראשי תיבות, שו"ת ופרשה -->
             <div class="col-lg-4">
                 
-                <!-- Acronym Widget Card -->
-                <div class="acronym-widget-card">
+                <!-- 1. מחשבוני חז"ל -->
+                <div class="calc-sidebar-card p-4 text-center mb-5">
+                    <div class="mb-4 d-flex justify-content-center gap-3">
+                        <div class="icon-circle" title="אורך"><i class="bi bi-rulers"></i></div>
+                        <div class="icon-circle" title="נפח"><i class="bi bi-cup-straw"></i></div>
+                        <div class="icon-circle" title="משקל ומטבעות"><i class="bi bi-coin"></i></div>
+                    </div>
+                    <h4 class="fw-bold mb-2" style="color: #2c3e50; font-family: 'Frank Ruhl Libre', serif;">מחשבוני מידות התורה וחז"ל</h4>
+                    <div class="mx-auto mb-4" style="width: 50px; height: 3px; background: linear-gradient(90deg, #d4af37, #a67c52); border-radius: 2px;"></div>
+                    <p class="mb-4 pb-2 px-2 text-muted" style="font-size: 0.95rem;">
+                        כלי עזר מהיר ואלגנטי להמרת מידות אורך, נפח, ומשקל מטבעות.
+                    </p>
+                    <div class="d-grid gap-3">
+                        <a href="{% url 'articles:calculator' %}" class="calc-btn-primary">
+                            מחשבון מידות אורך <i class="bi bi-arrow-left-short fs-5"></i>
+                        </a>
+                        <a href="{% url 'articles:volume_calculator' %}" class="calc-btn-secondary">
+                            מחשבון מידות נפח <i class="bi bi-arrow-left-short fs-5"></i>
+                        </a>
+                        <a href="{% url 'articles:weight_calculator' %}" class="calc-btn-secondary">
+                            מחשבון משקל ומטבעות <i class="bi bi-arrow-left-short fs-5"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 2. מילון ראשי תיבות (ממוקם בדיוק מתחת למחשבונים / מתחת לספרים למכירה מצד שמאל) -->
+                <div class="acronym-widget-card mb-5">
                     <div style="display: flex; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #d4af37; padding-bottom: 10px;">
                         <i class="bi bi-journal-text" style="font-size: 1.4rem; color: #d4af37; margin-left: 10px;"></i>
                         <h5 style="margin: 0; font-weight: 700; color: #2d3748; font-size: 1.1rem;">מילון ראשי תיבות</h5>
@@ -278,31 +304,8 @@
                     </div>
                 </div>
 
-                <div class="calc-sidebar-card p-4 text-center">
-                    <div class="mb-4 d-flex justify-content-center gap-3">
-                        <div class="icon-circle" title="אורך"><i class="bi bi-rulers"></i></div>
-                        <div class="icon-circle" title="נפח"><i class="bi bi-cup-straw"></i></div>
-                        <div class="icon-circle" title="משקל ומטבעות"><i class="bi bi-coin"></i></div>
-                    </div>
-                    <h4 class="fw-bold mb-2" style="color: #2c3e50; font-family: 'Frank Ruhl Libre', serif;">מחשבוני מידות התורה וחז"ל</h4>
-                    <div class="mx-auto mb-4" style="width: 50px; height: 3px; background: linear-gradient(90deg, #d4af37, #a67c52); border-radius: 2px;"></div>
-                    <p class="mb-4 pb-2 px-2 text-muted" style="font-size: 0.95rem;">
-                        כלי עזר מהיר ואלגנטי להמרת מידות אורך, נפח, ומשקל מטבעות.
-                    </p>
-                    <div class="d-grid gap-3">
-                        <a href="{% url 'articles:calculator' %}" class="calc-btn-primary">
-                            מחשבון מידות אורך <i class="bi bi-arrow-left-short fs-5"></i>
-                        </a>
-                        <a href="{% url 'articles:volume_calculator' %}" class="calc-btn-secondary">
-                            מחשבון מידות נפח <i class="bi bi-arrow-left-short fs-5"></i>
-                        </a>
-                        <a href="{% url 'articles:weight_calculator' %}" class="calc-btn-secondary">
-                            מחשבון משקל ומטבעות <i class="bi bi-arrow-left-short fs-5"></i>
-                        </a>
-                    </div>
-                </div>
-
-                <div class="mt-5 pt-3">
+                <!-- 3. שאלות ותשובות -->
+                <div class="mb-5">
                     <div class="qa-highlight shadow-sm p-4">
                         <div class="qa-icon"><i class="bi bi-chat-quote-fill"></i></div>
                         <h4 class="fw-bold mb-3 mt-2" style="color: #2c3e50;">שאלות ותשובות</h4>
@@ -325,7 +328,8 @@
                     </div>
                 </div>
 
-                <div class="mt-5 pt-3">
+                <!-- 4. פרשת שבוע -->
+                <div class="mb-5">
                     <div class="parasha-sidebar p-4 p-md-5 d-flex flex-column justify-content-center" style="min-height: 460px;">
                         <div style="z-index: 1;">
                             
@@ -473,7 +477,8 @@
 
                 acronymContainer.innerHTML = '<div style="color: #718096; text-align: center; padding: 10px;">מחפש במאגר...</div>';
 
-                fetch(`{% url 'articles:search_acronyms_api' %}?q=${encodeURIComponent(query)}&type=${searchType}`)
+                // תיקון נתיב ה-API באופן ישיר כדי למנוע שגיאות טעינה
+                fetch(`/articles/api/search-acronyms/?q=${encodeURIComponent(query)}&type=${searchType}`)
                     .then(response => response.json())
                     .then(data => {
                         if (!data.results || data.results.length === 0) {
