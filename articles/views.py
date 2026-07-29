@@ -358,52 +358,77 @@ def ai_chat_endpoint(request):
 {context_text}"""
             
             def stream_google_response():
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key={API_KEY}"
+                # מנגנון חכם: מנסה את המודלים אחד אחרי השני עד שאחד מתחבר בהצלחה
+                KNOWN_GOOD_MODELS = [
+                    'gemini-flash-lite-latest',
+                    'gemini-pro-latest',
+                    'gemini-1.5-flash-latest',
+                    'gemini-1.5-pro-latest'
+                ]
+                
                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
                 data_bytes = json.dumps(payload, ensure_ascii=False).encode('utf-8')
                 
-                req = urllib.request.Request(url, data=data_bytes, headers={'Content-Type': 'application/json'})
+                response = None
+                last_error = ""
                 
+                for model in KNOWN_GOOD_MODELS:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse&key={API_KEY}"
+                    req = urllib.request.Request(url, data=data_bytes, headers={'Content-Type': 'application/json'})
+                    try:
+                        response = urllib.request.urlopen(req, timeout=25)
+                        break 
+                    except Exception as e:
+                        last_error = str(e)
+                        continue
+                
+                if not response:
+                    yield f"מצטער, שגיאת תקשורת מול השרתים (404/403). שגיאה אחרונה: {last_error}"
+                    return
+
                 try:
-                    with urllib.request.urlopen(req, timeout=25) as response:
-                        for line in response:
-                            decoded_line = line.decode('utf-8').strip()
-                            if decoded_line.startswith('data: '):
-                                try:
-                                    json_data = json.loads(decoded_line[6:])
-                                    text_chunk = json_data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+                    full_generated_text = ""
+                    for line in response:
+                        decoded_line = line.decode('utf-8').strip()
+                        if decoded_line.startswith('data: '):
+                            try:
+                                json_data = json.loads(decoded_line[6:])
+                                text_chunk = json_data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+                                
+                                if text_chunk:
+                                    full_generated_text += text_chunk
+                                    if mode == 'nav':
+                                        text_chunk = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2" target="_self" style="color: #2575fc; font-weight: bold; text-decoration: underline;">\1</a>', text_chunk)
+                                    else:
+                                        text_chunk = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2" target="_blank" style="color: #d4af37; font-weight: bold; text-decoration: underline;">\1</a>', text_chunk)
                                     
-                                    if text_chunk:
-                                        if mode == 'nav':
-                                            text_chunk = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2" target="_self" style="color: #2575fc; font-weight: bold; text-decoration: underline;">\1</a>', text_chunk)
-                                        else:
-                                            text_chunk = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2" target="_blank" style="color: #d4af37; font-weight: bold; text-decoration: underline;">\1</a>', text_chunk)
-                                        
-                                        text_chunk = text_chunk.replace('*', '')
-                                        yield text_chunk
-                                        
-                                except json.JSONDecodeError:
-                                    continue
+                                    text_chunk = text_chunk.replace('*', '')
+                                    yield text_chunk
                                     
-                        if mode != 'nav' and unique_relevant_items and "לא מצאתי לכך התייחסות מפורשת" not in text_chunk:
-                            sources_list_html = ""
-                            sources_added = False
-                            for item in unique_relevant_items:
-                                title = item.get('title', '')
-                                url = item.get('url', '')
-                                if title and url:
-                                    sources_list_html += f"<li style='margin-bottom: 5px;'><a href='{url}' target='_blank' style='color: #d4af37; font-weight: bold; text-decoration: underline;'>{title}</a></li>"
-                                    sources_added = True
-                            
-                            if sources_added:
-                                sources_html = "<br><br><div style='margin-top: 15px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 0.95em;'>"
-                                sources_html += "<strong>📚 מקורות מהספרייה (לחיץ):</strong><ul style='margin-top: 8px; padding-right: 20px; list-style-type: square;'>"
-                                sources_html += sources_list_html
-                                sources_html += "</ul></div>"
-                                yield sources_html
+                            except json.JSONDecodeError:
+                                continue
+                                
+                    if mode != 'nav' and unique_relevant_items and "לא מצאתי לכך התייחסות מפורשת" not in full_generated_text:
+                        sources_list_html = ""
+                        sources_added = False
+                        for item in unique_relevant_items:
+                            title = item.get('title', '')
+                            url = item.get('url', '')
+                            if title and url:
+                                sources_list_html += f"<li style='margin-bottom: 5px;'><a href='{url}' target='_blank' style='color: #d4af37; font-weight: bold; text-decoration: underline;'>{title}</a></li>"
+                                sources_added = True
+                        
+                        if sources_added:
+                            sources_html = "<br><br><div style='margin-top: 15px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 0.95em;'>"
+                            sources_html += "<strong>📚 מקורות מהספרייה (לחיץ):</strong><ul style='margin-top: 8px; padding-right: 20px; list-style-type: square;'>"
+                            sources_html += sources_list_html
+                            sources_html += "</ul></div>"
+                            yield sources_html
 
                 except Exception as e:
-                    yield f"שגיאת תקשורת מול המודל: {str(e)}"
+                    yield f"\n\n[החיבור נקטע: {str(e)}]"
+                finally:
+                    response.close()
 
             return StreamingHttpResponse(stream_google_response(), content_type='text/plain')
                 
