@@ -465,7 +465,7 @@
 
                 acronymContainer.innerHTML = '<div style="color: #718096; text-align: center; padding: 10px;">מחפש במאגר...</div>';
 
-                fetch(`/articles/api/search-acronyms/?q=${encodeURIComponent(query)}&type=${searchType}`)
+                fetch(`/api/search-acronyms/?q=${encodeURIComponent(query)}&type=${searchType}`)
                     .then(response => response.json())
                     .then(data => {
                         if (!data.results || data.results.length === 0) {
