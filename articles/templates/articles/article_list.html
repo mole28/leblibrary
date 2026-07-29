@@ -9,9 +9,7 @@
         <div class="container">
             <div class="row justify-content-center">
                 <div class="col-md-10 col-lg-8">
-                    <!-- עטיפה יחסית כדי שהתוצאות יתיישבו בדיוק מתחת לחיפוש באותו הרוחב -->
                     <div style="position: relative; z-index: 1051;">
-                        <!-- שורת החיפוש הקלאסית -->
                         <form action="{% url 'articles:list' %}" method="get" class="input-group shadow-lg mb-4" style="border-radius: 50px; overflow: hidden; height: 55px; position: relative;">
                             <input type="text" name="q" id="live-search-input" class="form-control px-4 fs-5 border-0" data-i18n-placeholder="search_placeholder" placeholder="חיפוש חופשי במאמרים, שו״ת וספרים..." aria-label="Search" value="{{ request.GET.q|default_if_none:'' }}" style="box-shadow: none; outline: none;" autocomplete="off">
                             <button class="btn btn-light bg-white border-0 px-4" type="submit">
@@ -21,7 +19,6 @@
                                 </svg>
                             </button>
                         </form>
-                        <!-- חלונית תוצאות חיפוש חכם (Live Search) -->
                         <div id="live-search-results" class="live-search-dropdown d-none"></div>
                     </div>
                 </div>
@@ -34,16 +31,13 @@
 
 {% block content %}
 <style>
-    /* הגדרות פרימיום כלליות */
     .home-dashboard { max-width: 1400px; margin: 0 auto; padding-top: 2rem; position: relative; }
     .section-title { font-family: 'Frank Ruhl Libre', serif; color: #1a252f; font-weight: 800; position: relative; padding-bottom: 12px; margin-bottom: 30px; }
     .section-title::after { content: ''; position: absolute; bottom: 0; right: 0; width: 60px; height: 4px; background: linear-gradient(90deg, #d4af37, #a67c52); border-radius: 2px; }
     
-    /* עיצוב חלונית תוצאות החיפוש (Live Search) */
     .live-search-dropdown { position: absolute; top: 100%; left: 0; right: 0; background-color: #ffffff; border-radius: 16px; box-shadow: 0 15px 40px rgba(0,0,0,0.25); z-index: 1055; max-height: 350px; overflow-y: auto; margin-top: -15px; border: 1px solid #eaeaea; text-align: right; }
     .hover-bg-light:hover { background-color: #f8f9fa !important; }
 
-    /* ====== חלונית אודות מרחפת באזור הריק מימין ====== */
     .floating-widget-container {
         position: absolute;
         right: 0;
@@ -68,12 +62,10 @@
     }
     .intro-icon-wrapper { width: 50px; height: 50px; background: #fdfbf7; border: 2px solid #d4af37; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; color: #d4af37; margin: 0 auto 15px; box-shadow: 0 4px 10px rgba(212,175,55,0.2); }
 
-    /* כרטיסי מאמרים וספרים */
     .premium-card { background: #fff; border: 1px solid rgba(0,0,0,0.05); border-radius: 12px; transition: all 0.3s ease; height: 100%; display: flex; flex-direction: column; }
     .premium-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.08); border-color: rgba(212, 175, 55, 0.3); }
     .book-card-img { height: 200px; object-fit: contain; background: #f8f9fa; padding: 15px; border-radius: 12px 12px 0 0; }
     
-    /* עיצוב מחשבוני חז"ל הקיים */
     .calc-sidebar-card { background: linear-gradient(145deg, #fdfbf7 0%, #f4ebd8 100%); border: 1px solid rgba(166, 124, 82, 0.3); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08); border-radius: 16px; position: relative; overflow: hidden; }
     .calc-sidebar-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, #d4af37, #a67c52, #d4af37); }
     .icon-circle { background-color: #ffffff; border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; transition: transform 0.3s ease; }
@@ -81,23 +73,18 @@
     .calc-btn-primary { border-radius: 12px; padding: 13px 20px; font-weight: 600; display: flex; justify-content: space-between; text-decoration: none; background: linear-gradient(135deg, #a67c52 0%, #835c39 100%); color: white !important; }
     .calc-btn-secondary { border-radius: 12px; padding: 13px 20px; font-weight: 600; display: flex; justify-content: space-between; text-decoration: none; background-color: #ffffff; color: #946b45 !important; border: 1px solid rgba(166, 124, 82, 0.4); }
     
-    /* כרטיס שו"ת בצד */
     .qa-highlight { background: linear-gradient(180deg, #ffffff 0%, #fdfbf7 100%); border: 1px solid #e2d5c5; border-radius: 16px; padding: 30px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
     .qa-icon { width: 50px; height: 50px; background: #d4af37; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; position: absolute; top: -25px; right: 30px; box-shadow: 0 5px 15px rgba(212,175,55,0.4); }
     
-    /* ווידג'ט פרשת שבוע צדדי */
     .parasha-sidebar { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-right: 6px solid #d4af37; border-radius: 16px; position: relative; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15); }
     .parasha-sidebar::before { content: '\F13E'; font-family: 'bootstrap-icons'; position: absolute; left: -20px; bottom: -20px; font-size: 14rem; color: rgba(255,255,255,0.04); transform: rotate(-15deg); }
     
-    /* פס יצירת קשר תחתון */
     .contact-strip { background: linear-gradient(135deg, #a67c52 0%, #d4af37 100%); border-radius: 20px; position: relative; overflow: hidden; box-shadow: 0 20px 40px rgba(166, 124, 82, 0.3); }
     .contact-strip::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml;utf8,<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="2" cy="2" r="2" fill="white" opacity="0.1"/></svg>'); }
 
-    /* כפתורים מיוחדים */
     .btn-gold-outline { color: #a67c52; border: 1px solid #a67c52; border-radius: 50px; padding: 8px 25px; font-weight: 600; transition: all 0.3s; background: transparent; }
     .btn-gold-outline:hover { background: #a67c52; color: white; }
     
-    /* מוד כהה */
     body.dark-mode .section-title { color: #f8fafc; }
     body.dark-mode .premium-card, body.dark-mode .qa-highlight { background: #1e293b; border-color: #334155; }
     body.dark-mode .book-card-img { background: #0f172a; }
@@ -110,14 +97,21 @@
     body.dark-mode .live-search-dropdown .text-dark { color: #f8fafc !important; }
     body.dark-mode .live-search-dropdown .border-bottom { border-color: #334155 !important; }
     body.dark-mode .hover-bg-light:hover { background-color: #0f172a !important; }
+
+    /* Acronym Widget Card */
+    .acronym-widget-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    body.dark-mode .acronym-widget-card { background: #1e293b; border-color: #334155; }
+    body.dark-mode .acronym-widget-card h5 { color: #f8fafc !important; }
+    body.dark-mode .acronym-widget-card p { color: #94a3b8 !important; }
+    body.dark-mode .acronym-widget-card input[type="text"] { background-color: #0f172a; border-color: #334155; color: #f8fafc; }
+    body.dark-mode .acronym-widget-card label { color: #cbd5e1; }
+    body.dark-mode .acronym-widget-card li { border-bottom-color: #334155 !important; }
+    body.dark-mode .acronym-widget-card span { color: #cbd5e1 !important; }
 </style>
 
 <div class="home-dashboard container-fluid px-2 px-xl-0 mb-5">
 
     {% if request.GET.q %}
-        <!-- ============================================== -->
-        <!-- מצב 1: תצוגת תוצאות חיפוש                      -->
-        <!-- ============================================== -->
         <div class="alert alert-warning shadow-sm border-0 mb-5 d-flex justify-content-between align-items-center" style="background: #fdfbf7; border-right: 5px solid #d4af37 !important; border-radius: 12px;">
             <div>
                 <h4 class="fw-bold mb-1" style="color: #a67c52;"><i class="bi bi-search me-2"></i>תוצאות חיפוש עבור: "{{ request.GET.q }}"</h4>
@@ -149,12 +143,8 @@
         </div>
 
     {% else %}
-        <!-- ============================================== -->
-        <!-- מצב 2: תצוגת דאשבורד (דף הבית החדש)            -->
-        <!-- ============================================== -->
         <div class="row g-5" style="position: relative;">
             
-            <!-- ====== חלונית אודות מרחפת מימין באזור הריק ====== -->
             <div class="floating-widget-container d-none d-xl-block">
                 <div class="site-intro-card-floating">
                     <div class="intro-icon-wrapper mb-3">
@@ -166,10 +156,8 @@
                 </div>
             </div>
 
-            <!-- ====== עמודה מרכזית - מאמרים ====== -->
             <div class="col-lg-8">
                 
-                <!-- שורה 1: מאמרים נבחרים -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h3 class="section-title mb-0">מאמרים נבחרים לאחרונה</h3>
                     <a href="{% url 'articles:recently_added' %}" class="text-muted text-decoration-none small fw-bold hover-gold">לכל המאמרים <i class="bi bi-chevron-left"></i></a>
@@ -194,7 +182,6 @@
                     {% endfor %}
                 </div>
 
-                <!-- שורה 2: ספרי קריאה -->
                 <div class="mt-5 pt-3">
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h3 class="section-title mb-0">ספריית קריאה דיגיטלית</h3>
@@ -225,7 +212,6 @@
                     </div>
                 </div>
 
-                <!-- שורה 3: ספרי רכישה -->
                 <div class="mt-5 pt-3">
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h3 class="section-title mb-0">ספרים לרכישה עד הבית</h3>
@@ -263,10 +249,35 @@
 
             </div>
 
-            <!-- ====== עמודה שמאלית (מחשבונים, שו"ת ופרשה) ====== -->
             <div class="col-lg-4">
                 
-                <!-- שורה 1: מחשבוני חז"ל -->
+                <!-- Acronym Widget Card -->
+                <div class="acronym-widget-card">
+                    <div style="display: flex; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #d4af37; padding-bottom: 10px;">
+                        <i class="bi bi-journal-text" style="font-size: 1.4rem; color: #d4af37; margin-left: 10px;"></i>
+                        <h5 style="margin: 0; font-weight: 700; color: #2d3748; font-size: 1.1rem;">מילון ראשי תיבות</h5>
+                    </div>
+                    
+                    <p style="font-size: 0.85em; color: #718096; margin-bottom: 12px;">הקלד ראשי תיבות (כמו "רש"י") או מילה מתוך הפירוש:</p>
+                    
+                    <div style="position: relative; margin-bottom: 12px;">
+                        <input type="text" id="acronymSearchInput" placeholder="חפש ראשי תיבות או פירוש..." style="width: 100%; padding: 10px 15px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 0.95em; outline: none; transition: border-color 0.2s;">
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px; font-size: 0.85em;">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="radio" name="acronymSearchType" value="short" checked style="accent-color: #d4af37;"> לפי ראשי תיבות
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="radio" name="acronymSearchType" value="meaning" style="accent-color: #d4af37;"> לפי מילים בפירוש
+                        </label>
+                    </div>
+
+                    <div id="acronymResultsContainer" style="max-height: 220px; overflow-y: auto; font-size: 0.9em;">
+                        <div style="color: #a0aec0; text-align: center; padding: 10px; font-style: italic;">הקלד לחיפוש מהיר במאגר...</div>
+                    </div>
+                </div>
+
                 <div class="calc-sidebar-card p-4 text-center">
                     <div class="mb-4 d-flex justify-content-center gap-3">
                         <div class="icon-circle" title="אורך"><i class="bi bi-rulers"></i></div>
@@ -291,7 +302,6 @@
                     </div>
                 </div>
 
-                <!-- שורה 2: חלונית שו"ת -->
                 <div class="mt-5 pt-3">
                     <div class="qa-highlight shadow-sm p-4">
                         <div class="qa-icon"><i class="bi bi-chat-quote-fill"></i></div>
@@ -315,7 +325,6 @@
                     </div>
                 </div>
 
-                <!-- שורה 3: פרשת שבוע מורחבת כולל חגים והפטרות מהלוח העברי -->
                 <div class="mt-5 pt-3">
                     <div class="parasha-sidebar p-4 p-md-5 d-flex flex-column justify-content-center" style="min-height: 460px;">
                         <div style="z-index: 1;">
@@ -371,9 +380,6 @@
             </div>
         </div>
 
-        <!-- ============================================== -->
-        <!-- שורה תחתית: פס יצירת קשר יוקרתי                -->
-        <!-- ============================================== -->
         <div class="row mt-5 pt-4">
             <div class="col-12">
                 <div class="contact-strip p-5 text-center text-md-end d-flex flex-column flex-md-row justify-content-between align-items-center">
@@ -390,10 +396,9 @@
             </div>
         </div>
 
-    {% endif %} <!-- סיום התנאי של החיפוש -->
+    {% endif %}
 </div>
 
-<!-- סקריפט החיפוש החכם -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const searchInput = document.getElementById('live-search-input');
@@ -448,6 +453,58 @@
                 if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
                     searchResults.classList.add('d-none');
                 }
+            });
+        }
+
+        const acronymInput = document.getElementById('acronymSearchInput');
+        const acronymContainer = document.getElementById('acronymResultsContainer');
+        const radioButtons = document.querySelectorAll('input[name="acronymSearchType"]');
+        let acronymDebounceTimer;
+
+        if (acronymInput && acronymContainer) {
+            function performAcronymSearch() {
+                const query = acronymInput.value.trim();
+                const searchType = document.querySelector('input[name="acronymSearchType"]:checked').value;
+
+                if (query.length < 1) {
+                    acronymContainer.innerHTML = '<div style="color: #a0aec0; text-align: center; padding: 10px; font-style: italic;">הקלד לחיפוש מהיר במאגר...</div>';
+                    return;
+                }
+
+                acronymContainer.innerHTML = '<div style="color: #718096; text-align: center; padding: 10px;">מחפש במאגר...</div>';
+
+                fetch(`{% url 'articles:search_acronyms_api' %}?q=${encodeURIComponent(query)}&type=${searchType}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.results || data.results.length === 0) {
+                            acronymContainer.innerHTML = '<div style="color: #e53e3e; text-align: center; padding: 10px;">לא נמצאו תוצאות.</div>';
+                            return;
+                        }
+
+                        let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+                        data.results.forEach(item => {
+                            html += `
+                                <li style="padding: 8px 10px; border-bottom: 1px solid #edf2f7; margin-bottom: 4px;">
+                                    <strong style="color: #d4af37; font-size: 1.05em;">${item.short}</strong>: 
+                                    <span style="color: #4a5568;">${item.meaning}</span>
+                                </li>
+                            `;
+                        });
+                        html += '</ul>';
+                        acronymContainer.innerHTML = html;
+                    })
+                    .catch(error => {
+                        acronymContainer.innerHTML = '<div style="color: #e53e3e; text-align: center; padding: 10px;">שגיאה בביצוע החיפוש.</div>';
+                    });
+            }
+
+            acronymInput.addEventListener('input', function() {
+                clearTimeout(acronymDebounceTimer);
+                acronymDebounceTimer = setTimeout(performAcronymSearch, 300);
+            });
+
+            radioButtons.forEach(radio => {
+                radio.addEventListener('change', performAcronymSearch);
             });
         }
     });

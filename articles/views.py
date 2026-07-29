@@ -275,8 +275,6 @@ def ai_document_search(queryset, search_query, search_fields, words, limit=4):
         unique_matches = sum(1 for word in words if word in full_text)
         score += (unique_matches ** 4) * 50000 
         
-        # Penalize heavily if the query is multi-word but only 1 word was found
-        # This prevents articles matching just "ברכת" from flooding the context
         if len(words) > 1 and unique_matches < 2:
             score -= 100000 
             
@@ -286,7 +284,6 @@ def ai_document_search(queryset, search_query, search_fields, words, limit=4):
         return score
         
     candidates.sort(key=get_score, reverse=True)
-    # Filter out candidates with very low scores (negative scores due to penalty)
     candidates = [c for c in candidates if get_score(c) > 0]
     
     return candidates[:limit]
@@ -350,15 +347,14 @@ def ai_chat_endpoint(request):
                 - פרשת שבוע: /parasha/
                 - נוספו לאחרונה: /recently_added/
                 - תנאי שימוש: /terms/
+                - מילון ראשי תיבות: /acronyms/
                 """
                 prompt = f"אתה עוזר וירטואלי חייכן ומסביר פנים באתר 'ספריית לייבוביץ'. עזור לגולש לנווט באתר.\n{nav_context}\nהגולש שואל אותך: '{user_question}'\nחובה עליך לשלב קישור בפורמט מרקדאון עם הנתיב היחסי."
             else:
-                # Remove punctuation and common stop words to get high quality search targets
                 clean_question = re.sub(r'[^\w\sא-ת]', '', user_question)
                 stop_words = {'מהי', 'מה', 'מי', 'האם', 'מדוע', 'למה', 'איך', 'כיצד', 'מתי', 'היכן', 'איפה', 'של', 'על', 'את', 'עם'}
                 words = [w for w in clean_question.split() if len(w) > 1 and w not in stop_words]
                 
-                # Fallback if the user ONLY entered stop words (rare)
                 if not words:
                     words = [w for w in clean_question.split() if len(w) > 1]
                 
@@ -389,6 +385,13 @@ def ai_chat_endpoint(request):
                         db_sections = ai_document_search(Section.objects.all(), clean_question, section_fields, words, limit=2)
                 except Exception: pass
 
+                acronym_matches = []
+                try:
+                    from .models import Acronym
+                    acronym_matches = list(Acronym.objects.filter(Q(short__icontains=user_question) | Q(meaning__icontains=user_question))[:5])
+                except Exception:
+                    pass
+
                 context_text = ""
                 unique_relevant_items = []
                 seen_urls = set()
@@ -399,6 +402,10 @@ def ai_chat_endpoint(request):
                         seen_urls.add(url)
                         context_text += f"--- מקור: '{title}' ---\nקישור: {url}\n{snippet}\n\n"
                         unique_relevant_items.append({'title': title, 'url': url})
+
+                if acronym_matches:
+                    acr_snippet = "\n".join([f"{a.short}: {a.meaning}" for a in acronym_matches])
+                    add_to_context("מילון ראשי תיבות", request.build_absolute_uri(reverse('articles:acronyms_view')), acr_snippet)
 
                 if semantic_results:
                     for item in semantic_results:
@@ -441,7 +448,7 @@ def ai_chat_endpoint(request):
 
 המערכת ביצעה חיפוש והביאה לך טקסטים מתוך ספרי ומאמרי הספרייה (חלקם עלולים להיות לא רלוונטיים - התעלם מהם לחלוטין).
 קרא את המקורות לעומק. אם התשובה לשאלה נמצאת בהם:
-1. ענה בצורה מדויקת, מפורטת ומכובדת, ללא צירוף ידע חיצוני.
+1. ענה בצורה מדויקה, מפורטת ומכובדת, ללא צירוף ידע חיצוני.
 2. חובה לציין במפורש את שמו של המקור שעליו הסתמכת (מתוך שדה ה'כותרת'). ציון הכותרת הוא קריטי כדי שהמערכת תציג לגולש קישור.
 3. אל תציין שהמידע חלקי או שחסר לך רקע - פשוט ענה את ההלכה המצויה במקור.
 
@@ -504,13 +511,11 @@ def ai_chat_endpoint(request):
                         sources_list_html = ""
                         sources_added = False
                         
-                        # Only show sources that the AI actually cited/mentioned!
                         for item in unique_relevant_items:
                             title = item.get('title', '')
                             url = item.get('url', '')
                             if title and url:
                                 title_part = title.split('-')[-1].strip()
-                                # Check if the AI referenced the exact title or the chapter name
                                 if title in full_generated_text or (len(title_part) >= 4 and title_part in full_generated_text):
                                     sources_list_html += f"<li style='margin-bottom: 5px;'><a href='{url}' target='_blank' style='color: #d4af37; font-weight: bold; text-decoration: underline;'>{title}</a></li>"
                                     sources_added = True
@@ -714,6 +719,20 @@ def qa_list(request):
     except Exception:
         questions = None
     return render(request, 'articles/qa_list.html', {'questions': questions, 'current_page': 'qa'})
+
+def acronyms_view(request):
+    from .models import Acronym
+    query = request.GET.get('q', '').strip()
+    search_type = request.GET.get('type', 'short')
+    acronyms = None
+    if query:
+        if search_type == 'meaning':
+            acronyms = Acronym.objects.filter(meaning__icontains=query).order_by('short')
+        else:
+            acronyms = Acronym.objects.filter(short__icontains=query).order_by('short')
+    else:
+        acronyms = Acronym.objects.all().order_by('short')[:100]
+    return render(request, 'articles/acronyms.html', {'acronyms': acronyms, 'query': query, 'search_type': search_type, 'current_page': 'acronyms'})
 
 def article_index(request): 
     published_articles = Article.objects.filter(is_published=True).order_by('title')
@@ -1130,3 +1149,22 @@ def get_book_audio(request, book_id):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'audio_url': audio_url})
+
+def search_acronyms_api(request):
+    query = request.GET.get('q', '').strip()
+    search_type = request.GET.get('type', 'short') # 'short' עבור ראשי תיבות, 'meaning' עבור פירוש/מילים
+    
+    results = []
+    if len(query) >= 1:
+        if search_type == 'meaning':
+            matches = Acronym.objects.filter(meaning__icontains=query)[:10]
+        else:
+            matches = Acronym.objects.filter(short__icontains=query)[:10]
+            
+        for item in matches:
+            results.append({
+                'short': item.short,
+                'meaning': item.meaning
+            })
+            
+    return JsonResponse({'results': results})

@@ -93,6 +93,21 @@ class Section(models.Model):
         return f"{self.chapter.title} - {self.title}"
 
 # ==========================================
+# מודל מילון ראשי תיבות (הנתונים החדשים)
+# ==========================================
+class Acronym(models.Model):
+    short = models.CharField(max_length=100, db_index=True, verbose_name="ראשי תיבות")
+    meaning = models.TextField(verbose_name="פירוש / פיתוח ראשי תיבות")
+
+    class Meta:
+        verbose_name = "ראשי תיבות"
+        verbose_name_plural = "מילון ראשי תיבות"
+        ordering = ['short']
+
+    def __str__(self):
+        return f"{self.short} - {self.meaning[:40]}..."
+
+# ==========================================
 # מודלים לעגלת קניות והזמנות
 # ==========================================
 class Cart(models.Model):
