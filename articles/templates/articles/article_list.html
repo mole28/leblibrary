@@ -73,9 +73,13 @@
     .calc-btn-primary { border-radius: 12px; padding: 13px 20px; font-weight: 600; display: flex; justify-content: space-between; text-decoration: none; background: linear-gradient(135deg, #a67c52 0%, #835c39 100%); color: white !important; }
     .calc-btn-secondary { border-radius: 12px; padding: 13px 20px; font-weight: 600; display: flex; justify-content: space-between; text-decoration: none; background-color: #ffffff; color: #946b45 !important; border: 1px solid rgba(166, 124, 82, 0.4); }
     
-    /* סגנון חלונית שו"ת קטנה בצד שמאל */
+    /* סגנון חלונית שו"ת המציגה את השאלה המוצגת */
     .qa-mini-sidebar { background: linear-gradient(180deg, #ffffff 0%, #fdfbf7 100%); border: 1px solid #e2d5c5; border-radius: 16px; padding: 20px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
     .qa-mini-icon { width: 40px; height: 40px; background: #d4af37; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; position: absolute; top: -20px; right: 20px; box-shadow: 0 4px 10px rgba(212,175,55,0.4); }
+
+    /* סגנון חלונית "יש לכם שאלה הלכתית?" הקטנה בצד שמאל */
+    .qa-small-banner { background: linear-gradient(135deg, #a67c52 0%, #d4af37 100%); border-radius: 16px; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(166, 124, 82, 0.25); }
+    .qa-small-banner::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml;utf8,<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="2" cy="2" r="2" fill="white" opacity="0.1"/></svg>'); pointer-events: none; }
 
     .parasha-sidebar { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-right: 6px solid #d4af37; border-radius: 16px; position: relative; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15); }
     .parasha-sidebar::before { content: '\F13E'; font-family: 'bootstrap-icons'; position: absolute; left: -20px; bottom: -20px; font-size: 14rem; color: rgba(255,255,255,0.04); transform: rotate(-15deg); }
@@ -153,7 +157,7 @@
                 </div>
             </div>
 
-            <!-- עמודה ימנית: מאמרים וספרים -->
+            <!-- עמודה ימנית: מאמרים, ספרים, ובסופם חלונית השאלה האחרונה מהשו"ת -->
             <div class="col-lg-8">
                 
                 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -245,9 +249,27 @@
                     </div>
                 </div>
 
+                <!-- חלונית שו"ת ימנית מציגה את השאלה האחרונה -->
+                <div class="mt-5 pt-3">
+                    <div class="qa-mini-sidebar p-4 shadow-sm">
+                        <div class="qa-mini-icon"><i class="bi bi-chat-quote-fill"></i></div>
+                        <h4 class="fw-bold mb-2 mt-1" style="color: #2c3e50; font-size: 1.15rem;">שאלות ותשובות</h4>
+                        <p class="text-muted mb-3" style="font-size: 0.85rem;">מדור הלכה ובירורים מרכזי.</p>
+                        
+                        {% if latest_qa %}
+                        <div class="p-3 bg-white rounded-3 border mb-3 shadow-sm">
+                            <p class="fw-bold mb-1" style="color: #a67c52; font-size: 0.85rem;"><i class="bi bi-patch-question me-1"></i> שאלה אחרונה:</p>
+                            <p class="mb-0 text-dark" style="font-size: 0.9rem; line-height: 1.4;">{{ latest_qa.question }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        <a href="{% url 'articles:qa' %}" class="btn btn-outline-dark w-100 rounded-pill fw-bold" style="font-size: 0.9rem;">היכנס למדור השו"ת המלא</a>
+                    </div>
+                </div>
+
             </div>
 
-            <!-- עמודה שמאלית: מחשבונים, ראשי תיבות, פרשת שבוע וכרטיס שאלה הלכתית קטן -->
+            <!-- עמודה שמאלית: מחשבונים, ראשי תיבות, פרשת שבוע וכרטיס "יש לכם שאלה הלכתית?" הקטן -->
             <div class="col-lg-4">
                 
                 <div class="calc-sidebar-card p-4 text-center mb-5">
@@ -352,21 +374,14 @@
                     </div>
                 </div>
 
-                <!-- חלונית שו"ת קטנה ומעוצבת המציגה את השאלה האחרונה -->
-                <div class="mb-5">
-                    <div class="qa-mini-sidebar p-4 shadow-sm">
-                        <div class="qa-mini-icon"><i class="bi bi-chat-quote-fill"></i></div>
-                        <h4 class="fw-bold mb-2 mt-1" style="color: #2c3e50; font-size: 1.15rem;">שאלות ותשובות</h4>
-                        <p class="text-muted mb-3" style="font-size: 0.85rem;">מדור הלכה ובירורים מרכזי.</p>
-                        
-                        {% if latest_qa %}
-                        <div class="p-3 bg-white rounded-3 border mb-3 shadow-sm">
-                            <p class="fw-bold mb-1" style="color: #a67c52; font-size: 0.85rem;"><i class="bi bi-patch-question me-1"></i> שאלה אחרונה:</p>
-                            <p class="mb-0 text-dark" style="font-size: 0.9rem; line-height: 1.4;">{{ latest_qa.question }}</p>
-                        </div>
-                        {% endif %}
-                        
-                        <a href="{% url 'articles:qa' %}" class="btn btn-outline-dark w-100 rounded-pill fw-bold" style="font-size: 0.9rem;">היכנס למדור השו"ת המלא</a>
+                <!-- חלונית "יש לכם שאלה הלכתית?" קטנה בצד שמאל מתחת לוח השנה -->
+                <div class="qa-small-banner p-4 text-center text-white mb-5">
+                    <div style="position: relative; z-index: 1;">
+                        <h5 class="fw-bold mb-2 text-white" style="font-size: 1.15rem;">יש לכם שאלה הלכתית?</h5>
+                        <p class="small mb-3 text-white opacity-75" style="font-size: 0.9rem;">זקוקים להכוונה? צוות האתר ישמח לענות.</p>
+                        <a href="{% url 'articles:contact' %}" class="btn btn-light rounded-pill fw-bold px-4 py-2 shadow-sm" style="color: #a67c52; font-size: 0.95rem;">
+                            <i class="bi bi-envelope-paper me-1"></i> צור קשר עכשיו
+                        </a>
                     </div>
                 </div>
 
