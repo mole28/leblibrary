@@ -329,7 +329,9 @@ def ai_chat_endpoint(request):
                 """
                 prompt = f"אתה עוזר וירטואלי חייכן ומסביר פנים באתר 'ספריית לייבוביץ' בניהולו של משה לייבוביץ. תפקידך לעזור לגולשים לנווט באתר ולהכיר את הפונקציות שלו.\n{nav_context}\nהגולש שואל אותך: '{user_question}'\nחובה עליך לענות בנימוס ולהסביר לגולש, או להפנות לעמוד הנכון מתוך הרשימה. חשוב מאוד: שלב קישור בפורמט מרקדאון רק עם הנתיב היחסי כפי שהוא כתוב (לדוגמה: [טקסט](/contact/)), בשום אופן אל תוסיף http או כתובות דומיין כמו example.com."
             else:
-                words = [w for w in user_question.split() if len(w) > 1]
+                # התיקון הקריטי: ניקוי סימני פיסוק (כמו סימן שאלה) שמנעו את איתור המילים במסד הנתונים
+                clean_question = re.sub(r'[^\w\sא-ת]', '', user_question)
+                words = [w for w in clean_question.split() if len(w) > 1]
                 
                 # 1. Semantic Search
                 semantic_results = []
@@ -339,15 +341,19 @@ def ai_chat_endpoint(request):
                     pass
                 
                 # 2. DB Search (Articles + Chapters)
+                article_fields = get_text_fields(Article)
                 db_articles = []
                 try:
-                    db_articles = ai_document_search(Article.objects.filter(is_published=True), user_question, ['title', 'content'], words, limit=2)
+                    if article_fields:
+                        db_articles = ai_document_search(Article.objects.filter(is_published=True), clean_question, article_fields, words, limit=3)
                 except Exception:
                     pass
                     
+                chapter_fields = get_text_fields(Chapter)
                 db_chapters = []
                 try:
-                    db_chapters = ai_document_search(Chapter.objects.all(), user_question, ['title', 'content'], words, limit=3)
+                    if chapter_fields:
+                        db_chapters = ai_document_search(Chapter.objects.all(), clean_question, chapter_fields, words, limit=5)
                 except Exception:
                     pass
 
@@ -371,7 +377,8 @@ def ai_chat_endpoint(request):
                     if url not in seen_urls:
                         seen_urls.add(url)
                         title = get_item_title(a)
-                        snippet = get_smart_content(get_item_text(a), words, max_chars=1200)
+                        # הוגדל החיתוך ל-8000 תווים כדי ששום הלכה לא תיחתך באמצע הפרק
+                        snippet = get_smart_content(get_item_text(a), words, max_chars=8000)
                         context_text += f"--- מקור: '{title}' ---\nקישור: {url}\n{snippet}\n\n"
                         unique_relevant_items.append({'title': title, 'url': url})
 
@@ -391,7 +398,8 @@ def ai_chat_endpoint(request):
                             if url not in seen_urls:
                                 seen_urls.add(url)
                                 title = f"{book_title} - {get_item_title(c)}"
-                                snippet = get_smart_content(get_item_text(c), words, max_chars=1500)
+                                # הוגדל החיתוך ל-8000 תווים כדי ששום הלכה לא תיחתך באמצע הפרק
+                                snippet = get_smart_content(get_item_text(c), words, max_chars=8000)
                                 context_text += f"--- מקור: '{title}' ---\nקישור: {url}\n{snippet}\n\n"
                                 unique_relevant_items.append({'title': title, 'url': url})
                         except Exception:
@@ -400,23 +408,23 @@ def ai_chat_endpoint(request):
                 if not unique_relevant_items:
                     return JsonResponse({'answer': 'מצטער, לא הצלחתי לאתר חומרים רלוונטיים במאגרי הספרייה לשאלתך. נסה לנסח אחרת.'})
 
+                # ריכוך קל של הפרומפט כדי שה-AI לא יפחד לענות אם מצא את ההקשר
                 prompt = f"""אתה רב וסייע תורני חכם מטעם 'ספריית לייבוביץ' בניהולו של משה לייבוביץ.
 הגולש שואל אותך: '{user_question}'
 
-כלל ברזל 1: חובה עליך לענות **אך ורק** על סמך הטקסטים המצורפים מטה (שהם המקורות שאותרו מתוך מאגר הספרייה). 
-כלל ברזל 2: אם התשובה לשאלה אינה מופיעה במפורש בטקסטים אלו, אסור לך להמציא פסיקה, אסור לך להסתמך על ידע חיצוני שיש לך, ואסור לך לנתח את המקורות כדי להראות למה הם לא קשורים. עליך לכתוב בדיוק את המשפט הבא בלבד: "מצטער, לא מצאתי לכך התייחסות מפורשת במקורות שנסרקו בספרייה."
-
-אם התשובה כן קיימת במקורות שקיבלת, כתוב אותה בפירוט, בצורה הלכתית ומכובדת (השתמש בפסקאות לסדר את המידע). חובה עליך לציין בגוף התשובה במפורש את השם המדויק של המקור (בדיוק כפי שהוא מופיע בין המקפים בטקסט המקורות) שעליו הסתמכת. 
+חובה עליך לענות **אך ורק** על סמך הטקסטים המצורפים מטה (שהם המקורות שאותרו מתוך מאגר הספרייה). 
+אם התשובה לשאלה מופיעה בטקסטים אלו, ענה בפירוט, בצורה הלכתית ומכובדת, וציין את השם המדויק של המקור שעליו הסתמכת.
+אך ורק אם התשובה אינה מופיעה לחלוטין (גם לא באופן עקיף) בטקסטים אלו, עליך לכתוב בדיוק את המשפט הבא בלבד: "מצטער, לא מצאתי לכך התייחסות מפורשת במקורות שנסרקו בספרייה."
 
 מקורות הספרייה:
 {context_text}"""
             
             def stream_google_response():
                 KNOWN_GOOD_MODELS = [
-                    'gemini-flash-lite-latest',
-                    'gemini-pro-latest',
                     'gemini-1.5-flash-latest',
-                    'gemini-1.5-pro-latest'
+                    'gemini-1.5-pro-latest',
+                    'gemini-flash-lite-latest',
+                    'gemini-pro-latest'
                 ]
                 
                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
