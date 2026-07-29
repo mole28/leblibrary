@@ -73,11 +73,9 @@
     .calc-btn-primary { border-radius: 12px; padding: 13px 20px; font-weight: 600; display: flex; justify-content: space-between; text-decoration: none; background: linear-gradient(135deg, #a67c52 0%, #835c39 100%); color: white !important; }
     .calc-btn-secondary { border-radius: 12px; padding: 13px 20px; font-weight: 600; display: flex; justify-content: space-between; text-decoration: none; background-color: #ffffff; color: #946b45 !important; border: 1px solid rgba(166, 124, 82, 0.4); }
     
-    /* סגנון חלונית שו"ת המציגה את השאלה המוצגת */
     .qa-mini-sidebar { background: linear-gradient(180deg, #ffffff 0%, #fdfbf7 100%); border: 1px solid #e2d5c5; border-radius: 16px; padding: 20px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
     .qa-mini-icon { width: 40px; height: 40px; background: #d4af37; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; position: absolute; top: -20px; right: 20px; box-shadow: 0 4px 10px rgba(212,175,55,0.4); }
 
-    /* סגנון חלונית "יש לכם שאלה הלכתית?" הקטנה בצד שמאל */
     .qa-small-banner { background: linear-gradient(135deg, #a67c52 0%, #d4af37 100%); border-radius: 16px; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(166, 124, 82, 0.25); }
     .qa-small-banner::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml;utf8,<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="2" cy="2" r="2" fill="white" opacity="0.1"/></svg>'); pointer-events: none; }
 
@@ -100,7 +98,7 @@
     body.dark-mode .live-search-dropdown .border-bottom { border-color: #334155 !important; }
     body.dark-mode .hover-bg-light:hover { background-color: #0f172a !important; }
 
-    .acronym-widget-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .acronym-widget-card { background: #fdfcfb; border: 1px solid #e6dec9; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 8px 24px rgba(0,0,0,0.04), 0 2px 6px rgba(168, 137, 79, 0.05); }
     body.dark-mode .acronym-widget-card { background: #1e293b; border-color: #334155; }
     body.dark-mode .acronym-widget-card h5 { color: #f8fafc !important; }
     body.dark-mode .acronym-widget-card p { color: #94a3b8 !important; }
@@ -305,7 +303,7 @@
                     <p style="font-size: 0.85em; color: #718096; margin-bottom: 12px;">הקלד ראשי תיבות (כמו "רש"י") או מילה מתוך הפירוש:</p>
                     
                     <div style="position: relative; margin-bottom: 12px;">
-                        <input type="text" id="acronymSearchInput" placeholder="חפש ראשי תיבות או פירוש..." style="width: 100%; padding: 10px 15px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 0.95em; outline: none; transition: border-color 0.2s;">
+                        <input type="text" id="acronymSearchInput" placeholder="חפש ראשי תיבות או פירוש..." style="width: 100%; padding: 10px 15px; background-color: #fcfbfa; border: 1px solid #dcd3c1; border-radius: 8px; font-size: 0.95em; outline: none; transition: border-color 0.2s;">
                     </div>
                     
                     <div style="display: flex; gap: 10px; margin-bottom: 15px; font-size: 0.85em;">
@@ -317,7 +315,7 @@
                         </label>
                     </div>
 
-                    <div id="acronymResultsContainer" style="max-height: 220px; overflow-y: auto; font-size: 0.9em;">
+                    <div id="acronymResultsContainer" style="max-height: 220px; overflow-y: auto; font-size: 0.9em; background: #fdfcfb; border: 1px solid #e6dec9; border-radius: 8px; padding: 10px;">
                         <div style="color: #a0aec0; text-align: center; padding: 10px; font-style: italic;">הקלד לחיפוש מהיר במאגר...</div>
                     </div>
                 </div>
@@ -476,8 +474,8 @@
                         let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
                         data.results.forEach(item => {
                             html += `
-                                <li style="padding: 8px 10px; border-bottom: 1px solid #edf2f7; margin-bottom: 4px;">
-                                    <strong style="color: #d4af37; font-size: 1.05em;">${item.short}</strong>: 
+                                <li style="padding: 8px 10px; border-bottom: 1px solid #f0e9dc; margin-bottom: 4px;">
+                                    <strong style="color: #a67c52; font-size: 1.05em;">${item.short}</strong>: 
                                     <span style="color: #4a5568;">${item.meaning}</span>
                                 </li>
                             `;
