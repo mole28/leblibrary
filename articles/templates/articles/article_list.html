@@ -73,8 +73,9 @@
     .calc-btn-primary { border-radius: 12px; padding: 13px 20px; font-weight: 600; display: flex; justify-content: space-between; text-decoration: none; background: linear-gradient(135deg, #a67c52 0%, #835c39 100%); color: white !important; }
     .calc-btn-secondary { border-radius: 12px; padding: 13px 20px; font-weight: 600; display: flex; justify-content: space-between; text-decoration: none; background-color: #ffffff; color: #946b45 !important; border: 1px solid rgba(166, 124, 82, 0.4); }
     
-    .qa-highlight { background: linear-gradient(180deg, #ffffff 0%, #fdfbf7 100%); border: 1px solid #e2d5c5; border-radius: 16px; padding: 30px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-    .qa-icon { width: 50px; height: 50px; background: #d4af37; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; position: absolute; top: -25px; right: 30px; box-shadow: 0 5px 15px rgba(212,175,55,0.4); }
+    /* עיצוב חדש לחלונית שו"ת רוחבית ומלבנית */
+    .qa-wide-highlight { background: linear-gradient(135deg, #ffffff 0%, #fdfbf7 100%); border: 1px solid #e2d5c5; border-radius: 16px; padding: 30px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+    .qa-wide-icon { width: 50px; height: 50px; background: #d4af37; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; position: absolute; top: -25px; right: 40px; box-shadow: 0 5px 15px rgba(212,175,55,0.4); }
     
     .parasha-sidebar { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-right: 6px solid #d4af37; border-radius: 16px; position: relative; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15); }
     .parasha-sidebar::before { content: '\F13E'; font-family: 'bootstrap-icons'; position: absolute; left: -20px; bottom: -20px; font-size: 14rem; color: rgba(255,255,255,0.04); transform: rotate(-15deg); }
@@ -86,7 +87,7 @@
     .btn-gold-outline:hover { background: #a67c52; color: white; }
     
     body.dark-mode .section-title { color: #f8fafc; }
-    body.dark-mode .premium-card, body.dark-mode .qa-highlight { background: #1e293b; border-color: #334155; }
+    body.dark-mode .premium-card, body.dark-mode .qa-wide-highlight { background: #1e293b; border-color: #334155; }
     body.dark-mode .book-card-img { background: #0f172a; }
     
     body.dark-mode .site-intro-card-floating { background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%) !important; border-color: rgba(212, 175, 55, 0.25) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.6) !important; }
@@ -155,7 +156,7 @@
                 </div>
             </div>
 
-            <!-- עמודה ימנית: מאמרים וספרים -->
+            <!-- עמודה ימנית: מאמרים וספרים (ובסופם חלונית השו"ת הרוחבית) -->
             <div class="col-lg-8">
                 
                 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -247,12 +248,42 @@
                     </div>
                 </div>
 
+                <!-- חלונית שו"ת רוחבית ומלבנית מתחת לספרים למכירה -->
+                <div class="mt-5 pt-3">
+                    <div class="qa-wide-highlight shadow-sm p-4 p-md-5">
+                        <div class="qa-wide-icon"><i class="bi bi-chat-quote-fill"></i></div>
+                        
+                        <div class="row align-items-center">
+                            <div class="col-lg-8 mb-3 mb-lg-0">
+                                <h4 class="fw-bold mb-2 mt-2" style="color: #2c3e50;">שאלות ותשובות</h4>
+                                <p class="text-muted mb-3">מדור הלכה ובירורים מרכזי. ניתן למצוא כאן שו"ת מקיף במגוון נושאים שעלו לאחרונה, או לשלוח שאלה חדשה לצוות האתר.</p>
+                                
+                                {% if latest_qa %}
+                                <div class="p-3 bg-white rounded-3 border shadow-sm">
+                                    <p class="fw-bold mb-1" style="color: #a67c52; font-size: 0.9rem;"><i class="bi bi-patch-question me-1"></i> שאלה אחרונה מהמדור:</p>
+                                    <p class="mb-0 text-dark" style="font-size: 0.95rem; line-height: 1.4;">{{ latest_qa.question }}</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-lg-4 text-lg-center d-flex flex-column gap-2 justify-content-center">
+                                <a href="{% url 'articles:contact' %}" class="btn rounded-pill fw-bold py-2 px-4 shadow-sm" style="background-color: rgba(166, 124, 82, 0.1); color: #a67c52; border: 1px dashed rgba(166, 124, 82, 0.5);">
+                                    <i class="bi bi-pencil-square me-1"></i> רוצים לשאול שאלה?
+                                </a>
+                                <a href="{% url 'articles:qa' %}" class="btn btn-outline-dark rounded-pill fw-bold py-2 px-4 shadow-sm">
+                                    היכנס למדור השו"ת המלא
+                                </a>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
             </div>
 
-            <!-- עמודה שמאלית: מחשבונים, ראשי תיבות, שו"ת ופרשה -->
+            <!-- עמודה שמאלית: מחשבונים, ראשי תיבות ופרשת שבוע -->
             <div class="col-lg-4">
                 
-                <!-- 1. מחשבוני חז"ל -->
                 <div class="calc-sidebar-card p-4 text-center mb-5">
                     <div class="mb-4 d-flex justify-content-center gap-3">
                         <div class="icon-circle" title="אורך"><i class="bi bi-rulers"></i></div>
@@ -277,7 +308,6 @@
                     </div>
                 </div>
 
-                <!-- 2. מילון ראשי תיבות (ממוקם בדיוק מתחת למחשבונים / מתחת לספרים למכירה מצד שמאל) -->
                 <div class="acronym-widget-card mb-5">
                     <div style="display: flex; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #d4af37; padding-bottom: 10px;">
                         <i class="bi bi-journal-text" style="font-size: 1.4rem; color: #d4af37; margin-left: 10px;"></i>
@@ -304,31 +334,6 @@
                     </div>
                 </div>
 
-                <!-- 3. שאלות ותשובות -->
-                <div class="mb-5">
-                    <div class="qa-highlight shadow-sm p-4">
-                        <div class="qa-icon"><i class="bi bi-chat-quote-fill"></i></div>
-                        <h4 class="fw-bold mb-3 mt-2" style="color: #2c3e50;">שאלות ותשובות</h4>
-                        <p class="text-muted mb-3 small">מדור הלכה ובירורים מרכזי, ניתן למצוא כאן שו"ת מקיף במגוון נושאים שעלו לאחרונה.</p>
-                        
-                        <div class="mb-4 text-center">
-                            <a href="{% url 'articles:contact' %}" class="text-decoration-none fw-bold" style="color: #a67c52; background-color: rgba(166, 124, 82, 0.05); border: 1px dashed rgba(166, 124, 82, 0.4); padding: 6px 15px; border-radius: 8px; display: inline-block; transition: all 0.2s; font-size: 0.95rem;">
-                                <i class="bi bi-pencil-square me-1"></i> רוצים לשאול שאלה? לחצו כאן
-                            </a>
-                        </div>
-                        
-                        {% if latest_qa %}
-                        <div class="p-3 bg-white rounded-3 border mb-4 shadow-sm">
-                            <p class="fw-bold mb-2" style="color: #a67c52;"><i class="bi bi-patch-question me-1"></i> שאלה מהמדור:</p>
-                            <p class="mb-0 text-dark" style="font-size: 0.95rem; line-height: 1.5;">{{ latest_qa.question }}</p>
-                        </div>
-                        {% endif %}
-                        
-                        <a href="{% url 'articles:qa' %}" class="btn btn-outline-dark w-100 rounded-pill fw-bold">היכנס למדור השו"ת המלא</a>
-                    </div>
-                </div>
-
-                <!-- 4. פרשת שבוע -->
                 <div class="mb-5">
                     <div class="parasha-sidebar p-4 p-md-5 d-flex flex-column justify-content-center" style="min-height: 460px;">
                         <div style="z-index: 1;">
@@ -477,7 +482,6 @@
 
                 acronymContainer.innerHTML = '<div style="color: #718096; text-align: center; padding: 10px;">מחפש במאגר...</div>';
 
-                // תיקון נתיב ה-API באופן ישיר כדי למנוע שגיאות טעינה
                 fetch(`/articles/api/search-acronyms/?q=${encodeURIComponent(query)}&type=${searchType}`)
                     .then(response => response.json())
                     .then(data => {
