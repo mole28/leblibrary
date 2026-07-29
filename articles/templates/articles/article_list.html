@@ -73,21 +73,18 @@
     .calc-btn-primary { border-radius: 12px; padding: 13px 20px; font-weight: 600; display: flex; justify-content: space-between; text-decoration: none; background: linear-gradient(135deg, #a67c52 0%, #835c39 100%); color: white !important; }
     .calc-btn-secondary { border-radius: 12px; padding: 13px 20px; font-weight: 600; display: flex; justify-content: space-between; text-decoration: none; background-color: #ffffff; color: #946b45 !important; border: 1px solid rgba(166, 124, 82, 0.4); }
     
-    /* עיצוב חדש לחלונית שו"ת רוחבית ומלבנית */
-    .qa-wide-highlight { background: linear-gradient(135deg, #ffffff 0%, #fdfbf7 100%); border: 1px solid #e2d5c5; border-radius: 16px; padding: 30px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-    .qa-wide-icon { width: 50px; height: 50px; background: #d4af37; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; position: absolute; top: -25px; right: 40px; box-shadow: 0 5px 15px rgba(212,175,55,0.4); }
+    /* סגנון חדש לחלונית שאלות קטנה בצד שמאל בסגנון הפס התחתון */
+    .qa-mini-card { background: linear-gradient(135deg, #a67c52 0%, #d4af37 100%); border-radius: 16px; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(166, 124, 82, 0.25); }
+    .qa-mini-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml;utf8,<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="2" cy="2" r="2" fill="white" opacity="0.1"/></svg>'); pointer-events: none; }
     
     .parasha-sidebar { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-right: 6px solid #d4af37; border-radius: 16px; position: relative; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15); }
     .parasha-sidebar::before { content: '\F13E'; font-family: 'bootstrap-icons'; position: absolute; left: -20px; bottom: -20px; font-size: 14rem; color: rgba(255,255,255,0.04); transform: rotate(-15deg); }
-    
-    .contact-strip { background: linear-gradient(135deg, #a67c52 0%, #d4af37 100%); border-radius: 20px; position: relative; overflow: hidden; box-shadow: 0 20px 40px rgba(166, 124, 82, 0.3); }
-    .contact-strip::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml;utf8,<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="2" cy="2" r="2" fill="white" opacity="0.1"/></svg>'); }
 
     .btn-gold-outline { color: #a67c52; border: 1px solid #a67c52; border-radius: 50px; padding: 8px 25px; font-weight: 600; transition: all 0.3s; background: transparent; }
     .btn-gold-outline:hover { background: #a67c52; color: white; }
     
     body.dark-mode .section-title { color: #f8fafc; }
-    body.dark-mode .premium-card, body.dark-mode .qa-wide-highlight { background: #1e293b; border-color: #334155; }
+    body.dark-mode .premium-card { background: #1e293b; border-color: #334155; }
     body.dark-mode .book-card-img { background: #0f172a; }
     
     body.dark-mode .site-intro-card-floating { background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%) !important; border-color: rgba(212, 175, 55, 0.25) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.6) !important; }
@@ -156,7 +153,7 @@
                 </div>
             </div>
 
-            <!-- עמודה ימנית: מאמרים וספרים (ובסופם חלונית השו"ת הרוחבית) -->
+            <!-- עמודה ימנית: מאמרים וספרים -->
             <div class="col-lg-8">
                 
                 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -248,40 +245,9 @@
                     </div>
                 </div>
 
-                <!-- חלונית שו"ת רוחבית ומלבנית מתחת לספרים למכירה -->
-                <div class="mt-5 pt-3">
-                    <div class="qa-wide-highlight shadow-sm p-4 p-md-5">
-                        <div class="qa-wide-icon"><i class="bi bi-chat-quote-fill"></i></div>
-                        
-                        <div class="row align-items-center">
-                            <div class="col-lg-8 mb-3 mb-lg-0">
-                                <h4 class="fw-bold mb-2 mt-2" style="color: #2c3e50;">שאלות ותשובות</h4>
-                                <p class="text-muted mb-3">מדור הלכה ובירורים מרכזי. ניתן למצוא כאן שו"ת מקיף במגוון נושאים שעלו לאחרונה, או לשלוח שאלה חדשה לצוות האתר.</p>
-                                
-                                {% if latest_qa %}
-                                <div class="p-3 bg-white rounded-3 border shadow-sm">
-                                    <p class="fw-bold mb-1" style="color: #a67c52; font-size: 0.9rem;"><i class="bi bi-patch-question me-1"></i> שאלה אחרונה מהמדור:</p>
-                                    <p class="mb-0 text-dark" style="font-size: 0.95rem; line-height: 1.4;">{{ latest_qa.question }}</p>
-                                </div>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="col-lg-4 text-lg-center d-flex flex-column gap-2 justify-content-center">
-                                <a href="{% url 'articles:contact' %}" class="btn rounded-pill fw-bold py-2 px-4 shadow-sm" style="background-color: rgba(166, 124, 82, 0.1); color: #a67c52; border: 1px dashed rgba(166, 124, 82, 0.5);">
-                                    <i class="bi bi-pencil-square me-1"></i> רוצים לשאול שאלה?
-                                </a>
-                                <a href="{% url 'articles:qa' %}" class="btn btn-outline-dark rounded-pill fw-bold py-2 px-4 shadow-sm">
-                                    היכנס למדור השו"ת המלא
-                                </a>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-
             </div>
 
-            <!-- עמודה שמאלית: מחשבונים, ראשי תיבות ופרשת שבוע -->
+            <!-- עמודה שמאלית: מחשבונים, ראשי תיבות, פרשת שבוע וכרטיס שאלה הלכתית קטן -->
             <div class="col-lg-4">
                 
                 <div class="calc-sidebar-card p-4 text-center mb-5">
@@ -386,22 +352,17 @@
                     </div>
                 </div>
 
-            </div>
-        </div>
-
-        <div class="row mt-5 pt-4">
-            <div class="col-12">
-                <div class="contact-strip p-5 text-center text-md-end d-flex flex-column flex-md-row justify-content-between align-items-center">
-                    <div class="mb-4 mb-md-0" style="z-index: 1;">
-                        <h2 class="fw-bold mb-2 text-white">יש לכם שאלה הלכתית? זקוקים להכוונה?</h2>
-                        <p class="fs-5 mb-0 text-white opacity-75">צוות האתר ישמח לעמוד לשירותכם בכל עת.</p>
-                    </div>
-                    <div style="z-index: 1;">
-                        <a href="{% url 'articles:contact' %}" class="btn btn-light btn-lg rounded-pill px-5 fw-bold shadow-sm" style="color: #a67c52; font-size: 1.1rem;">
-                            <i class="bi bi-envelope-paper me-2"></i> צור קשר עכשיו
+                <!-- חלונית שאלה הלכתית קטנה ומעוצבת מתחת לוח השנה -->
+                <div class="qa-mini-card p-4 text-center text-white">
+                    <div style="position: relative; z-index: 1;">
+                        <h5 class="fw-bold mb-2 text-white" style="font-size: 1.15rem;">יש לכם שאלה הלכתית?</h5>
+                        <p class="small mb-3 text-white opacity-75" style="font-size: 0.9rem;">זקוקים להכוונה? צוות האתר ישמח לענות.</p>
+                        <a href="{% url 'articles:contact' %}" class="btn btn-light rounded-pill fw-bold px-4 py-2 shadow-sm" style="color: #a67c52; font-size: 0.95rem;">
+                            <i class="bi bi-envelope-paper me-1"></i> צור קשר עכשיו
                         </a>
                     </div>
                 </div>
+
             </div>
         </div>
 
