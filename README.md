@@ -23,6 +23,7 @@ This project is a custom Django-based web application serving as a centralized r
 * **Responsive UI:** Mobile-friendly layouts, clean navigation, and smooth modal interactions.
 * **SEO Optimized:** Verified and integrated with Google Search Console for organic search visibility.
 * **Static Asset Management:** Structured handling of static files, CSS, and custom branding (Favicon).
+* **Talmudic Acronyms:** A fast, interactive database for Jewish acronyms featuring live search.
 
 ---
 
@@ -30,6 +31,7 @@ This project is a custom Django-based web application serving as a centralized r
 The platform features integrated custom AI agents designed to elevate the user experience:
 1. **Content & Knowledge Expert Agent:** Searches deeply through the platform's article repository to deliver professional, comprehensive answers accompanied by precise references and citations.
 2. **Site Navigation & Orientation Agent:** Assists users in exploring the platform, providing dynamic routing, guidance, and helpful references to relevant pages and resources.
+3. **AI Audio Generation (Text-to-Speech):** Automated, high-quality AI voice narrations generated directly from article texts, providing users with an accessible and seamless listening experience.
 
 ---
 
