@@ -216,6 +216,7 @@ def get_item_title(item):
 def get_item_text(item):
     text = ""
     try:
+        # פול מכל השדות הרגילים
         for f in item._meta.get_fields():
             if hasattr(f, 'get_internal_type') and f.get_internal_type() in ['CharField', 'TextField', 'RichTextField', 'RichTextUploadingField', 'HTMLField']:
                 val = getattr(item, f.name, '')
@@ -223,6 +224,26 @@ def get_item_text(item):
                     text += val + "\n"
     except Exception:
         pass
+        
+    try:
+        # הפיתרון החכם: אם הגענו לפרק (Chapter), נמשוך אוטומטית את הטקסט של הסעיפים שלו (Section)!
+        if item.__class__.__name__ == 'Chapter':
+            sections = None
+            if hasattr(item, 'sections'):
+                sections = item.sections.all()
+            elif hasattr(item, 'section_set'):
+                sections = item.section_set.all()
+            
+            if sections:
+                for sec in sections:
+                    for f in sec._meta.get_fields():
+                        if hasattr(f, 'get_internal_type') and f.get_internal_type() in ['CharField', 'TextField', 'RichTextField', 'RichTextUploadingField', 'HTMLField']:
+                            val = getattr(sec, f.name, '')
+                            if val and isinstance(val, str) and len(val) > 10:
+                                text += val + "\n"
+    except Exception:
+        pass
+        
     text = re.sub(r'<[^>]+>', ' ', text)
     return re.sub(r'\s+', ' ', text).strip()
 
@@ -329,92 +350,91 @@ def ai_chat_endpoint(request):
                 """
                 prompt = f"אתה עוזר וירטואלי חייכן ומסביר פנים באתר 'ספריית לייבוביץ' בניהולו של משה לייבוביץ. תפקידך לעזור לגולשים לנווט באתר ולהכיר את הפונקציות שלו.\n{nav_context}\nהגולש שואל אותך: '{user_question}'\nחובה עליך לענות בנימוס ולהסביר לגולש, או להפנות לעמוד הנכון מתוך הרשימה. חשוב מאוד: שלב קישור בפורמט מרקדאון רק עם הנתיב היחסי כפי שהוא כתוב (לדוגמה: [טקסט](/contact/)), בשום אופן אל תוסיף http או כתובות דומיין כמו example.com."
             else:
-                # התיקון הקריטי: ניקוי סימני פיסוק (כמו סימן שאלה) שמנעו את איתור המילים במסד הנתונים
                 clean_question = re.sub(r'[^\w\sא-ת]', '', user_question)
                 words = [w for w in clean_question.split() if len(w) > 1]
                 
-                # 1. Semantic Search
                 semantic_results = []
                 try:
                     semantic_results = search_similar_articles(user_question, top_k=3)
                 except Exception:
                     pass
                 
-                # 2. DB Search (Articles + Chapters)
                 article_fields = get_text_fields(Article)
                 db_articles = []
                 try:
                     if article_fields:
                         db_articles = ai_document_search(Article.objects.filter(is_published=True), clean_question, article_fields, words, limit=3)
-                except Exception:
-                    pass
+                except Exception: pass
                     
                 chapter_fields = get_text_fields(Chapter)
                 db_chapters = []
                 try:
                     if chapter_fields:
-                        db_chapters = ai_document_search(Chapter.objects.all(), clean_question, chapter_fields, words, limit=5)
-                except Exception:
-                    pass
+                        db_chapters = ai_document_search(Chapter.objects.all(), clean_question, chapter_fields, words, limit=3)
+                except Exception: pass
+                
+                # תוספת ישירה למציאת התוכן של הספר!
+                section_fields = get_text_fields(Section)
+                db_sections = []
+                try:
+                    if section_fields:
+                        db_sections = ai_document_search(Section.objects.all(), clean_question, section_fields, words, limit=5)
+                except Exception: pass
 
                 context_text = ""
                 unique_relevant_items = []
                 seen_urls = set()
                 
-                if semantic_results:
-                    for item in semantic_results:
-                        title = item.get('title', '')
-                        url = item.get('url', '')
-                        content_snippet = item.get('content_snippet', '')
-                        
-                        if title and url and content_snippet and url not in seen_urls:
-                            seen_urls.add(url)
-                            context_text += f"--- מקור: '{title}' ---\nקישור: {url}\n{content_snippet}\n\n"
-                            unique_relevant_items.append({'title': title, 'url': url})
-
-                for a in db_articles:
-                    url = request.build_absolute_uri(reverse('articles:detail', args=[a.id]))
-                    if url not in seen_urls:
+                def add_to_context(title, url, snippet):
+                    nonlocal context_text
+                    if url not in seen_urls and snippet and len(snippet.strip()) > 10:
                         seen_urls.add(url)
-                        title = get_item_title(a)
-                        # הוגדל החיתוך ל-8000 תווים כדי ששום הלכה לא תיחתך באמצע הפרק
-                        snippet = get_smart_content(get_item_text(a), words, max_chars=8000)
                         context_text += f"--- מקור: '{title}' ---\nקישור: {url}\n{snippet}\n\n"
                         unique_relevant_items.append({'title': title, 'url': url})
 
+                if semantic_results:
+                    for item in semantic_results:
+                        add_to_context(item.get('title', ''), item.get('url', ''), item.get('content_snippet', ''))
+
+                for a in db_articles:
+                    url = request.build_absolute_uri(reverse('articles:detail', args=[a.id]))
+                    snippet = get_smart_content(get_item_text(a), words, max_chars=8000)
+                    add_to_context(get_item_title(a), url, snippet)
+
                 for c in db_chapters:
                     try:
-                        book_id = c.book.id
-                        book_title = get_item_title(c.book)
-                    except AttributeError:
-                        book_id = getattr(c, 'book_id', '')
-                        book_title = "ספר"
-                        
-                    if book_id:
-                        try:
+                        book_id = getattr(c, 'book_id', None) or (c.book.id if hasattr(c, 'book') else None)
+                        if book_id:
                             base_book_url = request.build_absolute_uri(reverse('articles:book_detail', args=[book_id]))
                             url = f"{base_book_url}#chapter-{c.id}"
-                            
-                            if url not in seen_urls:
-                                seen_urls.add(url)
-                                title = f"{book_title} - {get_item_title(c)}"
-                                # הוגדל החיתוך ל-8000 תווים כדי ששום הלכה לא תיחתך באמצע הפרק
-                                snippet = get_smart_content(get_item_text(c), words, max_chars=8000)
-                                context_text += f"--- מקור: '{title}' ---\nקישור: {url}\n{snippet}\n\n"
-                                unique_relevant_items.append({'title': title, 'url': url})
-                        except Exception:
-                            pass
+                            title = f"{get_item_title(c.book) if hasattr(c, 'book') else 'ספר'} - {get_item_title(c)}"
+                            snippet = get_smart_content(get_item_text(c), words, max_chars=8000)
+                            add_to_context(title, url, snippet)
+                    except Exception: pass
+                    
+                for s in db_sections:
+                    try:
+                        chapter = getattr(s, 'chapter', None)
+                        if chapter:
+                            book_id = getattr(chapter, 'book_id', None) or (chapter.book.id if hasattr(chapter, 'book') else None)
+                            if book_id:
+                                base_book_url = request.build_absolute_uri(reverse('articles:book_detail', args=[book_id]))
+                                url = f"{base_book_url}#chapter-{chapter.id}"
+                                title = f"{get_item_title(chapter.book) if hasattr(chapter, 'book') else 'ספר'} - {get_item_title(chapter)}"
+                                snippet = get_smart_content(get_item_text(s), words, max_chars=8000)
+                                add_to_context(title, url, snippet)
+                    except Exception: pass
 
                 if not unique_relevant_items:
                     return JsonResponse({'answer': 'מצטער, לא הצלחתי לאתר חומרים רלוונטיים במאגרי הספרייה לשאלתך. נסה לנסח אחרת.'})
 
-                # ריכוך קל של הפרומפט כדי שה-AI לא יפחד לענות אם מצא את ההקשר
                 prompt = f"""אתה רב וסייע תורני חכם מטעם 'ספריית לייבוביץ' בניהולו של משה לייבוביץ.
 הגולש שואל אותך: '{user_question}'
 
-חובה עליך לענות **אך ורק** על סמך הטקסטים המצורפים מטה (שהם המקורות שאותרו מתוך מאגר הספרייה). 
-אם התשובה לשאלה מופיעה בטקסטים אלו, ענה בפירוט, בצורה הלכתית ומכובדת, וציין את השם המדויק של המקור שעליו הסתמכת.
-אך ורק אם התשובה אינה מופיעה לחלוטין (גם לא באופן עקיף) בטקסטים אלו, עליך לכתוב בדיוק את המשפט הבא בלבד: "מצטער, לא מצאתי לכך התייחסות מפורשת במקורות שנסרקו בספרייה."
+המערכת סרקה את מאגרי הספרייה והביאה לך את הטקסטים הבאים (ספרים, פרקים, ומאמרים). 
+קרא אותם היטב. אם יש בהם מידע רלוונטי שעונה על השאלה, ענה בפירוט, בצורה הלכתית ומכובדת תוך ציטוט ולמידה מתוך הטקסטים שסופקו לך. 
+אל תציין שהטקסטים שקיבלת הם רק כותרות ואל תתלונן על חוסר מידע. פשוט ענה מהמידע שקיבלת או שתתנצל במדויק כך: "מצטער, לא מצאתי לכך התייחסות מפורשת במקורות שנסרקו בספרייה."
+חובה לציין בסוף התשובה את המקורות (ספר/סימן/פרק) עליהם הסתמכת.
 
 מקורות הספרייה:
 {context_text}"""
