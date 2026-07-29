@@ -37,6 +37,7 @@ from .emails import send_order_confirmation
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .vector_store import search_similar_articles
+from .models import Article, Book, QA, Acronym 
 
 def get_base_schema_json():
     return json.dumps({
