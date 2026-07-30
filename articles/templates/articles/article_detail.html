@@ -70,10 +70,10 @@
     <nav aria-label="breadcrumb" class="mb-2 mt-4">
       <ol class="breadcrumb" style="font-size: 1rem;">
         <li class="breadcrumb-item">
-            <a href="{% url 'articles:index' %}" class="text-decoration-none text-muted">מאמרים</a>
+            <a href="{% url 'articles:list' %}" class="text-decoration-none text-muted"><i class="bi bi-house-door-fill"></i> ספריית לייבוביץ</a>
         </li>
         <li class="breadcrumb-item">
-            <a href="{% url 'articles:list' %}" class="text-decoration-none text-muted">מאמרים</a>
+            <a href="{% url 'articles:index' %}" class="text-decoration-none text-muted">מאמרים</a>
         </li>
         <li class="breadcrumb-item active fw-bold text-dark" aria-current="page">{{ article.title|safe }}</li>
       </ol>
@@ -292,7 +292,9 @@
     function copyCitation() {
         const title = "{{ article.title|striptags|escapejs }}";
         const url = window.location.href;
-        const citationText = `"${title}"\nמתוך אתר ספריית לייבוביץ.\nקישור למקור: ${url}`;
+        const citationText = `"${title}"
+מתוך אתר ספריית לייבוביץ.
+קישור למקור: ${url}`;
         navigator.clipboard.writeText(citationText).then(function() {
             alert("המקור הועתק ללוח בהצלחה!");
         }).catch(function(err) {
