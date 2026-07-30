@@ -348,17 +348,23 @@
         }
         
         .lux-acronym {
-            text-decoration: underline dotted #d4af37;
+            color: #d4af37 !important;
+            text-decoration: underline dotted #d4af37 !important;
             text-underline-offset: 4px;
             cursor: help;
             position: relative;
             display: inline-block;
-            color: inherit;
-            transition: color 0.2s ease;
+            transition: all 0.3s ease;
         }
         
         .lux-acronym:hover {
-            color: #d4af37;
+            color: #1a252f !important;
+            text-decoration: underline dotted #1a252f !important;
+        }
+        
+        body.dark-mode .lux-acronym:hover {
+            color: #f8fafc !important;
+            text-decoration-color: #f8fafc !important;
         }
 
         .lux-acronym::after {
