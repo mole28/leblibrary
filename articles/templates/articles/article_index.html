@@ -58,6 +58,9 @@
                             <a href="{% url 'articles:detail' article.pk %}" class="text-decoration-none article-link" style="color: #4e8cff; font-size: 1.15rem; transition: all 0.2s;">
                                 {{ article.title }}
                             </a>
+                            {% if article.is_new %}
+                                <span class="ms-1" style="color: #dc3545; font-size: 0.85em; font-weight: 800; display: inline-block; animation: pulse 1.5s infinite;">(חדש)</span>
+                            {% endif %}
                         </li>
                         {% endfor %}
                     </ul>
@@ -89,6 +92,13 @@
     ul li::marker {
         color: #2c3e50;
         font-size: 1.2rem;
+    }
+
+    /* Pulse animation for the NEW badge */
+    @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.7; }
+        100% { transform: scale(1); opacity: 1; }
     }
 </style>
 {% endblock %}

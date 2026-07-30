@@ -107,6 +107,13 @@
     body.dark-mode .acronym-widget-card label { color: #cbd5e1; }
     body.dark-mode .acronym-widget-card li { border-bottom-color: #334155 !important; }
     body.dark-mode .acronym-widget-card span { color: #cbd5e1 !important; }
+
+    /* Pulse animation for the NEW badge */
+    @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.7; }
+        100% { transform: scale(1); opacity: 1; }
+    }
 </style>
 
 <div class="home-dashboard container-fluid px-2 px-xl-0 mb-5">
@@ -127,7 +134,14 @@
                     <div class="text-muted small mb-2 d-flex justify-content-between">
                         <span><i class="bi bi-calendar3"></i> {{ article.hebrew_date }}</span>
                     </div>
-                    <h4 class="fw-bold mb-3" style="color: #1a252f;"><a href="{% url 'articles:detail' article.pk %}" class="text-decoration-none text-dark">{{ article.title|striptags }}</a></h4>
+                    <h4 class="fw-bold mb-3" style="color: #1a252f;">
+                        <a href="{% url 'articles:detail' article.pk %}" class="text-decoration-none text-dark">
+                            {{ article.title|striptags }}
+                            {% if article.is_new %}
+                                <span class="ms-1" style="color: #dc3545; font-size: 0.8em; font-weight: 800; display: inline-block; animation: pulse 1.5s infinite;">(חדש)</span>
+                            {% endif %}
+                        </a>
+                    </h4>
                     <p class="text-muted flex-grow-1">{{ article.content|striptags|truncatewords:20|safe }}</p>
                     <div class="mt-3">
                         <a href="{% url 'articles:detail' article.pk %}" class="btn-gold-outline d-inline-block text-center w-100">קרא מאמר מלא</a>
@@ -172,7 +186,14 @@
                             <div class="text-muted small mb-2 d-flex justify-content-between">
                                 <span><i class="bi bi-calendar3"></i> {{ article.hebrew_date }}</span>
                             </div>
-                            <h4 class="fw-bold mb-3" style="color: #1a252f;"><a href="{% url 'articles:detail' article.pk %}" class="text-decoration-none text-dark">{{ article.title|striptags }}</a></h4>
+                            <h4 class="fw-bold mb-3" style="color: #1a252f;">
+                                <a href="{% url 'articles:detail' article.pk %}" class="text-decoration-none text-dark">
+                                    {{ article.title|striptags }}
+                                    {% if article.is_new %}
+                                        <span class="ms-1" style="color: #dc3545; font-size: 0.8em; font-weight: 800; display: inline-block; animation: pulse 1.5s infinite;">(חדש)</span>
+                                    {% endif %}
+                                </a>
+                            </h4>
                             <p class="text-muted flex-grow-1">{{ article.content|striptags|truncatewords:20|safe }}</p>
                             <div class="mt-3">
                                 <a href="{% url 'articles:detail' article.pk %}" class="btn-gold-outline d-inline-block text-center w-100">קרא מאמר מלא</a>
@@ -202,7 +223,12 @@
                                     </div>
                                 {% endif %}
                                 <div class="p-3 d-flex flex-column flex-grow-1">
-                                    <h5 class="fw-bold mb-1">{{ book.title|striptags }}</h5>
+                                    <h5 class="fw-bold mb-1">
+                                        {{ book.title|striptags }}
+                                        {% if book.is_new %}
+                                            <span class="ms-1" style="color: #dc3545; font-size: 0.8em; font-weight: 800; display: inline-block; animation: pulse 1.5s infinite;">(חדש)</span>
+                                        {% endif %}
+                                    </h5>
                                     <span class="text-muted small mb-3">{{ book.author }}</span>
                                     <a href="{% url 'articles:book_detail' book.pk %}" class="btn btn-light border mt-auto w-100 rounded-pill fw-bold text-secondary">פתח ספר</a>
                                 </div>
@@ -232,7 +258,12 @@
                                     </div>
                                 {% endif %}
                                 <div class="p-3 d-flex flex-column flex-grow-1">
-                                    <h5 class="fw-bold mb-1">{{ book.title|striptags }}</h5>
+                                    <h5 class="fw-bold mb-1">
+                                        {{ book.title|striptags }}
+                                        {% if book.is_new %}
+                                            <span class="ms-1" style="color: #dc3545; font-size: 0.8em; font-weight: 800; display: inline-block; animation: pulse 1.5s infinite;">(חדש)</span>
+                                        {% endif %}
+                                    </h5>
                                     <h4 class="fw-bold my-2" style="color: #a67c52;">₪{{ book.price }}</h4>
                                     <div class="d-grid gap-2 mt-auto">
                                         <a href="{% url 'articles:book_detail' book.pk %}" class="btn btn-light border rounded-pill fw-bold text-secondary text-sm">לפרטים</a>

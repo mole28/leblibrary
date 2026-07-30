@@ -3,6 +3,7 @@ from django.utils import timezone
 from ckeditor.fields import RichTextField
 from pyluach import dates
 from django.contrib.auth.models import User
+from datetime import timedelta
 
 # ==========================================
 # רשימת פרשות השבוע (מסודרת לפי חומשים)
@@ -54,6 +55,13 @@ class Article(models.Model):
             return heb_date.hebrew_date_string() 
         return ""
 
+    @property
+    def is_new(self):
+        """מחזיר אמת אם המאמר נוצר ב-7 הימים האחרונים"""
+        if not self.created_at:
+            return False
+        return self.created_at >= timezone.now() - timedelta(days=7)
+
     def __str__(self):
         return self.title
 
@@ -65,9 +73,17 @@ class Book(models.Model):
     price = models.DecimalField(max_digits=6, decimal_places=2, default=0.00, verbose_name="מחיר הספר")
     is_for_sale = models.BooleanField(default=False, verbose_name="זמין לרכישה")
     stock = models.PositiveIntegerField(default=0, verbose_name="מלאי זמין")
+    created_at = models.DateTimeField(default=timezone.now, verbose_name="תאריך הוספה")
     
     # השדה שמאפשר שליטה על סדר התצוגה בעמוד הספרים
     order = models.PositiveIntegerField(default=0, verbose_name="סדר תצוגה (1 יופיע ראשון)")
+    
+    @property
+    def is_new(self):
+        """מחזיר אמת אם הספר נוסף ב-7 הימים האחרונים"""
+        if not self.created_at:
+            return False
+        return self.created_at >= timezone.now() - timedelta(days=7)
     
     class Meta:
         ordering = ['order', 'title']

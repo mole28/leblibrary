@@ -3,18 +3,12 @@
 {% block title %}{{ book.title|striptags }} - הספרייה התורנית{% endblock %}
 
 {% block extra_head %}
-<!-- ========================================== -->
-<!-- Academic tags for AI (Highwire Press)      -->
-<!-- ========================================== -->
 <meta name="citation_title" content="{{ book.title|striptags|escape }}">
 <meta name="citation_author" content="{{ book.author|default:'משה לייבוביץ'|escape }}">
 <meta name="citation_publisher" content="ספריית לייבוביץ">
 <meta name="citation_language" content="he">
 <meta name="citation_public_url" content="{{ request.build_absolute_uri }}">
 
-<!-- ========================================== -->
-<!-- Dynamic Open Graph meta tags for preview   -->
-<!-- ========================================== -->
 <meta property="og:title" content="{{ book.title|striptags|escape }} | ספריית לייבוביץ">
 <meta property="og:description" content="{{ book.summary|striptags|truncatewords:30|escape }}">
 <meta property="og:type" content="book">
@@ -23,9 +17,6 @@
 <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ book.cover_image.url }}">
 {% endif %}
 
-<!-- ========================================== -->
-<!-- Aggressive AI bait: Book as FAQ & reading commands -->
-<!-- ========================================== -->
 <script type="application/ld+json">
 [
   {
@@ -96,25 +87,20 @@
 {% endblock %}
 
 {% block content %}
-<!-- Zen mode button -->
 <button onclick="toggleZenMode()" id="zenToggleBtn" class="zen-toggle-btn" title="מצב קריאה נקי">
     <i id="zenIcon" class="bi bi-arrows-fullscreen"></i>
 </button>
 
-<!-- Mobile TOC Toggle Button -->
 <button onclick="toggleMobileToc()" id="mobileTocBtn" class="mobile-toc-btn d-lg-none" title="תוכן עניינים">
     <i class="bi bi-list-nested"></i>
 </button>
 
-<!-- Mobile TOC Overlay -->
 <div id="mobileTocOverlay" class="mobile-toc-overlay" onclick="toggleMobileToc()"></div>
 
 <div class="container-fluid mt-2 mb-5" style="max-width: 1400px;">
     <div class="row">
         
-        <!-- Sidebar: Table of contents as semantic nav (Acts as offcanvas on mobile) -->
         <nav aria-label="תוכן עניינים" class="col-lg-3 hide-in-zen toc-nav-container" id="toc-column">
-            <!-- Added close button for mobile -->
             <button onclick="toggleMobileToc()" class="btn-close-toc d-lg-none" title="סגור תוכן עניינים">
                 <i class="bi bi-x-lg"></i>
             </button>
@@ -164,7 +150,6 @@
             </div>
         </nav>
 
-        <!-- Main reading area updated as semantic article -->
         <article class="col-lg-8 offset-lg-1 content-card-bg shadow-sm p-4 p-md-5 rounded" id="main-content-col">
             
             {% if messages %}
@@ -176,9 +161,7 @@
                 {% endfor %}
             {% endif %}
 
-            <!-- Action buttons including luxury share button -->
             <div class="d-flex justify-content-end gap-3 mb-1 hide-in-zen flex-wrap align-items-center">
-                <!-- Voice reading button -->
                 <button onclick="toggleSpeech()" id="speechBtn" class="btn-print btn btn-outline-warning border shadow-sm" title="האזנה לספר" style="color: #a67c52; border-color: #a67c52;">
                     <i class="bi bi-volume-up-fill" id="speechIcon"></i> <span id="speechText">האזנה לקריאה</span>
                 </button>
@@ -193,14 +176,12 @@
                 </button>
             </div>
 
-            <!-- Main header area wrapped in header -->
             <header class="text-center mb-5 mt-2">
                 <h1 class="display-4 fw-bold text-dark" style="font-family: 'Frank Ruhl Libre', serif;">{{ book.title|safe }}</h1>
                 <p class="text-muted fs-5">מאת: {{ book.author|default:'משה לייבוביץ' }}</p>
                 <hr class="w-25 mx-auto opacity-75">
             </header>
 
-            <!-- Sales/Summary card -->
             {% if book.is_for_sale or book.cover_image %}
             <div class="card mb-5 border-0 shadow-sm hide-in-zen" style="border-radius: 16px; overflow: hidden; border: 1px solid rgba(212,175,55,0.2) !important; background-color: transparent;">
                 <div class="row g-0">
@@ -243,7 +224,6 @@
             </div>
             {% endif %}
 
-            <!-- The book reading itself -->
             <div class="book-reading-mode">
                 
                 {% if book.chapters.all %}
@@ -313,7 +293,6 @@
     </div>
 </div>
 
-<!-- Global share modal -->
 <div class="modal fade" id="luxShareModal" tabindex="-1" aria-hidden="true" dir="rtl">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 450px;">
         <div class="modal-content lux-modal-content">
@@ -352,7 +331,6 @@
 </div>
 
 <style>
-    /* Luxury share modal styling */
     .lux-modal-content {
         background: linear-gradient(145deg, #1e202c 0%, #0f172a 100%);
         border: 1px solid rgba(212, 175, 55, 0.3);
@@ -430,7 +408,6 @@
     body.dark-mode .content-card-bg { background-color: #1e293b; border: 1px solid rgba(255,255,255,0.05) !important; }
     body.dark-mode .article-content { color: #cbd5e1 !important; }
 
-    /* Zen Mode system */
     .zen-toggle-btn {
         position: fixed;
         bottom: 110px;
@@ -470,11 +447,10 @@
     body.zen-mode #main-content-col { max-width: 850px !important; margin: 0 auto !important; flex: 0 0 100% !important; padding-top: 5vh !important; padding-bottom: 15vh !important; }
     body.zen-mode .zen-toggle-btn { background: #3f4050; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); }
 
-    /* Mobile TOC Styles */
     .mobile-toc-btn {
         position: fixed;
-        bottom: 180px; /* Positioned above the Zen button on mobile */
-        right: 25px;   /* Positioned on the right side */
+        bottom: 180px;
+        right: 25px;
         width: 55px;
         height: 55px;
         border-radius: 50%;
@@ -485,7 +461,7 @@
         font-size: 1.5rem;
         z-index: 10500;
         cursor: pointer;
-        display: none; /* Hidden by default, shown via d-lg-none */
+        display: none;
         align-items: center;
         justify-content: center;
         transition: all 0.3s ease;
@@ -520,7 +496,6 @@
         transition: opacity 0.3s ease;
     }
 
-    /* Mobile offcanvas behavior for the TOC */
     @media (max-width: 991.98px) {
         .mobile-toc-btn {
             display: flex !important;
@@ -529,7 +504,7 @@
         .toc-nav-container {
             position: fixed !important;
             top: 0;
-            right: -320px; /* Hidden off-screen to the right */
+            right: -320px;
             width: 320px;
             max-width: 85vw;
             height: 100vh;
@@ -546,7 +521,7 @@
         }
 
         .toc-nav-container.toc-open {
-            right: 0; /* Slide in */
+            right: 0;
         }
         
         .mobile-toc-overlay.overlay-open {
@@ -554,7 +529,6 @@
             opacity: 1;
         }
 
-        /* Reset the sticky behavior inside the mobile offcanvas */
         #toc-container {
             position: relative !important;
             top: 0 !important;
@@ -562,13 +536,12 @@
             max-height: 100vh !important;
             border-radius: 0 !important;
             box-shadow: none !important;
-            padding-top: 50px !important; /* Space for close button */
+            padding-top: 50px !important;
         }
     }
 </style>
 
 <script>
-    // Mobile TOC Logic
     function toggleMobileToc() {
         const tocNav = document.getElementById('toc-column');
         const overlay = document.getElementById('mobileTocOverlay');
@@ -577,7 +550,7 @@
         
         if (tocNav.classList.contains('toc-open')) {
             overlay.classList.add('overlay-open');
-            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            document.body.style.overflow = 'hidden';
         } else {
             overlay.classList.remove('overlay-open');
             document.body.style.overflow = '';
@@ -590,7 +563,6 @@
         }
     }
 
-    // Server-based Text-to-Speech audio function
     let currentAudio = null;
     let isPlaying = false;
 
@@ -598,7 +570,6 @@
         const speechText = document.getElementById('speechText');
         const speechIcon = document.getElementById('speechIcon');
 
-        // Stop if already playing
         if (isPlaying && currentAudio) {
             currentAudio.pause();
             isPlaying = false;
@@ -607,7 +578,6 @@
             return;
         }
 
-        // Resume if paused
         if (!isPlaying && currentAudio) {
             currentAudio.play();
             isPlaying = true;
@@ -616,7 +586,6 @@
             return;
         }
 
-        // Fetch audio on first click
         speechText.innerText = 'מכין אודיו...';
         speechIcon.className = 'bi bi-hourglass-split';
 
@@ -650,52 +619,6 @@
         }
     }
 
-    // Smart share function (Web Share API for mobile, modal for desktop)
-    function openShareModal() {
-        const shareData = {
-            title: document.title,
-            text: 'קראו את התוכן המרתק בספריית לייבוביץ:',
-            url: window.location.href
-        };
-
-        if (navigator.share) {
-            navigator.share(shareData).catch(() => {});
-        } else {
-            const currentUrl = window.location.href;
-            const titleEncoded = encodeURIComponent(document.title);
-            const urlEncoded = encodeURIComponent(currentUrl);
-
-            document.getElementById('luxShareUrl').value = currentUrl;
-            document.getElementById('shareWhatsapp').href = `https://api.whatsapp.com/send?text=${titleEncoded}%20-%20${urlEncoded}`;
-            document.getElementById('shareEmail').href = `mailto:?subject=${titleEncoded}&body=מוזמנים לקרוא:%20${urlEncoded}`;
-            document.getElementById('shareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${urlEncoded}`;
-            document.getElementById('shareTwitter').href = `https://twitter.com/intent/tweet?text=${titleEncoded}&url=${urlEncoded}`;
-
-            var modal = new bootstrap.Modal(document.getElementById('luxShareModal'));
-            modal.show();
-        }
-    }
-
-    // Copy link function
-    function copyShareUrl() {
-        const urlInput = document.getElementById('luxShareUrl');
-        urlInput.select();
-        urlInput.setSelectionRange(0, 99999);
-        
-        navigator.clipboard.writeText(urlInput.value).then(() => {
-            const copyText = document.getElementById('copyText');
-            const copyIcon = document.getElementById('copyIcon');
-            
-            copyText.innerText = 'הועתק בהצלחה!';
-            copyIcon.className = 'bi bi-check2-lg';
-            
-            setTimeout(() => {
-                copyText.innerText = 'העתק קישור';
-                copyIcon.className = 'bi bi-clipboard';
-            }, 2500);
-        });
-    }
-
     function toggleZenMode() {
         document.body.classList.toggle('zen-mode');
         const icon = document.getElementById('zenIcon');
@@ -725,6 +648,50 @@
         });
     }
 
+    function openShareModal() {
+        const shareData = {
+            title: document.title,
+            text: 'קראו את התוכן המרתק בספריית לייבוביץ:',
+            url: window.location.href
+        };
+
+        if (navigator.share) {
+            navigator.share(shareData).catch(() => {});
+        } else {
+            const currentUrl = window.location.href;
+            const titleEncoded = encodeURIComponent(document.title);
+            const urlEncoded = encodeURIComponent(currentUrl);
+
+            document.getElementById('luxShareUrl').value = currentUrl;
+            document.getElementById('shareWhatsapp').href = `https://api.whatsapp.com/send?text=${titleEncoded}%20-%20${urlEncoded}`;
+            document.getElementById('shareEmail').href = `mailto:?subject=${titleEncoded}&body=מוזמנים לקרוא:%20${urlEncoded}`;
+            document.getElementById('shareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${urlEncoded}`;
+            document.getElementById('shareTwitter').href = `https://twitter.com/intent/tweet?text=${titleEncoded}&url=${urlEncoded}`;
+
+            var modal = new bootstrap.Modal(document.getElementById('luxShareModal'));
+            modal.show();
+        }
+    }
+
+    function copyShareUrl() {
+        const urlInput = document.getElementById('luxShareUrl');
+        urlInput.select();
+        urlInput.setSelectionRange(0, 99999);
+        
+        navigator.clipboard.writeText(urlInput.value).then(() => {
+            const copyText = document.getElementById('copyText');
+            const copyIcon = document.getElementById('copyIcon');
+            
+            copyText.innerText = 'הועתק בהצלחה!';
+            copyIcon.className = 'bi bi-check2-lg';
+            
+            setTimeout(() => {
+                copyText.innerText = 'העתק קישור';
+                copyIcon.className = 'bi bi-clipboard';
+            }, 2500);
+        });
+    }
+
     document.addEventListener("DOMContentLoaded", function() {
         const tocList = document.getElementById('toc-list');
         const autoContent = document.getElementById('auto-toc-content');
@@ -744,7 +711,6 @@
                     link.href = '#' + id;
                     link.className = 'list-group-item list-group-item-action text-truncate toc-link';
                     
-                    // Added click handler to auto-generated links for mobile closing
                     link.onclick = function() { closeTocOnMobile(); };
                     
                     const text = header.innerText.trim();
