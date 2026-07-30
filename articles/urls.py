@@ -10,7 +10,7 @@ urlpatterns = [
     # עמודי מאמרים (הליבה)
     # ==========================
     path('', views.article_list, name='list'),
-    path('index/', views.article_index, name='index'),
+    path('index/', views.article_index, name='articles_index'),
     path('article/<int:pk>/', views.article_detail, name='detail'),
     path('article/new/', views.article_create, name='create'),
     path('article/<int:pk>/edit/', views.article_edit, name='edit'),
