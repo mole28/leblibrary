@@ -101,18 +101,30 @@
     <i id="zenIcon" class="bi bi-arrows-fullscreen"></i>
 </button>
 
+<!-- Mobile TOC Toggle Button -->
+<button onclick="toggleMobileToc()" id="mobileTocBtn" class="mobile-toc-btn d-lg-none" title="תוכן עניינים">
+    <i class="bi bi-list-nested"></i>
+</button>
+
+<!-- Mobile TOC Overlay -->
+<div id="mobileTocOverlay" class="mobile-toc-overlay" onclick="toggleMobileToc()"></div>
+
 <div class="container-fluid mt-2 mb-5" style="max-width: 1400px;">
     <div class="row">
         
-        <!-- Sidebar: Table of contents as semantic nav -->
-        <nav aria-label="תוכן עניינים" class="col-lg-3 d-none d-lg-block hide-in-zen" id="toc-column">
+        <!-- Sidebar: Table of contents as semantic nav (Acts as offcanvas on mobile) -->
+        <nav aria-label="תוכן עניינים" class="col-lg-3 hide-in-zen toc-nav-container" id="toc-column">
+            <!-- Added close button for mobile -->
+            <button onclick="toggleMobileToc()" class="btn-close-toc d-lg-none" title="סגור תוכן עניינים">
+                <i class="bi bi-x-lg"></i>
+            </button>
             <div class="sticky-top shadow-sm rounded content-card-bg p-3" style="top: 100px; max-height: 80vh; overflow-y: auto; scroll-behavior: smooth;" id="toc-container">
                 <h2 class="fw-bold mb-3 border-bottom pb-2 text-primary fs-4">תוכן עניינים</h2>
                 <div class="list-group list-group-flush" id="toc-list">
                     
                     {% if book.chapters.all or book.chapter_set.all %}
                         {% for chapter in book.chapters.all %}
-                            <a href="#chapter-{{ chapter.id }}" class="list-group-item list-group-item-action fw-bold bg-light mt-2 rounded toc-link scrollspy-target text-dark">
+                            <a href="#chapter-{{ chapter.id }}" class="list-group-item list-group-item-action fw-bold bg-light mt-2 rounded toc-link scrollspy-target text-dark" onclick="closeTocOnMobile()">
                                 {{ chapter.title }}
                             </a>
                             {% for section in chapter.sections.all %}
@@ -121,16 +133,16 @@
                                 {% elif "תוכן הנספח" in section.title %}
                                 {% else %}
                                     {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;">{{ section.title }}</a>
+                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;" onclick="closeTocOnMobile()">{{ section.title }}</a>
                                     {% else %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-truncate text-muted toc-link scrollspy-target" style="font-size: 0.95rem;">{{ section.title }}</a>
+                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-truncate text-muted toc-link scrollspy-target" style="font-size: 0.95rem;" onclick="closeTocOnMobile()">{{ section.title }}</a>
                                     {% endif %}
                                 {% endif %}
                             {% endfor %}
                         {% endfor %}
                         
                         {% for chapter in book.chapter_set.all %}
-                            <a href="#chapter-{{ chapter.id }}" class="list-group-item list-group-item-action fw-bold bg-light mt-2 rounded toc-link scrollspy-target text-dark">
+                            <a href="#chapter-{{ chapter.id }}" class="list-group-item list-group-item-action fw-bold bg-light mt-2 rounded toc-link scrollspy-target text-dark" onclick="closeTocOnMobile()">
                                 {{ chapter.title }}
                             </a>
                             {% for section in chapter.sections.all %}
@@ -139,9 +151,9 @@
                                 {% elif "תוכן הנספח" in section.title %}
                                 {% else %}
                                     {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;">{{ section.title }}</a>
+                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;" onclick="closeTocOnMobile()">{{ section.title }}</a>
                                     {% else %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-truncate text-muted toc-link scrollspy-target" style="font-size: 0.95rem;">{{ section.title }}</a>
+                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-truncate text-muted toc-link scrollspy-target" style="font-size: 0.95rem;" onclick="closeTocOnMobile()">{{ section.title }}</a>
                                     {% endif %}
                                 {% endif %}
                             {% endfor %}
@@ -457,9 +469,127 @@
     body.zen-mode .content-card-bg { box-shadow: none !important; background-color: transparent !important; border: none !important; }
     body.zen-mode #main-content-col { max-width: 850px !important; margin: 0 auto !important; flex: 0 0 100% !important; padding-top: 5vh !important; padding-bottom: 15vh !important; }
     body.zen-mode .zen-toggle-btn { background: #3f4050; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); }
+
+    /* Mobile TOC Styles */
+    .mobile-toc-btn {
+        position: fixed;
+        bottom: 180px; /* Positioned above the Zen button on mobile */
+        right: 25px;   /* Positioned on the right side */
+        width: 55px;
+        height: 55px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #2c3e50 0%, #3f4050 100%);
+        color: #d4af37;
+        border: 2px solid #d4af37;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        font-size: 1.5rem;
+        z-index: 10500;
+        cursor: pointer;
+        display: none; /* Hidden by default, shown via d-lg-none */
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+    }
+    
+    .mobile-toc-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
+    }
+
+    .btn-close-toc {
+        position: absolute;
+        top: 15px;
+        left: 15px;
+        background: transparent;
+        border: none;
+        color: #dc3545;
+        font-size: 1.5rem;
+        z-index: 1060;
+    }
+
+    .mobile-toc-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 10490;
+        display: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    /* Mobile offcanvas behavior for the TOC */
+    @media (max-width: 991.98px) {
+        .mobile-toc-btn {
+            display: flex !important;
+        }
+        
+        .toc-nav-container {
+            position: fixed !important;
+            top: 0;
+            right: -320px; /* Hidden off-screen to the right */
+            width: 320px;
+            max-width: 85vw;
+            height: 100vh;
+            z-index: 10501;
+            background: #ffffff;
+            transition: right 0.3s ease;
+            display: block !important;
+            padding: 0 !important;
+            box-shadow: -5px 0 25px rgba(0,0,0,0.2);
+        }
+        
+        body.dark-mode .toc-nav-container {
+            background: #1e293b;
+        }
+
+        .toc-nav-container.toc-open {
+            right: 0; /* Slide in */
+        }
+        
+        .mobile-toc-overlay.overlay-open {
+            display: block;
+            opacity: 1;
+        }
+
+        /* Reset the sticky behavior inside the mobile offcanvas */
+        #toc-container {
+            position: relative !important;
+            top: 0 !important;
+            height: 100% !important;
+            max-height: 100vh !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            padding-top: 50px !important; /* Space for close button */
+        }
+    }
 </style>
 
 <script>
+    // Mobile TOC Logic
+    function toggleMobileToc() {
+        const tocNav = document.getElementById('toc-column');
+        const overlay = document.getElementById('mobileTocOverlay');
+        
+        tocNav.classList.toggle('toc-open');
+        
+        if (tocNav.classList.contains('toc-open')) {
+            overlay.classList.add('overlay-open');
+            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        } else {
+            overlay.classList.remove('overlay-open');
+            document.body.style.overflow = '';
+        }
+    }
+
+    function closeTocOnMobile() {
+        if (window.innerWidth < 992) {
+            toggleMobileToc();
+        }
+    }
+
     // Server-based Text-to-Speech audio function
     let currentAudio = null;
     let isPlaying = false;
@@ -613,6 +743,9 @@
                     const link = document.createElement('a');
                     link.href = '#' + id;
                     link.className = 'list-group-item list-group-item-action text-truncate toc-link';
+                    
+                    // Added click handler to auto-generated links for mobile closing
+                    link.onclick = function() { closeTocOnMobile(); };
                     
                     const text = header.innerText.trim();
                     
