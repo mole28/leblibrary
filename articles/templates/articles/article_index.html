@@ -36,7 +36,10 @@
         <li class="breadcrumb-item">
             <a href="{% url 'articles:list' %}" class="text-decoration-none text-muted"><i class="bi bi-house-door-fill"></i> ספריית לייבוביץ</a>
         </li>
-        <li class="breadcrumb-item active fw-bold" aria-current="page">מאמרים</li>
+        <li class="breadcrumb-item">
+            <a href="{% url 'articles:articles_index' %}" class="text-decoration-none text-muted">מאמרים</a>
+        </li>
+        <li class="breadcrumb-item active fw-bold" aria-current="page">אינדקס</li>
     </ol>
 </nav>
 {% endblock %}
