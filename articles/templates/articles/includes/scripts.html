@@ -296,89 +296,142 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const popup = document.createElement('div');
-        popup.className = 'lux-footnote-popup';
-        document.body.appendChild(popup);
+        const acronymDict = {
+            'אע"פ': 'אף על פי',
+            'קמ"ל': 'קא משמע לן',
+            'רמב"ם': 'רבי משה בן מימון',
+            'רמב"ן': 'רבי משה בן נחמן',
+            'רש"י': 'רבי שלמה יצחקי',
+            'חז"ל': 'חכמינו זכרונם לברכה',
+            'שו"ת': 'שאלות ותשובות',
+            'אח"כ': 'אחר כך',
+            'ב"ה': 'ברוך השם',
+            'בעז"ה': 'בעזרת השם',
+            'יו"ט': 'יום טוב',
+            'ע"ז': 'על זה / עבודה זרה',
+            'וכו\'': 'וכולי',
+            'ת"ח': 'תלמיד חכם',
+            'ע"כ': 'עד כאן',
+            'הקב"ה': 'הקדוש ברוך הוא',
+            'ד"ה': 'דיבור המתחיל',
+            'ע"פ': 'על פי',
+            'ע"י': 'על ידי',
+            'שליט"א': 'שיחיה לאורך ימים טובים אמן',
+            'זצ"ל': 'זכר צדיק לברכה',
+            'הי"ד': 'השם יקום דמו',
+            'בד"צ': 'בית דין צדק',
+            'מו"מ': 'משא ומתן',
+            'ביהמ"ק': 'בית המקדש',
+            'תנ"ך': 'תורה נביאים כתובים',
+            'ש"ס': 'שישה סדרי משנה',
+            'רבש"ע': 'ריבונו של עולם',
+            'יוה"כ': 'יום הכיפורים',
+            'חוה"מ': 'חול המועד',
+            'רז"ל': 'רבותינו זכרונם לברכה',
+            'אדמו"ר': 'אדוננו מורנו ורבנו',
+            'א"י': 'ארץ ישראל',
+            'עמ"י': 'עם ישראל',
+            'י"ם': 'ירושלים',
+            'נר\'': 'נראה',
+            'עי\'': 'עיין',
+            'שד"ח': 'שדי חמד',
+            'משנ"ב': 'משנה ברורה',
+            'שו"ע': 'שולחן ערוך',
+            'ר"ת': 'רבינו תם',
+            'דאו\'': 'דאורייתא',
+            'דרבנן': 'מדרבנן',
+            'הו"א': 'הוה אמינא',
+            'קיי"ל': 'קיימא לן',
+            'ס"ל': 'סבירא ליה',
+            'א"כ': 'אם כן',
+            'ה"נ': 'הכי נמי',
+            'ה"מ': 'הני מילי',
+            'ה"ק': 'הכי קאמר',
+            'מ"ט': 'מאי טעמא',
+            'מ"מ': 'מכל מקום',
+            'אע"ג': 'אף על גב',
+            'אפ"ה': 'אפילו הכי',
+            'וא"ת': 'ואם תאמר',
+            'וי"ל': 'ויש לומר',
+            'א"ל': 'אמר ליה',
+            'וז"ל': 'וזה לשונו',
+            'ל"ת': 'לא תעשה',
+            'מ"ע': 'מצות עשה',
+            'הל\'': 'הלכה / הלכות',
+            'ב"ק': 'בבא קמא',
+            'ב"מ': 'בבא מציעא',
+            'ב"ב': 'בבא בתרא',
+            'סנ\'': 'סנהדרין',
+            'פס\'': 'פסחים',
+            'מו"ק': 'מועד קטן',
+            'ר"ע': 'רבי עקיבא',
+            'ר"מ': 'רבי מאיר',
+            'ר"ל': 'ריש לקיש'
+        };
 
-        let activeLink = null;
+        const hebrewPrefixes = ['ו', 'ב', 'ל', 'מ', 'ש', 'ה', 'וכ', 'וש', 'מה', 'שה', 'לכש'];
 
-        const footnoteLinks = document.querySelectorAll('a[href^="#"]');
+        function walkTextNodes(node) {
+            let next;
+            if (node.nodeType === 1) {
+                const tag = node.nodeName;
+                if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'A' || node.classList.contains('lux-acronym')) {
+                    return;
+                }
+                for (let child = node.firstChild; child; child = next) {
+                    next = child.nextSibling;
+                    walkTextNodes(child);
+                }
+            } else if (node.nodeType === 3) {
+                const text = node.nodeValue;
+                
+                // התיקון כאן: הוספנו את כל סוגי המרכאות והגרשיים לחיפוש
+                const regex = /([א-ת]+["'״”“]+[א-ת]+|[א-ת]+['׳`])/g;
+                
+                let match;
+                let lastIndex = 0;
+                let hasMatch = false;
+                const fragment = document.createDocumentFragment();
 
-        footnoteLinks.forEach(link => {
-            const targetId = link.getAttribute('href').substring(1);
-            if (!targetId) return;
-            
-            const targetElement = document.getElementById(targetId) || document.querySelector(`a[name="${targetId}"]`);
-
-            if (targetElement) {
-                const showPopup = (e) => {
-                    let contentNode = targetElement;
+                while ((match = regex.exec(text)) !== null) {
+                    let word = match[0];
                     
-                    if (targetElement.tagName.toLowerCase() === 'a' || targetElement.tagName.toLowerCase() === 'span') {
-                        if (targetElement.parentElement && targetElement.parentElement.innerText.length > targetElement.innerText.length) {
-                            contentNode = targetElement.parentElement;
+                    // התיקון השני: הופכים את הגרשיים מהנייד לגרשיים רגילים רק בשביל המילון
+                    let normalizedWord = word.replace(/['׳`]/g, "'").replace(/["״”“]/g, '"');
+                    let meaning = acronymDict[normalizedWord];
+                    
+                    if (!meaning && normalizedWord.length > 2) {
+                        for (let prefix of hebrewPrefixes) {
+                            if (normalizedWord.startsWith(prefix) && acronymDict[normalizedWord.substring(prefix.length)]) {
+                                meaning = acronymDict[normalizedWord.substring(prefix.length)];
+                                break;
+                            }
                         }
                     }
 
-                    let clone = contentNode.cloneNode(true);
-                    
-                    const backLinks = clone.querySelectorAll('a[href^="#"]');
-                    backLinks.forEach(bl => bl.remove());
-                    
-                    popup.innerHTML = clone.innerHTML.trim();
-                    activeLink = link;
-
-                    const rect = link.getBoundingClientRect();
-                    
-                    let top = rect.top + window.scrollY - popup.offsetHeight - 15;
-                    let left = rect.left + window.scrollX + (rect.width / 2) - (popup.offsetWidth / 2);
-                    
-                    if (top < window.scrollY) {
-                        top = rect.bottom + window.scrollY + 15;
+                    if (meaning) {
+                        hasMatch = true;
+                        fragment.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
+                        
+                        const span = document.createElement('span');
+                        span.className = 'lux-acronym';
+                        span.setAttribute('data-meaning', meaning);
+                        span.textContent = word; // שומר על המילה המקורית כפי שהוקלדה עם המרכאות של הנייד
+                        fragment.appendChild(span);
+                        
+                        lastIndex = regex.lastIndex;
                     }
-                    
-                    if (left < 10) left = 10;
-                    if (left + popup.offsetWidth > window.innerWidth - 10) {
-                        left = window.innerWidth - popup.offsetWidth - 10;
-                    }
-
-                    popup.style.top = top + 'px';
-                    popup.style.left = left + 'px';
-                    popup.classList.add('show');
-                };
-
-                const hidePopup = () => {
-                    popup.classList.remove('show');
-                    activeLink = null;
-                };
-
-                link.addEventListener('mouseenter', showPopup);
-                link.addEventListener('mouseleave', hidePopup);
-
-                link.addEventListener('click', (e) => {
-                    if (activeLink !== link) {
-                        e.preventDefault(); 
-                        showPopup(e);
-                    } else {
-                        hidePopup();
-                    }
-                });
+                }
+                
+                if (hasMatch) {
+                    fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+                    node.parentNode.replaceChild(fragment, node);
+                }
             }
-        });
+        }
 
-        document.addEventListener('click', (e) => {
-            if (activeLink && !activeLink.contains(e.target) && !popup.contains(e.target)) {
-                popup.classList.remove('show');
-                activeLink = null;
-            }
-        });
-        
-        window.addEventListener('scroll', () => {
-            if (popup.classList.contains('show') && activeLink) {
-                popup.classList.remove('show');
-                activeLink = null;
-            }
-        }, { passive: true });
+        const contentAreas = document.querySelectorAll('.article-content');
+        contentAreas.forEach(area => walkTextNodes(area));
     });
 </script>
 
