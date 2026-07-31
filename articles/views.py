@@ -724,6 +724,12 @@ def qa_list(request):
 def acronyms_view(request):
     from .models import Acronym
     query = request.GET.get('q', '').strip()
+    
+    # === נרמול חיפוש ראשי תיבות ===
+    query = re.sub(r'["״”“]', '"', query)
+    query = re.sub(r'[\'׳`]', "'", query)
+    # ============================
+    
     search_type = request.GET.get('type', 'short')
     acronyms = None
     if query:
@@ -1153,6 +1159,12 @@ def get_book_audio(request, book_id):
 
 def search_acronyms_api(request):
     query = request.GET.get('q', '').strip()
+    
+    # --- תיקון המרכאות ---
+    query = re.sub(r'["״”“]', '"', query)
+    query = re.sub(r'[\'׳`]', "'", query)
+    # ---------------------
+    
     search_type = request.GET.get('type', 'short') # 'short' עבור ראשי תיבות, 'meaning' עבור פירוש/מילים
     
     results = []
