@@ -1,6 +1,16 @@
 import pytest
 from django.urls import reverse
 
+# הדקורטור הזה חובה לכל טסט שניגש למסד הנתונים או מנסה ליצור אובייקטים של ג'נגו
+@pytest.mark.django_db
+def test_article_list_view_loads_successfully(client):
+    # 'client' הוא דפדפן וירטואלי ש-pytest מספק לנו
+    url = reverse('articles:list')
+    response = client.get(url)
+    
+    # הבדיקה עצמה: האם השרת החזיר קוד 200 (הכל תקין)?
+    assert response.status_code == 200
+
 import json
 from django.test import TestCase, RequestFactory
 from articles.models import Acronym
@@ -31,13 +41,3 @@ class AcronymSearchAPITest(TestCase):
             
             self.assertTrue(len(data['results']) > 0, f"Search failed for: {query}")
             self.assertEqual(data['results'][0]['short'], expected_short)
-            
-# הדקורטור הזה חובה לכל טסט שניגש למסד הנתונים או מנסה ליצור אובייקטים של ג'נגו
-@pytest.mark.django_db
-def test_article_list_view_loads_successfully(client):
-    # 'client' הוא דפדפן וירטואלי ש-pytest מספק לנו
-    url = reverse('articles:list')
-    response = client.get(url)
-    
-    # הבדיקה עצמה: האם השרת החזיר קוד 200 (הכל תקין)?
-    assert response.status_code == 200

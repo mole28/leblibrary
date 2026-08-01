@@ -93,7 +93,11 @@
     <script src="https://www.google.com/recaptcha/api.js?render=6LfC_VQtAAAAAGC81qfJWQpnMGlbgaTD91finoP6" async defer></script>
     
     <style>
+        html { font-size: 16px; }
         html, body { height: 100%; margin: 0; }
+        img, iframe, video, picture, figure { max-width: 100%; height: auto; }
+        * { overflow-wrap: break-word; }
+
         body {
             display: flex;
             flex-direction: column;
@@ -274,6 +278,7 @@
         .scroll-top-btn:hover { background-color: #d4af37; color: #3f4050; box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4); }
 
         @media (max-width: 768px) {
+            html { font-size: 14.5px; }
             .hero-section { height: 260px !important; }
             .hero-content { transform: translateY(-10px); padding: 0 10px; }
             .elegant-search-form { padding: 4px 10px !important; }
