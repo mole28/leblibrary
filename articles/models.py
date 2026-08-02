@@ -1,6 +1,11 @@
 from django.db import models
 from django.utils import timezone
-from ckeditor.fields import RichTextField
+
+# ------------------------------------------
+# ייבוא מעודכן עבור CKEditor 5
+# ------------------------------------------
+from django_ckeditor_5.fields import CKEditor5Field
+
 from pyluach import dates
 from django.contrib.auth.models import User
 from datetime import timedelta
@@ -43,7 +48,9 @@ class Article(models.Model):
     # הגדלנו את השדה כדי שיוכל להכיל מספר פרשות יחד כמו "בא,ואתחנן"
     parasha = models.CharField(max_length=500, default=',general,', verbose_name="שיוך לפרשות שבוע", blank=True)
     
-    content = RichTextField(verbose_name="תוכן המאמר") 
+    # תוקן: הוסרה המילה 'Text'
+    content = CKEditor5Field(config_name='extends', verbose_name="תוכן המאמר") 
+    
     hebrew_date = models.CharField(max_length=100, verbose_name="תאריך עברי", blank=True)
     created_at = models.DateTimeField(default=timezone.now, verbose_name="תאריך יצירה")
     is_published = models.BooleanField(default=True, verbose_name="מפורסם")
@@ -65,11 +72,15 @@ class Article(models.Model):
     def __str__(self):
         return self.title
 
+
 class Book(models.Model):
     title = models.CharField(max_length=200, verbose_name="שם הספר")
     author = models.CharField(max_length=100, verbose_name="מחבר")
     cover_image = models.ImageField(upload_to='books/covers/', blank=True, null=True, verbose_name="תמונת כריכה")
-    summary = RichTextField(verbose_name="תקציר הספר", blank=True, null=True)
+    
+    # תוקן: הוסרה המילה 'Text'
+    summary = CKEditor5Field(config_name='extends', verbose_name="תקציר הספר", blank=True, null=True)
+    
     price = models.DecimalField(max_digits=6, decimal_places=2, default=0.00, verbose_name="מחיר הספר")
     is_for_sale = models.BooleanField(default=False, verbose_name="זמין לרכישה")
     stock = models.PositiveIntegerField(default=0, verbose_name="מלאי זמין")
@@ -91,6 +102,7 @@ class Book(models.Model):
     def __str__(self):
         return self.title
 
+
 class Chapter(models.Model):
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='chapters', verbose_name="ספר")
     title = models.CharField(max_length=200, verbose_name="כותרת (למשל: סימן א)")
@@ -99,14 +111,19 @@ class Chapter(models.Model):
     def __str__(self):
         return f"{self.book.title} - {self.title}"
 
+
 class Section(models.Model):
     chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE, related_name='sections', verbose_name="פרק")
     title = models.CharField(max_length=200, verbose_name="כותרת הסעיף")
-    content = RichTextField(verbose_name="תוכן")
+    
+    # תוקן: הוסרה המילה 'Text'
+    content = CKEditor5Field(config_name='extends', verbose_name="תוכן")
+    
     order = models.PositiveIntegerField(verbose_name="סדר")
 
     def __str__(self):
         return f"{self.chapter.title} - {self.title}"
+
 
 # ==========================================
 # מודל מילון ראשי תיבות (הנתונים החדשים)
