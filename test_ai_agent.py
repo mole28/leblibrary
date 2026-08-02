@@ -44,7 +44,8 @@ def test_ai_agent_returns_mocked_response(mock_urlopen, client):
         'text': 'היי סוכן, מה המצב?'
     })
     
-    response = client.post(url, data=payload, content_type='application/json')
+    # הוספנו כאן secure=True
+    response = client.post(url, data=payload, content_type='application/json', secure=True)
     
     assert response.status_code == 200
     
