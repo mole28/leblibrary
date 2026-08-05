@@ -46,6 +46,8 @@
 
 {% block content %}
 <div class="container mb-5 pb-5">
+    
+    <!-- חלק 1: אינדקס המאמרים -->
     <div class="card p-4 p-md-5 shadow-sm" style="background-color: #fdfdf9; border: 1px solid #eaeaea; border-radius: 16px;">
         <div class="row">
             
@@ -79,6 +81,29 @@
             
         </div>
     </div>
+
+    <!-- חלק 2: קוביית ההפניה למנוע החיפוש המתקדם (התוספת החדשה) -->
+    <div class="row justify-content-center mt-5 pt-4">
+        <div class="col-lg-10">
+            <div class="card p-5 text-center" style="background: linear-gradient(145deg, #1e202c 0%, #0f172a 100%); border: 1px solid #d4af37; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                <i class="bi bi-gem mb-3" style="font-size: 3.5rem; color: #d4af37; text-shadow: 0 0 15px rgba(212, 175, 55, 0.4);"></i>
+                <h2 class="mb-4" style="color: #d4af37; font-weight: bold; font-family: 'Frank Ruhl Libre', serif; text-shadow: 0 0 10px rgba(212, 175, 55, 0.2);">
+                    מנוע חיפוש תורני מתקדם
+                </h2>
+                <p style="color: #e2e8f0; font-size: 1.25rem; margin-bottom: 35px; line-height: 1.8;">
+                    גלה את הרבדים העמוקים של התנ"ך, המשנה והתלמוד באמצעות כלים מיוחדים:<br>
+                    <span class="badge" style="background: rgba(212,175,55,0.15); color: #d4af37; border: 1px solid rgba(212,175,55,0.5); font-size: 1rem; margin: 4px; padding: 8px 12px;">גימטריות</span>
+                    <span class="badge" style="background: rgba(212,175,55,0.15); color: #d4af37; border: 1px solid rgba(212,175,55,0.5); font-size: 1rem; margin: 4px; padding: 8px 12px;">דילוגי אותיות (ELS)</span>
+                    <span class="badge" style="background: rgba(212,175,55,0.15); color: #d4af37; border: 1px solid rgba(212,175,55,0.5); font-size: 1rem; margin: 4px; padding: 8px 12px;">ראשי וסופי תיבות</span>
+                    <span class="badge" style="background: rgba(212,175,55,0.15); color: #d4af37; border: 1px solid rgba(212,175,55,0.5); font-size: 1rem; margin: 4px; padding: 8px 12px;">פלינדרום והיפוך</span>
+                </p>
+                <a href="{% url 'articles:advanced_search' %}" class="btn px-5 py-3" style="background-color: #d4af37; color: #1e202c; font-weight: bold; font-size: 1.25rem; border-radius: 50px; transition: all 0.3s ease; box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4);">
+                    <i class="bi bi-search ms-2"></i> הפעל את המנוע עכשיו
+                </a>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <style>

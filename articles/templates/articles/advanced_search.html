@@ -1,0 +1,143 @@
+{% extends 'articles/base.html' %}
+{% load static %}
+
+{% block title %}מנוע חיפוש תורני מתקדם | ספריית לייבוביץ{% endblock %}
+
+{% block hero %}
+<div class="hero-section" style="height: 280px; background: linear-gradient(135deg, #1e202c 0%, #3f4050 100%);">
+    <div class="hero-overlay" style="background-color: rgba(0,0,0,0.5);"></div>
+    <div class="hero-content text-center w-100" style="transform: translateY(0);">
+        <i class="bi bi-gem mb-2 d-inline-block" style="font-size: 2.5rem; color: #d4af37;"></i>
+        <h1 class="text-white mb-0 fw-bold display-4" style="color: #d4af37 !important; text-shadow: 2px 2px 8px rgba(0,0,0,0.8);">חיפוש תורני מתקדם</h1>
+        <p class="text-white mt-3 fs-4" style="text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">גימטריות, דילוגי אותיות ורמזים</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb" class="mb-4 mt-3">
+    <ol class="breadcrumb" style="font-size: 1rem;">
+        <li class="breadcrumb-item">
+            <a href="{% url 'articles:list' %}" class="text-decoration-none text-muted"><i class="bi bi-house-door-fill"></i> ספריית לייבוביץ</a>
+        </li>
+        <li class="breadcrumb-item active fw-bold" aria-current="page">חיפוש מתקדם</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container mb-5 pb-5">
+    <div class="row gx-lg-5">
+        
+        <!-- חלונית ההגדרות (צד ימין/שמאל תלוי ב-RTL) -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm p-4 h-100" style="border: 2px solid #d4af37; border-radius: 16px; background-color: #fdfdf9;">
+                <h3 class="fw-bold mb-4 text-center" style="color: #2c3e50;"><i class="bi bi-sliders ms-2"></i> פרמטרים לחיפוש</h3>
+                
+                <form id="advancedSearchForm">
+                    <!-- בחירת מאגר -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold" style="color: #4a5568;">בחר מאגר חיפוש:</label>
+                        <select class="form-select" id="searchCorpus" style="border-radius: 8px; border-color: #cbd5e1;">
+                            <option value="tanakh">תנ"ך שלם</option>
+                            <option value="torah" selected>חומשי תורה בלבד</option>
+                            <option value="mishnah" disabled>משנה (בקרוב)</option>
+                            <option value="talmud" disabled>תלמוד בבלי (בקרוב)</option>
+                        </select>
+                    </div>
+
+                    <!-- בחירת סוג חיפוש -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold" style="color: #4a5568;">סוג פעולה:</label>
+                        <select class="form-select" id="searchAction" style="border-radius: 8px; border-color: #cbd5e1; background-color: #fff9f0;">
+                            <option value="gematria">מצא פסוקים שווים בגימטריה</option>
+                            <option value="els">דילוגי אותיות (ELS)</option>
+                            <option value="rashei_tevot">ראשי תיבות (ר"ת)</option>
+                            <option value="sofei_tevot">סופי תיבות (ס"ת)</option>
+                            <option value="reverse">מילים הפוכות (פלינדרום)</option>
+                        </select>
+                    </div>
+
+                    <!-- אפשרויות לדילוגי אותיות (יוסתר כברירת מחדל) -->
+                    <div class="mb-4" id="elsOptions" style="display: none; background: rgba(212,175,55,0.1); padding: 15px; border-radius: 8px;">
+                        <label class="form-label fw-bold text-muted" style="font-size: 0.9rem;">הגדרות קפיצה (דילוגים):</label>
+                        <div class="d-flex gap-2">
+                            <input type="number" class="form-control" id="elsMin" placeholder="דילוג מינימלי" value="2">
+                            <input type="number" class="form-control" id="elsMax" placeholder="מקסימלי" value="50">
+                        </div>
+                    </div>
+
+                    <!-- מילת חיפוש -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold" style="color: #4a5568;">הזן מילה, ערך מספרי או משפט:</label>
+                        <input type="text" class="form-control form-control-lg" id="searchQuery" placeholder="לדוגמה: אהבה..." required style="border-radius: 8px; border: 2px solid #d4af37; text-align: center;">
+                    </div>
+                    
+                    <button type="submit" class="btn w-100 py-3 mt-2" style="background-color: #d4af37; color: #1e202c; font-weight: bold; font-size: 1.2rem; border-radius: 12px; transition: all 0.2s; box-shadow: 0 4px 10px rgba(212, 175, 55, 0.4);">
+                        <i class="bi bi-cpu ms-2"></i> בצע חישוב מהיר
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- אזור התוצאות -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100" style="border: none; border-radius: 16px; background-color: #ffffff;">
+                <div class="card-header p-4" style="background-color: transparent; border-bottom: 2px solid #f8f9fa;">
+                    <h4 class="mb-0 fw-bold" style="color: #2c3e50;"><i class="bi bi-card-text ms-2"></i> תוצאות הסריקה</h4>
+                </div>
+                <div class="card-body p-4">
+                    
+                    <!-- הודעת ברירת מחדל -->
+                    <div id="resultsPlaceholder" class="text-center py-5">
+                        <i class="bi bi-box-seam" style="font-size: 5rem; color: #e2e8f0;"></i>
+                        <h4 class="mt-4 text-muted fw-bold">המנוע ממתין לפקודה</h4>
+                        <p class="text-muted fs-5">הזן נתונים בטופס והפעל את החישוב כדי לראות תוצאות בזמן אמת.</p>
+                    </div>
+
+                    <!-- אזור לתוצאות טעינה/סיום (יופעל ב-JS) -->
+                    <div id="resultsArea" style="display: none;"></div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // הצגת/הסתרת אפשרויות ELS
+    const searchActionSelect = document.getElementById('searchAction');
+    const elsOptionsDiv = document.getElementById('elsOptions');
+    
+    searchActionSelect.addEventListener('change', function() {
+        if(this.value === 'els') {
+            elsOptionsDiv.style.display = 'block';
+        } else {
+            elsOptionsDiv.style.display = 'none';
+        }
+    });
+
+    // טיפול בשליחת הטופס (סימולציה של חיפוש בינתיים)
+    document.getElementById('advancedSearchForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const placeholder = document.getElementById('resultsPlaceholder');
+        const resultsArea = document.getElementById('resultsArea');
+        
+        placeholder.style.display = 'none';
+        resultsArea.style.display = 'block';
+        
+        // אנימציית טעינה (ספינר יפה)
+        resultsArea.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-warning" style="width: 3rem; height: 3rem; border-width: 0.3em;" role="status"></div>
+                <h4 class="mt-4" style="color: #2c3e50;">מנוע ה-C++ מחשב נתונים...</h4>
+                <p class="text-muted">אנא המתן, הפעולה מתבצעת על פני אלפי פסוקים</p>
+            </div>
+        `;
+        
+        // *בשלב הבא כאן נוסיף את ה-fetch() ל-API שיריץ את קוד ה-C++*
+    });
+</script>
+{% endblock %}

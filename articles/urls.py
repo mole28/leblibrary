@@ -64,4 +64,5 @@ urlpatterns = [
     path('recently-added/', views.recently_added, name='recently_added'),
 
     path('61b4763967a849e6aae88315f9092c0d.txt', lambda request: HttpResponse('61b4763967a849e6aae88315f9092c0d')),
+    path('advanced-search/', views.advanced_search_view, name='advanced_search'),
 ]

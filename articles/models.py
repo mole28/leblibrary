@@ -245,3 +245,23 @@ class VisitorLog(models.Model):
 
     def __str__(self):
         return f"{self.ip_address} - {self.path} ({self.timestamp})"
+
+# ==========================================
+# מודל טקסט תורני לחיפוש מתקדם (גימטריות / ELS)
+# ==========================================
+class TorahText(models.Model):
+    book = models.CharField(max_length=100, verbose_name="ספר")
+    chapter = models.CharField(max_length=10, verbose_name="פרק")
+    verse = models.CharField(max_length=10, verbose_name="פסוק")
+    text_with_nikkud = models.TextField(verbose_name="טקסט מנוקד")
+    clean_text = models.TextField(verbose_name="טקסט נקי (ללא ניקוד ורווחים)", blank=True)
+
+    class Meta:
+        verbose_name = "טקסט תורני"
+        verbose_name_plural = "טקסטים תורניים"
+        indexes = [
+            models.Index(fields=['clean_text']),
+        ]
+
+    def __str__(self):
+        return f"{self.book} {self.chapter} {self.verse}"

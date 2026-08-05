@@ -1181,3 +1181,9 @@ def search_acronyms_api(request):
             })
             
     return JsonResponse({'results': results})
+
+# ==========================================
+# תצוגת מנוע החיפוש המתקדם (Advanced Search)
+# ==========================================
+def advanced_search_view(request):
+    return render(request, 'articles/advanced_search.html', {'current_page': 'advanced_search'})
