@@ -411,13 +411,34 @@
             </div>
             
             <!-- חלונית קשר (שמאל) -->
-            <div class="col-lg-4">
-                <div class="qa-small-banner text-center text-white h-100 d-flex flex-column justify-content-center">
+            <div class="col-lg-4 d-flex flex-column">
+                <div class="qa-small-banner text-center text-white d-flex flex-column justify-content-center mb-4 flex-grow-1">
                     <div style="position: relative; z-index: 1;">
                         <h5 class="fw-bold mb-3 text-white" style="font-size: 1.25rem;">יש לכם שאלה הלכתית?</h5>
                         <p class="small mb-4 text-white opacity-75" style="font-size: 0.95rem;">זקוקים להכוונה? צוות האתר ישמח לענות.</p>
                         <a href="{% url 'articles:contact' %}" class="btn btn-light rounded-pill fw-bold px-4 py-2 shadow-sm" style="color: #a67c52; font-size: 1rem;">
                             <i class="bi bi-envelope-paper me-1"></i> צור קשר עכשיו
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- כרטיסיית חיפוש מתקדם (נוספה לתחתית העמודה) -->
+                <div class="card shadow-lg border-0 flex-grow-1 d-flex flex-column justify-content-center" style="background: linear-gradient(145deg, #1e202c 0%, #2a2d3e 100%); border-radius: 16px; overflow: hidden; position: relative;">
+                    <!-- אפקט עיצובי של הילה ברקע -->
+                    <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(212,175,55,0.2) 0%, rgba(212,175,55,0) 70%); border-radius: 50%;"></div>
+                    
+                    <div class="card-body p-4 text-center d-flex flex-column justify-content-center" style="position: relative; z-index: 2;">
+                        <div class="mb-3">
+                            <div style="width: 65px; height: 65px; background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(212,175,55,0.2); margin: 0 auto;">
+                                <i class="bi bi-gem" style="font-size: 2.2rem; color: #d4af37;"></i>
+                            </div>
+                        </div>
+                        <h4 class="fw-bold mb-2" style="color: #d4af37; text-shadow: 1px 1px 3px rgba(0,0,0,0.5);">חיפוש תורני מתקדם</h4>
+                        <p class="mb-4" style="color: #e2e8f0; font-size: 0.95rem; line-height: 1.5; opacity: 0.9;">
+                            גלה צפונות בתנ"ך! איתור גימטריות, ר"ת ודילוגים.
+                        </p>
+                        <a href="{% url 'articles:advanced_search' %}" class="btn w-100 fw-bold shadow-sm mt-auto" style="background-color: #d4af37; color: #1e202c; border-radius: 10px; font-size: 1.1rem; transition: all 0.3s ease;">
+                            למערכת החיפוש <i class="bi bi-arrow-left-short ms-1" style="font-size: 1.3rem; vertical-align: middle;"></i>
                         </a>
                     </div>
                 </div>
