@@ -32,7 +32,7 @@ from django.db import models
 from django.utils.html import strip_tags
 
 from .forms import ArticleForm
-from .models import Article, Book, Chapter, Section, Cart, CartItem, Order, OrderItem
+from .models import Article, Book, Chapter, Section, Cart, CartItem, Order, OrderItem, TorahText
 from .emails import send_order_confirmation
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
@@ -1187,3 +1187,108 @@ def search_acronyms_api(request):
 # ==========================================
 def advanced_search_view(request):
     return render(request, 'articles/advanced_search.html', {'current_page': 'advanced_search'})
+
+
+# ==========================================
+# אלגוריתמי עזר לחיפוש תורני (גימטריה, ראשי תיבות וכו')
+# ==========================================
+HEBREW_GEMATRIA = {
+    'א': 1, 'ב': 2, 'ג': 3, 'ד': 4, 'ה': 5, 'ו': 6, 'ז': 7, 'ח': 8, 'ט': 9,
+    'י': 10, 'כ': 20, 'ך': 20, 'ל': 30, 'מ': 40, 'ם': 40, 'נ': 50, 'ן': 50,
+    'ס': 60, 'ע': 70, 'פ': 80, 'ף': 80, 'צ': 90, 'ץ': 90,
+    'ק': 100, 'ר': 200, 'ש': 300, 'ת': 400
+}
+
+def calculate_gematria(text):
+    return sum(HEBREW_GEMATRIA.get(char, 0) for char in text)
+
+@ratelimit(rate=30, timeout=60)
+def tanakh_advanced_search_api(request):
+    """
+    API מתקדם לחיפוש בתנ"ך:
+    - text: חיפוש טקסט חופשי / מילה
+    - gematria: חיפוש לפי ערך מספרי (גימטריה)
+    - acronym: חיפוש לפי ראשי תיבות
+    - book: סינון לפי ספר מסוים
+    """
+    query_type = request.GET.get('type', 'text') # text, gematria, acronym
+    query_val = request.GET.get('q', '').strip()
+    book_filter = request.GET.get('book', '').strip()
+    
+    results = []
+    qs = TorahText.objects.all()
+    
+    if book_filter:
+        qs = qs.filter(book=book_filter)
+        
+    try:
+        if query_type == 'text' and query_val:
+            # חיפוש טקסט רגיל או וריאציות
+            matches = qs.filter(clean_text__icontains=query_val)[:50]
+            for m in matches:
+                results.append({
+                    'book': m.book,
+                    'chapter': m.chapter,
+                    'verse': m.verse,
+                    'text': m.text_with_nikkud
+                })
+                
+        elif query_type == 'gematria' and query_val.isdigit():
+            target_val = int(query_val)
+            # מעבר על הפסוקים וחישוב גימטריה (או מילים בתוכם)
+            # כדי להיות יעילים, נעבור בבאצ'ים או נסנן לפי אורך טקסט מקורב ואז נסנן בדיוק
+            all_verses = qs.only('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:1500]
+            for m in all_verses:
+                # חישוב גימטריה לטקסט הנקי של הפסוק
+                if calculate_gematria(m.clean_text) == target_val:
+                    results.append({
+                        'book': m.book,
+                        'chapter': m.chapter,
+                        'verse': m.verse,
+                        'text': m.text_with_nikkud,
+                        'match_type': 'גימטריה מלאה לפסוק'
+                    })
+                else:
+                    # בדיקה האם יש מילה בודדת בפסוק ששווה לגימטריה המבוקשת
+                    words = re.findall(r'[א-ת]+', m.clean_text)
+                    found_word = False
+                    for w in words:
+                        if calculate_gematria(w) == target_val:
+                            found_word = True
+                            break
+                    if found_word:
+                        results.append({
+                            'book': m.book,
+                            'chapter': m.chapter,
+                            'verse': m.verse,
+                            'text': m.text_with_nikkud,
+                            'match_type': f'גימטריה למילה בפصוק (ערך {target_val})'
+                        })
+                if len(results) >= 40:
+                    break
+                    
+        elif query_type == 'acronym' and query_val:
+            # חיפוש ראשי תיבות (אותיות ראשונות של מילים ברצף)
+            target_acr = re.sub(r'[^א-ת]', '', query_val)
+            if target_acr:
+                all_verses = qs.only('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:2000]
+                for m in all_verses:
+                    words = re.findall(r'[א-ת]+', m.clean_text)
+                    if len(words) >= len(target_acr):
+                        # חילוץ אותיות ראשונות מהמילים בפסוק
+                        initials = "".join([w[0] for w in words if w])
+                        if target_acr in initials:
+                            results.append({
+                                'book': m.book,
+                                'chapter': m.chapter,
+                                'verse': m.verse,
+                                'text': m.text_with_nikkud,
+                                'match_type': 'ראשי תיבות בפסוק'
+                            })
+                    if len(results) >= 40:
+                        break
+                        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+        
+    return JsonResponse({'results': results}, json_dumps_params={'ensure_ascii': False})
