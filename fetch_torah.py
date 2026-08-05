@@ -1,6 +1,7 @@
 import os
 import django
 import urllib.request
+import urllib.parse
 import json
 import re
 import time
@@ -71,7 +72,10 @@ def fetch_all_tanakh():
     total_saved = 0
     for eng_name, heb_name in tanakh_books:
         print(f'מוריד את ספר {heb_name}...')
-        url = f'https://www.sefaria.org/api/texts/{eng_name}?context=0'
+        
+        # קידוד השם באנגלית כך שרווחים יהפכו ל-%20 באופן תקין ל-URL
+        encoded_eng_name = urllib.parse.quote(eng_name)
+        url = f'https://www.sefaria.org/api/texts/{encoded_eng_name}?context=0'
         
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         try:
