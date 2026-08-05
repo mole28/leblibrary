@@ -65,4 +65,5 @@ urlpatterns = [
 
     path('61b4763967a849e6aae88315f9092c0d.txt', lambda request: HttpResponse('61b4763967a849e6aae88315f9092c0d')),
     path('advanced-search/', views.advanced_search_view, name='advanced_search'),
+    path('api/tanakh-search/', views.tanakh_advanced_search_api, name='tanakh_advanced_search_api'),
 ]
