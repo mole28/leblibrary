@@ -1256,31 +1256,35 @@ def tanakh_advanced_search_api(request):
             q_words = q_no_nikkud.split()
             
             if q_words:
-                clean_q_exact = " " + " ".join(q_words) + " "
-                clean_q_approx = " ".join(q_words)
+                # יצירת תבנית חיפוש גמישה שמתעלמת מכתיב מלא/חסר!
+                fuzzy_words = []
+                for w in q_words:
+                    fuzzy_w = '[וי]*'.join(list(w))
+                    fuzzy_words.append(fuzzy_w)
+                
+                fuzzy_phrase = r'\s+'.join(fuzzy_words)
+                
+                if is_exact:
+                    # מילה מדויקת: חובה שתתחיל/תסתיים ברווח או בגבול מחרוזת
+                    pattern = re.compile(r'(?:^|\s)' + fuzzy_phrase + r'(?=\s|$)', re.UNICODE)
+                else:
+                    # מילה לא מדויקת: יכולה להיות חלק ממילה גדולה יותר (כמו "ושמרו")
+                    pattern = re.compile(fuzzy_phrase, re.UNICODE)
                 
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
                 
                 for m in all_verses:
                     t = m.get('clean_text') or m.get('text_with_nikkud') or ""
                     
-                    # השלב הקריטי לטיהור הפסוק:
-                    # 1. ממיר סימני פיסוק (כולל מקף, נקודה, פסיק ומרכאות) לרווחים כדי להפריד מילים
+                    # השלב הקריטי:
+                    # 1. ממיר סימני פיסוק ו*מקפים* (כולל מקף מקראי) לרווחים כדי להפריד מילים
                     t = re.sub(r'[.,:;?!"\'\-\(\)\[\]\{\}\u05BE]', ' ', t)
-                    # 2. מוחק לחלוטין כל תו שאיננו אות עברית או רווח (מעלים טעמים, ניקוד ותווים חבויים)
+                    # 2. מוחק לחלוטין כל תו שאיננו אות עברית (מעלים טעמים, ניקוד)
                     t_clean = re.sub(r'[^א-ת\s]', '', t)
-                    # 3. מסדר מרווחים למחרוזת נקייה
-                    t_clean_spaced = " " + " ".join(t_clean.split()) + " "
+                    # 3. מסדר מרווחים (מונע רווחים כפולים)
+                    t_clean_spaced = " ".join(t_clean.split())
                     
-                    is_match = False
-                    if is_exact:
-                        if clean_q_exact in t_clean_spaced:
-                            is_match = True
-                    else:
-                        if clean_q_approx in t_clean_spaced:
-                            is_match = True
-                            
-                    if is_match:
+                    if pattern.search(t_clean_spaced):
                         results.append({
                             'book': m['book'],
                             'chapter': m['chapter'],
