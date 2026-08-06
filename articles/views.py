@@ -1224,42 +1224,34 @@ def tanakh_advanced_search_api(request):
         
     try:
         if query_type == 'text' and query_val:
-            words_in_q = re.findall(r'[א-ת]+', query_val)
-            if words_in_q:
-                first_word = words_in_q[0]
+            q_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', query_val)
+            q_words = re.findall(r'[א-ת]+', q_no_nikkud)
+            
+            if q_words:
+                clean_q_exact = " " + " ".join(q_words) + " "
+                clean_q_approx = " ".join(q_words)
                 
-                if is_exact:
-                    # משיכת פסוקים ראשונית רחבה מהמסד כדי למנוע באגים של Regex במסדי נתונים שונים
-                    base_matches = qs.filter(clean_text__icontains=first_word)[:300]
-                    clean_q = " ".join(words_in_q)
+                all_verses = qs.only('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:10000]
+                
+                matches = []
+                for m in all_verses:
+                    t = m.clean_text or m.text_with_nikkud or ""
+                    t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
+                    t_words = re.findall(r'[א-ת]+', t_no_nikkud)
                     
-                    matches = []
-                    for m in base_matches:
-                        t = m.clean_text or ""
-                        # חילוץ מילים טהורות בעברית בלבד והפיכתן למחרוזת אחת נקייה
-                        t_words = re.findall(r'[א-ת]+', t)
+                    if is_exact:
                         clean_t = " " + " ".join(t_words) + " "
+                        if clean_q_exact in clean_t:
+                            matches.append(m)
+                    else:
+                        clean_t_approx = " ".join(t_words)
+                        if clean_q_approx in clean_t_approx:
+                            matches.append(m)
+                            
+                    if len(matches) >= 50:
+                        break
                         
-                        # כעת החיפוש מדויק ב-100% ברמת גבולות מילה (בלי בעיות ניקוד או מקפים)
-                        if f" {clean_q} " in clean_t:
-                            matches.append(m)
-                        if len(matches) >= 50:
-                            break
-                    match_label = 'מילה מדויקת'
-                    
-                else:
-                    # חיפוש לא מדויק - רחב
-                    base_matches = qs.filter(clean_text__icontains=first_word)[:150]
-                    clean_q_pattern = r'[^א-ת]+'.join(words_in_q)
-                    
-                    matches = []
-                    for m in base_matches:
-                        t = m.clean_text or ""
-                        if re.search(clean_q_pattern, t):
-                            matches.append(m)
-                        if len(matches) >= 50:
-                            break
-                    match_label = 'חיפוש רחב'
+                match_label = 'מילה מדויקת' if is_exact else 'חיפוש רחב'
 
                 for m in matches:
                     results.append({
@@ -1272,12 +1264,14 @@ def tanakh_advanced_search_api(request):
                 
         elif query_type == 'gematria' and query_val.isdigit():
             target_val = int(query_val)
-            # מעבר על הפסוקים וחישוב גימטריה (או מילים בתוכם)
-            # כדי להיות יעילים, נעבור בבאצ'ים או נסנן לפי אורך טקסט מקורב ואז נסנן בדיוק
-            all_verses = qs.only('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:1500]
+            all_verses = qs.only('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:10000]
             for m in all_verses:
-                # חישוב גימטריה לטקסט הנקי של הפסוק
-                if calculate_gematria(m.clean_text) == target_val:
+                t = m.clean_text or m.text_with_nikkud or ""
+                t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
+                t_words = re.findall(r'[א-ת]+', t_no_nikkud)
+                
+                clean_t = "".join(t_words)
+                if calculate_gematria(clean_t) == target_val:
                     results.append({
                         'book': m.book,
                         'chapter': m.chapter,
@@ -1286,10 +1280,8 @@ def tanakh_advanced_search_api(request):
                         'match_type': 'גימטריה מלאה לפסוק'
                     })
                 else:
-                    # בדיקה האם יש מילה בודדת בפסוק ששווה לגימטריה המבוקשת
-                    words = re.findall(r'[א-ת]+', m.clean_text)
                     found_word = False
-                    for w in words:
+                    for w in t_words:
                         if calculate_gematria(w) == target_val:
                             found_word = True
                             break
@@ -1305,14 +1297,15 @@ def tanakh_advanced_search_api(request):
                     break
                     
         elif query_type == 'acronym' and query_val:
-            # חיפוש ראשי תיבות (אותיות ראשונות של מילים ברצף)
             target_acr = re.sub(r'[^א-ת]', '', query_val)
             if target_acr:
-                all_verses = qs.only('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:2000]
+                all_verses = qs.only('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:10000]
                 for m in all_verses:
-                    words = re.findall(r'[א-ת]+', m.clean_text)
+                    t = m.clean_text or m.text_with_nikkud or ""
+                    t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
+                    words = re.findall(r'[א-ת]+', t_no_nikkud)
+                    
                     if len(words) >= len(target_acr):
-                        # חילוץ אותיות ראשונות מהמילים בפסוק
                         initials = "".join([w[0] for w in words if w])
                         if target_acr in initials:
                             results.append({
