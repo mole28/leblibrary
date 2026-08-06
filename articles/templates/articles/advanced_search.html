@@ -4,7 +4,7 @@
 {% block title %}מנוע חיפוש תורני מתקדם | ספריית לייבוביץ{% endblock %}
 
 {% block hero %}
-<div class="hero-section" style="height: 280px; background: linear-gradient(135deg, #1e202c 0%, #3f4050 100%);">
+<div class="hero-section" style="height: 280px;">
     <div class="hero-overlay" style="background-color: rgba(0,0,0,0.5);"></div>
     <div class="hero-content text-center w-100" style="transform: translateY(0);">
         <i class="bi bi-gem mb-2 d-inline-block" style="font-size: 2.5rem; color: #d4af37;"></i>
@@ -29,7 +29,7 @@
 <div class="container mb-5 pb-5">
     <div class="row gx-lg-5">
         
-        <!-- חלונית ההגדרות (צד ימין/שמאל תלוי ב-RTL) -->
+        <!-- חלונית ההגדרות -->
         <div class="col-lg-4 mb-4">
             <div class="card shadow-sm p-4 h-100" style="border: 2px solid #d4af37; border-radius: 16px; background-color: #fdfdf9;">
                 <h3 class="fw-bold mb-4 text-center" style="color: #2c3e50;"><i class="bi bi-sliders ms-2"></i> פרמטרים לחיפוש</h3>
@@ -70,7 +70,7 @@
                     <!-- מילת חיפוש -->
                     <div class="mb-4">
                         <label class="form-label fw-bold" style="color: #4a5568;">הזן מילה, ערך מספרי או משפט:</label>
-                        <input type="text" class="form-control form-control-lg" id="searchQuery" placeholder="לדוגמה: משה..." required style="border-radius: 8px; border: 2px solid #d4af37; text-align: center;">
+                        <input type="text" class="form-control form-control-lg" id="searchQuery" placeholder="לדוגמה: אהבה..." required style="border-radius: 8px; border: 2px solid #d4af37; text-align: center;">
                     </div>
                     
                     <button type="submit" class="btn w-100 py-3 mt-2" style="background-color: #d4af37; color: #1e202c; font-weight: bold; font-size: 1.2rem; border-radius: 12px; transition: all 0.2s; box-shadow: 0 4px 10px rgba(212, 175, 55, 0.4);">
@@ -127,7 +127,6 @@
         
         const action = document.getElementById('searchAction').value;
         const query = document.getElementById('searchQuery').value.trim();
-        // const corpus = document.getElementById('searchCorpus').value; // לשימוש עתידי לסינון ספרים
         
         placeholder.style.display = 'none';
         resultsArea.style.display = 'block';
