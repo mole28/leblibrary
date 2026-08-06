@@ -171,7 +171,7 @@
                 </div>
             </div>
 
-            <!-- עמודה ימנית: מאמרים, ספרים -->
+            <!-- עמודה ימנית: מאמרים, ספרים, ושו"ת -->
             <div class="col-lg-8">
                 
                 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -280,9 +280,27 @@
                     </div>
                 </div>
 
+                <!-- חלונית שו"ת (ימין) מקורית -->
+                <div class="mt-5 pt-3 mb-5">
+                    <div class="qa-mini-sidebar shadow-sm h-100 d-flex flex-column justify-content-center">
+                        <div class="qa-mini-icon"><i class="bi bi-chat-quote-fill"></i></div>
+                        <h4 class="fw-bold mb-2 mt-1" style="color: #2c3e50; font-size: 1.2rem;">שאלות ותשובות</h4>
+                        <p class="text-muted mb-3" style="font-size: 0.9rem;">מדור הלכה ובירורים מרכזי.</p>
+                        
+                        {% if latest_qa %}
+                        <div class="p-3 bg-white rounded-3 border mb-3 shadow-sm flex-grow-1">
+                            <p class="fw-bold mb-1" style="color: #a67c52; font-size: 0.85rem;"><i class="bi bi-patch-question me-1"></i> שאלה אחרונה:</p>
+                            <p class="mb-0 text-dark" style="font-size: 0.95rem; line-height: 1.5;">{{ latest_qa.question }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        <a href="{% url 'articles:qa' %}" class="btn btn-outline-dark w-100 rounded-pill fw-bold mt-auto" style="font-size: 0.95rem;">היכנס למדור השו"ת המלא</a>
+                    </div>
+                </div>
+
             </div>
 
-            <!-- עמודה שמאלית: מחשבונים, ראשי תיבות, פרשת שבוע -->
+            <!-- עמודה שמאלית: מחשבונים, ראשי תיבות, פרשת שבוע, צור קשר -->
             <div class="col-lg-4">
                 
                 <div class="calc-sidebar-card p-4 text-center mb-5">
@@ -387,57 +405,42 @@
                     </div>
                 </div>
 
+                <!-- חלונית קשר (שמאל) -->
+                <div class="mb-4">
+                    <div class="qa-small-banner text-center text-white d-flex flex-column justify-content-center">
+                        <div style="position: relative; z-index: 1;">
+                            <h5 class="fw-bold mb-3 text-white" style="font-size: 1.25rem;">יש לכם שאלה הלכתית?</h5>
+                            <p class="small mb-4 text-white opacity-75" style="font-size: 0.95rem;">זקוקים להכוונה? צוות האתר ישמח לענות.</p>
+                            <a href="{% url 'articles:contact' %}" class="btn btn-light rounded-pill fw-bold px-4 py-2 shadow-sm" style="color: #a67c52; font-size: 1rem;">
+                                <i class="bi bi-envelope-paper me-1"></i> צור קשר עכשיו
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
-        
-        <!-- שורה חדשה ונפרדת אך ורק עבור שתי החלוניות התחתונות - יישור מושלם! -->
-        <div class="row g-5 align-items-stretch mb-5">
-            <!-- חלונית שו"ת (ימין) -->
-            <div class="col-lg-8">
-                <div class="qa-mini-sidebar shadow-sm h-100 d-flex flex-column justify-content-center">
-                    <div class="qa-mini-icon"><i class="bi bi-chat-quote-fill"></i></div>
-                    <h4 class="fw-bold mb-2 mt-1" style="color: #2c3e50; font-size: 1.2rem;">שאלות ותשובות</h4>
-                    <p class="text-muted mb-3" style="font-size: 0.9rem;">מדור הלכה ובירורים מרכזי.</p>
-                    
-                    {% if latest_qa %}
-                    <div class="p-3 bg-white rounded-3 border mb-3 shadow-sm flex-grow-1">
-                        <p class="fw-bold mb-1" style="color: #a67c52; font-size: 0.85rem;"><i class="bi bi-patch-question me-1"></i> שאלה אחרונה:</p>
-                        <p class="mb-0 text-dark" style="font-size: 0.95rem; line-height: 1.5;">{{ latest_qa.question }}</p>
-                    </div>
-                    {% endif %}
-                    
-                    <a href="{% url 'articles:qa' %}" class="btn btn-outline-dark w-100 rounded-pill fw-bold mt-auto" style="font-size: 0.95rem;">היכנס למדור השו"ת המלא</a>
-                </div>
-            </div>
+
+        <!-- כרטיסיית חיפוש מתקדם מלבנית רחבה (מתחת לשתי העמודות) -->
+        <div class="card shadow-lg border-0 mb-5" style="background: linear-gradient(145deg, #1e202c 0%, #2a2d3e 100%); border-radius: 16px; overflow: hidden; position: relative;">
+            <div style="position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(212,175,55,0.15) 0%, rgba(212,175,55,0) 70%); border-radius: 50%;"></div>
+            <div style="position: absolute; bottom: -50px; left: -50px; width: 150px; height: 150px; background: radial-gradient(circle, rgba(212,175,55,0.1) 0%, rgba(212,175,55,0) 70%); border-radius: 50%;"></div>
             
-            <!-- חלונית קשר (שמאל) -->
-            <div class="col-lg-4 d-flex flex-column">
-                <div class="qa-small-banner text-center text-white d-flex flex-column justify-content-center mb-4 flex-grow-1">
-                    <div style="position: relative; z-index: 1;">
-                        <h5 class="fw-bold mb-3 text-white" style="font-size: 1.25rem;">יש לכם שאלה הלכתית?</h5>
-                        <p class="small mb-4 text-white opacity-75" style="font-size: 0.95rem;">זקוקים להכוונה? צוות האתר ישמח לענות.</p>
-                        <a href="{% url 'articles:contact' %}" class="btn btn-light rounded-pill fw-bold px-4 py-2 shadow-sm" style="color: #a67c52; font-size: 1rem;">
-                            <i class="bi bi-envelope-paper me-1"></i> צור קשר עכשיו
-                        </a>
-                    </div>
-                </div>
-                
-                <!-- כרטיסיית חיפוש מתקדם (נוספה לתחתית העמודה) -->
-                <div class="card shadow-lg border-0 flex-grow-1 d-flex flex-column justify-content-center" style="background: linear-gradient(145deg, #1e202c 0%, #2a2d3e 100%); border-radius: 16px; overflow: hidden; position: relative;">
-                    <!-- אפקט עיצובי של הילה ברקע -->
-                    <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(212,175,55,0.2) 0%, rgba(212,175,55,0) 70%); border-radius: 50%;"></div>
-                    
-                    <div class="card-body p-4 text-center d-flex flex-column justify-content-center" style="position: relative; z-index: 2;">
-                        <div class="mb-3">
-                            <div style="width: 65px; height: 65px; background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(212,175,55,0.2); margin: 0 auto;">
-                                <i class="bi bi-gem" style="font-size: 2.2rem; color: #d4af37;"></i>
-                            </div>
+            <div class="card-body p-4 p-md-5 position-relative z-2">
+                <div class="row align-items-center">
+                    <div class="col-md-8 text-center text-md-start mb-4 mb-md-0 d-flex flex-column flex-md-row align-items-center gap-4">
+                        <div style="width: 80px; height: 80px; background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(212,175,55,0.2); flex-shrink: 0;">
+                            <i class="bi bi-gem" style="font-size: 2.5rem; color: #d4af37;"></i>
                         </div>
-                        <h4 class="fw-bold mb-2" style="color: #d4af37; text-shadow: 1px 1px 3px rgba(0,0,0,0.5);">חיפוש תורני מתקדם</h4>
-                        <p class="mb-4" style="color: #e2e8f0; font-size: 0.95rem; line-height: 1.5; opacity: 0.9;">
-                            גלה צפונות בתנ"ך! איתור גימטריות, ר"ת ודילוגים.
-                        </p>
-                        <a href="{% url 'articles:advanced_search' %}" class="btn w-100 fw-bold shadow-sm mt-auto" style="background-color: #d4af37; color: #1e202c; border-radius: 10px; font-size: 1.1rem; transition: all 0.3s ease;">
+                        <div>
+                            <h3 class="fw-bold mb-2" style="color: #d4af37; text-shadow: 1px 1px 3px rgba(0,0,0,0.5);">חיפוש תורני מתקדם</h3>
+                            <p class="mb-0 fs-5" style="color: #e2e8f0; opacity: 0.9;">
+                                גלה צפונות בתנ"ך! איתור גימטריות, ראשי תיבות ודילוגים.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center text-md-end">
+                        <a href="{% url 'articles:advanced_search' %}" class="btn fw-bold shadow-sm px-4 py-3" style="background-color: #d4af37; color: #1e202c; border-radius: 12px; font-size: 1.15rem; transition: all 0.3s ease;">
                             למערכת החיפוש <i class="bi bi-arrow-left-short ms-1" style="font-size: 1.3rem; vertical-align: middle;"></i>
                         </a>
                     </div>
