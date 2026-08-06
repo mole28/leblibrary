@@ -1202,6 +1202,23 @@ HEBREW_GEMATRIA = {
 def calculate_gematria(text):
     return sum(HEBREW_GEMATRIA.get(char, 0) for char in text)
 
+def get_book_order(book_name):
+    BOOK_ORDER = {
+        'בראשית': 1, 'שמות': 2, 'ויקרא': 3, 'במדבר': 4, 'דברים': 5,
+        'יהושע': 6, 'שופטים': 7, 'שמואל א': 8, 'שמואל ב': 9, 'מלכים א': 10, 'מלכים ב': 11,
+        'ישעיהו': 12, 'ירמיהו': 13, 'יחזקאל': 14, 'הושע': 15, 'יואל': 16, 'עמוס': 17, 'עובדיה': 18,
+        'יונה': 19, 'מיכה': 20, 'נחום': 21, 'חבקוק': 22, 'צפניה': 23, 'חגי': 24, 'זכריה': 25, 'מלאכי': 26,
+        'תהילים': 27, 'משלי': 28, 'איוב': 29, 'שיר השירים': 30, 'רות': 31, 'איכה': 32, 'קהלת': 33,
+        'אסתר': 34, 'דניאל': 35, 'עזרא': 36, 'נחמיה': 37, 'דברי הימים א': 38, 'דברי הימים ב': 39
+    }
+    return BOOK_ORDER.get(book_name.strip(), 99)
+
+def safe_int(v):
+    try:
+        return int(v)
+    except:
+        return 0
+
 @ratelimit(rate=30, timeout=60)
 def tanakh_advanced_search_api(request):
     """
@@ -1222,46 +1239,45 @@ def tanakh_advanced_search_api(request):
     results = []
     qs = TorahText.objects.all()
 
-    # סינון לפי מאגר "חומשי תורה בלבד" כפי שמוגדר ב-HTML
     if book_filter == 'torah':
         qs = qs.filter(book__in=['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'])
     elif book_filter and book_filter != 'tanakh':
         qs = qs.filter(book=book_filter)
         
-    # החרגת ספרים מסוימים (תהילים, עמוס וכו')
     if exclude_books_param:
         excluded = [b.strip() for b in exclude_books_param.split(',') if b.strip()]
         if excluded:
             qs = qs.exclude(book__in=excluded)
 
     try:
-        # === חיפוש טקסט (מדויק או רחב) ===
         if query_type == 'text' and query_val:
-            q_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', query_val)
-            q_words = re.findall(r'[א-ת]+', q_no_nikkud)
+            # מנקה את השאילתה - משאיר רק אותיות עבריות
+            q_no_nikkud = re.sub(r'[^א-ת\s]', '', query_val)
+            q_words = q_no_nikkud.split()
             
             if q_words:
                 clean_q_exact = " " + " ".join(q_words) + " "
                 clean_q_approx = " ".join(q_words)
                 
-                # מושך את כל הפסוקים הרלוונטיים, ללא הגבלה
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
                 
                 for m in all_verses:
                     t = m.get('clean_text') or m.get('text_with_nikkud') or ""
                     
-                    t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
-                    t_clean = re.sub(r'[^א-ת]', ' ', t_no_nikkud)
-                    t_words = t_clean.split()
+                    # השלב הקריטי לטיהור הפסוק:
+                    # 1. ממיר סימני פיסוק (כולל מקף, נקודה, פסיק ומרכאות) לרווחים כדי להפריד מילים
+                    t = re.sub(r'[.,:;?!"\'\-\(\)\[\]\{\}\u05BE]', ' ', t)
+                    # 2. מוחק לחלוטין כל תו שאיננו אות עברית או רווח (מעלים טעמים, ניקוד ותווים חבויים)
+                    t_clean = re.sub(r'[^א-ת\s]', '', t)
+                    # 3. מסדר מרווחים למחרוזת נקייה
+                    t_clean_spaced = " " + " ".join(t_clean.split()) + " "
                     
                     is_match = False
                     if is_exact:
-                        clean_t = " " + " ".join(t_words) + " "
-                        if clean_q_exact in clean_t:
+                        if clean_q_exact in t_clean_spaced:
                             is_match = True
                     else:
-                        clean_t_approx = " ".join(t_words)
-                        if clean_q_approx in clean_t_approx:
+                        if clean_q_approx in t_clean_spaced:
                             is_match = True
                             
                     if is_match:
@@ -1273,14 +1289,13 @@ def tanakh_advanced_search_api(request):
                             'match_type': 'מילה מדויקת' if is_exact else 'חיפוש רחב'
                         })
                 
-        # === חיפוש גימטריה ===
         elif query_type == 'gematria' and query_val.isdigit():
             target_val = int(query_val)
             all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
             for m in all_verses:
                 t = m.get('clean_text') or m.get('text_with_nikkud') or ""
-                t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
-                t_clean = re.sub(r'[^א-ת]', ' ', t_no_nikkud)
+                t = re.sub(r'[.,:;?!"\'\-\(\)\[\]\{\}\u05BE]', ' ', t)
+                t_clean = re.sub(r'[^א-ת\s]', '', t)
                 t_words = t_clean.split()
                 
                 clean_t = "".join(t_words)
@@ -1307,19 +1322,18 @@ def tanakh_advanced_search_api(request):
                             'match_type': f'גימטריה למילה בפסוק (ערך {target_val})'
                         })
                     
-        # === חיפוש ראשי תיבות ===
         elif query_type == 'acronym' and query_val:
             target_acr = re.sub(r'[^א-ת]', '', query_val)
             if target_acr:
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
                 for m in all_verses:
                     t = m.get('clean_text') or m.get('text_with_nikkud') or ""
-                    t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
-                    t_clean = re.sub(r'[^א-ת]', ' ', t_no_nikkud)
-                    words = t_clean.split()
+                    t = re.sub(r'[.,:;?!"\'\-\(\)\[\]\{\}\u05BE]', ' ', t)
+                    t_clean = re.sub(r'[^א-ת\s]', '', t)
+                    t_words = t_clean.split()
                     
-                    if len(words) >= len(target_acr):
-                        initials = "".join([w[0] for w in words if w])
+                    if len(t_words) >= len(target_acr):
+                        initials = "".join([w[0] for w in t_words if w])
                         if target_acr in initials:
                             results.append({
                                 'book': m['book'],
@@ -1329,7 +1343,9 @@ def tanakh_advanced_search_api(request):
                                 'match_type': 'ראשי תיבות בפסוק'
                             })
 
-        # === בניית מערכת העמודים (Pagination) ===
+        # מיון כרונולוגי של התוצאות
+        results.sort(key=lambda x: (get_book_order(x['book']), safe_int(x['chapter']), safe_int(x['verse'])))
+
         total_results = len(results)
         total_pages = (total_results + per_page - 1) // per_page if total_results > 0 else 1
         start_idx = (page - 1) * per_page
