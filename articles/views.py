@@ -1224,33 +1224,51 @@ def tanakh_advanced_search_api(request):
         
     try:
         if query_type == 'text' and query_val:
-            if is_exact:
-                # סינון ראשוני מהיר מול מסד הנתונים
-                base_matches = qs.filter(clean_text__icontains=query_val)
+            words_in_q = re.findall(r'[א-ת]+', query_val)
+            if words_in_q:
+                first_word = words_in_q[0]
                 
-                # סינון קפדני בפייתון כדי לעקוף בעיות תאימות של Regex בין מסדי נתונים שונים
-                exact_pattern = re.compile(r'(?:^|[^א-ת])' + re.escape(query_val) + r'(?:[^א-ת]|$)', re.UNICODE)
-                
-                matches = []
-                for m in base_matches:
-                    if exact_pattern.search(m.clean_text):
-                        matches.append(m)
-                    if len(matches) >= 50:
-                        break
-                match_label = 'מילה מדויקת'
-            else:
-                # חיפוש לא מדויק - רחב
-                matches = qs.filter(clean_text__icontains=query_val)[:50]
-                match_label = 'חיפוש רחב'
+                if is_exact:
+                    # משיכת פסוקים ראשונית רחבה מהמסד כדי למנוע באגים של Regex במסדי נתונים שונים
+                    base_matches = qs.filter(clean_text__icontains=first_word)[:300]
+                    clean_q = " ".join(words_in_q)
+                    
+                    matches = []
+                    for m in base_matches:
+                        t = m.clean_text or ""
+                        # חילוץ מילים טהורות בעברית בלבד והפיכתן למחרוזת אחת נקייה
+                        t_words = re.findall(r'[א-ת]+', t)
+                        clean_t = " " + " ".join(t_words) + " "
+                        
+                        # כעת החיפוש מדויק ב-100% ברמת גבולות מילה (בלי בעיות ניקוד או מקפים)
+                        if f" {clean_q} " in clean_t:
+                            matches.append(m)
+                        if len(matches) >= 50:
+                            break
+                    match_label = 'מילה מדויקת'
+                    
+                else:
+                    # חיפוש לא מדויק - רחב
+                    base_matches = qs.filter(clean_text__icontains=first_word)[:150]
+                    clean_q_pattern = r'[^א-ת]+'.join(words_in_q)
+                    
+                    matches = []
+                    for m in base_matches:
+                        t = m.clean_text or ""
+                        if re.search(clean_q_pattern, t):
+                            matches.append(m)
+                        if len(matches) >= 50:
+                            break
+                    match_label = 'חיפוש רחב'
 
-            for m in matches:
-                results.append({
-                    'book': m.book,
-                    'chapter': m.chapter,
-                    'verse': m.verse,
-                    'text': m.text_with_nikkud,
-                    'match_type': match_label
-                })
+                for m in matches:
+                    results.append({
+                        'book': m.book,
+                        'chapter': m.chapter,
+                        'verse': m.verse,
+                        'text': m.text_with_nikkud,
+                        'match_type': match_label
+                    })
                 
         elif query_type == 'gematria' and query_val.isdigit():
             target_val = int(query_val)
