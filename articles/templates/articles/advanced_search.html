@@ -4,7 +4,7 @@
 {% block title %}מנוע חיפוש תורני מתקדם | ספריית לייבוביץ{% endblock %}
 
 {% block hero %}
-<div class="hero-section" style="height: 280px; background-image: url('{% static \'images/banner.png\' %}'); background-size: cover; background-position: center 10%;">
+<div class="hero-section" style="height: 280px;">
     <div class="hero-overlay" style="background-color: rgba(0,0,0,0.5);"></div>
     <div class="hero-content text-center w-100" style="transform: translateY(0);">
         <i class="bi bi-gem mb-2 d-inline-block" style="font-size: 2.5rem; color: #d4af37;"></i>
@@ -51,8 +51,8 @@
                     <div class="mb-4">
                         <label class="form-label fw-bold" style="color: #4a5568;">סוג פעולה:</label>
                         <select class="form-select" id="searchAction" style="border-radius: 8px; border-color: #cbd5e1; background-color: #fff9f0;">
-                            <option value="text_exact">חיפוש מילה לתנ"ך - במדוייק</option>
-                            <option value="text_approx">חיפוש מילה לתנ"ך - לא מדוייק</option>
+                            <option value="text_exact">חיפוש מילה בתנ"ך - במדויק</option>
+                            <option value="text_approx">חיפוש מילה בתנ"ך - לא מדויק</option>
                             <option value="gematria">מצא פסוקים שווים בגימטריה</option>
                             <option value="els">דילוגי אותיות (ELS)</option>
                             <option value="rashei_tevot">ראשי תיבות (ר"ת)</option>
@@ -149,6 +149,11 @@
             apiType = 'gematria';
         } else if (action === 'rashei_tevot') {
             apiType = 'acronym';
+        } else if (action === 'text_exact') {
+            apiType = 'text';
+            // אפשר בעתיד להעביר פרמטר נוסף של exact=true
+        } else if (action === 'text_approx') {
+            apiType = 'text';
         }
 
         // קריאה ל-API
@@ -162,7 +167,7 @@
                 
                 const results = data.results;
                 if (!results || results.length === 0) {
-                    resultsArea.innerHTML = '<div class="alert alert-info shadow-sm rounded-3 fs-5"><i class="bi bi-info-circle-fill me-2"></i>לא נמצאו פסוקים התואמים לחיפוש שלך במאגר. <br><small class="text-muted mt-2 d-block">(הערה: חלק מאפשרויות החיפוש כמו ELS יחוברו בקרוב למנוע ה-C++)</small></div>';
+                    resultsArea.innerHTML = '<div class="alert alert-info shadow-sm rounded-3 fs-5"><i class="bi bi-info-circle-fill me-2"></i>לא נמצאו פסוקים התואמים לחיפוש שלך במאגר. <br><small class="text-muted mt-2 d-block">(הערה: חלק מאפשרויות החיפוש יחוברו בקרוב למנוע ה-C++)</small></div>';
                     return;
                 }
 
