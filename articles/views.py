@@ -1219,24 +1219,21 @@ def tanakh_advanced_search_api(request):
     results = []
     qs = TorahText.objects.all()
 
-    # --- הזרקת נתוני בדיקה במידה והמאגר ריק ---
-    if not qs.exists():
+    # --- הזרקת נתוני בדיקה חכמה ---
+    # בדיקה האם הפסוק של "שמר" קיים במאגר כדי לוודא שזה לא פשוט מאגר ריק
+    if not qs.filter(book='בראשית', chapter=37, verse=11).exists():
         TorahText.objects.create(
             book='בראשית', chapter=37, verse=11,
             text_with_nikkud='וַיְקַנְאוּ־ב֖וֹ אֶחָ֑יו וְאָבִ֖יו שָׁמַ֥ר אֶת־הַדָּבָֽר׃',
             clean_text='ויקנאו בו אחיו ואביו שמר את הדבר'
         )
+    if not qs.filter(book='דברים', chapter=5, verse=11).exists():
         TorahText.objects.create(
             book='דברים', chapter=5, verse=11, 
             text_with_nikkud='שָׁמ֛וֹר אֶת־י֥וֹם הַשַּׁבָּ֖ת לְקַדְּשׁ֑וֹ כַּאֲשֶׁ֥ר צִוְּךָ֖ יְהֹוָ֥ה אֱלֹהֶֽיךָ׃',
             clean_text='שמור את יום השבת לקדשו כאשר צווך יהוה אלהיך'
         )
-        TorahText.objects.create(
-            book='בראשית', chapter=2, verse=15,
-            text_with_nikkud='וַיִּקַּ֛ח יְהֹוָ֥ה אֱלֹהִ֖ים אֶת־הָֽאָדָ֑ם וַיַּנִּחֵ֣הוּ בְגַן־עֵ֔דֶן לְעׇבְדָ֖הּ וּלְשׇׁמְרָֽהּ׃',
-            clean_text='ויקח יהוה אלהים את האדם וינחהו בגן עדן לעבדה ולשמרה'
-        )
-        qs = TorahText.objects.all()
+    qs = TorahText.objects.all()
     # ------------------------------------------
     
     if book_filter:
@@ -1245,19 +1242,27 @@ def tanakh_advanced_search_api(request):
     try:
         if query_type == 'text' and query_val:
             q_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', query_val)
+            # ניקוי שאילתת החיפוש רק לאותיות
             q_words = re.findall(r'[א-ת]+', q_no_nikkud)
             
             if q_words:
                 clean_q_exact = " " + " ".join(q_words) + " "
                 clean_q_approx = " ".join(q_words)
                 
-                all_verses = qs.only('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:10000]
+                # משוך את כל הפסוקים בלי הגבלה
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
                 
                 matches = []
                 for m in all_verses:
-                    t = m.clean_text or m.text_with_nikkud or ""
+                    t = m.get('clean_text') or m.get('text_with_nikkud') or ""
+                    
+                    # 1. קודם מסירים את הניקוד והטעמים (שלא יחתכו מילים)
                     t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
-                    t_words = re.findall(r'[א-ת]+', t_no_nikkud)
+                    # 2. הופכים את כל מה שאינו אות עברית לרווח (מוחק מקפים מקראיים וסימני פיסוק)
+                    t_clean = re.sub(r'[^א-ת]', ' ', t_no_nikkud)
+                    
+                    # 3. עכשיו ניתן לפצל בבטחה את המילים
+                    t_words = t_clean.split()
                     
                     if is_exact:
                         clean_t = " " + " ".join(t_words) + " "
@@ -1275,28 +1280,29 @@ def tanakh_advanced_search_api(request):
 
                 for m in matches:
                     results.append({
-                        'book': m.book,
-                        'chapter': m.chapter,
-                        'verse': m.verse,
-                        'text': m.text_with_nikkud,
+                        'book': m['book'],
+                        'chapter': m['chapter'],
+                        'verse': m['verse'],
+                        'text': m['text_with_nikkud'],
                         'match_type': match_label
                     })
                 
         elif query_type == 'gematria' and query_val.isdigit():
             target_val = int(query_val)
-            all_verses = qs.only('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:10000]
+            all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
             for m in all_verses:
-                t = m.clean_text or m.text_with_nikkud or ""
+                t = m.get('clean_text') or m.get('text_with_nikkud') or ""
                 t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
-                t_words = re.findall(r'[א-ת]+', t_no_nikkud)
+                t_clean = re.sub(r'[^א-ת]', ' ', t_no_nikkud)
+                t_words = t_clean.split()
                 
                 clean_t = "".join(t_words)
                 if calculate_gematria(clean_t) == target_val:
                     results.append({
-                        'book': m.book,
-                        'chapter': m.chapter,
-                        'verse': m.verse,
-                        'text': m.text_with_nikkud,
+                        'book': m['book'],
+                        'chapter': m['chapter'],
+                        'verse': m['verse'],
+                        'text': m['text_with_nikkud'],
                         'match_type': 'גימטריה מלאה לפסוק'
                     })
                 else:
@@ -1307,10 +1313,10 @@ def tanakh_advanced_search_api(request):
                             break
                     if found_word:
                         results.append({
-                            'book': m.book,
-                            'chapter': m.chapter,
-                            'verse': m.verse,
-                            'text': m.text_with_nikkud,
+                            'book': m['book'],
+                            'chapter': m['chapter'],
+                            'verse': m['verse'],
+                            'text': m['text_with_nikkud'],
                             'match_type': f'גימטריה למילה בפסוק (ערך {target_val})'
                         })
                 if len(results) >= 40:
@@ -1319,20 +1325,21 @@ def tanakh_advanced_search_api(request):
         elif query_type == 'acronym' and query_val:
             target_acr = re.sub(r'[^א-ת]', '', query_val)
             if target_acr:
-                all_verses = qs.only('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:10000]
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
                 for m in all_verses:
-                    t = m.clean_text or m.text_with_nikkud or ""
+                    t = m.get('clean_text') or m.get('text_with_nikkud') or ""
                     t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
-                    words = re.findall(r'[א-ת]+', t_no_nikkud)
+                    t_clean = re.sub(r'[^א-ת]', ' ', t_no_nikkud)
+                    words = t_clean.split()
                     
                     if len(words) >= len(target_acr):
                         initials = "".join([w[0] for w in words if w])
                         if target_acr in initials:
                             results.append({
-                                'book': m.book,
-                                'chapter': m.chapter,
-                                'verse': m.verse,
-                                'text': m.text_with_nikkud,
+                                'book': m['book'],
+                                'chapter': m['chapter'],
+                                'verse': m['verse'],
+                                'text': m['text_with_nikkud'],
                                 'match_type': 'ראשי תיבות בפסוק'
                             })
                     if len(results) >= 40:
