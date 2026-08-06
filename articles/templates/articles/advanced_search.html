@@ -4,7 +4,15 @@
 {% block title %}מנוע חיפוש תורני מתקדם | ספריית לייבוביץ{% endblock %}
 
 {% block hero %}
-<div class="hero-section" style="height: 280px;">
+<style>
+    .custom-hero-bg {
+        height: 280px;
+        background-image: url('{% static "images/banner.png" %}');
+        background-size: cover;
+        background-position: center 10%;
+    }
+</style>
+<div class="hero-section custom-hero-bg">
     <div class="hero-overlay" style="background-color: rgba(0,0,0,0.5);"></div>
     <div class="hero-content text-center w-100" style="transform: translateY(0);">
         <i class="bi bi-gem mb-2 d-inline-block" style="font-size: 2.5rem; color: #d4af37;"></i>
@@ -73,7 +81,7 @@
                     <!-- מילת חיפוש -->
                     <div class="mb-4">
                         <label class="form-label fw-bold" style="color: #4a5568;">הזן מילה, ערך מספרי או משפט:</label>
-                        <input type="text" class="form-control form-control-lg" id="searchQuery" placeholder="לדוגמה: ישראל..." required style="border-radius: 8px; border: 2px solid #d4af37; text-align: center;">
+                        <input type="text" class="form-control form-control-lg" id="searchQuery" placeholder="לדוגמה: שמר..." required style="border-radius: 8px; border: 2px solid #d4af37; text-align: center;">
                     </div>
                     
                     <button type="submit" class="btn w-100 py-3 mt-2" style="background-color: #d4af37; color: #1e202c; font-weight: bold; font-size: 1.2rem; border-radius: 12px; transition: all 0.2s; box-shadow: 0 4px 10px rgba(212, 175, 55, 0.4);">
@@ -159,7 +167,7 @@
             isExact = 'false';
         }
 
-        // קריאה ל-API - העברת הפרמטר exact
+        // קריאה ל-API
         fetch(`/api/tanakh-search/?type=${apiType}&q=${encodeURIComponent(query)}&exact=${isExact}`)
             .then(response => response.json())
             .then(data => {
