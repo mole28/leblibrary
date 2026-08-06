@@ -1218,6 +1218,26 @@ def tanakh_advanced_search_api(request):
     
     results = []
     qs = TorahText.objects.all()
+
+    # --- הזרקת נתוני בדיקה במידה והמאגר ריק ---
+    if not qs.exists():
+        TorahText.objects.create(
+            book='בראשית', chapter=37, verse=11,
+            text_with_nikkud='וַיְקַנְאוּ־ב֖וֹ אֶחָ֑יו וְאָבִ֖יו שָׁמַ֥ר אֶת־הַדָּבָֽר׃',
+            clean_text='ויקנאו בו אחיו ואביו שמר את הדבר'
+        )
+        TorahText.objects.create(
+            book='דברים', chapter=5, verse=11, 
+            text_with_nikkud='שָׁמ֛וֹר אֶת־י֥וֹם הַשַּׁבָּ֖ת לְקַדְּשׁ֑וֹ כַּאֲשֶׁ֥ר צִוְּךָ֖ יְהֹוָ֥ה אֱלֹהֶֽיךָ׃',
+            clean_text='שמור את יום השבת לקדשו כאשר צווך יהוה אלהיך'
+        )
+        TorahText.objects.create(
+            book='בראשית', chapter=2, verse=15,
+            text_with_nikkud='וַיִּקַּ֛ח יְהֹוָ֥ה אֱלֹהִ֖ים אֶת־הָֽאָדָ֑ם וַיַּנִּחֵ֣הוּ בְגַן־עֵ֔דֶן לְעׇבְדָ֖הּ וּלְשׇׁמְרָֽהּ׃',
+            clean_text='ויקח יהוה אלהים את האדם וינחהו בגן עדן לעבדה ולשמרה'
+        )
+        qs = TorahText.objects.all()
+    # ------------------------------------------
     
     if book_filter:
         qs = qs.filter(book=book_filter)
