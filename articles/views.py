@@ -1225,9 +1225,18 @@ def tanakh_advanced_search_api(request):
     try:
         if query_type == 'text' and query_val:
             if is_exact:
-                # חיפוש מדויק - מילה שלמה בלבד. נשתמש בתווים מפורשים כדי לתמוך בכל מסדי הנתונים כולל מקף עברי
-                exact_pattern = r'(^|[\s־.,:;?!"\'\(\)\[\]\{\}\-])' + re.escape(query_val) + r'([\s־.,:;?!"\'\(\)\[\]\{\}\-]|$)'
-                matches = qs.filter(clean_text__regex=exact_pattern)[:50]
+                # סינון ראשוני מהיר מול מסד הנתונים
+                base_matches = qs.filter(clean_text__icontains=query_val)
+                
+                # סינון קפדני בפייתון כדי לעקוף בעיות תאימות של Regex בין מסדי נתונים שונים
+                exact_pattern = re.compile(r'(?:^|[^א-ת])' + re.escape(query_val) + r'(?:[^א-ת]|$)', re.UNICODE)
+                
+                matches = []
+                for m in base_matches:
+                    if exact_pattern.search(m.clean_text):
+                        matches.append(m)
+                    if len(matches) >= 50:
+                        break
                 match_label = 'מילה מדויקת'
             else:
                 # חיפוש לא מדויק - רחב
