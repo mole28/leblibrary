@@ -4,12 +4,13 @@
 {% block title %}מנוע חיפוש תורני מתקדם | ספריית לייבוביץ{% endblock %}
 
 {% block hero %}
-<div class="hero-section" style="height: 280px;">
+<div class="hero-section" style="height: 280px; background-image: url('{% static \'images/banner.png\' %}'); background-size: cover; background-position: center 10%;">
     <div class="hero-overlay" style="background-color: rgba(0,0,0,0.5);"></div>
     <div class="hero-content text-center w-100" style="transform: translateY(0);">
         <i class="bi bi-gem mb-2 d-inline-block" style="font-size: 2.5rem; color: #d4af37;"></i>
         <h1 class="text-white mb-0 fw-bold display-4" style="color: #d4af37 !important; text-shadow: 2px 2px 8px rgba(0,0,0,0.8);">חיפוש תורני מתקדם - בבנייה!!!!</h1>
-        <p class="text-white mt-3 fs-4" style="text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">גימטריות, דילוגי אותיות ורמזים</p>
+        <p class="text-white mt-3 fs-4 mb-1" style="text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">חיפוש מתקדם בתנ"ך, במשנה ובתלמודים.</p>
+        <p class="text-white fs-5" style="text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">כולל חיפוש ראשי תיבות, סופי תיבות, גימטריאות ועוד.</p>
     </div>
 </div>
 {% endblock %}
@@ -50,6 +51,8 @@
                     <div class="mb-4">
                         <label class="form-label fw-bold" style="color: #4a5568;">סוג פעולה:</label>
                         <select class="form-select" id="searchAction" style="border-radius: 8px; border-color: #cbd5e1; background-color: #fff9f0;">
+                            <option value="text_exact">חיפוש מילה לתנ"ך - במדוייק</option>
+                            <option value="text_approx">חיפוש מילה לתנ"ך - לא מדוייק</option>
                             <option value="gematria">מצא פסוקים שווים בגימטריה</option>
                             <option value="els">דילוגי אותיות (ELS)</option>
                             <option value="rashei_tevot">ראשי תיבות (ר"ת)</option>
@@ -70,7 +73,7 @@
                     <!-- מילת חיפוש -->
                     <div class="mb-4">
                         <label class="form-label fw-bold" style="color: #4a5568;">הזן מילה, ערך מספרי או משפט:</label>
-                        <input type="text" class="form-control form-control-lg" id="searchQuery" placeholder="לדוגמה: אהבה..." required style="border-radius: 8px; border: 2px solid #d4af37; text-align: center;">
+                        <input type="text" class="form-control form-control-lg" id="searchQuery" placeholder="לדוגמה: ישראל..." required style="border-radius: 8px; border: 2px solid #d4af37; text-align: center;">
                     </div>
                     
                     <button type="submit" class="btn w-100 py-3 mt-2" style="background-color: #d4af37; color: #1e202c; font-weight: bold; font-size: 1.2rem; border-radius: 12px; transition: all 0.2s; box-shadow: 0 4px 10px rgba(212, 175, 55, 0.4);">
