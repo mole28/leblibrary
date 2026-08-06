@@ -1214,6 +1214,7 @@ def tanakh_advanced_search_api(request):
     query_type = request.GET.get('type', 'text') # text, gematria, acronym
     query_val = request.GET.get('q', '').strip()
     book_filter = request.GET.get('book', '').strip()
+    is_exact = request.GET.get('exact', 'false') == 'true'
     
     results = []
     qs = TorahText.objects.all()
@@ -1223,14 +1224,23 @@ def tanakh_advanced_search_api(request):
         
     try:
         if query_type == 'text' and query_val:
-            # חיפוש טקסט רגיל או וריאציות
-            matches = qs.filter(clean_text__icontains=query_val)[:50]
+            if is_exact:
+                # חיפוש מדויק - מילה שלמה בלבד
+                exact_pattern = r'(^|[^א-ת])' + re.escape(query_val) + r'([^א-ת]|$)'
+                matches = qs.filter(clean_text__iregex=exact_pattern)[:50]
+                match_label = 'מילה מדויקת'
+            else:
+                # חיפוש לא מדויק - רחב
+                matches = qs.filter(clean_text__icontains=query_val)[:50]
+                match_label = 'חיפוש רחב'
+
             for m in matches:
                 results.append({
                     'book': m.book,
                     'chapter': m.chapter,
                     'verse': m.verse,
-                    'text': m.text_with_nikkud
+                    'text': m.text_with_nikkud,
+                    'match_type': match_label
                 })
                 
         elif query_type == 'gematria' and query_val.isdigit():
@@ -1262,7 +1272,7 @@ def tanakh_advanced_search_api(request):
                             'chapter': m.chapter,
                             'verse': m.verse,
                             'text': m.text_with_nikkud,
-                            'match_type': f'גימטריה למילה בפصוק (ערך {target_val})'
+                            'match_type': f'גימטריה למילה בפסוק (ערך {target_val})'
                         })
                 if len(results) >= 40:
                     break

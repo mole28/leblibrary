@@ -145,19 +145,22 @@
         
         // מיפוי הבחירה של המשתמש לפרמטרים שה-API מבין
         let apiType = 'text';
+        let isExact = 'false';
+
         if (action === 'gematria') {
             apiType = 'gematria';
         } else if (action === 'rashei_tevot') {
             apiType = 'acronym';
         } else if (action === 'text_exact') {
             apiType = 'text';
-            // אפשר בעתיד להעביר פרמטר נוסף של exact=true
+            isExact = 'true';
         } else if (action === 'text_approx') {
             apiType = 'text';
+            isExact = 'false';
         }
 
-        // קריאה ל-API
-        fetch(`/api/tanakh-search/?type=${apiType}&q=${encodeURIComponent(query)}`)
+        // קריאה ל-API - העברת הפרמטר exact
+        fetch(`/api/tanakh-search/?type=${apiType}&q=${encodeURIComponent(query)}&exact=${isExact}`)
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
