@@ -1215,78 +1215,65 @@ def tanakh_advanced_search_api(request):
     query_val = request.GET.get('q', '').strip()
     book_filter = request.GET.get('book', '').strip()
     is_exact = request.GET.get('exact', 'false') == 'true'
+    exclude_books_param = request.GET.get('exclude_books', '').strip()
+    page = int(request.GET.get('page', 1))
+    per_page = 30
     
     results = []
     qs = TorahText.objects.all()
 
-    # --- הזרקת נתוני בדיקה חכמה ---
-    # בדיקה האם הפסוק של "שמר" קיים במאגר כדי לוודא שזה לא פשוט מאגר ריק
-    if not qs.filter(book='בראשית', chapter=37, verse=11).exists():
-        TorahText.objects.create(
-            book='בראשית', chapter=37, verse=11,
-            text_with_nikkud='וַיְקַנְאוּ־ב֖וֹ אֶחָ֑יו וְאָבִ֖יו שָׁמַ֥ר אֶת־הַדָּבָֽר׃',
-            clean_text='ויקנאו בו אחיו ואביו שמר את הדבר'
-        )
-    if not qs.filter(book='דברים', chapter=5, verse=11).exists():
-        TorahText.objects.create(
-            book='דברים', chapter=5, verse=11, 
-            text_with_nikkud='שָׁמ֛וֹר אֶת־י֥וֹם הַשַּׁבָּ֖ת לְקַדְּשׁ֑וֹ כַּאֲשֶׁ֥ר צִוְּךָ֖ יְהֹוָ֥ה אֱלֹהֶֽיךָ׃',
-            clean_text='שמור את יום השבת לקדשו כאשר צווך יהוה אלהיך'
-        )
-    qs = TorahText.objects.all()
-    # ------------------------------------------
-    
-    if book_filter:
+    # סינון לפי מאגר "חומשי תורה בלבד" כפי שמוגדר ב-HTML
+    if book_filter == 'torah':
+        qs = qs.filter(book__in=['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'])
+    elif book_filter and book_filter != 'tanakh':
         qs = qs.filter(book=book_filter)
         
+    # החרגת ספרים מסוימים (תהילים, עמוס וכו')
+    if exclude_books_param:
+        excluded = [b.strip() for b in exclude_books_param.split(',') if b.strip()]
+        if excluded:
+            qs = qs.exclude(book__in=excluded)
+
     try:
+        # === חיפוש טקסט (מדויק או רחב) ===
         if query_type == 'text' and query_val:
             q_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', query_val)
-            # ניקוי שאילתת החיפוש רק לאותיות
             q_words = re.findall(r'[א-ת]+', q_no_nikkud)
             
             if q_words:
                 clean_q_exact = " " + " ".join(q_words) + " "
                 clean_q_approx = " ".join(q_words)
                 
-                # משוך את כל הפסוקים בלי הגבלה
+                # מושך את כל הפסוקים הרלוונטיים, ללא הגבלה
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
                 
-                matches = []
                 for m in all_verses:
                     t = m.get('clean_text') or m.get('text_with_nikkud') or ""
                     
-                    # 1. קודם מסירים את הניקוד והטעמים (שלא יחתכו מילים)
                     t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
-                    # 2. הופכים את כל מה שאינו אות עברית לרווח (מוחק מקפים מקראיים וסימני פיסוק)
                     t_clean = re.sub(r'[^א-ת]', ' ', t_no_nikkud)
-                    
-                    # 3. עכשיו ניתן לפצל בבטחה את המילים
                     t_words = t_clean.split()
                     
+                    is_match = False
                     if is_exact:
                         clean_t = " " + " ".join(t_words) + " "
                         if clean_q_exact in clean_t:
-                            matches.append(m)
+                            is_match = True
                     else:
                         clean_t_approx = " ".join(t_words)
                         if clean_q_approx in clean_t_approx:
-                            matches.append(m)
+                            is_match = True
                             
-                    if len(matches) >= 50:
-                        break
-                        
-                match_label = 'מילה מדויקת' if is_exact else 'חיפוש רחב'
-
-                for m in matches:
-                    results.append({
-                        'book': m['book'],
-                        'chapter': m['chapter'],
-                        'verse': m['verse'],
-                        'text': m['text_with_nikkud'],
-                        'match_type': match_label
-                    })
+                    if is_match:
+                        results.append({
+                            'book': m['book'],
+                            'chapter': m['chapter'],
+                            'verse': m['verse'],
+                            'text': m['text_with_nikkud'],
+                            'match_type': 'מילה מדויקת' if is_exact else 'חיפוש רחב'
+                        })
                 
+        # === חיפוש גימטריה ===
         elif query_type == 'gematria' and query_val.isdigit():
             target_val = int(query_val)
             all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
@@ -1319,9 +1306,8 @@ def tanakh_advanced_search_api(request):
                             'text': m['text_with_nikkud'],
                             'match_type': f'גימטריה למילה בפסוק (ערך {target_val})'
                         })
-                if len(results) >= 40:
-                    break
                     
+        # === חיפוש ראשי תיבות ===
         elif query_type == 'acronym' and query_val:
             target_acr = re.sub(r'[^א-ת]', '', query_val)
             if target_acr:
@@ -1342,10 +1328,20 @@ def tanakh_advanced_search_api(request):
                                 'text': m['text_with_nikkud'],
                                 'match_type': 'ראשי תיבות בפסוק'
                             })
-                    if len(results) >= 40:
-                        break
-                        
+
+        # === בניית מערכת העמודים (Pagination) ===
+        total_results = len(results)
+        total_pages = (total_results + per_page - 1) // per_page if total_results > 0 else 1
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_results = results[start_idx:end_idx]
+
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
         
-    return JsonResponse({'results': results}, json_dumps_params={'ensure_ascii': False})
+    return JsonResponse({
+        'results': paginated_results,
+        'total': total_results,
+        'page': page,
+        'total_pages': total_pages
+    }, json_dumps_params={'ensure_ascii': False})

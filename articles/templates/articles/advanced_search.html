@@ -55,6 +55,58 @@
                         </select>
                     </div>
 
+                    <!-- החרגת ספרים -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold" style="color: #4a5568; font-size: 0.95rem;">החרג ספרים <span class="text-muted fw-normal">(החזק Ctrl לבחירה מרובה)</span>:</label>
+                        <select multiple class="form-select" id="excludeBooks" style="border-radius: 8px; border-color: #cbd5e1; height: 110px; font-size: 0.9rem;">
+                            <optgroup label="תורה">
+                                <option value="בראשית">בראשית</option>
+                                <option value="שמות">שמות</option>
+                                <option value="ויקרא">ויקרא</option>
+                                <option value="במדבר">במדבר</option>
+                                <option value="דברים">דברים</option>
+                            </optgroup>
+                            <optgroup label="נביאים">
+                                <option value="יהושע">יהושע</option>
+                                <option value="שופטים">שופטים</option>
+                                <option value="שמואל א">שמואל א</option>
+                                <option value="שמואל ב">שמואל ב</option>
+                                <option value="מלכים א">מלכים א</option>
+                                <option value="מלכים ב">מלכים ב</option>
+                                <option value="ישעיהו">ישעיהו</option>
+                                <option value="ירמיהו">ירמיהו</option>
+                                <option value="יחזקאל">יחזקאל</option>
+                                <option value="הושע">הושע</option>
+                                <option value="יואל">יואל</option>
+                                <option value="עמוס">עמוס</option>
+                                <option value="עובדיה">עובדיה</option>
+                                <option value="יונה">יונה</option>
+                                <option value="מיכה">מיכה</option>
+                                <option value="נחום">נחום</option>
+                                <option value="חבקוק">חבקוק</option>
+                                <option value="צפניה">צפניה</option>
+                                <option value="חגי">חגי</option>
+                                <option value="זכריה">זכריה</option>
+                                <option value="מלאכי">מלאכי</option>
+                            </optgroup>
+                            <optgroup label="כתובים">
+                                <option value="תהילים">תהילים</option>
+                                <option value="משלי">משלי</option>
+                                <option value="איוב">איוב</option>
+                                <option value="שיר השירים">שיר השירים</option>
+                                <option value="רות">רות</option>
+                                <option value="איכה">איכה</option>
+                                <option value="קהלת">קהלת</option>
+                                <option value="אסתר">אסתר</option>
+                                <option value="דניאל">דניאל</option>
+                                <option value="עזרא">עזרא</option>
+                                <option value="נחמיה">נחמיה</option>
+                                <option value="דברי הימים א">דברי הימים א</option>
+                                <option value="דברי הימים ב">דברי הימים ב</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
                     <!-- בחירת סוג חיפוש -->
                     <div class="mb-4">
                         <label class="form-label fw-bold" style="color: #4a5568;">סוג פעולה:</label>
@@ -67,15 +119,6 @@
                             <option value="sofei_tevot">סופי תיבות (ס"ת)</option>
                             <option value="reverse">מילים הפוכות (פלינדרום)</option>
                         </select>
-                    </div>
-
-                    <!-- אפשרויות לדילוגי אותיות (יוסתר כברירת מחדל) -->
-                    <div class="mb-4" id="elsOptions" style="display: none; background: rgba(212,175,55,0.1); padding: 15px; border-radius: 8px;">
-                        <label class="form-label fw-bold text-muted" style="font-size: 0.9rem;">הגדרות קפיצה (דילוגים):</label>
-                        <div class="d-flex gap-2">
-                            <input type="number" class="form-control" id="elsMin" placeholder="דילוג מינימלי" value="2">
-                            <input type="number" class="form-control" id="elsMax" placeholder="מקסימלי" value="50">
-                        </div>
                     </div>
 
                     <!-- מילת חיפוש -->
@@ -117,41 +160,44 @@
 </div>
 
 <script>
-    // הצגת/הסתרת אפשרויות ELS
-    const searchActionSelect = document.getElementById('searchAction');
-    const elsOptionsDiv = document.getElementById('elsOptions');
-    
-    searchActionSelect.addEventListener('change', function() {
-        if(this.value === 'els') {
-            elsOptionsDiv.style.display = 'block';
-        } else {
-            elsOptionsDiv.style.display = 'none';
-        }
-    });
+    let currentPage = 1;
 
-    // טיפול בשליחת הטופס
     document.getElementById('advancedSearchForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        
+        currentPage = 1;
+        performSearch();
+    });
+
+    window.changePage = function(newPage) {
+        currentPage = newPage;
+        performSearch();
+        document.getElementById('resultsArea').scrollIntoView({behavior: 'smooth'});
+    };
+
+    function performSearch() {
         const placeholder = document.getElementById('resultsPlaceholder');
         const resultsArea = document.getElementById('resultsArea');
         
         const action = document.getElementById('searchAction').value;
         const query = document.getElementById('searchQuery').value.trim();
+        const corpus = document.getElementById('searchCorpus').value;
+        
+        const excludeSelect = document.getElementById('excludeBooks');
+        const selectedExcludes = Array.from(excludeSelect.selectedOptions).map(o => o.value).join(',');
         
         placeholder.style.display = 'none';
         resultsArea.style.display = 'block';
         
-        // אנימציית טעינה
-        resultsArea.innerHTML = `
-            <div class="text-center py-5">
-                <div class="spinner-border text-warning" style="width: 3rem; height: 3rem; border-width: 0.3em;" role="status"></div>
-                <h4 class="mt-4" style="color: #2c3e50;">מנוע החישוב מעבד נתונים...</h4>
-                <p class="text-muted">אנא המתן, הפעולה מתבצעת על פני אלפי פסוקים</p>
-            </div>
-        `;
+        if (currentPage === 1) {
+            resultsArea.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-warning" style="width: 3rem; height: 3rem; border-width: 0.3em;" role="status"></div>
+                    <h4 class="mt-4" style="color: #2c3e50;">מנוע החישוב סורק את המאגר...</h4>
+                    <p class="text-muted">אנא המתן מספר רגעים (סורק את כל פסוקי התנ"ך)</p>
+                </div>
+            `;
+        }
         
-        // מיפוי הבחירה של המשתמש לפרמטרים שה-API מבין
         let apiType = 'text';
         let isExact = 'false';
 
@@ -167,8 +213,7 @@
             isExact = 'false';
         }
 
-        // קריאה ל-API
-        fetch(`/api/tanakh-search/?type=${apiType}&q=${encodeURIComponent(query)}&exact=${isExact}`)
+        fetch(`/api/tanakh-search/?type=${apiType}&q=${encodeURIComponent(query)}&exact=${isExact}&book=${encodeURIComponent(corpus)}&exclude_books=${encodeURIComponent(selectedExcludes)}&page=${currentPage}`)
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
@@ -177,12 +222,16 @@
                 }
                 
                 const results = data.results;
-                if (!results || results.length === 0) {
-                    resultsArea.innerHTML = '<div class="alert alert-info shadow-sm rounded-3 fs-5"><i class="bi bi-info-circle-fill me-2"></i>לא נמצאו פסוקים התואמים לחיפוש שלך במאגר. <br><small class="text-muted mt-2 d-block">(הערה: חלק מאפשרויות החיפוש יחוברו בקרוב למנוע ה-C++)</small></div>';
+                if (!results || data.total === 0) {
+                    resultsArea.innerHTML = '<div class="alert alert-info shadow-sm rounded-3 fs-5"><i class="bi bi-info-circle-fill me-2"></i>לא נמצאו פסוקים התואמים לחיפוש שלך במאגר.</div>';
                     return;
                 }
 
-                let html = `<h5 class="mb-4 fw-bold text-secondary">נמצאו <span class="text-dark">${results.length}</span> תוצאות:</h5><div class="list-group">`;
+                let html = `<div class="d-flex justify-content-between align-items-center mb-4">
+                                <h5 class="fw-bold text-secondary mb-0">נמצאו <span class="text-dark">${data.total}</span> תוצאות:</h5>
+                                <span class="badge bg-light text-dark border p-2">עמוד ${data.page} מתוך ${data.total_pages}</span>
+                            </div>
+                            <div class="list-group">`;
                 
                 results.forEach(res => {
                     let matchBadge = res.match_type ? `<span class="badge bg-light text-dark border ms-3 shadow-sm px-3 py-2">${res.match_type}</span>` : '';
@@ -203,11 +252,29 @@
                 });
                 
                 html += '</div>';
-                resultsArea.innerHTML = html;
+
+                // --- כפתורי מעבר עמודים ---
+                let paginationHtml = `<div class="d-flex justify-content-between align-items-center mt-4 p-3 bg-light rounded-4 border shadow-sm">`;
+                
+                if (data.page > 1) {
+                    paginationHtml += `<button class="btn btn-outline-dark fw-bold px-4 rounded-pill" onclick="changePage(${data.page - 1})"><i class="bi bi-arrow-right me-2"></i>לעמוד הקודם</button>`;
+                } else {
+                    paginationHtml += `<div></div>`;
+                }
+
+                if (data.page < data.total_pages) {
+                    paginationHtml += `<button class="btn btn-outline-dark fw-bold px-4 rounded-pill" onclick="changePage(${data.page + 1})">לעמוד הבא<i class="bi bi-arrow-left ms-2"></i></button>`;
+                } else {
+                    paginationHtml += `<div></div>`;
+                }
+                
+                paginationHtml += `</div>`;
+
+                resultsArea.innerHTML = html + paginationHtml;
             })
             .catch(err => {
                 resultsArea.innerHTML = `<div class="alert alert-danger shadow-sm rounded-3"><i class="bi bi-x-circle-fill me-2"></i>אירעה שגיאת תקשורת מול השרת. אנא נסה שוב.</div>`;
             });
-    });
+    }
 </script>
 {% endblock %}
