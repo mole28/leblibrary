@@ -1251,18 +1251,16 @@ def tanakh_advanced_search_api(request):
 
     try:
         if query_type == 'text' and query_val:
-            # מנקה את השאילתה - משאיר רק אותיות עבריות
+            # מנקה את השאילתה מתווים שאינם אותיות עבריות
             q_no_nikkud = re.sub(r'[^א-ת\s]', '', query_val)
             q_words = q_no_nikkud.split()
             
             if q_words:
-                # הרכבת תבנית חיפוש מבוססת Regex
+                # הרכבת תבנית חיפוש מבוססת Regex (הגמישה מוצאת גם "ושמרו", "שימור")
                 if is_exact:
-                    # חיפוש מדויק - חייב להיות מוקף ברווחים או תחילת/סוף מחרוזת
                     phrase = r'\s+'.join([re.escape(w) for w in q_words])
                     pattern = re.compile(r'(?:^|\s)' + phrase + r'(?=\s|$)', re.UNICODE)
                 else:
-                    # חיפוש רחב (לא מדויק) - מתעלם מתוספות ו/י ומאפשר מילים מורחבות
                     fuzzy_words = []
                     for w in q_words:
                         fuzzy_w = '[וי]*'.join(list(w))
@@ -1270,23 +1268,24 @@ def tanakh_advanced_search_api(request):
                     fuzzy_phrase = r'\s+'.join(fuzzy_words)
                     pattern = re.compile(fuzzy_phrase, re.UNICODE)
                 
-                # מושך את כל הפסוקים הרלוונטיים (ללא חיתוך מגביל!)
+                # מושך את כל הפסוקים הרלוונטיים, כולל את התנ"ך כולו!
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
                 
                 for m in all_verses:
-                    # שימוש בשדה עם הניקוד, כיוון שהשדה הנקי עלול להיות ריק
                     t = m.get('text_with_nikkud') or m.get('clean_text') or ""
                     
-                    # 1. ממיר סימני פיסוק (כולל מקף, נקודה, פסיק ומרכאות) לרווחים כדי להפריד מילים שנדבקו
+                    # ממיר סימני פיסוק ו*מקפים* לרווחים כדי להפריד מילים
                     t = re.sub(r'[.,:;?!"\'\-\–\—\(\)\[\]\{\}\u05BE]', ' ', t)
                     
-                    # 2. מסלק לחלוטין כל תו שאיננו אות עברית או רווח (כולל ניקוד וטעמים!) במקום להפוך אותו לרווח ולשבור מילים
-                    t_clean = re.sub(r'[^א-ת\s]', '', t)
+                    # *מוחק לחלוטין* כל תו שאיננו אות עברית או רווח (כולל ניקוד וטעמים!) 
+                    # בעבר הפכנו את זה לרווח, מה ששבר מילים. עכשיו זה נמחק ונשאר נקי!
+                    t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
+                    t_clean = re.sub(r'[^א-ת\s]', '', t_no_nikkud)
                     
-                    # 3. מסדר מרווחים למחרוזת נקייה, ומוסיף רווח בהתחלה ובסוף כדי שה-Regex ימצא גבולות מילה
+                    # מסדר מרווחים למחרוזת אחידה
                     t_clean_spaced = " " + " ".join(t_clean.split()) + " "
                     
-                    # הרצת התבנית מול הפסוק המטוהר
+                    # הרצת התבנית החכמה מול הפסוק המטוהר
                     if pattern.search(t_clean_spaced):
                         results.append({
                             'book': m['book'],
@@ -1302,7 +1301,8 @@ def tanakh_advanced_search_api(request):
             for m in all_verses:
                 t = m.get('text_with_nikkud') or m.get('clean_text') or ""
                 t = re.sub(r'[.,:;?!"\'\-\–\—\(\)\[\]\{\}\u05BE]', ' ', t)
-                t_clean = re.sub(r'[^א-ת\s]', '', t)
+                t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
+                t_clean = re.sub(r'[^א-ת\s]', '', t_no_nikkud)
                 t_words = t_clean.split()
                 
                 clean_t = "".join(t_words)
@@ -1336,7 +1336,8 @@ def tanakh_advanced_search_api(request):
                 for m in all_verses:
                     t = m.get('text_with_nikkud') or m.get('clean_text') or ""
                     t = re.sub(r'[.,:;?!"\'\-\–\—\(\)\[\]\{\}\u05BE]', ' ', t)
-                    t_clean = re.sub(r'[^א-ת\s]', '', t)
+                    t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
+                    t_clean = re.sub(r'[^א-ת\s]', '', t_no_nikkud)
                     t_words = t_clean.split()
                     
                     if len(t_words) >= len(target_acr):
