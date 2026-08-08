@@ -1256,37 +1256,40 @@ def tanakh_advanced_search_api(request):
             q_words = q_no_nikkud.split()
             
             if q_words:
-                # הרכבת תבנית חיפוש מבוססת Regex (הגמישה מוצאת גם "ושמרו", "שימור")
-                if is_exact:
-                    phrase = r'\s+'.join([re.escape(w) for w in q_words])
-                    pattern = re.compile(r'(?:^|\s)' + phrase + r'(?=\s|$)', re.UNICODE)
-                else:
-                    fuzzy_words = []
-                    for w in q_words:
-                        fuzzy_w = '[וי]*'.join(list(w))
-                        fuzzy_words.append(fuzzy_w)
-                    fuzzy_phrase = r'\s+'.join(fuzzy_words)
-                    pattern = re.compile(fuzzy_phrase, re.UNICODE)
+                clean_q_exact = " ".join(q_words)
                 
-                # מושך את כל הפסוקים הרלוונטיים, כולל את התנ"ך כולו!
+                # תבנית חיפוש רחב - מילה בתוך מילה ועם תוספות
+                fuzzy_words = []
+                for w in q_words:
+                    fuzzy_w = '[וי]*'.join(list(w))
+                    fuzzy_words.append(fuzzy_w)
+                fuzzy_phrase = r'\s+'.join(fuzzy_words)
+                pattern = re.compile(fuzzy_phrase, re.UNICODE)
+                
+                # שליפת כל הפסוקים
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
                 
                 for m in all_verses:
                     t = m.get('text_with_nikkud') or m.get('clean_text') or ""
                     
-                    # ממיר סימני פיסוק ו*מקפים* לרווחים כדי להפריד מילים
-                    t = re.sub(r'[.,:;?!"\'\-\–\—\(\)\[\]\{\}\u05BE]', ' ', t)
-                    
-                    # *מוחק לחלוטין* כל תו שאיננו אות עברית או רווח (כולל ניקוד וטעמים!) 
-                    # בעבר הפכנו את זה לרווח, מה ששבר מילים. עכשיו זה נמחק ונשאר נקי!
+                    # מסיר ניקוד, טעמים, מקפים וסימני פיסוק! 
                     t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
-                    t_clean = re.sub(r'[^א-ת\s]', '', t_no_nikkud)
+                    t_clean = re.sub(r'[^א-ת\s]', ' ', t_no_nikkud)
                     
-                    # מסדר מרווחים למחרוזת אחידה
-                    t_clean_spaced = " " + " ".join(t_clean.split()) + " "
+                    # הפסוק מורכב כעת ממילים נקיות מופרדות ברווח בלבד
+                    t_clean_spaced = " ".join(t_clean.split())
                     
-                    # הרצת התבנית החכמה מול הפסוק המטוהר
-                    if pattern.search(t_clean_spaced):
+                    is_match = False
+                    if is_exact:
+                        # בחיפוש "מדויק" בודק האם המחרוזת נמצאת בפנים פשוט כפי שהיא, ללא הגבלת מילה. ימצא גם "לשמרה" 
+                        if clean_q_exact in t_clean_spaced:
+                            is_match = True
+                    else:
+                        # בחיפוש "רחב" נעזר ב-Regex לתוספות וי
+                        if pattern.search(t_clean_spaced):
+                            is_match = True
+                            
+                    if is_match:
                         results.append({
                             'book': m['book'],
                             'chapter': m['chapter'],
@@ -1300,9 +1303,8 @@ def tanakh_advanced_search_api(request):
             all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
             for m in all_verses:
                 t = m.get('text_with_nikkud') or m.get('clean_text') or ""
-                t = re.sub(r'[.,:;?!"\'\-\–\—\(\)\[\]\{\}\u05BE]', ' ', t)
                 t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
-                t_clean = re.sub(r'[^א-ת\s]', '', t_no_nikkud)
+                t_clean = re.sub(r'[^א-ת\s]', ' ', t_no_nikkud)
                 t_words = t_clean.split()
                 
                 clean_t = "".join(t_words)
@@ -1335,9 +1337,8 @@ def tanakh_advanced_search_api(request):
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
                 for m in all_verses:
                     t = m.get('text_with_nikkud') or m.get('clean_text') or ""
-                    t = re.sub(r'[.,:;?!"\'\-\–\—\(\)\[\]\{\}\u05BE]', ' ', t)
                     t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
-                    t_clean = re.sub(r'[^א-ת\s]', '', t_no_nikkud)
+                    t_clean = re.sub(r'[^א-ת\s]', ' ', t_no_nikkud)
                     t_words = t_clean.split()
                     
                     if len(t_words) >= len(target_acr):
