@@ -1256,7 +1256,7 @@ def tanakh_advanced_search_api(request):
             q_words = q_no_nikkud.split()
             
             if q_words:
-                # הרכבת תבנית חיפוש מבוססת Regex במקום חיפוש פשוט
+                # הרכבת תבנית חיפוש מבוססת Regex
                 if is_exact:
                     # חיפוש מדויק - חייב להיות מוקף ברווחים או תחילת/סוף מחרוזת
                     phrase = r'\s+'.join([re.escape(w) for w in q_words])
@@ -1270,22 +1270,23 @@ def tanakh_advanced_search_api(request):
                     fuzzy_phrase = r'\s+'.join(fuzzy_words)
                     pattern = re.compile(fuzzy_phrase, re.UNICODE)
                 
+                # מושך את כל הפסוקים הרלוונטיים (ללא חיתוך מגביל!)
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
                 
                 for m in all_verses:
-                    # שימוש בשדה עם הניקוד במידה והשדה הנקי ריק במסד הנתונים של המשתמש
+                    # שימוש בשדה עם הניקוד, כיוון שהשדה הנקי עלול להיות ריק
                     t = m.get('text_with_nikkud') or m.get('clean_text') or ""
                     
-                    # 1. ממיר סימני פיסוק (כולל מקף, נקודה, פסיק ומרכאות) לרווחים
-                    t = re.sub(r'[.,:;?!"\'\-\(\)\[\]\{\}\u05BE]', ' ', t)
-                    # 2. מוחק לחלוטין ניקוד וטעמים מבלי לשבור את המילים לרווחים
-                    t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
-                    # 3. מוחק כל תו שאיננו אות עברית או רווח
-                    t_clean = re.sub(r'[^א-ת\s]', ' ', t_no_nikkud)
-                    # 4. מסדר מרווחים (מונע רווחים כפולים שפוגעים בחיפוש)
-                    t_clean_spaced = " ".join(t_clean.split())
+                    # 1. ממיר סימני פיסוק (כולל מקף, נקודה, פסיק ומרכאות) לרווחים כדי להפריד מילים שנדבקו
+                    t = re.sub(r'[.,:;?!"\'\-\–\—\(\)\[\]\{\}\u05BE]', ' ', t)
                     
-                    # הרצת התבנית הגמישה שבנינו מול הפסוק המטוהר
+                    # 2. מסלק לחלוטין כל תו שאיננו אות עברית או רווח (כולל ניקוד וטעמים!) במקום להפוך אותו לרווח ולשבור מילים
+                    t_clean = re.sub(r'[^א-ת\s]', '', t)
+                    
+                    # 3. מסדר מרווחים למחרוזת נקייה, ומוסיף רווח בהתחלה ובסוף כדי שה-Regex ימצא גבולות מילה
+                    t_clean_spaced = " " + " ".join(t_clean.split()) + " "
+                    
+                    # הרצת התבנית מול הפסוק המטוהר
                     if pattern.search(t_clean_spaced):
                         results.append({
                             'book': m['book'],
@@ -1300,9 +1301,8 @@ def tanakh_advanced_search_api(request):
             all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
             for m in all_verses:
                 t = m.get('text_with_nikkud') or m.get('clean_text') or ""
-                t = re.sub(r'[.,:;?!"\'\-\(\)\[\]\{\}\u05BE]', ' ', t)
-                t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
-                t_clean = re.sub(r'[^א-ת\s]', ' ', t_no_nikkud)
+                t = re.sub(r'[.,:;?!"\'\-\–\—\(\)\[\]\{\}\u05BE]', ' ', t)
+                t_clean = re.sub(r'[^א-ת\s]', '', t)
                 t_words = t_clean.split()
                 
                 clean_t = "".join(t_words)
@@ -1335,9 +1335,8 @@ def tanakh_advanced_search_api(request):
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
                 for m in all_verses:
                     t = m.get('text_with_nikkud') or m.get('clean_text') or ""
-                    t = re.sub(r'[.,:;?!"\'\-\(\)\[\]\{\}\u05BE]', ' ', t)
-                    t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
-                    t_clean = re.sub(r'[^א-ת\s]', ' ', t_no_nikkud)
+                    t = re.sub(r'[.,:;?!"\'\-\–\—\(\)\[\]\{\}\u05BE]', ' ', t)
+                    t_clean = re.sub(r'[^א-ת\s]', '', t)
                     t_words = t_clean.split()
                     
                     if len(t_words) >= len(target_acr):
