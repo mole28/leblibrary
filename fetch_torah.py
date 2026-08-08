@@ -6,7 +6,6 @@ import json
 import re
 import time
 
-# הגדרת סביבת Django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 django.setup()
 
@@ -16,46 +15,51 @@ def clean_hebrew_text(text):
     if not text:
         return ''
     text = re.sub(r'<[^>]+>', '', text)
-    clean = re.sub(r'[^א-ת]', '', text)
-    return clean
+    # הסרת ניקוד וטעמי מקרא
+    text = re.sub(r'[\u0591-\u05C7]', '', text)
+    # החלפת סימני פיסוק ומקפים ברווחים כדי לשמור על מילים נפרדות
+    text = re.sub(r'[^\w\sא-ת\u05BE]', ' ', text)
+    text = re.sub(r'[^א-ת\s]', ' ', text)
+    # ניקוי רווחים כפולים
+    return " ".join(text.split())
 
 def fetch_all_tanakh():
     tanakh_books = [
-        # תורה
         ('Genesis', 'בראשית'), ('Exodus', 'שמות'), ('Leviticus', 'ויקרא'),
-        ('Numbers', 'במדבר'), ('Deuteronomy', 'דברים'),
-        
-        # נביאים
-        ('Joshua', 'יהושע'), ('Judges', 'שופטים'), ('I Samuel', 'שמואל א'),
-        ('II Samuel', 'שמואל ב'), ('I Kings', 'מלכים א'), ('II Kings', 'מלכים ב'),
-        ('Isaiah', 'ישעיהו'), ('Jeremiah', 'ירמיהו'), ('Ezekiel', 'יחזקאל'),
-        ('Hosea', 'הושע'), ('Joel', 'יואל'), ('Amos', 'עמוס'), ('Obadiah', 'עובדיה'),
-        ('Jonah', 'יונה'), ('Micah', 'מיכה'), ('Nahum', 'נחום'), ('Habakkuk', 'חבקוק'),
-        ('Zephaniah', 'צפניה'), ('Haggai', 'חגי'), ('Zechariah', 'זכריה'),
-        ('Malachi', 'מלאכי'),
-        
-        # כתובים
-        ('Psalms', 'תהילים'), ('Proverbs', 'משלי'), ('Job', 'איוב'),
-        ('Song of Songs', 'שיר השירים'), ('Ruth', 'רות'), ('Lamentations', 'איכה'),
-        ('Ecclesiastes', 'קהלת'), ('Esther', 'אסתר'), ('Daniel', 'דניאל'),
-        ('Ezra', 'עזרא'), ('Nehemiah', 'נחמיה'), ('I Chronicles', 'דברי הימים א'),
+        ('Numbers', 'במדבר'), ('Deuteronomy', 'דברים'), ('Joshua', 'יהושע'),
+        ('Judges', 'שופטים'), ('I Samuel', 'שמואל א'), ('II Samuel', 'שמואל ב'),
+        ('I Kings', 'מלכים א'), ('II Kings', 'מלכים ב'), ('Isaiah', 'ישעיהו'),
+        ('Jeremiah', 'ירמיהו'), ('Ezekiel', 'יחזקאל'), ('Hosea', 'הושע'),
+        ('Joel', 'יואל'), ('Amos', 'עמוס'), ('Obadiah', 'עובדיה'),
+        ('Jonah', 'יונה'), ('Micah', 'מיכה'), ('Nahum', 'נחום'),
+        ('Habakkuk', 'חבקוק'), ('Zephaniah', 'צפניה'), ('Haggai', 'חגי'),
+        ('Zechariah', 'זכריה'), ('Malachi', 'מלאכי'), ('Psalms', 'תהילים'),
+        ('Proverbs', 'משלי'), ('Job', 'איוב'), ('Song of Songs', 'shir hashirim' if False else 'שיר השירים'),
+        ('Ruth', 'רות'), ('Lamentations', 'איכה'), ('Ecclesiastes', 'קהלת'),
+        ('Esther', 'אסתר'), ('Daniel', 'דניאל'), ('Ezra', 'עזרא'),
+        ('Nehemiah', 'נחמיה'), ('I Chronicles', 'דברי הימים א'),
         ('II Chronicles', 'דברי הימים ב')
     ]
     
-    print('מנקה נתונים ישנים מהמאגר כדי למנוע כפילויות...')
+    # תיקון שמות באנגלית לספריא במידת הצורך
+    eng_names_map = {
+        'שיר השירים': 'Song of Songs'
+    }
+
+    print('מנקה נתונים ישנים מהמאגר...')
     TorahText.objects.all().delete()
     
-    print('מתחיל בהורדת כל ספרי התנ"ך מספריא (Sefaria) - פרק אחרי פרק...')
+    print('מתחיל בהורדת כל ספרי התנ"ך עם שמירת רווחים נכונים בין מילים...')
     
     total_saved = 0
     for eng_name, heb_name in tanakh_books:
+        api_eng_name = eng_names_map.get(heb_name, eng_name)
         print(f'מוריד את ספר {heb_name}...')
         chap_idx = 1
         book_saved = 0
         
         while True:
-            # מבקשים פרק ספציפי (לדוגמה: Genesis 1, Genesis 2)
-            encoded_eng_name = urllib.parse.quote(f"{eng_name} {chap_idx}")
+            encoded_eng_name = urllib.parse.quote(f"{api_eng_name} {chap_idx}")
             url = f'https://www.sefaria.org/api/texts/{encoded_eng_name}?context=0'
             
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -64,7 +68,6 @@ def fetch_all_tanakh():
                 data = json.loads(response.read().decode('utf-8'))
                 verses = data.get('he', [])
                 
-                # אם הגענו לפרק ריק, הספר הסתיים
                 if not verses or 'error' in data:
                     break
                     
@@ -89,15 +92,14 @@ def fetch_all_tanakh():
                     total_saved += 1
                     
                 chap_idx += 1
-                time.sleep(0.1) # מנוחה קלה כדי לא לחסום את שרתי ספריא
+                time.sleep(0.1)
                 
             except Exception as e:
-                # קבלת שגיאה (כמו 404 או 400) אומרת שהפרק לא קיים - הספר הסתיים
                 break
                 
         print(f'-> נשמרו {book_saved} פסוקים לספר {heb_name}.')
         
-    print(f'\nסיום! סך הכל נשמרו {total_saved} פסוקים מכל ספרי התנ"ך במסד הנתונים.')
+    print(f'\nסיום! סך הכל נשמרו {total_saved} פסוקים.')
 
 if __name__ == '__main__':
     fetch_all_tanakh()
