@@ -1219,6 +1219,21 @@ def safe_int(v):
     except:
         return 0
 
+def highlight_matched_text(text_with_nikkud, query_words, is_exact):
+    """מוסיף תגיות הדגשה <mark> למילים שנמצאו בתוך הטקסט המנוקד"""
+    highlighted = text_with_nikkud
+    for w in query_words:
+        chars = []
+        for char in w:
+            chars.append(re.escape(char) + r'[\u0591-\u05C7]*')
+        pattern_str = ''.join(chars)
+        try:
+            pattern = re.compile(f'({pattern_str})', re.UNICODE)
+            highlighted = pattern.sub(r'<mark>\1</mark>', highlighted)
+        except Exception:
+            pass
+    return highlighted
+
 @ratelimit(rate=30, timeout=60)
 def tanakh_advanced_search_api(request):
     query_type = request.GET.get('type', 'text')
@@ -1227,14 +1242,16 @@ def tanakh_advanced_search_api(request):
     is_exact = request.GET.get('exact', 'false') == 'true'
     exclude_books_param = request.GET.get('exclude_books', '').strip()
     page = int(request.GET.get('page', 1))
-    per_page = 30
+    
+    try:
+        per_page = int(request.GET.get('per_page', 10))
+        if per_page not in [10, 20, 50, 100]:
+            per_page = 10
+    except ValueError:
+        per_page = 10
     
     results = []
     qs = TorahText.objects.all()
-
-    # --- הוכחה שאין לך נתונים במאגר ---
-    print(f"DEBUG: Total verses in DB: {qs.count()}")
-    # -----------------------------------
 
     if book_filter == 'torah':
         qs = qs.filter(book__in=['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'])
@@ -1252,34 +1269,54 @@ def tanakh_advanced_search_api(request):
             q_words = q_no_nikkud.split()
             
             if q_words:
-                if is_exact:
-                    # חיפוש מדויק - מוצא את המילה בכל אופן שבו היא מופיעה (ללא תלות ברווחים)
-                    phrase = r''.join([re.escape(w) for w in q_words])
-                    pattern = re.compile(phrase, re.UNICODE)
-                else:
-                    # חיפוש רחב - מאפשר "ו" או "י" בין האותיות (שורש)
-                    fuzzy_words = []
-                    for w in q_words:
+                num_q_words = len(q_words)
+                query_patterns = []
+                for w in q_words:
+                    if is_exact:
+                        query_patterns.append(re.compile(f'^{re.escape(w)}$', re.UNICODE))
+                    else:
                         fuzzy_w = '[וי]*'.join(list(w))
-                        fuzzy_words.append(fuzzy_w)
-                    fuzzy_phrase = r''.join(fuzzy_words)
-                    pattern = re.compile(fuzzy_phrase, re.UNICODE)
+                        query_patterns.append(re.compile(f'^{fuzzy_w}$', re.UNICODE))
                 
-                # מושך את *כל* הפסוקים הרלוונטיים (מחקתי את ה- [:10000])
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
                 
                 for m in all_verses:
-                    t = m.get('clean_text') or m.get('text_with_nikkud') or ""
+                    t_clean = m.get('clean_text') or ""
+                    if not t_clean:
+                        t = m.get('text_with_nikkud') or ""
+                        t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
+                        t_clean = " ".join(re.sub(r'[^א-ת\s]', ' ', t_no_nikkud).split())
                     
-                    # משאיר רק אותיות עבריות טהורות ללא ניקוד או מקפים
-                    t_clean = re.sub(r'[^א-ת]', '', t)
+                    v_words = t_clean.split()
+                    is_match = False
                     
-                    if pattern.search(t_clean):
+                    # בדיקת מילים נפרדות (מונע זליגה בין מילים שונות)
+                    if num_q_words == 1:
+                        pat = query_patterns[0]
+                        for vw in v_words:
+                            if pat.search(vw):
+                                is_match = True
+                                break
+                    else:
+                        for i in range(len(v_words) - num_q_words + 1):
+                            matched_sequence = True
+                            for j in range(num_q_words):
+                                if not query_patterns[j].search(v_words[i + j]):
+                                    matched_sequence = False
+                                    break
+                            if matched_sequence:
+                                is_match = True
+                                break
+                            
+                    if is_match:
+                        raw_text = m['text_with_nikkud']
+                        highlighted_text = highlight_matched_text(raw_text, q_words, is_exact)
+                        
                         results.append({
                             'book': m['book'],
                             'chapter': m['chapter'],
                             'verse': m['verse'],
-                            'text': m['text_with_nikkud'],
+                            'text': highlighted_text,
                             'match_type': 'מילה מדויקת' if is_exact else 'חיפוש רחב'
                         })
                 
@@ -1351,5 +1388,6 @@ def tanakh_advanced_search_api(request):
         'results': paginated_results,
         'total': total_results,
         'page': page,
-        'total_pages': total_pages
+        'total_pages': total_pages,
+        'per_page': per_page
     }, json_dumps_params={'ensure_ascii': False})
