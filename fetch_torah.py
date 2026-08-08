@@ -15,12 +15,9 @@ def clean_hebrew_text(text):
     if not text:
         return ''
     text = re.sub(r'<[^>]+>', '', text)
-    # הסרת ניקוד וטעמי מקרא
     text = re.sub(r'[\u0591-\u05C7]', '', text)
-    # החלפת סימני פיסוק ומקפים ברווחים כדי לשמור על מילים נפרדות
     text = re.sub(r'[^\w\sא-ת\u05BE]', ' ', text)
     text = re.sub(r'[^א-ת\s]', ' ', text)
-    # ניקוי רווחים כפולים
     return " ".join(text.split())
 
 def fetch_all_tanakh():
@@ -34,14 +31,13 @@ def fetch_all_tanakh():
         ('Jonah', 'יונה'), ('Micah', 'מיכה'), ('Nahum', 'נחום'),
         ('Habakkuk', 'חבקוק'), ('Zephaniah', 'צפניה'), ('Haggai', 'חגי'),
         ('Zechariah', 'זכריה'), ('Malachi', 'מלאכי'), ('Psalms', 'תהילים'),
-        ('Proverbs', 'משלי'), ('Job', 'איוב'), ('Song of Songs', 'shir hashirim' if False else 'שיר השירים'),
+        ('Proverbs', 'משלי'), ('Job', 'איוב'), ('Song of Songs', 'שיר השירים'),
         ('Ruth', 'רות'), ('Lamentations', 'איכה'), ('Ecclesiastes', 'קהלת'),
         ('Esther', 'אסתר'), ('Daniel', 'דניאל'), ('Ezra', 'עזרא'),
         ('Nehemiah', 'נחמיה'), ('I Chronicles', 'דברי הימים א'),
         ('II Chronicles', 'דברי הימים ב')
     ]
     
-    # תיקון שמות באנגלית לספריא במידת הצורך
     eng_names_map = {
         'שיר השירים': 'Song of Songs'
     }
@@ -49,7 +45,7 @@ def fetch_all_tanakh():
     print('מנקה נתונים ישנים מהמאגר...')
     TorahText.objects.all().delete()
     
-    print('מתחיל בהורדת כל ספרי התנ"ך עם שמירת רווחים נכונים בין מילים...')
+    print('מתחיל בהורדת כל ספרי התנ"ך - פרק אחרי פרק...')
     
     total_saved = 0
     for eng_name, heb_name in tanakh_books:
