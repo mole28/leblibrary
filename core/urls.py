@@ -20,8 +20,8 @@ sitemaps = {
 def robots_txt(request):
     lines = [
         "User-agent: *",
+        "Disallow: /api/",
         "Allow: /",
-        "",
         "User-agent: GPTBot",
         "Allow: /",
         "",
