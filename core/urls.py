@@ -22,9 +22,11 @@ def robots_txt(request):
         "User-agent: *",
         "Disallow: /api/",
         "Allow: /",
+        "",
         "User-agent: GPTBot",
         "Allow: /",
         "",
+
         "User-agent: ChatGPT-User",
         "Allow: /",
         "",
@@ -36,7 +38,7 @@ def robots_txt(request):
         "",
         "User-agent: Google-Extended",
         "Allow: /",
-        "",
+
         "Sitemap: https://leblibrary.co.il/sitemap.xml"
     ]
     return HttpResponse("\n".join(lines), content_type="text/plain")
