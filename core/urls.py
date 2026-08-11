@@ -149,6 +149,9 @@ def manifest_json(request):
 urlpatterns = [
     path('admin/', admin.site.urls),
     
+    # --- הוספת נתיב ה-CKEditor לפתרון שגיאת האדמין ---
+    path("ckeditor5/", include('django_ckeditor_5.urls')),
+    
     # --- נתיבים עבור SEO, PWA ובוטים של AI בשורש הדומיין ---
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
     path('robots.txt', robots_txt, name='robots_file'),
