@@ -28,7 +28,8 @@ from django.core.cache import cache
 from django.views.decorators.cache import cache_page
 from django.db.models import Q, Case, When, Value, IntegerField
 from django.urls import reverse
-from django.db import models
+# שיפור בטוח מס' 1: הוספת transaction לייבוא
+from django.db import models, transaction
 from django.utils.html import strip_tags
 
 from .forms import ArticleForm
@@ -730,7 +731,7 @@ def acronyms_view(request):
     query = re.sub(r'[\'׳`]', "'", query)
     # ============================
     
-    search_type = request.GET.get('type', 'short')
+    search_type = request.GET.get('type', 'short') # 'short' עבור ראשי תיבות, 'meaning' עבור פירוש/מילים
     acronyms = None
     if query:
         if search_type == 'meaning':
@@ -895,14 +896,17 @@ def checkout(request):
         zip_code = request.POST.get('zip_code', '')
         notes = request.POST.get('notes', '')
 
-        order = Order.objects.create(
-            first_name=first_name, last_name=last_name, email=email, phone=phone,
-            address=address, city=city, zip_code=zip_code, notes=notes,
-            total_paid=total_price, status='pending'
-        )
-        for item in items:
-            OrderItem.objects.create(order=order, book=item.book, price=item.book.price, quantity=item.quantity)
-        cart.items.all().delete()
+        # שיפור בטוח מס' 2: הוספת הגנת מסד נתונים שלמה לתהליך ההזמנה
+        with transaction.atomic():
+            order = Order.objects.create(
+                first_name=first_name, last_name=last_name, email=email, phone=phone,
+                address=address, city=city, zip_code=zip_code, notes=notes,
+                total_paid=total_price, status='pending'
+            )
+            for item in items:
+                OrderItem.objects.create(order=order, book=item.book, price=item.book.price, quantity=item.quantity)
+            cart.items.all().delete()
+            
         try: send_order_confirmation(order)
         except Exception: pass
         return render(request, 'articles/order_success.html', {'order': order})
@@ -1102,7 +1106,8 @@ def generate_article_audio_background(article_id):
 @receiver(post_save, sender=Article)
 def trigger_article_audio_pregeneration(sender, instance, created, **kwargs):
     if instance.is_published:
-        threading.Thread(target=generate_article_audio_background, args=(instance.id,)).start()
+        # שיפור בטוח מס' 3: שימוש ב-on_commit כדי למנוע קריסה של תהליכון
+        transaction.on_commit(lambda: threading.Thread(target=generate_article_audio_background, args=(instance.id,)).start())
 
 def get_article_audio(request, article_id):
     try:
