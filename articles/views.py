@@ -33,12 +33,11 @@ from django.db import models, transaction
 from django.utils.html import strip_tags
 
 from .forms import ArticleForm
-from .models import Article, Book, Chapter, Section, Cart, CartItem, Order, OrderItem, TorahText
+from .models import Article, Book, Chapter, Section, Cart, CartItem, Order, OrderItem, TorahText, QA, Acronym
 from .emails import send_order_confirmation
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .vector_store import search_similar_articles
-from .models import Article, Book, QA, Acronym 
 
 def get_base_schema_json():
     return json.dumps({
