@@ -501,16 +501,18 @@
             display: flex !important;
         }
         
+        /* התיקון שלנו: שימוש ב-transform כדי להוציא בוודאות את התפריט מהמסך */
         .toc-nav-container {
             position: fixed !important;
             top: 0;
-            right: -320px;
+            right: 0;
+            transform: translateX(100%);
             width: 320px;
             max-width: 85vw;
             height: 100vh;
             z-index: 10501;
             background: #ffffff;
-            transition: right 0.3s ease;
+            transition: transform 0.3s ease;
             display: block !important;
             padding: 0 !important;
             box-shadow: -5px 0 25px rgba(0,0,0,0.2);
@@ -521,7 +523,7 @@
         }
 
         .toc-nav-container.toc-open {
-            right: 0;
+            transform: translateX(0);
         }
         
         .mobile-toc-overlay.overlay-open {
