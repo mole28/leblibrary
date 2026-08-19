@@ -118,12 +118,27 @@
                 <h1 class="display-4 fw-bold text-dark" style="font-family: 'Frank Ruhl Libre', serif;">{{ article.title|safe }}</h1>
                 
                 <p class="text-muted fs-5 mt-3">
-                    <i class="bi bi-calendar3"></i> 
-                    <!-- Semantic time tag -->
-                    <time datetime="{% if article.created_at %}{{ article.created_at|date:'Y-m-d' }}{% endif %}">{{ article.hebrew_date }}</time>
+                    <!-- שורה ראשונה: תאריך וזמן קריאה -->
+                    <span class="d-inline-block">
+                        <i class="bi bi-calendar3"></i> 
+                        <!-- Semantic time tag -->
+                        <time datetime="{% if article.created_at %}{{ article.created_at|date:'Y-m-d' }}{% endif %}">{{ article.hebrew_date }}</time>
+                        
+                        <span class="mx-2 opacity-50">|</span>
+                        
+                        <i class="bi bi-clock"></i>
+                        {% with words=article.content|striptags|wordcount %}
+                            {% if words < 200 %}
+                                דקת קריאה
+                            {% else %}
+                                כ-{% widthratio words 200 1 %} דקות קריאה
+                            {% endif %}
+                        {% endwith %}
+                    </span>
                     
+                    <!-- שורה שנייה: פרשת שבוע -->
                     {% if article.parasha and article.parasha != 'general' and article.parasha != ',general,' %}
-                        <span class="ms-3 hide-in-zen">
+                        <span class="d-block mt-2 hide-in-zen">
                             <i class="bi bi-book"></i> 
                             <script>document.write("{{ article.parasha|escapejs }}".replace(/general/gi, '').replace(/^,+|,+$/g, '').replace(/,+/g, ', '));</script>
                         </span>
