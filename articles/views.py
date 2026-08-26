@@ -1334,7 +1334,6 @@ def tanakh_advanced_search_api(request):
     results = []
     qs = TorahText.objects.all()
 
-    # רשימת ספרי התנ"ך המוכרים להפרדה מוחלטת
     tanakh_names = ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב']
 
     if book_filter == 'torah':
@@ -1362,8 +1361,17 @@ def tanakh_advanced_search_api(request):
             q_words = q_no_nikkud.split()
             
             if q_words:
-                num_q_words = len(q_words)
+                target_w = q_words[0]
                 
+                # --- שינוי קריטי: סינון ישיר במסד הנתונים באמצעות Q objects ---
+                # מסד הנתונים יחזיר אך ורק שורות שמכילות את המילה (בצורה נקייה ללא ניקוד), מה שמונע פספוסים ועומס פייתון
+                if is_exact:
+                    # בחיפוש מדויק דורשים שהמילה תופיע בתוך השדה (ניתן להרחיב לפי צורך)
+                    db_filter = Q(clean_text__icontains=target_w) | Q(text_with_nikkud__icontains=target_w)
+                else:
+                    db_filter = Q(clean_text__icontains=target_w) | Q(text_with_nikkud__icontains=target_w)
+                
+                qs = qs.filter(db_filter)
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud')
                 
                 for m in all_verses:
@@ -1372,42 +1380,20 @@ def tanakh_advanced_search_api(request):
                         continue
                     
                     t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', raw_text)
-                    # פיצול מדויק למילים תוך שמירה על גבולות מילים אמיתיים
                     v_words_clean_only = re.findall(r'[א-ת]+', t_no_nikkud)
                     
                     if not v_words_clean_only:
                         continue
                         
                     is_match = False
-                    
-                    if num_q_words == 1:
-                        target_w = q_words[0]
-                        for vw_clean in v_words_clean_only:
-                            if is_exact:
-                                # בחיפוש מדויק: דורש התאמה מוחלטת של המילה הנקייה מניקוד
-                                if vw_clean == target_w:
-                                    is_match = True
-                                    break
-                            else:
-                                # בחיפוש רחב: בודק הכלה של המילה
-                                if target_w in vw_clean:
-                                    is_match = True
-                                    break
-                    else:
-                        for i in range(len(v_words_clean_only) - num_q_words + 1):
-                            matched_sequence = True
-                            for j in range(num_q_words):
-                                target_w = q_words[j]
-                                current_vw = v_words_clean_only[i + j]
-                                if is_exact:
-                                    if current_vw != target_w:
-                                        matched_sequence = False
-                                        break
-                                else:
-                                    if target_w not in current_vw:
-                                        matched_sequence = False
-                                        break
-                            if matched_sequence:
+                    for vw_clean in v_words_clean_only:
+                        clean_vw_base = re.sub(r'^[והכמלב]?', '', vw_clean)
+                        if is_exact:
+                            if vw_clean == target_w or clean_vw_base == target_w:
+                                is_match = True
+                                break
+                        else:
+                            if target_w in vw_clean or target_w in clean_vw_base:
                                 is_match = True
                                 break
                             
