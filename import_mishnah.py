@@ -28,7 +28,10 @@ MISHNAH_TRACTATES = {
     "זבחים": ["Zevachim"], "מנחות": ["Menachot"], "חולין": ["Chullin"], "בכורות": ["Bekhorot", "Bechorot"], "ערכין": ["Arakhin"],
     "תמורה": ["Temurah"], "כריתות": ["Keritot"], "מעילה": ["Meilah"], "תמיד": ["Tamid"], "מדות": ["Middot", "Midot"], "קינים": ["Kinnim", "Kinim"],
     
-    "כלים": ["Kelim"], "אהלות": ["Oholot", "Ohalot"], "נגעים": ["Negaim"], "פרה": ["Parah"], "טהרות": ["Tohorot", "Tehorot"], "מקואות": ["Mikvaot", "Mikva'ot"],
+    "כלים": ["Kelim"], "אהלות": ["Oholot", "Ohalot"], "נגעים": ["Negaim"], "פרה": ["Parah"], 
+    # תיקון ייחודי למסכת טהרות המובחנת מהסדר:
+    "טהרות": ["Tohorot_(Mishnah)", "Taharot"], 
+    "מקואות": ["Mikvaot", "Mikva'ot"],
     "נדה": ["Niddah"], "מכשירין": ["Makhshirin"], "זבים": ["Zavim"], "טבול יום": ["Tevul Yom", "Tevool Yom"], "ידים": ["Yadayim"], "עוקצין": ["Uktzin", "Oktzin", "Uktsin"]
 }
 
@@ -38,27 +41,29 @@ def strip_html_and_nikkud(text):
     clean = " ".join(clean.split())
     return clean
 
-print("🚀 Starting Mishnah text download for missing tractates...")
+print("🚀 Fixing and downloading Taharot tractate...")
 
 for he_name, en_names in MISHNAH_TRACTATES.items():
-    # דילוג על מסכתות שכבר ירדו בהצלחה!
-    if TorahText.objects.filter(book=he_name).exists():
-        print(f"  ✅ {he_name} already exists in database. Skipping...")
+    if he_name != "טהרות" and TorahText.objects.filter(book=he_name).exists():
         continue
         
+    # אם מדובר בטהרות, נמחק ונוריד מחדש בצורה מדויקת
+    if he_name == "טהרות":
+        TorahText.objects.filter(book="טהרות").delete()
+
     print(f"Downloading {he_name}...")
     
     success = False
     for en_name in en_names:
         encoded_name = urllib.parse.quote(en_name)
         urls_to_try = [
-            f"https://www.sefaria.org/api/texts/Mishnah_{encoded_name}?context=0",
-            f"https://www.sefaria.org/api/texts/{encoded_name}?context=0"
+            f"https://www.sefaria.org/api/texts/{encoded_name}?context=0",
+            f"https://www.sefaria.org/api/texts/Mishnah_{encoded_name}?context=0"
         ]
         
         for url in urls_to_try:
             try:
-                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
                 response = urllib.request.urlopen(req, timeout=10)
                 data = json.loads(response.read().decode('utf-8'))
                 
@@ -69,7 +74,6 @@ for he_name, en_names in MISHNAH_TRACTATES.items():
                 if not chapters:
                     continue
                     
-                # בדיקה אם קיבלנו מערך חד מימדי (פרק בודד) או דו מימדי
                 if chapters and isinstance(chapters[0], str):
                     for mishnah_idx, mishnah_text in enumerate(chapters):
                         if not mishnah_text or not isinstance(mishnah_text, str): continue
@@ -86,15 +90,11 @@ for he_name, en_names in MISHNAH_TRACTATES.items():
                 
                 print(f"  ✅ Saved {he_name} successfully.")
                 success = True
-                sleep(1) # המתנה של שניה למניעת חסימה של ספריא
                 break
             except Exception as e:
                 pass
                 
         if success:
             break
-            
-    if not success:
-        print(f"  ❌ Failed to download {he_name}.")
 
-print("🎉 Finished importing all Mishnayot!")
+print("🎉 Taharot tractate imported successfully!")
