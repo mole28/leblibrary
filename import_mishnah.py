@@ -1,91 +1,100 @@
 import os
 import django
 import urllib.request
+import urllib.parse
 import json
 import re
 from time import sleep
 
-# הגדרת סביבת העבודה של ג'אנגו כדי שנוכל לגשת למסד הנתונים
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'lab_library.settings')
 django.setup()
 
 from articles.models import TorahText
 
 MISHNAH_TRACTATES = {
-    "Berakhot": "ברכות", "Peah": "פאה", "Demai": "דמאי", "Kilayim": "כלאים", "Sheviit": "שביעית",
-    "Terumot": "תרומות", "Maaserot": "מעשרות", "Maaser_Sheni": "מעשר שני", "Challah": "חלה", "Orlah": "ערלה", "Bikkurim": "ביכורים",
-    "Shabbat": "שבת", "Eruvin": "עירובין", "Pesachim": "פסחים", "Shekalim": "שקלים", "Yoma": "יומא",
-    "Sukkah": "סוכה", "Beitzah": "ביצה", "Rosh_Hashanah": "ראש השנה", "Taanit": "תענית", "Megillah": "מגילה",
-    "Moed_Katan": "מועד קטן", "Chagigah": "חגיגה",
-    "Yevamot": "יבמות", "Ketubot": "כתובות", "Nedarim": "נדרים", "Nazir": "נזיר", "Sotah": "סוטה", "Gittin": "גיטין", "Kiddushin": "קידושין",
-    "Bava_Kamma": "בבא קמא", "Bava_Metzia": "בבא מציעא", "Bava_Batra": "בבא בתרא", "Sanhedrin": "סנהדרין", "Makkot": "מכות",
-    "Shevuot": "שבועות", "Eduyot": "עדיות", "Avodah_Zarah": "עבודה זרה", "Pirkei_Avot": "אבות", "Horayot": "הוריות",
-    "Zevachim": "זבחים", "Menachot": "מנחות", "Chullin": "חולין", "Bekhorot": "בכורות", "Arakhin": "ערכין",
-    "Temurah": "תמורה", "Keritot": "כריתות", "Meilah": "מעילה", "Tamid": "תמיד", "Middot": "מדות", "Kinnim": "קינים",
-    "Kelim": "כלים", "Oholot": "אהלות", "Negaim": "נגעים", "Parah": "פרה", "Tohorot": "טהרות", "Mikvaot": "מקואות",
-    "Niddah": "נדה", "Makhshirin": "מכשירין", "Zavim": "זבים", "Tevul_Yom": "טבול יום", "Yadayim": "ידים", "Oktzin": "עוקצין"
+    "ברכות": ["Berakhot"], "פאה": ["Peah"], "דמאי": ["Demai"], "כלאים": ["Kilayim"], "שביעית": ["Sheviit"],
+    "תרומות": ["Terumot"], "מעשרות": ["Ma'aserot", "Maaserot", "Maasrot"], "מעשר שני": ["Ma'aser Sheni", "Maaser Sheni"], 
+    "חלה": ["Challah"], "ערלה": ["Orlah"], "ביכורים": ["Bikkurim"],
+    
+    "שבת": ["Shabbat"], "עירובין": ["Eruvin", "'Eruvin", "Erubin"], "פסחים": ["Pesachim"], "שקלים": ["Shekalim"], "יומא": ["Yoma"],
+    "סוכה": ["Sukkah"], "ביצה": ["Beitzah"], "ראש השנה": ["Rosh Hashanah"], "תענית": ["Taanit"], "מגילה": ["Megillah", "Megilla"],
+    "מועד קטן": ["Moed Katan"], "חגיגה": ["Chagigah"],
+    
+    "יבמות": ["Yevamot"], "כתובות": ["Ketubot"], "נדרים": ["Nedarim"], "נזיר": ["Nazir"], "סוטה": ["Sotah"], "גיטין": ["Gittin"], "קידושין": ["Kiddushin"],
+    
+    "בבא קמא": ["Bava Kamma"], "בבא מציעא": ["Bava Metzia"], "בבא בתרא": ["Bava Batra"], "סנהדרין": ["Sanhedrin"], "מכות": ["Makkot"],
+    "שבועות": ["Shevuot"], "עדיות": ["Eduyot", "Eduyyot", "Ediyot"], "עבודה זרה": ["Avodah Zarah"], "אבות": ["Pirkei Avot", "Avot"], "הוריות": ["Horayot"],
+    
+    "זבחים": ["Zevachim"], "מנחות": ["Menachot"], "חולין": ["Chullin"], "בכורות": ["Bekhorot", "Bechorot"], "ערכין": ["Arakhin"],
+    "תמורה": ["Temurah"], "כריתות": ["Keritot"], "מעילה": ["Meilah"], "תמיד": ["Tamid"], "מדות": ["Middot", "Midot"], "קינים": ["Kinnim", "Kinim"],
+    
+    "כלים": ["Kelim"], "אהלות": ["Oholot", "Ohalot"], "נגעים": ["Negaim"], "פרה": ["Parah"], "טהרות": ["Tohorot", "Tehorot"], "מקואות": ["Mikvaot", "Mikva'ot"],
+    "נדה": ["Niddah"], "מכשירין": ["Makhshirin"], "זבים": ["Zavim"], "טבול יום": ["Tevul Yom", "Tevool Yom"], "ידים": ["Yadayim"], "עוקצין": ["Uktzin", "Oktzin", "Uktsin"]
 }
 
 def strip_html_and_nikkud(text):
-    # מחיקת תגיות HTML
     clean = re.sub(r'<[^>]+>', '', text)
-    # מחיקת ניקוד וטעמים
     clean = re.sub(r'[\u0591-\u05C7]', '', clean)
-    # ניקוי רווחים מיותרים
     clean = " ".join(clean.split())
     return clean
 
-print("🚀 Starting Mishnah text download from Sefaria...")
+print("🚀 Starting Mishnah text download for missing tractates...")
 
-for en_name, he_name in MISHNAH_TRACTATES.items():
+for he_name, en_names in MISHNAH_TRACTATES.items():
+    # דילוג על מסכתות שכבר ירדו בהצלחה!
+    if TorahText.objects.filter(book=he_name).exists():
+        print(f"  ✅ {he_name} already exists in database. Skipping...")
+        continue
+        
     print(f"Downloading {he_name}...")
     
-    # מנסים שתי תבניות URL מקובלות בספריא (לפעמים זה עם הקידומת Mishnah ולפעמים בלי)
-    urls_to_try = [
-        f"https://www.sefaria.org/api/texts/Mishnah_{en_name}?context=0",
-        f"https://www.sefaria.org/api/texts/{en_name}?context=0"
-    ]
-    
     success = False
-    for url in urls_to_try:
-        try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            response = urllib.request.urlopen(req)
-            data = json.loads(response.read().decode('utf-8'))
-            
-            if 'error' in data:
-                continue
+    for en_name in en_names:
+        encoded_name = urllib.parse.quote(en_name)
+        urls_to_try = [
+            f"https://www.sefaria.org/api/texts/Mishnah_{encoded_name}?context=0",
+            f"https://www.sefaria.org/api/texts/{encoded_name}?context=0"
+        ]
+        
+        for url in urls_to_try:
+            try:
+                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+                response = urllib.request.urlopen(req, timeout=10)
+                data = json.loads(response.read().decode('utf-8'))
                 
-            chapters = data.get('he', [])
-            if not chapters:
-                continue
+                if 'error' in data:
+                    continue
+                    
+                chapters = data.get('he', [])
+                if not chapters:
+                    continue
+                    
+                # בדיקה אם קיבלנו מערך חד מימדי (פרק בודד) או דו מימדי
+                if chapters and isinstance(chapters[0], str):
+                    for mishnah_idx, mishnah_text in enumerate(chapters):
+                        if not mishnah_text or not isinstance(mishnah_text, str): continue
+                        text_with_nikkud = re.sub(r'<[^>]+>', '', mishnah_text) 
+                        clean_text = strip_html_and_nikkud(mishnah_text)
+                        TorahText.objects.update_or_create(book=he_name, chapter="1", verse=str(mishnah_idx + 1), defaults={'text_with_nikkud': text_with_nikkud, 'clean_text': clean_text})
+                else:
+                    for chap_idx, chapter in enumerate(chapters):
+                        for mishnah_idx, mishnah_text in enumerate(chapter):
+                            if not mishnah_text or not isinstance(mishnah_text, str): continue
+                            text_with_nikkud = re.sub(r'<[^>]+>', '', mishnah_text) 
+                            clean_text = strip_html_and_nikkud(mishnah_text)
+                            TorahText.objects.update_or_create(book=he_name, chapter=str(chap_idx + 1), verse=str(mishnah_idx + 1), defaults={'text_with_nikkud': text_with_nikkud, 'clean_text': clean_text})
                 
-            # שומרים כל פרק ומשנה במסד הנתונים
-            for chap_idx, chapter in enumerate(chapters):
-                for mishnah_idx, mishnah_text in enumerate(chapter):
-                    if not mishnah_text or not isinstance(mishnah_text, str):
-                        continue
-                    
-                    text_with_nikkud = re.sub(r'<[^>]+>', '', mishnah_text) 
-                    clean_text = strip_html_and_nikkud(mishnah_text)
-                    
-                    TorahText.objects.update_or_create(
-                        book=he_name,
-                        chapter=str(chap_idx + 1),
-                        verse=str(mishnah_idx + 1),
-                        defaults={
-                            'text_with_nikkud': text_with_nikkud,
-                            'clean_text': clean_text
-                        }
-                    )
-            print(f"  ✅ Saved {he_name} successfully.")
-            success = True
-            sleep(0.5)  # המתנה קטנה כדי לא להעמיס על השרתים של ספריא
+                print(f"  ✅ Saved {he_name} successfully.")
+                success = True
+                sleep(1) # המתנה של שניה למניעת חסימה של ספריא
+                break
+            except Exception as e:
+                pass
+                
+        if success:
             break
-        except Exception as e:
-            pass
             
     if not success:
-        print(f"  ❌ Failed to download {he_name}. Check tractate name mapping.")
+        print(f"  ❌ Failed to download {he_name}.")
 
 print("🎉 Finished importing all Mishnayot!")
