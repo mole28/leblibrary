@@ -1334,16 +1334,14 @@ def tanakh_advanced_search_api(request):
     results = []
     qs = TorahText.objects.all()
 
-    # פתרון מוחלט: סינון מבוסס Q object שבודק את כל שמות מסכתות המשנה במסד הנתונים
+    # זיהוי מדויק של שמות ספרי התנ"ך לצורך הפרדה נקייה בין תנ"ך למשנה
     tanakh_names = ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב']
 
     if book_filter == 'torah':
         qs = qs.filter(book__in=['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'])
     elif book_filter == 'mishnah':
-        mishnah_q = Q()
-        for m_name in MISHNAH_BOOKS:
-            mishnah_q |= Q(book__icontains=m_name)
-        qs = qs.filter(mishnah_q)
+        # הבטחה שהסינון יבחר רק מסכתות שאינן בתנ"ך, בצורה גורפת וללא תלות בהתאמת מחרוזת קשיחה
+        qs = qs.exclude(book__in=tanakh_names)
     elif book_filter == 'tanakh':
         tanakh_q = Q()
         for t_name in tanakh_names:
@@ -1367,6 +1365,8 @@ def tanakh_advanced_search_api(request):
             if q_words:
                 num_q_words = len(q_words)
                 
+                # בדיקה מהירה מול מסד הנתונים באמצעות לולאת queryset מותאמת
+                # במקום להגביל מראש, אנו סורקים את כל התוצאות שעברו את הסינון
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
                 
                 for m in all_verses:
@@ -1412,7 +1412,7 @@ def tanakh_advanced_search_api(request):
                     if is_match:
                         raw_text = m['text_with_nikkud']
                         highlighted_text = highlight_matched_text(raw_text, q_words, is_exact)
-                        is_mishnah_res = not any(t_name in m['book'] for t_name in tanakh_names)
+                        is_mishnah_res = not any(t_name == m['book'].strip() for t_name in tanakh_names)
                         
                         results.append({
                             'book': m['book'],
@@ -1431,7 +1431,7 @@ def tanakh_advanced_search_api(request):
                 t_clean = re.sub(r'[^א-ת\s]', ' ', t)
                 t_words = t_clean.split()
                 
-                is_mishnah_res = not any(t_name in m['book'] for t_name in tanakh_names)
+                is_mishnah_res = not any(t_name == m['book'].strip() for t_name in tanakh_names)
                 clean_t = "".join(t_words)
                 if calculate_gematria(clean_t) == target_val:
                     results.append({
@@ -1467,7 +1467,7 @@ def tanakh_advanced_search_api(request):
                     t_clean = re.sub(r'[^א-ת\s]', ' ', t)
                     t_words = t_clean.split()
                     
-                    is_mishnah_res = not any(t_name in m['book'] for t_name in tanakh_names)
+                    is_mishnah_res = not any(t_name == m['book'].strip() for t_name in tanakh_names)
                     if len(t_words) >= len(target_acr):
                         initials = "".join([w[0] for w in t_words if w])
                         if target_acr in initials:
