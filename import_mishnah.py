@@ -11,60 +11,50 @@ django.setup()
 
 from articles.models import TorahText
 
-MISHNAH_TRACTATES = {
+# רשימה מלאה של כל 63 המסכתות והשמות האפשריים שלהן בספריא באנגלית
+ALL_MISHNAH_TRACTATES = {
     "ברכות": ["Berakhot"], "פאה": ["Peah"], "דמאי": ["Demai"], "כלאים": ["Kilayim"], "שביעית": ["Sheviit"],
-    "תרומות": ["Terumot"], "מעשרות": ["Ma'aserot", "Maaserot", "Maasrot"], "מעשר שני": ["Ma'aser Sheni", "Maaser Sheni"], 
+    "תרומות": ["Terumot"], "מעשרות": ["Maaserot", "Ma'aserot"], "מעשר שני": ["Maaser Sheni", "Ma'aser Sheni"], 
     "חלה": ["Challah"], "ערלה": ["Orlah"], "ביכורים": ["Bikkurim"],
     
-    "שבת": ["Shabbat"], "עירובין": ["Eruvin", "'Eruvin", "Erubin"], "פסחים": ["Pesachim"], "שקלים": ["Shekalim"], "יומא": ["Yoma"],
-    "סוכה": ["Sukkah"], "ביצה": ["Beitzah"], "ראש השנה": ["Rosh Hashanah"], "תענית": ["Taanit"], "מגילה": ["Megillah", "Megilla"],
+    "שבת": ["Shabbat"], "עירובין": ["Eruvin", "Erubin"], "פסחים": ["Pesachim"], "שקלים": ["Shekalim"], "יומא": ["Yoma"],
+    "סוכה": ["Sukkah"], "ביצה": ["Beitzah"], "ראש השנה": ["Rosh Hashanah"], "תענית": ["Taanit"], "מגילה": ["Megillah"],
     "מועד קטן": ["Moed Katan"], "חגיגה": ["Chagigah"],
     
     "יבמות": ["Yevamot"], "כתובות": ["Ketubot"], "נדרים": ["Nedarim"], "נזיר": ["Nazir"], "סוטה": ["Sotah"], "גיטין": ["Gittin"], "קידושין": ["Kiddushin"],
     
     "בבא קמא": ["Bava Kamma"], "בבא מציעא": ["Bava Metzia"], "בבא בתרא": ["Bava Batra"], "סנהדרין": ["Sanhedrin"], "מכות": ["Makkot"],
-    "שבועות": ["Shevuot"], "עדיות": ["Eduyot", "Eduyyot", "Ediyot"], "עבודה זרה": ["Avodah Zarah"], "אבות": ["Pirkei Avot", "Avot"], "הוריות": ["Horayot"],
+    "שבועות": ["Shevuot"], "עדיות": ["Eduyot", "Ediyot"], "עבודה זרה": ["Avodah Zarah"], "אבות": ["Pirkei Avot", "Avot"], "הוריות": ["Horayot"],
     
-    "זבחים": ["Zevachim"], "מנחות": ["Menachot"], "חולין": ["Chullin"], "בכורות": ["Bekhorot", "Bechorot"], "ערכין": ["Arakhin"],
-    "תמורה": ["Temurah"], "כריתות": ["Keritot"], "מעילה": ["Meilah"], "תמיד": ["Tamid"], "מדות": ["Middot", "Midot"], "קינים": ["Kinnim", "Kinim"],
+    "זבחים": ["Zevachim"], "מנחות": ["Menachot"], "חולין": ["Chullin"], "בכורות": ["Bekhorot"], "ערכין": ["Arakhin"],
+    "תמורה": ["Temurah"], "כריתות": ["Keritot"], "מעילה": ["Meilah"], "תמיד": ["Tamid"], "מדות": ["Middot"], "קינים": ["Kinnim"],
     
-    "כלים": ["Kelim"], "אהלות": ["Oholot", "Ohalot"], "נגעים": ["Negaim"], "פרה": ["Parah"], 
-    # תיקון ייחודי למסכת טהרות המובחנת מהסדר:
-    "טהרות": ["Tohorot_(Mishnah)", "Taharot"], 
-    "מקואות": ["Mikvaot", "Mikva'ot"],
-    "נדה": ["Niddah"], "מכשירין": ["Makhshirin"], "זבים": ["Zavim"], "טבול יום": ["Tevul Yom", "Tevool Yom"], "ידים": ["Yadayim"], "עוקצין": ["Uktzin", "Oktzin", "Uktsin"]
+    "כלים": ["Kelim"], "אהלות": ["Oholot"], "נגעים": ["Negaim"], "פרה": ["Parah"], "טהרות": ["Tohorot_(Mishnah)", "Taharot"], 
+    "מקואות": ["Mikvaot"], "נדה": ["Niddah"], "מכשירין": ["Makhshirin"], "זבים": ["Zavim"], "טבול יום": ["Tevul Yom"], "ידים": ["Yadayim"], "עוקצין": ["Uktzin", "Oktzin"]
 }
 
-def strip_html_and_nikkud(text):
+def clean_text_func(text):
     clean = re.sub(r'<[^>]+>', '', text)
     clean = re.sub(r'[\u0591-\u05C7]', '', clean)
-    clean = " ".join(clean.split())
-    return clean
+    return " ".join(clean.split())
 
-print("🚀 Fixing and downloading Taharot tractate...")
+print("🚀 FORCE IMPORTING ALL 63 MISHNAH TRACTATES...")
 
-for he_name, en_names in MISHNAH_TRACTATES.items():
-    if he_name != "טהרות" and TorahText.objects.filter(book=he_name).exists():
-        continue
-        
-    # אם מדובר בטהרות, נמחק ונוריד מחדש בצורה מדויקת
-    if he_name == "טהרות":
-        TorahText.objects.filter(book="טהרות").delete()
-
-    print(f"Downloading {he_name}...")
-    
+for he_name, en_list in ALL_MISHNAH_TRACTATES.items():
+    print(f"Processing tractate: {he_name}...")
     success = False
-    for en_name in en_names:
-        encoded_name = urllib.parse.quote(en_name)
-        urls_to_try = [
-            f"https://www.sefaria.org/api/texts/{encoded_name}?context=0",
-            f"https://www.sefaria.org/api/texts/Mishnah_{encoded_name}?context=0"
+    
+    for en_name in en_list:
+        encoded = urllib.parse.quote(en_name)
+        urls = [
+            f"https://www.sefaria.org/api/texts/Mishnah_{encoded}?context=0",
+            f"https://www.sefaria.org/api/texts/{encoded}?context=0"
         ]
         
-        for url in urls_to_try:
+        for url in urls:
             try:
                 req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-                response = urllib.request.urlopen(req, timeout=10)
+                response = urllib.request.urlopen(req, timeout=15)
                 data = json.loads(response.read().decode('utf-8'))
                 
                 if 'error' in data:
@@ -73,28 +63,40 @@ for he_name, en_names in MISHNAH_TRACTATES.items():
                 chapters = data.get('he', [])
                 if not chapters:
                     continue
-                    
-                if chapters and isinstance(chapters[0], str):
-                    for mishnah_idx, mishnah_text in enumerate(chapters):
-                        if not mishnah_text or not isinstance(mishnah_text, str): continue
-                        text_with_nikkud = re.sub(r'<[^>]+>', '', mishnah_text) 
-                        clean_text = strip_html_and_nikkud(mishnah_text)
-                        TorahText.objects.update_or_create(book=he_name, chapter="1", verse=str(mishnah_idx + 1), defaults={'text_with_nikkud': text_with_nikkud, 'clean_text': clean_text})
-                else:
-                    for chap_idx, chapter in enumerate(chapters):
-                        for mishnah_idx, mishnah_text in enumerate(chapter):
-                            if not mishnah_text or not isinstance(mishnah_text, str): continue
-                            text_with_nikkud = re.sub(r'<[^>]+>', '', mishnah_text) 
-                            clean_text = strip_html_and_nikkud(mishnah_text)
-                            TorahText.objects.update_or_create(book=he_name, chapter=str(chap_idx + 1), verse=str(mishnah_idx + 1), defaults={'text_with_nikkud': text_with_nikkud, 'clean_text': clean_text})
                 
-                print(f"  ✅ Saved {he_name} successfully.")
+                # מחיקת הנתונים הישנים של המסכת הזו כדי למנוע כפילויות או זבל
+                TorahText.objects.filter(book=he_name).delete()
+                
+                if isinstance(chapters[0], str):
+                    for m_idx, m_text in enumerate(chapters):
+                        if m_text and isinstance(m_text, str):
+                            TorahText.objects.create(
+                                book=he_name,
+                                chapter="1",
+                                verse=str(m_idx + 1),
+                                text_with_nikkud=re.sub(r'<[^>]+>', '', m_text),
+                                clean_text=clean_text_func(m_text)
+                            )
+                else:
+                    for c_idx, chap in enumerate(chapters):
+                        for m_idx, m_text in enumerate(chap):
+                            if m_text and isinstance(m_text, str):
+                                TorahText.objects.create(
+                                    book=he_name,
+                                    chapter=str(c_idx + 1),
+                                    verse=str(m_idx + 1),
+                                    text_with_nikkud=re.sub(r'<[^>]+>', '', m_text),
+                                    clean_text=clean_text_func(m_text)
+                                )
+                print(f"  --> SUCCESSFULLY SAVED: {he_name}")
                 success = True
+                sleep(0.5)
                 break
             except Exception as e:
                 pass
-                
         if success:
             break
+    if not success:
+        print(f"  --> FAILED TO DOWNLOAD: {he_name}")
 
-print("🎉 Taharot tractate imported successfully!")
+print("🎉 DONE! All Mishnayot forced into database.")
