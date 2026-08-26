@@ -1246,6 +1246,7 @@ HEBREW_GEMATRIA = {
 
 def calculate_gematria(text):
     return sum(HEBREW_GEMATRIA.get(char, 0) for char in text)
+
 MISHNAH_BOOKS = [
     'ברכות', 'פאה', 'דמאי', 'כלאים', 'שביעית', 'תרומות', 'מעשרות', 'מעשר שני', 'חלה', 'ערלה', 'ביכורים',
     'שבת', 'עירובין', 'פסחים', 'שקלים', 'יומא', 'סוכה', 'ביצה', 'ראש השנה', 'תענית', 'מגילה', 'מועד קטן', 'חגיגה',
@@ -1359,7 +1360,9 @@ def tanakh_advanced_search_api(request):
                 query_patterns = []
                 for w in q_words:
                     if is_exact:
-                        query_patterns.append(re.compile(f'^{re.escape(w)}$', re.UNICODE))
+                        NIKKUD_CORE = r'\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7'
+                        fuzzy_exact = ''.join([re.escape(c) + f'[{NIKKUD_CORE}]*' for c in w])
+                        query_patterns.append(re.compile(f'^{fuzzy_exact}$', re.UNICODE))
                     else:
                         fuzzy_w = '[וי]*'.join(list(w))
                         query_patterns.append(re.compile(f'^[משהוכלבאיתנד]{{0,4}}{fuzzy_w}[א-ת]{{0,4}}$', re.UNICODE))
@@ -1379,9 +1382,15 @@ def tanakh_advanced_search_api(request):
                     if num_q_words == 1:
                         pat = query_patterns[0]
                         for vw in v_words:
-                            if pat.search(vw):
-                                is_match = True
-                                break
+                            if is_exact:
+                                clean_vw = re.sub(r'[\u0591-\u05C7]', '', vw)
+                                if clean_vw == q_words[0]:
+                                    is_match = True
+                                    break
+                            else:
+                                if pat.search(vw):
+                                    is_match = True
+                                    break
                     else:
                         for i in range(len(v_words) - num_q_words + 1):
                             matched_sequence = True
