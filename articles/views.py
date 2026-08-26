@@ -1332,82 +1332,139 @@ def tanakh_advanced_search_api(request):
         per_page = 10
     
     results = []
+    qs = TorahText.objects.all()
+
     tanakh_names = ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב']
+
+    if book_filter == 'torah':
+        qs = qs.filter(book__in=['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'])
+    elif book_filter == 'mishnah':
+        qs = qs.exclude(book__in=tanakh_names)
+    elif book_filter == 'tanakh':
+        tanakh_q = Q()
+        for t_name in tanakh_names:
+            tanakh_q |= Q(book__icontains=t_name)
+        qs = qs.filter(tanakh_q)
+    elif book_filter == 'all':
+        pass 
+    elif book_filter:
+        qs = qs.filter(book__icontains=book_filter)
+        
+    if exclude_books_param:
+        excluded = [b.strip() for b in exclude_books_param.split(',') if b.strip()]
+        for ex in excluded:
+            qs = qs.exclude(book__icontains=ex)
 
     try:
         if query_type == 'text' and query_val:
-            q_clean = re.sub(r'[^א-ת\s]', '', query_val).strip()
-            if q_clean:
-                from django.db import connection
-                with connection.cursor() as cursor:
-                    fts_query = f'"{q_clean}"' if is_exact else f'{q_clean}*'
-                    sql = """
-                        SELECT book, chapter, verse, text_with_nikkud 
-                        FROM articles_torahtext_fts 
-                        WHERE articles_torahtext_fts MATCH %s
-                    """
-                    cursor.execute(sql, [fts_query])
-                    rows = cursor.fetchall()
-
-                for row in rows:
-                    book, chapter, verse, text_with_nikkud = row
+            q_no_nikkud = re.sub(r'[^א-ת\s]', '', query_val)
+            q_words = q_no_nikkud.split()
+            
+            if q_words:
+                target_w = q_words[0]
+                
+                # חזרה לסינון ORM יציב ובטוח ששולף ישירות מ־TorahText ללא תלות בטבלאות FTS חיצוניות
+                if is_exact:
+                    qs = qs.filter(Q(clean_text__icontains=target_w) | Q(text_with_nikkud__icontains=target_w))
+                else:
+                    qs = qs.filter(Q(clean_text__icontains=target_w) | Q(text_with_nikkud__icontains=target_w))
+                
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud')
+                
+                for m in all_verses:
+                    raw_text = m.get('text_with_nikkud') or ""
+                    if not raw_text:
+                        continue
                     
-                    is_tanakh = book.strip() in tanakh_names
-                    if book_filter == 'torah' and book.strip() not in ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים']:
-                        continue
-                    if book_filter == 'mishnah' and is_tanakh:
-                        continue
-                    if book_filter == 'tanakh' and not is_tanakh:
+                    t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', raw_text)
+                    v_words_clean_only = re.findall(r'[א-ת]+', t_no_nikkud)
+                    
+                    if not v_words_clean_only:
                         continue
                         
-                    if exclude_books_param:
-                        excluded = [b.strip() for b in exclude_books_param.split(',') if b.strip()]
-                        if any(ex in book for ex in excluded):
-                            continue
-
-                    highlighted_text = highlight_matched_text(text_with_nikkud, q_clean.split(), is_exact)
-                    results.append({
-                        'book': book,
-                        'chapter': chapter,
-                        'verse': verse,
-                        'verse_label': 'פסוק' if is_tanakh else 'משנה',
-                        'text': highlighted_text,
-                        'match_type': 'חיפוש מהיר FTS5'
-                    })
-
+                    is_match = False
+                    for vw_clean in v_words_clean_only:
+                        clean_vw_base = re.sub(r'^[והכמלב]?', '', vw_clean)
+                        if is_exact:
+                            if vw_clean == target_w or clean_vw_base == target_w:
+                                is_match = True
+                                break
+                        else:
+                            if target_w in vw_clean or target_w in clean_vw_base:
+                                is_match = True
+                                break
+                            
+                    if is_match:
+                        highlighted_text = highlight_matched_text(raw_text, q_words, is_exact)
+                        is_mishnah_res = m['book'] not in tanakh_names
+                        
+                        results.append({
+                            'book': m['book'],
+                            'chapter': m['chapter'],
+                            'verse': m['verse'],
+                            'verse_label': 'משנה' if is_mishnah_res else 'פסוק',
+                            'text': highlighted_text,
+                            'match_type': 'מילה מדויקת' if is_exact else 'חיפוש רחב'
+                        })
+                
         elif query_type == 'gematria' and query_val.isdigit():
             target_val = int(query_val)
-            qs = TorahText.objects.all()
-            for m in qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text'):
+            all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
+            for m in all_verses:
                 t = m.get('clean_text') or m.get('text_with_nikkud') or ""
                 t_clean = re.sub(r'[^א-ת\s]', ' ', t)
                 t_words = t_clean.split()
-                is_mishnah_res = m['book'].strip() not in tanakh_names
+                
+                is_mishnah_res = m['book'] not in tanakh_names
                 clean_t = "".join(t_words)
-                if calculate_gematria(clean_t) == target_val or any(calculate_gematria(w) == target_val for w in t_words):
+                if calculate_gematria(clean_t) == target_val:
                     results.append({
-                        'book': m['book'], 'chapter': m['chapter'], 'verse': m['verse'],
+                        'book': m['book'],
+                        'chapter': m['chapter'],
+                        'verse': m['verse'],
                         'verse_label': 'משנה' if is_mishnah_res else 'פסוק',
-                        'text': m['text_with_nikkud'], 'match_type': f'גימטריה ({target_val})'
+                        'text': m['text_with_nikkud'],
+                        'match_type': 'גימטריה מלאה לפסוק'
                     })
-
+                else:
+                    found_word = False
+                    for w in t_words:
+                        if calculate_gematria(w) == target_val:
+                            found_word = True
+                            break
+                    if found_word:
+                        results.append({
+                            'book': m['book'],
+                            'chapter': m['chapter'],
+                            'verse': m['verse'],
+                            'verse_label': 'משנה' if is_mishnah_res else 'פסוק',
+                            'text': m['text_with_nikkud'],
+                            'match_type': f'גימטריה למילה בפסוק (ערך {target_val})'
+                        })
+                    
         elif query_type == 'acronym' and query_val:
             target_acr = re.sub(r'[^א-ת]', '', query_val)
             if target_acr:
-                qs = TorahText.objects.all()
-                for m in qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text'):
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
+                for m in all_verses:
                     t = m.get('clean_text') or m.get('text_with_nikkud') or ""
-                    t_words = re.sub(r'[^א-ת\s]', ' ', t).split()
-                    is_mishnah_res = m['book'].strip() not in tanakh_names
+                    t_clean = re.sub(r'[^א-ת\s]', ' ', t)
+                    t_words = t_clean.split()
+                    
+                    is_mishnah_res = m['book'] not in tanakh_names
                     if len(t_words) >= len(target_acr):
                         initials = "".join([w[0] for w in t_words if w])
                         if target_acr in initials:
                             results.append({
-                                'book': m['book'], 'chapter': m['chapter'], 'verse': m['verse'],
+                                'book': m['book'],
+                                'chapter': m['chapter'],
+                                'verse': m['verse'],
                                 'verse_label': 'משנה' if is_mishnah_res else 'פסוק',
-                                'text': m['text_with_nikkud'], 'match_type': 'ראשי תיבות'
+                                'text': m['text_with_nikkud'],
+                                'match_type': 'ראשי תיבות בפסוק'
                             })
 
+        # מיון
         results.sort(key=lambda x: (get_book_order(x['book']), safe_int(x['chapter']), safe_int(x['verse'])))
 
         total_results = len(results)
