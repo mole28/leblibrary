@@ -472,7 +472,7 @@ def ai_chat_endpoint(request):
 2. חובה לציין במפורש את שמו של המקור שעליו הסתמכת (מתוך שדה ה'כותרת'). ציון הכותרת הוא קריטי כדי שהמערכת תציג לגולש קישור.
 3. אל תציין שהמידע חלקי או שחסר לך רקע - פשוט ענה את ההלכה המצויה במקור.
 
-אם התשובה אינה מופיעה באף אחד מהמקורות (גם לא במרומז), חובה עליך להשיב בדיוק במילים אלו: "מצטער, לא מצאתי לכך התייחסות מפורשת במקורות שנסרקו בספרייה."
+אם התשובה אינה מופיעה באף אחד מהמקורות (גם לא במרומז), חובה עליך להשיב בדיוק במילים אלו: "מצטער, לא מצאתי לכך התייחסות במקורות שנסרקו בספרייה."
 
 מקורות שנסרקו:
 {context_text}"""
@@ -1334,22 +1334,28 @@ def tanakh_advanced_search_api(request):
     results = []
     qs = TorahText.objects.all()
 
-    # תיקון קריטי: הגדרת סינון רחב ובטוח שאינו מפספס אף מסכת משנה
+    # תיקון גורף: שימוש ב-Q object המאפשר התאמה גמישה של כל שמות המסכתות (ללא תלות בניקוד או ברווחים)
     if book_filter == 'torah':
         qs = qs.filter(book__in=['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'])
     elif book_filter == 'mishnah':
-        qs = qs.filter(Q(book__in=MISHNAH_BOOKS) | Q(book__in=[b.strip() for b in MISHNAH_BOOKS]))
+        mishnah_q = Q()
+        for b in MISHNAH_BOOKS:
+            mishnah_q |= Q(book__icontains=b)
+        qs = qs.filter(mishnah_q).exclude(book__in=['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב'])
     elif book_filter == 'tanakh':
-        qs = qs.exclude(book__in=MISHNAH_BOOKS)
+        tanakh_q = Q()
+        for b in ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב']:
+            tanakh_q |= Q(book__icontains=b)
+        qs = qs.filter(tanakh_q)
     elif book_filter == 'all':
         pass 
     elif book_filter:
-        qs = qs.filter(book=book_filter)
+        qs = qs.filter(book__icontains=book_filter)
         
     if exclude_books_param:
         excluded = [b.strip() for b in exclude_books_param.split(',') if b.strip()]
-        if excluded:
-            qs = qs.exclude(book__in=excluded)
+        for ex in excluded:
+            qs = qs.exclude(book__icontains=ex)
 
     try:
         if query_type == 'text' and query_val:
@@ -1409,7 +1415,7 @@ def tanakh_advanced_search_api(request):
                             'book': m['book'],
                             'chapter': m['chapter'],
                             'verse': m['verse'],
-                            'verse_label': 'משנה' if m['book'] in MISHNAH_BOOKS else 'פסוק',
+                            'verse_label': 'משנה' if any(b in m['book'] for b in MISHNAH_BOOKS) else 'פסוק',
                             'text': highlighted_text,
                             'match_type': 'מילה מדויקת' if is_exact else 'חיפוש רחב'
                         })
@@ -1428,7 +1434,7 @@ def tanakh_advanced_search_api(request):
                         'book': m['book'],
                         'chapter': m['chapter'],
                         'verse': m['verse'],
-                        'verse_label': 'משנה' if m['book'] in MISHNAH_BOOKS else 'פסוק',
+                        'verse_label': 'משנה' if any(b in m['book'] for b in MISHNAH_BOOKS) else 'פסוק',
                         'text': m['text_with_nikkud'],
                         'match_type': 'גימטריה מלאה לפסוק'
                     })
@@ -1443,7 +1449,7 @@ def tanakh_advanced_search_api(request):
                             'book': m['book'],
                             'chapter': m['chapter'],
                             'verse': m['verse'],
-                            'verse_label': 'משנה' if m['book'] in MISHNAH_BOOKS else 'פסוק',
+                            'verse_label': 'משנה' if any(b in m['book'] for b in MISHNAH_BOOKS) else 'פסוק',
                             'text': m['text_with_nikkud'],
                             'match_type': f'גימטריה למילה בפסוק (ערך {target_val})'
                         })
@@ -1464,7 +1470,7 @@ def tanakh_advanced_search_api(request):
                                 'book': m['book'],
                                 'chapter': m['chapter'],
                                 'verse': m['verse'],
-                                'verse_label': 'משנה' if m['book'] in MISHNAH_BOOKS else 'פסוק',
+                                'verse_label': 'משנה' if any(b in m['book'] for b in MISHNAH_BOOKS) else 'פסוק',
                                 'text': m['text_with_nikkud'],
                                 'match_type': 'ראשי תיבות בפסוק'
                             })
