@@ -735,10 +735,32 @@ def books_list(request):
 def qa_list(request): 
     try:
         from .models import QA
+        from django.db.models import Q
+        
         questions = QA.objects.all().order_by('-created_at')
+        
+        # משיכת כל הקטגוריות הקיימות במסד הנתונים (ללא כפילויות וללא ריקים)
+        categories = QA.objects.exclude(category__isnull=True).exclude(category__exact='').values_list('category', flat=True).distinct()
+        
+        # טיפול בחיפוש טקסט חופשי (מתיבת החיפוש)
+        q = request.GET.get('q')
+        if q:
+            questions = questions.filter(Q(question__icontains=q) | Q(answer__icontains=q))
+            
+        # טיפול בסינון לפי קטגוריה (מלחיצה על התפריט בצד)
+        category = request.GET.get('category')
+        if category:
+            questions = questions.filter(category=category)
+            
     except Exception:
         questions = None
-    return render(request, 'articles/qa_list.html', {'questions': questions, 'current_page': 'qa'})
+        categories = []
+        
+    return render(request, 'articles/qa_list.html', {
+        'questions': questions, 
+        'categories': categories,
+        'current_page': 'qa'
+    })
 
 def acronyms_view(request):
     from .models import Acronym
