@@ -1365,38 +1365,40 @@ def tanakh_advanced_search_api(request):
             if q_words:
                 num_q_words = len(q_words)
                 
-                # בדיקה מהירה מול מסד הנתונים באמצעות לולאת queryset מותאמת
-                # במקום להגביל מראש, אנו סורקים את כל התוצאות שעברו את הסינון
-                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
+                # שליפה ישירה של כל הטקסטים במסנן הנוכחי
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud')
                 
                 for m in all_verses:
-                    t_clean = m.get('clean_text') or ""
-                    if not t_clean:
-                        t = m.get('text_with_nikkud') or ""
-                        t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', t)
-                        t_clean = " ".join(re.sub(r'[^א-ת\s]', ' ', t_no_nikkud).split())
+                    raw_text = m.get('text_with_nikkud') or ""
+                    if not raw_text:
+                        continue
                     
-                    v_words = t_clean.split()
-                    v_words_clean_only = [re.sub(r'[\u0591-\u05C7]', '', vw) for vw in v_words]
+                    # ניקוי יסודי של הטקסט לזיהוי נקי של כל מילה ומילה
+                    t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', raw_text)
+                    t_clean_words = re.sub(r'[^א-ת\s]', ' ', t_no_nikkud).split()
+                    
+                    if not t_clean_words:
+                        continue
+                        
                     is_match = False
                     
                     if num_q_words == 1:
                         target_w = q_words[0]
-                        for idx, vw_clean in enumerate(v_words_clean_only):
+                        for vw in t_clean_words:
                             if is_exact:
-                                if vw_clean == target_w:
+                                if vw == target_w:
                                     is_match = True
                                     break
                             else:
-                                if target_w in vw_clean:
+                                if target_w in vw:
                                     is_match = True
                                     break
                     else:
-                        for i in range(len(v_words_clean_only) - num_q_words + 1):
+                        for i in range(len(t_clean_words) - num_q_words + 1):
                             matched_sequence = True
                             for j in range(num_q_words):
                                 target_w = q_words[j]
-                                current_vw = v_words_clean_only[i + j]
+                                current_vw = t_clean_words[i + j]
                                 if is_exact:
                                     if current_vw != target_w:
                                         matched_sequence = False
@@ -1410,9 +1412,8 @@ def tanakh_advanced_search_api(request):
                                 break
                             
                     if is_match:
-                        raw_text = m['text_with_nikkud']
                         highlighted_text = highlight_matched_text(raw_text, q_words, is_exact)
-                        is_mishnah_res = not any(t_name == m['book'].strip() for t_name in tanakh_names)
+                        is_mishnah_res = m['book'] not in ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב']
                         
                         results.append({
                             'book': m['book'],
