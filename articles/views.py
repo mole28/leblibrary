@@ -1357,17 +1357,19 @@ def tanakh_advanced_search_api(request):
 
     try:
         if query_type == 'text' and query_val:
-            q_no_nikkud = re.sub(r'[^א-ת\s]', '', query_val)
+            q_no_nikkud = re.sub(r'[^א-ת\s]', '', query_val).strip()
             q_words = q_no_nikkud.split()
             
             if q_words:
                 target_w = q_words[0]
-                # הסרת אותיות שימוש גם מבקשת החיפוש עצמה כדי להשוות שורש נקי
-                target_base = re.sub(r'^[והכמלבש]?', '', target_w)
+                num_q_words = len(q_words)
                 
-                # שליפת כל הפסוקים/משניות שבהם מופיעה המחרוזת בגדול
-                qs = qs.filter(Q(clean_text__icontains=target_w) | Q(text_with_nikkud__icontains=target_w) | Q(clean_text__icontains=target_base))
+                # סינון ראשוני מהיר מול מסד הנתונים כדי לא לעבור על 180,000 שורות סתם
+                qs = qs.filter(Q(clean_text__icontains=target_w) | Q(text_with_nikkud__icontains=target_w))
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud')
+                
+                # תבנית בטוחה לאותיות שימוש בעברית (משמש רק לבדיקת מילים בטקסט, לא על החיפוש עצמו!)
+                prefix_pattern = re.compile(r'^(?:[משהוכלב]|שה|מה|כשה|לכש|ומ|וה|וכ|ול|וב|וש)?(.*?)$')
                 
                 for m in all_verses:
                     raw_text = m.get('text_with_nikkud') or ""
@@ -1381,16 +1383,42 @@ def tanakh_advanced_search_api(request):
                         continue
                         
                     is_match = False
-                    for vw_clean in v_words_clean_only:
-                        clean_vw_base = re.sub(r'^[והכמלבש]?', '', vw_clean)
-                        
-                        if is_exact:
-                            if vw_clean == target_w or clean_vw_base == target_w:
-                                is_match = True
-                                break
-                        else:
-                            # חיפוש רחב שמוצא כל מופע אמיתי של השורש או המילה
-                            if target_w in vw_clean or target_base in clean_vw_base or clean_vw_base.startswith(target_base) or target_base.startswith(clean_vw_base):
+                    if num_q_words == 1:
+                        target = q_words[0]
+                        for vw_clean in v_words_clean_only:
+                            if is_exact:
+                                # מילה מדויקת או מילה עם אות שימוש (למשל "ושומר" תואם ל-"שומר")
+                                if vw_clean == target:
+                                    is_match = True
+                                    break
+                                else:
+                                    match_prefix = prefix_pattern.match(vw_clean)
+                                    if match_prefix and match_prefix.group(1) == target:
+                                        is_match = True
+                                        break
+                            else:
+                                # חיפוש לא מדויק: המילה חייבת להכיל את שורת החיפוש בתוכה
+                                if target in vw_clean:
+                                    is_match = True
+                                    break
+                    else:
+                        for i in range(len(v_words_clean_only) - num_q_words + 1):
+                            matched_sequence = True
+                            for j in range(num_q_words):
+                                target = q_words[j]
+                                current_vw = v_words_clean_only[i + j]
+                                
+                                if is_exact:
+                                    match_prefix = prefix_pattern.match(current_vw)
+                                    clean_current_base = match_prefix.group(1) if match_prefix else current_vw
+                                    if current_vw != target and clean_current_base != target:
+                                        matched_sequence = False
+                                        break
+                                else:
+                                    if target not in current_vw:
+                                        matched_sequence = False
+                                        break
+                            if matched_sequence:
                                 is_match = True
                                 break
                             
