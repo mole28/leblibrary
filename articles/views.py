@@ -1357,15 +1357,6 @@ def tanakh_advanced_search_api(request):
             
             if q_words:
                 num_q_words = len(q_words)
-                query_patterns = []
-                for w in q_words:
-                    if is_exact:
-                        NIKKUD_CORE = r'\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7'
-                        fuzzy_exact = ''.join([re.escape(c) + f'[{NIKKUD_CORE}]*' for c in w])
-                        query_patterns.append(re.compile(f'^{fuzzy_exact}$', re.UNICODE))
-                    else:
-                        fuzzy_w = '[וי]*'.join(list(w))
-                        query_patterns.append(re.compile(f'^[משהוכלבאיתנד]{{0,4}}{fuzzy_w}[א-ת]{{0,4}}$', re.UNICODE))
                 
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
                 
@@ -1377,27 +1368,36 @@ def tanakh_advanced_search_api(request):
                         t_clean = " ".join(re.sub(r'[^א-ת\s]', ' ', t_no_nikkud).split())
                     
                     v_words = t_clean.split()
+                    # ניקוי ניקוד מכל מילות הפסוק במסד הנתונים לשם השוואה מדויקת נקייה
+                    v_words_clean_only = [re.sub(r'[\u0591-\u05C7]', '', vw) for vw in v_words]
                     is_match = False
                     
                     if num_q_words == 1:
-                        pat = query_patterns[0]
-                        for vw in v_words:
+                        target_w = q_words[0]
+                        for idx, vw_clean in enumerate(v_words_clean_only):
                             if is_exact:
-                                clean_vw = re.sub(r'[\u0591-\u05C7]', '', vw)
-                                if clean_vw == q_words[0]:
+                                if vw_clean == target_w:
                                     is_match = True
                                     break
                             else:
-                                if pat.search(vw):
+                                # חיפוש רחב (מאפשר אותיות שימוש/סיומות)
+                                if target_w in vw_clean:
                                     is_match = True
                                     break
                     else:
-                        for i in range(len(v_words) - num_q_words + 1):
+                        for i in range(len(v_words_clean_only) - num_q_words + 1):
                             matched_sequence = True
                             for j in range(num_q_words):
-                                if not query_patterns[j].search(v_words[i + j]):
-                                    matched_sequence = False
-                                    break
+                                target_w = q_words[j]
+                                current_vw = v_words_clean_only[i + j]
+                                if is_exact:
+                                    if current_vw != target_w:
+                                        matched_sequence = False
+                                        break
+                                else:
+                                    if target_w not in current_vw:
+                                        matched_sequence = False
+                                        break
                             if matched_sequence:
                                 is_match = True
                                 break
