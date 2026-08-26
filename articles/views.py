@@ -1340,7 +1340,6 @@ def tanakh_advanced_search_api(request):
     if book_filter == 'torah':
         qs = qs.filter(book__in=['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'])
     elif book_filter == 'mishnah':
-        # שולל את ספרי התנ"ך ומשאיר את כל שאר הספרים במסד (שזה כל המשניות כולל בבא מציעא)
         qs = qs.exclude(book__in=tanakh_names)
     elif book_filter == 'tanakh':
         tanakh_q = Q()
@@ -1365,7 +1364,6 @@ def tanakh_advanced_search_api(request):
             if q_words:
                 num_q_words = len(q_words)
                 
-                # שליפה ישירה של כל הטקסטים במסנן הנוכחי
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud')
                 
                 for m in all_verses:
@@ -1373,9 +1371,9 @@ def tanakh_advanced_search_api(request):
                     if not raw_text:
                         continue
                     
-                    # ניקוי יסודי של הטקסט לזיהוי נקי של כל מילה ומילה
                     t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', raw_text)
-                    v_words_clean_only = re.sub(r'[^א-ת\s]', ' ', t_no_nikkud).split()
+                    # פיצול מדויק למילים תוך שמירה על גבולות מילים אמיתיים
+                    v_words_clean_only = re.findall(r'[א-ת]+', t_no_nikkud)
                     
                     if not v_words_clean_only:
                         continue
@@ -1385,13 +1383,14 @@ def tanakh_advanced_search_api(request):
                     if num_q_words == 1:
                         target_w = q_words[0]
                         for vw_clean in v_words_clean_only:
-                            clean_vw_base = re.sub(r'^[והכמלב]?', '', vw_clean)
                             if is_exact:
-                                if vw_clean == target_w or clean_vw_base == target_w:
+                                # בחיפוש מדויק: דורש התאמה מוחלטת של המילה הנקייה מניקוד
+                                if vw_clean == target_w:
                                     is_match = True
                                     break
                             else:
-                                if target_w in vw_clean or target_w in clean_vw_base or (len(target_w) > 2 and target_w[:2] in clean_vw_base):
+                                # בחיפוש רחב: בודק הכלה של המילה
+                                if target_w in vw_clean:
                                     is_match = True
                                     break
                     else:
@@ -1400,13 +1399,12 @@ def tanakh_advanced_search_api(request):
                             for j in range(num_q_words):
                                 target_w = q_words[j]
                                 current_vw = v_words_clean_only[i + j]
-                                clean_current_base = re.sub(r'^[והכמלב]?', '', current_vw)
                                 if is_exact:
-                                    if current_vw != target_w and clean_current_base != target_w:
+                                    if current_vw != target_w:
                                         matched_sequence = False
                                         break
                                 else:
-                                    if target_w not in current_vw and target_w not in clean_current_base:
+                                    if target_w not in current_vw:
                                         matched_sequence = False
                                         break
                             if matched_sequence:
