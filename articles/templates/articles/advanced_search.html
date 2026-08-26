@@ -16,7 +16,7 @@
     <div class="hero-overlay" style="background-color: rgba(0,0,0,0.5);"></div>
     <div class="hero-content text-center w-100" style="transform: translateY(0);">
         <i class="bi bi-gem mb-2 d-inline-block" style="font-size: 2.5rem; color: #d4af37;"></i>
-        <h1 class="text-white mb-0 fw-bold display-4" style="color: #d4af37 !important; text-shadow: 2px 2px 8px rgba(0,0,0,0.8);">חיפוש תורני מתקדם- בבנייה!!</h1>
+        <h1 class="text-white mb-0 fw-bold display-4" style="color: #d4af37 !important; text-shadow: 2px 2px 8px rgba(0,0,0,0.8);">חיפוש תורני מתקדם</h1>
         <p class="text-white mt-3 fs-4 mb-1" style="text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">חיפוש מתקדם בתנ"ך, ובששה סדרי משנה.</p>
         <p class="text-white fs-5" style="text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">כולל חיפוש ראשי תיבות, סופי תיבות, גימטריאות ועוד.</p>
     </div>
@@ -188,7 +188,7 @@
                         <label class="form-label fw-bold" style="color: #4a5568;">סוג פעולה:</label>
                         <select class="form-select" id="searchAction" style="border-radius: 8px; border-color: #cbd5e1; background-color: #fff9f0;">
                             <option value="text_exact">חיפוש מילה במאגר - במדויק</option>
-                            <option value="text_approx">חיפוש מילה במאגר - לא מדויק</option>
+                            <option value="text_approx" selected>חיפוש מילה במאגר - לא מדויק</option>
                             <option value="gematria">מצא שווים בגימטריה</option>
                             <option value="els">דילוגי אותיות (ELS)</option>
                             <option value="rashei_tevot">ראשי תיבות (ר"ת)</option>
@@ -322,7 +322,7 @@
                 
                 results.forEach(res => {
                     let matchBadge = res.match_type ? `<span class="badge bg-light text-dark border ms-3 shadow-sm px-3 py-2">${res.match_type}</span>` : '';
-                    let verseLabel = res.verse_label || 'פסוק'; // תמיכה במילה משנה או פסוק
+                    let verseLabel = res.verse_label || 'פסוק';
                     
                     html += `
                         <div class="list-group-item p-4 mb-3 border-0 rounded-4 shadow-sm" style="background-color: #fcfbf8; border-right: 5px solid #d4af37 !important;">
@@ -351,7 +351,6 @@
                     paginationHtml += `<div style="width: 100px;" class="d-none d-sm-block"></div>`;
                 }
 
-                // תפריט נפתח גם בתחתית לניווט מהיר
                 if (data.total_pages > 1) {
                     paginationHtml += `<select class="form-select form-select-sm border-dark fw-bold text-center rounded-pill mx-auto" style="width: auto; cursor: pointer; max-width: 180px;" onchange="changePage(parseInt(this.value))">${pageOptions}</select>`;
                 }

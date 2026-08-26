@@ -1362,13 +1362,11 @@ def tanakh_advanced_search_api(request):
             
             if q_words:
                 target_w = q_words[0]
+                # הסרת אותיות שימוש גם מבקשת החיפוש עצמה כדי להשוות שורש נקי
+                target_base = re.sub(r'^[והכמלבש]?', '', target_w)
                 
-                # חזרה לסינון ORM יציב ובטוח ששולף ישירות מ־TorahText ללא תלות בטבלאות FTS חיצוניות
-                if is_exact:
-                    qs = qs.filter(Q(clean_text__icontains=target_w) | Q(text_with_nikkud__icontains=target_w))
-                else:
-                    qs = qs.filter(Q(clean_text__icontains=target_w) | Q(text_with_nikkud__icontains=target_w))
-                
+                # שליפת כל הפסוקים/משניות שבהם מופיעה המחרוזת בגדול
+                qs = qs.filter(Q(clean_text__icontains=target_w) | Q(text_with_nikkud__icontains=target_w) | Q(clean_text__icontains=target_base))
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud')
                 
                 for m in all_verses:
@@ -1384,13 +1382,15 @@ def tanakh_advanced_search_api(request):
                         
                     is_match = False
                     for vw_clean in v_words_clean_only:
-                        clean_vw_base = re.sub(r'^[והכמלב]?', '', vw_clean)
+                        clean_vw_base = re.sub(r'^[והכמלבש]?', '', vw_clean)
+                        
                         if is_exact:
                             if vw_clean == target_w or clean_vw_base == target_w:
                                 is_match = True
                                 break
                         else:
-                            if target_w in vw_clean or target_w in clean_vw_base:
+                            # חיפוש רחב שמוצא כל מופע אמיתי של השורש או המילה
+                            if target_w in vw_clean or target_base in clean_vw_base or clean_vw_base.startswith(target_base) or target_base.startswith(clean_vw_base):
                                 is_match = True
                                 break
                             
