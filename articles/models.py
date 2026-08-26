@@ -265,3 +265,18 @@ class TorahText(models.Model):
 
     def __str__(self):
         return f"{self.book} {self.chapter} {self.verse}"
+
+
+# ==========================================
+# מודל וירטואלי עבור מנוע חיפוש מהיר (SQLite FTS5)
+# ==========================================
+class TorahTextFTS(models.Model):
+    """מודל וירטואלי הממפה את טבלת ה-FTS5 המובנית במסד הנתונים לשליפות מהירות ברמת C"""
+    book = models.TextField(verbose_name="ספר")
+    chapter = models.TextField(verbose_name="פרק")
+    verse = models.TextField(verbose_name="פסוק")
+    text_with_nikkud = models.TextField(verbose_name="טקסט מנוקד")
+
+    class Meta:
+        managed = False  # מונע מ-Django לנסות ליצור או לשנות את הטבלה הזו דרך migrations רגילים
+        db_table = 'articles_torahtext_fts'
