@@ -1288,7 +1288,7 @@ def highlight_matched_text(text_with_nikkud, query_words, is_exact):
                 pass
         else:
             # חיפוש רחב: מאפשר אותיות שימוש לפני וסיומות אחרי
-            pattern_str = rf'[הוכלבמ]{{0,3}}{word_with_optional_nikkud}{NIKKUD}*[א-ת]{{0,4}}'
+            pattern_str = rf'[משהוכלבאיתנד]{{0,4}}{word_with_optional_nikkud}{NIKKUD}*[א-ת]{{0,4}}'
             try:
                 pattern = re.compile(f'({pattern_str})', re.UNICODE)
                 highlighted = pattern.sub(r'<mark>\1</mark>', highlighted)
@@ -1339,8 +1339,8 @@ def tanakh_advanced_search_api(request):
                         query_patterns.append(re.compile(f'^{re.escape(w)}$', re.UNICODE))
                     else:
                         fuzzy_w = '[וי]*'.join(list(w))
-                        # תבנית מדויקת המאפשרת אותיות שימוש ותחילית (ה, ו, כ, ל, ב, מ) וסיומיות
-                        query_patterns.append(re.compile(f'^[הוכלבמ]{{0,3}}{fuzzy_w}[א-ת]{{0,4}}$', re.UNICODE))
+                        # תבנית מדויקת המאפשרת אותיות שימוש ותחילית (משהוכלב איתן) וסיומיות
+                        query_patterns.append(re.compile(f'^[משהוכלבאיתנד]{{0,4}}{fuzzy_w}[א-ת]{{0,4}}$', re.UNICODE))
                 
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
                 
