@@ -227,9 +227,20 @@
                     return;
                 }
 
-                let html = `<div class="d-flex justify-content-between align-items-center mb-4">
+                // --- יצירת רשימת העמודים לתפריטים ---
+                let pageOptions = '';
+                for (let i = 1; i <= data.total_pages; i++) {
+                    let selected = (i === data.page) ? 'selected' : '';
+                    pageOptions += `<option value="${i}" ${selected}>עמוד ${i} מתוך ${data.total_pages}</option>`;
+                }
+
+                let topPagination = data.total_pages > 1 
+                    ? `<select class="form-select form-select-sm border-secondary fw-bold bg-light text-dark" style="width: auto; cursor: pointer; border-radius: 8px;" onchange="changePage(parseInt(this.value))">${pageOptions}</select>`
+                    : `<span class="badge bg-light text-dark border p-2">עמוד 1 מתוך 1</span>`;
+
+                let html = `<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                                 <h5 class="fw-bold text-secondary mb-0">נמצאו <span class="text-dark">${data.total}</span> תוצאות:</h5>
-                                <span class="badge bg-light text-dark border p-2">עמוד ${data.page} מתוך ${data.total_pages}</span>
+                                ${topPagination}
                             </div>
                             <div class="list-group">`;
                 
@@ -253,19 +264,24 @@
                 
                 html += '</div>';
 
-                // --- כפתורי מעבר עמודים ---
-                let paginationHtml = `<div class="d-flex justify-content-between align-items-center mt-4 p-3 bg-light rounded-4 border shadow-sm">`;
+                // --- סרגל ניווט תחתון משודרג ---
+                let paginationHtml = `<div class="d-flex justify-content-between align-items-center mt-4 p-3 bg-light rounded-4 border shadow-sm flex-wrap gap-2">`;
                 
                 if (data.page > 1) {
-                    paginationHtml += `<button class="btn btn-outline-dark fw-bold px-4 rounded-pill" onclick="changePage(${data.page - 1})"><i class="bi bi-arrow-right me-2"></i>לעמוד הקודם</button>`;
+                    paginationHtml += `<button class="btn btn-outline-dark fw-bold px-3 px-md-4 rounded-pill" onclick="changePage(${data.page - 1})"><i class="bi bi-arrow-right me-1"></i>הקודם</button>`;
                 } else {
-                    paginationHtml += `<div></div>`;
+                    paginationHtml += `<div style="width: 100px;" class="d-none d-sm-block"></div>`;
+                }
+
+                // תפריט נפתח גם בתחתית לניווט מהיר
+                if (data.total_pages > 1) {
+                    paginationHtml += `<select class="form-select form-select-sm border-dark fw-bold text-center rounded-pill mx-auto" style="width: auto; cursor: pointer; max-width: 180px;" onchange="changePage(parseInt(this.value))">${pageOptions}</select>`;
                 }
 
                 if (data.page < data.total_pages) {
-                    paginationHtml += `<button class="btn btn-outline-dark fw-bold px-4 rounded-pill" onclick="changePage(${data.page + 1})">לעמוד הבא<i class="bi bi-arrow-left ms-2"></i></button>`;
+                    paginationHtml += `<button class="btn btn-outline-dark fw-bold px-3 px-md-4 rounded-pill" onclick="changePage(${data.page + 1})">הבא<i class="bi bi-arrow-left ms-1"></i></button>`;
                 } else {
-                    paginationHtml += `<div></div>`;
+                    paginationHtml += `<div style="width: 100px;" class="d-none d-sm-block"></div>`;
                 }
                 
                 paginationHtml += `</div>`;
