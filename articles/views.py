@@ -1267,20 +1267,34 @@ def safe_int(v):
 def highlight_matched_text(text_with_nikkud, query_words, is_exact):
     """מוסיף תגיות הדגשה <mark> למילים שנמצאו בתוך הטקסט המנוקד"""
     highlighted = text_with_nikkud
+    
+    # הגדרת טווח התווים של ניקוד וטעמים (ללא מקף, פסק וסוף פסוק כדי שייחשבו למפרידי מילים)
+    NIKKUD_CORE = r'\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7'
+    NIKKUD = f'[{NIKKUD_CORE}]'
+    
     for w in query_words:
+        chars = []
+        for char in w:
+            chars.append(re.escape(char) + NIKKUD + '*')
+        word_with_optional_nikkud = ''.join(chars)
+        
         if is_exact:
-            pattern_str = re.escape(w)
+            # חיפוש מדויק: מוודאים שאין אותיות עבריות או ניקוד דבוקים לפני/אחרי המילה
+            pattern_str = rf'(^|[^א-ת{NIKKUD_CORE}])({word_with_optional_nikkud})(?=[^א-ת{NIKKUD_CORE}]|$)'
+            try:
+                pattern = re.compile(pattern_str, re.UNICODE)
+                highlighted = pattern.sub(r'\1<mark>\2</mark>', highlighted)
+            except Exception:
+                pass
         else:
-            chars = []
-            for char in w:
-                chars.append(re.escape(char) + r'[\u0591-\u05C7]*')
-            fuzzy_w = ''.join(chars)
-            pattern_str = rf'[הוכלבמ]{{0,3}}{fuzzy_w}[\u0591-\u05C7]*[א-ת]{{0,4}}'
-        try:
-            pattern = re.compile(f'({pattern_str})', re.UNICODE)
-            highlighted = pattern.sub(r'<mark>\1</mark>', highlighted)
-        except Exception:
-            pass
+            # חיפוש רחב: מאפשר אותיות שימוש לפני וסיומות אחרי
+            pattern_str = rf'[הוכלבמ]{{0,3}}{word_with_optional_nikkud}{NIKKUD}*[א-ת]{{0,4}}'
+            try:
+                pattern = re.compile(f'({pattern_str})', re.UNICODE)
+                highlighted = pattern.sub(r'<mark>\1</mark>', highlighted)
+            except Exception:
+                pass
+                
     return highlighted
 
 @ratelimit(rate=30, timeout=60)
