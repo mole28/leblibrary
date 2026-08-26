@@ -1334,10 +1334,11 @@ def tanakh_advanced_search_api(request):
     results = []
     qs = TorahText.objects.all()
 
+    # תיקון קריטי: הגדרת סינון רחב ובטוח שאינו מפספס אף מסכת משנה
     if book_filter == 'torah':
         qs = qs.filter(book__in=['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'])
     elif book_filter == 'mishnah':
-        qs = qs.filter(book__in=MISHNAH_BOOKS)
+        qs = qs.filter(Q(book__in=MISHNAH_BOOKS) | Q(book__in=[b.strip() for b in MISHNAH_BOOKS]))
     elif book_filter == 'tanakh':
         qs = qs.exclude(book__in=MISHNAH_BOOKS)
     elif book_filter == 'all':
@@ -1368,7 +1369,6 @@ def tanakh_advanced_search_api(request):
                         t_clean = " ".join(re.sub(r'[^א-ת\s]', ' ', t_no_nikkud).split())
                     
                     v_words = t_clean.split()
-                    # ניקוי ניקוד מכל מילות הפסוק במסד הנתונים לשם השוואה מדויקת נקייה
                     v_words_clean_only = [re.sub(r'[\u0591-\u05C7]', '', vw) for vw in v_words]
                     is_match = False
                     
@@ -1380,7 +1380,6 @@ def tanakh_advanced_search_api(request):
                                     is_match = True
                                     break
                             else:
-                                # חיפוש רחב (מאפשר אותיות שימוש/סיומות)
                                 if target_w in vw_clean:
                                     is_match = True
                                     break
