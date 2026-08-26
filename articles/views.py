@@ -1375,36 +1375,38 @@ def tanakh_advanced_search_api(request):
                     
                     # ניקוי יסודי של הטקסט לזיהוי נקי של כל מילה ומילה
                     t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', raw_text)
-                    t_clean_words = re.sub(r'[^א-ת\s]', ' ', t_no_nikkud).split()
+                    v_words_clean_only = re.sub(r'[^א-ת\s]', ' ', t_no_nikkud).split()
                     
-                    if not t_clean_words:
+                    if not v_words_clean_only:
                         continue
                         
                     is_match = False
                     
                     if num_q_words == 1:
                         target_w = q_words[0]
-                        for vw in t_clean_words:
+                        for vw_clean in v_words_clean_only:
+                            clean_vw_base = re.sub(r'^[והכמלב]?', '', vw_clean)
                             if is_exact:
-                                if vw == target_w:
+                                if vw_clean == target_w or clean_vw_base == target_w:
                                     is_match = True
                                     break
                             else:
-                                if target_w in vw:
+                                if target_w in vw_clean or target_w in clean_vw_base or (len(target_w) > 2 and target_w[:2] in clean_vw_base):
                                     is_match = True
                                     break
                     else:
-                        for i in range(len(t_clean_words) - num_q_words + 1):
+                        for i in range(len(v_words_clean_only) - num_q_words + 1):
                             matched_sequence = True
                             for j in range(num_q_words):
                                 target_w = q_words[j]
-                                current_vw = t_clean_words[i + j]
+                                current_vw = v_words_clean_only[i + j]
+                                clean_current_base = re.sub(r'^[והכמלב]?', '', current_vw)
                                 if is_exact:
-                                    if current_vw != target_w:
+                                    if current_vw != target_w and clean_current_base != target_w:
                                         matched_sequence = False
                                         break
                                 else:
-                                    if target_w not in current_vw:
+                                    if target_w not in current_vw and target_w not in clean_current_base:
                                         matched_sequence = False
                                         break
                             if matched_sequence:
@@ -1413,7 +1415,7 @@ def tanakh_advanced_search_api(request):
                             
                     if is_match:
                         highlighted_text = highlight_matched_text(raw_text, q_words, is_exact)
-                        is_mishnah_res = m['book'] not in ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב']
+                        is_mishnah_res = m['book'] not in tanakh_names
                         
                         results.append({
                             'book': m['book'],
@@ -1432,7 +1434,7 @@ def tanakh_advanced_search_api(request):
                 t_clean = re.sub(r'[^א-ת\s]', ' ', t)
                 t_words = t_clean.split()
                 
-                is_mishnah_res = not any(t_name == m['book'].strip() for t_name in tanakh_names)
+                is_mishnah_res = m['book'] not in tanakh_names
                 clean_t = "".join(t_words)
                 if calculate_gematria(clean_t) == target_val:
                     results.append({
@@ -1468,7 +1470,7 @@ def tanakh_advanced_search_api(request):
                     t_clean = re.sub(r'[^א-ת\s]', ' ', t)
                     t_words = t_clean.split()
                     
-                    is_mishnah_res = not any(t_name == m['book'].strip() for t_name in tanakh_names)
+                    is_mishnah_res = m['book'] not in tanakh_names
                     if len(t_words) >= len(target_acr):
                         initials = "".join([w[0] for w in t_words if w])
                         if target_acr in initials:
