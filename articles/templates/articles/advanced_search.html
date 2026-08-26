@@ -16,8 +16,8 @@
     <div class="hero-overlay" style="background-color: rgba(0,0,0,0.5);"></div>
     <div class="hero-content text-center w-100" style="transform: translateY(0);">
         <i class="bi bi-gem mb-2 d-inline-block" style="font-size: 2.5rem; color: #d4af37;"></i>
-        <h1 class="text-white mb-0 fw-bold display-4" style="color: #d4af37 !important; text-shadow: 2px 2px 8px rgba(0,0,0,0.8);">חיפוש תורני מתקדם - בבנייה!!!!</h1>
-        <p class="text-white mt-3 fs-4 mb-1" style="text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">חיפוש מתקדם בתנ"ך, במשנה ובתלמודים.</p>
+        <h1 class="text-white mb-0 fw-bold display-4" style="color: #d4af37 !important; text-shadow: 2px 2px 8px rgba(0,0,0,0.8);">חיפוש תורני מתקדם</h1>
+        <p class="text-white mt-3 fs-4 mb-1" style="text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">חיפוש מתקדם בתנ"ך, ובששה סדרי משנה.</p>
         <p class="text-white fs-5" style="text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">כולל חיפוש ראשי תיבות, סופי תיבות, גימטריאות ועוד.</p>
     </div>
 </div>
@@ -48,9 +48,10 @@
                     <div class="mb-4">
                         <label class="form-label fw-bold" style="color: #4a5568;">בחר מאגר חיפוש:</label>
                         <select class="form-select" id="searchCorpus" style="border-radius: 8px; border-color: #cbd5e1;">
-                            <option value="tanakh">תנ"ך שלם</option>
-                            <option value="torah" selected>חומשי תורה בלבד</option>
-                            <option value="mishnah" disabled>משנה (בקרוב)</option>
+                            <option value="all">כל המאגרים (תנ"ך + משנה)</option>
+                            <option value="tanakh" selected>תנ"ך שלם</option>
+                            <option value="torah">חומשי תורה בלבד</option>
+                            <option value="mishnah">משנה (ששה סדרי משנה)</option>
                             <option value="talmud" disabled>תלמוד בבלי (בקרוב)</option>
                         </select>
                     </div>
@@ -104,6 +105,81 @@
                                 <option value="דברי הימים א">דברי הימים א</option>
                                 <option value="דברי הימים ב">דברי הימים ב</option>
                             </optgroup>
+                            <optgroup label="משנה - זרעים">
+                                <option value="ברכות">ברכות</option>
+                                <option value="פאה">פאה</option>
+                                <option value="דמאי">דמאי</option>
+                                <option value="כלאים">כלאים</option>
+                                <option value="שביעית">שביעית</option>
+                                <option value="תרומות">תרומות</option>
+                                <option value="מעשרות">מעשרות</option>
+                                <option value="מעשר שני">מעשר שני</option>
+                                <option value="חלה">חלה</option>
+                                <option value="ערלה">ערלה</option>
+                                <option value="ביכורים">ביכורים</option>
+                            </optgroup>
+                            <optgroup label="משנה - מועד">
+                                <option value="שבת">שבת</option>
+                                <option value="עירובין">עירובין</option>
+                                <option value="פסחים">פסחים</option>
+                                <option value="שקלים">שקלים</option>
+                                <option value="יומא">יומא</option>
+                                <option value="סוכה">סוכה</option>
+                                <option value="ביצה">ביצה</option>
+                                <option value="ראש השנה">ראש השנה</option>
+                                <option value="תענית">תענית</option>
+                                <option value="מגילה">מגילה</option>
+                                <option value="מועד קטן">מועד קטן</option>
+                                <option value="חגיגה">חגיגה</option>
+                            </optgroup>
+                            <optgroup label="משנה - נשים">
+                                <option value="יבמות">יבמות</option>
+                                <option value="כתובות">כתובות</option>
+                                <option value="נדרים">נדרים</option>
+                                <option value="נזיר">נזיר</option>
+                                <option value="סוטה">סוטה</option>
+                                <option value="גיטין">גיטין</option>
+                                <option value="קידושין">קידושין</option>
+                            </optgroup>
+                            <optgroup label="משנה - נזיקין">
+                                <option value="בבא קמא">בבא קמא</option>
+                                <option value="בבא מציעא">בבא מציעא</option>
+                                <option value="בבא בתרא">בבא בתרא</option>
+                                <option value="סנהדרין">סנהדרין</option>
+                                <option value="מכות">מכות</option>
+                                <option value="שבועות">שבועות</option>
+                                <option value="עדיות">עדיות</option>
+                                <option value="עבודה זרה">עבודה זרה</option>
+                                <option value="אבות">אבות</option>
+                                <option value="הוריות">הוריות</option>
+                            </optgroup>
+                            <optgroup label="משנה - קדשים">
+                                <option value="זבחים">זבחים</option>
+                                <option value="מנחות">מנחות</option>
+                                <option value="חולין">חולין</option>
+                                <option value="בכורות">בכורות</option>
+                                <option value="ערכין">ערכין</option>
+                                <option value="תמורה">תמורה</option>
+                                <option value="כריתות">כריתות</option>
+                                <option value="מעילה">מעילה</option>
+                                <option value="תמיד">תמיד</option>
+                                <option value="מדות">מדות</option>
+                                <option value="קינים">קינים</option>
+                            </optgroup>
+                            <optgroup label="משנה - טהרות">
+                                <option value="כלים">כלים</option>
+                                <option value="אהלות">אהלות</option>
+                                <option value="נגעים">נגעים</option>
+                                <option value="פרה">פרה</option>
+                                <option value="טהרות">טהרות</option>
+                                <option value="מקואות">מקואות</option>
+                                <option value="נדה">נדה</option>
+                                <option value="מכשירין">מכשירין</option>
+                                <option value="זבים">זבים</option>
+                                <option value="טבול יום">טבול יום</option>
+                                <option value="ידים">ידים</option>
+                                <option value="עוקצין">עוקצין</option>
+                            </optgroup>
                         </select>
                     </div>
 
@@ -111,9 +187,9 @@
                     <div class="mb-4">
                         <label class="form-label fw-bold" style="color: #4a5568;">סוג פעולה:</label>
                         <select class="form-select" id="searchAction" style="border-radius: 8px; border-color: #cbd5e1; background-color: #fff9f0;">
-                            <option value="text_exact">חיפוש מילה בתנ"ך - במדויק</option>
-                            <option value="text_approx">חיפוש מילה בתנ"ך - לא מדויק</option>
-                            <option value="gematria">מצא פסוקים שווים בגימטריה</option>
+                            <option value="text_exact">חיפוש מילה במאגר - במדויק</option>
+                            <option value="text_approx">חיפוש מילה במאגר - לא מדויק</option>
+                            <option value="gematria">מצא שווים בגימטריה</option>
                             <option value="els">דילוגי אותיות (ELS)</option>
                             <option value="rashei_tevot">ראשי תיבות (ר"ת)</option>
                             <option value="sofei_tevot">סופי תיבות (ס"ת)</option>
@@ -193,7 +269,7 @@
                 <div class="text-center py-5">
                     <div class="spinner-border text-warning" style="width: 3rem; height: 3rem; border-width: 0.3em;" role="status"></div>
                     <h4 class="mt-4" style="color: #2c3e50;">מנוע החישוב סורק את המאגר...</h4>
-                    <p class="text-muted">אנא המתן מספר רגעים (סורק את כל פסוקי התנ"ך)</p>
+                    <p class="text-muted">אנא המתן מספר רגעים...</p>
                 </div>
             `;
         }
@@ -223,7 +299,7 @@
                 
                 const results = data.results;
                 if (!results || data.total === 0) {
-                    resultsArea.innerHTML = '<div class="alert alert-info shadow-sm rounded-3 fs-5"><i class="bi bi-info-circle-fill me-2"></i>לא נמצאו פסוקים התואמים לחיפוש שלך במאגר.</div>';
+                    resultsArea.innerHTML = '<div class="alert alert-info shadow-sm rounded-3 fs-5"><i class="bi bi-info-circle-fill me-2"></i>לא נמצאו תוצאות התואמות לחיפוש שלך במאגר.</div>';
                     return;
                 }
 
@@ -246,12 +322,14 @@
                 
                 results.forEach(res => {
                     let matchBadge = res.match_type ? `<span class="badge bg-light text-dark border ms-3 shadow-sm px-3 py-2">${res.match_type}</span>` : '';
+                    let verseLabel = res.verse_label || 'פסוק'; // תמיכה במילה משנה או פסוק
+                    
                     html += `
                         <div class="list-group-item p-4 mb-3 border-0 rounded-4 shadow-sm" style="background-color: #fcfbf8; border-right: 5px solid #d4af37 !important;">
                             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
                                 <strong class="fs-5" style="color: #2c3e50;">
                                     <i class="bi bi-book ms-2" style="color: #d4af37;"></i>
-                                    ${res.book} | פרק ${res.chapter} | פסוק ${res.verse}
+                                    ${res.book} | פרק ${res.chapter} | ${verseLabel} ${res.verse}
                                 </strong>
                                 ${matchBadge}
                             </div>

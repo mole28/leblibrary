@@ -1246,6 +1246,14 @@ HEBREW_GEMATRIA = {
 
 def calculate_gematria(text):
     return sum(HEBREW_GEMATRIA.get(char, 0) for char in text)
+MISHNAH_BOOKS = [
+    'ברכות', 'פאה', 'דמאי', 'כלאים', 'שביעית', 'תרומות', 'מעשרות', 'מעשר שני', 'חלה', 'ערלה', 'ביכורים',
+    'שבת', 'עירובין', 'פסחים', 'שקלים', 'יומא', 'סוכה', 'ביצה', 'ראש השנה', 'תענית', 'מגילה', 'מועד קטן', 'חגיגה',
+    'יבמות', 'כתובות', 'נדרים', 'נזיר', 'סוטה', 'גיטין', 'קידושין',
+    'בבא קמא', 'בבא מציעא', 'בבא בתרא', 'סנהדרין', 'מכות', 'שבועות', 'עדיות', 'עבודה זרה', 'אבות', 'הוריות',
+    'זבחים', 'מנחות', 'חולין', 'בכורות', 'ערכין', 'תמורה', 'כריתות', 'מעילה', 'תמיד', 'מדות', 'קינים',
+    'כלים', 'אהלות', 'נגעים', 'פרה', 'טהרות', 'מקואות', 'נדה', 'מכשירין', 'זבים', 'טבול יום', 'ידים', 'עוקצין'
+]
 
 def get_book_order(book_name):
     BOOK_ORDER = {
@@ -1254,9 +1262,21 @@ def get_book_order(book_name):
         'ישעיהו': 12, 'ירמיהו': 13, 'יחזקאל': 14, 'הושע': 15, 'יואל': 16, 'עמוס': 17, 'עובדיה': 18,
         'יונה': 19, 'מיכה': 20, 'נחום': 21, 'חבקוק': 22, 'צפניה': 23, 'חגי': 24, 'זכריה': 25, 'מלאכי': 26,
         'תהילים': 27, 'משלי': 28, 'איוב': 29, 'שיר השירים': 30, 'רות': 31, 'איכה': 32, 'קהלת': 33,
-        'אסתר': 34, 'דניאל': 35, 'עזרא': 36, 'נחמיה': 37, 'דברי הימים א': 38, 'דברי הימים ב': 39
+        'אסתר': 34, 'דניאל': 35, 'עזרא': 36, 'נחמיה': 37, 'דברי הימים א': 38, 'דברי הימים ב': 39,
+        # סדר זרעים
+        'ברכות': 40, 'פאה': 41, 'דמאי': 42, 'כלאים': 43, 'שביעית': 44, 'תרומות': 45, 'מעשרות': 46, 'מעשר שני': 47, 'חלה': 48, 'ערלה': 49, 'ביכורים': 50,
+        # סדר מועד
+        'שבת': 51, 'עירובין': 52, 'פסחים': 53, 'שקלים': 54, 'יומא': 55, 'סוכה': 56, 'ביצה': 57, 'ראש השנה': 58, 'תענית': 59, 'מגילה': 60, 'מועד קטן': 61, 'חגיגה': 62,
+        # סדר נשים
+        'יבמות': 63, 'כתובות': 64, 'נדרים': 65, 'נזיר': 66, 'סוטה': 67, 'גיטין': 68, 'קידושין': 69,
+        # סדר נזיקין
+        'בבא קמא': 70, 'בבא מציעא': 71, 'בבא בתרא': 72, 'סנהדרין': 73, 'מכות': 74, 'שבועות': 75, 'עדיות': 76, 'עבודה זרה': 77, 'אבות': 78, 'הוריות': 79,
+        # סדר קדשים
+        'זבחים': 80, 'מנחות': 81, 'חולין': 82, 'בכורות': 83, 'ערכין': 84, 'תמורה': 85, 'כריתות': 86, 'מעילה': 87, 'תמיד': 88, 'מדות': 89, 'קינים': 90,
+        # סדר טהרות
+        'כלים': 91, 'אהלות': 92, 'נגעים': 93, 'פרה': 94, 'טהרות': 95, 'מקואות': 96, 'נדה': 97, 'מכשירין': 98, 'זבים': 99, 'טבול יום': 100, 'ידים': 101, 'עוקצין': 102
     }
-    return BOOK_ORDER.get(book_name.strip(), 99)
+    return BOOK_ORDER.get(book_name.strip(), 999)
 
 def safe_int(v):
     try:
@@ -1268,7 +1288,6 @@ def highlight_matched_text(text_with_nikkud, query_words, is_exact):
     """מוסיף תגיות הדגשה <mark> למילים שנמצאו בתוך הטקסט המנוקד"""
     highlighted = text_with_nikkud
     
-    # הגדרת טווח התווים של ניקוד וטעמים (ללא מקף, פסק וסוף פסוק כדי שייחשבו למפרידי מילים)
     NIKKUD_CORE = r'\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7'
     NIKKUD = f'[{NIKKUD_CORE}]'
     
@@ -1279,7 +1298,6 @@ def highlight_matched_text(text_with_nikkud, query_words, is_exact):
         word_with_optional_nikkud = ''.join(chars)
         
         if is_exact:
-            # חיפוש מדויק: מוודאים שאין אותיות עבריות או ניקוד דבוקים לפני/אחרי המילה
             pattern_str = rf'(^|[^א-ת{NIKKUD_CORE}])({word_with_optional_nikkud})(?=[^א-ת{NIKKUD_CORE}]|$)'
             try:
                 pattern = re.compile(pattern_str, re.UNICODE)
@@ -1287,7 +1305,6 @@ def highlight_matched_text(text_with_nikkud, query_words, is_exact):
             except Exception:
                 pass
         else:
-            # חיפוש רחב: מאפשר אותיות שימוש לפני וסיומות אחרי
             pattern_str = rf'[משהוכלבאיתנד]{{0,4}}{word_with_optional_nikkud}{NIKKUD}*[א-ת]{{0,4}}'
             try:
                 pattern = re.compile(f'({pattern_str})', re.UNICODE)
@@ -1318,7 +1335,13 @@ def tanakh_advanced_search_api(request):
 
     if book_filter == 'torah':
         qs = qs.filter(book__in=['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'])
-    elif book_filter and book_filter != 'tanakh':
+    elif book_filter == 'mishnah':
+        qs = qs.filter(book__in=MISHNAH_BOOKS)
+    elif book_filter == 'tanakh':
+        qs = qs.exclude(book__in=MISHNAH_BOOKS)
+    elif book_filter == 'all':
+        pass 
+    elif book_filter:
         qs = qs.filter(book=book_filter)
         
     if exclude_books_param:
@@ -1339,7 +1362,6 @@ def tanakh_advanced_search_api(request):
                         query_patterns.append(re.compile(f'^{re.escape(w)}$', re.UNICODE))
                     else:
                         fuzzy_w = '[וי]*'.join(list(w))
-                        # תבנית מדויקת המאפשרת אותיות שימוש ותחילית (משהוכלב איתן) וסיומיות
                         query_patterns.append(re.compile(f'^[משהוכלבאיתנד]{{0,4}}{fuzzy_w}[א-ת]{{0,4}}$', re.UNICODE))
                 
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
@@ -1354,7 +1376,6 @@ def tanakh_advanced_search_api(request):
                     v_words = t_clean.split()
                     is_match = False
                     
-                    # בדיקת מילים נפרדות (מונע זליגה בין מילים שונות)
                     if num_q_words == 1:
                         pat = query_patterns[0]
                         for vw in v_words:
@@ -1380,6 +1401,7 @@ def tanakh_advanced_search_api(request):
                             'book': m['book'],
                             'chapter': m['chapter'],
                             'verse': m['verse'],
+                            'verse_label': 'משנה' if m['book'] in MISHNAH_BOOKS else 'פסוק',
                             'text': highlighted_text,
                             'match_type': 'מילה מדויקת' if is_exact else 'חיפוש רחב'
                         })
@@ -1398,6 +1420,7 @@ def tanakh_advanced_search_api(request):
                         'book': m['book'],
                         'chapter': m['chapter'],
                         'verse': m['verse'],
+                        'verse_label': 'משנה' if m['book'] in MISHNAH_BOOKS else 'פסוק',
                         'text': m['text_with_nikkud'],
                         'match_type': 'גימטריה מלאה לפסוק'
                     })
@@ -1412,6 +1435,7 @@ def tanakh_advanced_search_api(request):
                             'book': m['book'],
                             'chapter': m['chapter'],
                             'verse': m['verse'],
+                            'verse_label': 'משנה' if m['book'] in MISHNAH_BOOKS else 'פסוק',
                             'text': m['text_with_nikkud'],
                             'match_type': f'גימטריה למילה בפסוק (ערך {target_val})'
                         })
@@ -1432,6 +1456,7 @@ def tanakh_advanced_search_api(request):
                                 'book': m['book'],
                                 'chapter': m['chapter'],
                                 'verse': m['verse'],
+                                'verse_label': 'משנה' if m['book'] in MISHNAH_BOOKS else 'פסוק',
                                 'text': m['text_with_nikkud'],
                                 'match_type': 'ראשי תיבות בפסוק'
                             })
