@@ -1321,7 +1321,7 @@ def tanakh_advanced_search_api(request):
     query_val = request.GET.get('q', '').strip()
     book_filter = request.GET.get('book', '').strip()
     is_exact = request.GET.get('exact', 'false') == 'true'
-    exclude_books_param = exclude_books_param = request.GET.get('exclude_books', '').strip()
+    exclude_books_param = request.GET.get('exclude_books', '').strip()
     page = int(request.GET.get('page', 1))
     
     try:
@@ -1334,16 +1334,20 @@ def tanakh_advanced_search_api(request):
     results = []
     qs = TorahText.objects.all()
 
-    # סינון גורף המאפשר לכל המסכתות לעבור ללא מגבלת השוואת מחרוזת קשיחה
+    # פתרון מוחלט: סינון מבוסס Q object שבודק את כל שמות מסכתות המשנה במסד הנתונים
+    tanakh_names = ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב']
+
     if book_filter == 'torah':
         qs = qs.filter(book__in=['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'])
     elif book_filter == 'mishnah':
-        tanakh_names = ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב']
-        qs = qs.exclude(book__in=tanakh_names)
+        mishnah_q = Q()
+        for m_name in MISHNAH_BOOKS:
+            mishnah_q |= Q(book__icontains=m_name)
+        qs = qs.filter(mishnah_q)
     elif book_filter == 'tanakh':
         tanakh_q = Q()
-        for b in ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב']:
-            tanakh_q |= Q(book__icontains=b)
+        for t_name in tanakh_names:
+            tanakh_q |= Q(book__icontains=t_name)
         qs = qs.filter(tanakh_q)
     elif book_filter == 'all':
         pass 
@@ -1408,12 +1412,13 @@ def tanakh_advanced_search_api(request):
                     if is_match:
                         raw_text = m['text_with_nikkud']
                         highlighted_text = highlight_matched_text(raw_text, q_words, is_exact)
+                        is_mishnah_res = not any(t_name in m['book'] for t_name in tanakh_names)
                         
                         results.append({
                             'book': m['book'],
                             'chapter': m['chapter'],
                             'verse': m['verse'],
-                            'verse_label': 'משנה' if m['book'] not in ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב'] else 'פסוק',
+                            'verse_label': 'משנה' if is_mishnah_res else 'פסוק',
                             'text': highlighted_text,
                             'match_type': 'מילה מדויקת' if is_exact else 'חיפוש רחב'
                         })
@@ -1426,14 +1431,14 @@ def tanakh_advanced_search_api(request):
                 t_clean = re.sub(r'[^א-ת\s]', ' ', t)
                 t_words = t_clean.split()
                 
+                is_mishnah_res = not any(t_name in m['book'] for t_name in tanakh_names)
                 clean_t = "".join(t_words)
-                is_mishnah = m['book'] not in ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב']
                 if calculate_gematria(clean_t) == target_val:
                     results.append({
                         'book': m['book'],
                         'chapter': m['chapter'],
                         'verse': m['verse'],
-                        'verse_label': 'משנה' if is_mishnah else 'פסוק',
+                        'verse_label': 'משנה' if is_mishnah_res else 'פסוק',
                         'text': m['text_with_nikkud'],
                         'match_type': 'גימטריה מלאה לפסוק'
                     })
@@ -1448,7 +1453,7 @@ def tanakh_advanced_search_api(request):
                             'book': m['book'],
                             'chapter': m['chapter'],
                             'verse': m['verse'],
-                            'verse_label': 'משנה' if is_mishnah else 'פסוק',
+                            'verse_label': 'משנה' if is_mishnah_res else 'פסוק',
                             'text': m['text_with_nikkud'],
                             'match_type': f'גימטריה למילה בפסוק (ערך {target_val})'
                         })
@@ -1462,7 +1467,7 @@ def tanakh_advanced_search_api(request):
                     t_clean = re.sub(r'[^א-ת\s]', ' ', t)
                     t_words = t_clean.split()
                     
-                    is_mishnah = m['book'] not in ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב']
+                    is_mishnah_res = not any(t_name in m['book'] for t_name in tanakh_names)
                     if len(t_words) >= len(target_acr):
                         initials = "".join([w[0] for w in t_words if w])
                         if target_acr in initials:
@@ -1470,7 +1475,7 @@ def tanakh_advanced_search_api(request):
                                 'book': m['book'],
                                 'chapter': m['chapter'],
                                 'verse': m['verse'],
-                                'verse_label': 'משנה' if is_mishnah else 'פסוק',
+                                'verse_label': 'משנה' if is_mishnah_res else 'פסוק',
                                 'text': m['text_with_nikkud'],
                                 'match_type': 'ראשי תיבות בפסוק'
                             })
