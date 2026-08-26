@@ -386,6 +386,15 @@ def ai_chat_endpoint(request):
                         db_sections = ai_document_search(Section.objects.all(), clean_question, section_fields, words, limit=2)
                 except Exception: pass
 
+                # --- חיפוש במאגר שאלות ותשובות (QA) ---
+                qa_fields = get_text_fields(QA)
+                db_qas = []
+                try:
+                    if qa_fields:
+                        db_qas = ai_document_search(QA.objects.all(), clean_question, qa_fields, words, limit=2)
+                except Exception: pass
+                # -------------------------------------
+
                 acronym_matches = []
                 try:
                     from .models import Acronym
@@ -440,6 +449,16 @@ def ai_chat_endpoint(request):
                                 snippet = get_smart_content(get_item_text(s), words, max_chars=8000)
                                 add_to_context(title, url, snippet)
                     except Exception: pass
+
+                # --- הזרקת תוצאות השו"ת למוח של הבוט ---
+                for qa_item in db_qas:
+                    try:
+                        url = request.build_absolute_uri(reverse('articles:qa'))
+                        title = f"שו\"ת - {get_item_title(qa_item)}"
+                        snippet = get_smart_content(get_item_text(qa_item), words, max_chars=8000)
+                        add_to_context(title, url, snippet)
+                    except Exception: pass
+                # --------------------------------------
 
                 if not unique_relevant_items:
                     return JsonResponse({'answer': 'מצטער, לא הצלחתי לאתר חומרים רלוונטיים במאגרי הספרייה לשאלתך. נסה לנסח אחרת.'})
