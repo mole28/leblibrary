@@ -53,7 +53,7 @@ async function sendQAMessage() {
     const inputField = document.getElementById('globalQAInput'); const chatBox = document.getElementById('globalQAChatBox'); const userText = inputField.value.trim();
     if (userText === '') return;
     chatBox.innerHTML += `<div class="nav-chat-bubble qa-chat-user">${userText}</div>`; inputField.value = ''; chatBox.scrollTop = chatBox.scrollHeight;
-    const typingId = 'qa-typing-' + Date.now(); const aiTitle = '<strong style="font-size: 1.15em; color: #1e202c;">שאל את ה- AI - מבוסס על התכנים שבאתר <span style="font-weight: normal; font-size: 0.85em;">(אין לסמוך על זה למעשה)</span>:</strong><br><br>';
+    const typingId = 'qa-typing-' + Date.now(); const aiTitle = '<strong style="font-size: 1.15em; color: #1e202c;">שאל את ה-AI מבוסס על התכנים שבאתר <span style="font-weight: normal; font-size: 0.85em;">(אין לסמוך על תשובות ה- AI למעשה)</span>:</strong><br><br>';
     chatBox.innerHTML += `<div class="nav-chat-bubble qa-chat-bot" id="${typingId}">${aiTitle} <div class="nav-loading-status" style="color: #d4af37;"><div class="nav-spinner" style="border-top-color: #d4af37;"></div><span id="qa-status-text-${typingId}">🧠 מנתח את ההקשר ההלכתי של הטקסט...</span></div></div>`;
     chatBox.scrollTop = chatBox.scrollHeight;
     const loadingMessages = ["🧠 מנתח את ההקשר ההלכתי של הטקסט...", "📚 סורק מקורות ופסקי הלכה...", "✍️ מנסח תשובה ברורה ומדויקת..."]; let messageIndex = 0;

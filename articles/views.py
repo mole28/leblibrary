@@ -40,22 +40,35 @@ from django.dispatch import receiver
 from .vector_store import search_similar_articles
 
 def get_base_schema_json():
+    # --- שדרוג SEO עמוק: הטמעת השם שלך בכל וריאציה אפשרית במיוחד עבור הבוטים של גוגל ---
     return json.dumps({
         "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "LebLibrary - ספריית לייבוביץ",
-        "alternateName": ["ספריית לייבוביץ", "משה לייבוביץ", "משה ליבוביץ"],
-        "url": "https://leblibrary.co.il",
-        "author": {
-            "@type": "Person",
-            "name": "משה לייבוביץ",
-            "alternateName": "Moshe Leibowitz"
-        },
-        "founder": {
-            "@type": "Person",
-            "name": "משה לייבוביץ"
-        },
-        "description": "ספריית לייבוביץ - מאמרים, ספרים ושיעורים תורניים בעריכת משה לייבוביץ."
+        "@graph": [
+            {
+                "@type": "WebSite",
+                "@id": "https://leblibrary.co.il/#website",
+                "url": "https://leblibrary.co.il",
+                "name": "LebLibrary - ספריית לייבוביץ",
+                "alternateName": ["ספריית ליבוביץ", "הספרייה של משה לייבוביץ", "ספרית לייבוביץ"],
+                "publisher": {"@id": "https://leblibrary.co.il/#person"}
+            },
+            {
+                "@type": "Person",
+                "@id": "https://leblibrary.co.il/#person",
+                "name": "משה לייבוביץ",
+                "alternateName": ["משה ליבוביץ", "Moshe Leibowitz", "משה בן יעקב לייבוביץ"],
+                "url": "https://leblibrary.co.il",
+                "sameAs": [
+                    "https://leblibrary.co.il/about/"
+                ],
+                "jobTitle": "מייסד, עורך ראשי ומפתח תוכנה",
+                "worksFor": {
+                    "@type": "Organization",
+                    "name": "ספריית לייבוביץ - LebLibrary"
+                },
+                "description": "משה לייבוביץ (משה ליבוביץ) הוא מתכנת, יוצר ומייסד ספריית לייבוביץ. האתר נבנה ופותח במלואו על ידי משה לייבוביץ ומציע מנוע חיפוש תורני מתקדם, מאמרים תורניים, וספרים."
+            }
+        ]
     }, ensure_ascii=False)
 
 def ratelimit(rate=30, timeout=60):
