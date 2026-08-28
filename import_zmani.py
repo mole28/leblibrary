@@ -37,27 +37,13 @@ def import_zmani_book():
 
     soup = BeautifulSoup(raw_html, 'html.parser')
     
-    # הסרת אלמנטים מסוכנים בלבד (שמירה על מבנה ההערות והקישורים)
+    # הסרת סקריפטים וסטיילים גולמיים בלבד (שמירה מלאה על כל התגיות, המספור, וההערות)
     for element in soup(["script", "style", "meta", "link", "form", "input", "button", "textarea", "select"]):
         element.decompose()
 
-    # תיקון חכם לוורד: הסרת הדגשה רק כאשר פסקה שלמה עטופה במיותר ב-strong/b, מבלי לגעת בהערות
-    for p in soup.find_all('p'):
-        children = [c for c in p.contents if (getattr(c, 'name', None) or str(c).strip())]
-        if len(children) == 1 and getattr(children[0], 'name', None) in ['strong', 'b']:
-            children[0].unwrap()
-
-    # שמירת מזהים, עוגנים, מחלקות וקישורים חיוניים להערות שוליים וניווט תקין
-    for tag in soup.find_all(True):
-        allowed_attrs = {}
-        for attr in ['id', 'name', 'href', 'class']:
-            if tag.has_attr(attr):
-                allowed_attrs[attr] = tag[attr]
-        tag.attrs = allowed_attrs
-
     full_text = str(soup)
 
-    # דילוג על תוכן העניינים בתחילת המסמך
+    # דילוג על תוכן העניינים בתחילת המסמך ומציאת הפתח דבר האמיתי
     matches_pd = [m.start() for m in re.finditer(r'פתח\s+דבר', full_text, re.IGNORECASE)]
     if len(matches_pd) > 1:
         target_idx = matches_pd[1]
@@ -108,6 +94,15 @@ def import_zmani_book():
         )
 
         siman_soup = BeautifulSoup(siman_body_html, 'html.parser')
+
+        # איסוף כל ההערות/הגדרות ששייכות לסימן זה (מופיעות בסוף הסימן עם id שמכיל ftn או footnote)
+        all_footnotes = siman_soup.find_all(lambda tag: tag.has_attr('id') and ('ftn' in tag['id'] or 'footnote' in tag['id']))
+        footnotes_html = "".join(str(fn) for fn in all_footnotes)
+
+        # הסרת ההערות מהגוף הראשי כדי למנוע כפילויות לפני החלוקה לסעיפים
+        for fn in all_footnotes:
+            fn.decompose()
+
         sections_data = []
         current_sec_title = "הקדמה לסימן"
         current_sec_content = []
@@ -149,19 +144,21 @@ def import_zmani_book():
             sections_data.append((siman_title, "".join(str(e) for e in intro_to_siman_content)))
 
         if not sections_data:
-            sections_data.append((siman_title, siman_body_html))
+            sections_data.append((siman_title, str(siman_soup)))
 
+        # שמירת הסעיפים תחת הפרק, כשבסוף כל סעיף מצורפות כל הערות השוליים של הסימן לנוחות ניווט מושלמת
         for sec_order, (sec_title, sec_content) in enumerate(sections_data, start=1):
+            full_sec_content = sec_content + "<hr class='footnotes-divider'>" + footnotes_html
             Section.objects.create(
                 chapter=chapter,
                 title=sec_title[:150],
-                content=sec_content,
+                content=full_sec_content,
                 order=sec_order
             )
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה מלאה, כולל שימור ההערות, הקישורים והמספור!")
+    print("הספר יובא בהצלחה מלאה, כולל שימור ההערות, המספור והקישורים!")
 
 if __name__ == "__main__":
     import_zmani_book()
