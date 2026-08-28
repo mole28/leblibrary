@@ -1,6 +1,6 @@
 import os
 import django
-import re
+from bs4 import BeautifulSoup
 
 # הגדרת סביבת דג'נגו
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
@@ -24,7 +24,29 @@ def import_zmani_book():
         return
 
     with open(html_file_path, "r", encoding="utf-8") as f:
-        html_content = f.read()
+        raw_html = f.read()
+
+    # ניקוי אגרסיבי בעזרת BeautifulSoup כדי למנוע התנגשויות עיצוב באתר
+    soup = BeautifulSoup(raw_html, 'html.parser')
+
+    # הסרת כל תגיות ה-style וה-script המיותרות שוורד/פאנדוק מייצרים
+    for element in soup(["script", "style", "meta", "link"]):
+        element.decompose()
+
+    # הסרת כל ה-Classes וה-Styles מכל התגיות כדי שלא יתנגשו עם ה-CSS של האתר
+    for tag in soup.find_all(True):
+        # נשמור רק מזהים או קישורים חיוניים להערות השוליים (כמו href או id)
+        allowed_attrs = {}
+        if tag.name in ['a', 'sup']:
+            if 'href' in tag.attrs:
+                allowed_attrs['href'] = tag['href']
+            if 'id' in tag.attrs:
+                allowed_attrs['id'] = tag['id']
+            if 'name' in tag.attrs:
+                allowed_attrs['name'] = tag['name']
+        tag.attrs = allowed_attrs
+
+    cleaned_html = str(soup.body if soup.body else soup)
 
     # ניקוי פרקים וסעיפים קודמים
     chapters_to_delete = Chapter.objects.filter(book=book)
@@ -32,45 +54,21 @@ def import_zmani_book():
     chapters_to_delete.delete()
     print("נוקו פרקים וסעיפים ישנים.")
 
-    # חלוקה חכמה לפי זיהוי "סימן" בטקסט (כותרות או פסקאות)
-    # נחלק את ה-HTML לחלקים לפי מילת המפתח "סימן"
-    parts = re.split(r'(?i)(סימן\s+[א-ת\-\s]+)', html_content)
+    # יצירת פרק ראשון נקי ומסודר
+    chapter = Chapter.objects.create(
+        book=book,
+        title="פתח דבר וסקירה כללית",
+        order=1
+    )
     
-    if len(parts) <= 1:
-        # אם פאנדוק לא פירק לפי כותרות ברורות, ניצור פרק מבוא ופרקים כלליים
-        print("לא נמצאו סימנים מובהקים ברגולר, יוצר חלוקה ראשונית...")
-        ch = Chapter.objects.create(book=book, title="פתח דבר וסקירה כללית", order=1)
-        Section.objects.create(chapter=ch, title="תוכן הספר", content=html_content, order=1)
-    else:
-        # יצירת מבוא למה שקורה לפני הסימן הראשון
-        intro_content = parts[0]
-        if intro_content.strip():
-            intro_ch = Chapter.objects.create(book=book, title="הקדמה ופתח דבר", order=1)
-            Section.objects.create(chapter=intro_ch, title="פתח דבר", content=intro_content, order=1)
-        
-        # מעבר על הסימנים שנמצאו
-        ch_order = 2
-        for i in range(1, len(parts), 2):
-            siman_title = parts[i].strip()
-            siman_body = parts[i+1] if i+1 < len(parts) else ""
-            
-            # יצירת פרק לכל סימן (שיופיע מודגש בסרגל)
-            chapter = Chapter.objects.create(
-                book=book,
-                title=siman_title,
-                order=ch_order
-            )
-            
-            # יצירת סעיף תחת הסימן (שיופיע רגיל בסרגל)
-            Section.objects.create(
-                chapter=chapter,
-                title=f"תוכן {siman_title}",
-                content=siman_body,
-                order=1
-            )
-            ch_order += 1
+    Section.objects.create(
+        chapter=chapter,
+        title="תוכן הספר הנקי",
+        content=cleaned_html,
+        order=1
+    )
 
-    print("הספר פוצץ והוכנס למסד הנתונים בהצלחה רבה!")
+    print("הספר עבר ניקוי אגרסיבי והוכנס למסד הנתונים בהצלחה רבה!")
 
 if __name__ == "__main__":
     import_zmani_book()
