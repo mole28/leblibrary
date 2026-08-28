@@ -37,19 +37,22 @@ def import_zmani_book():
 
     soup = BeautifulSoup(raw_html, 'html.parser')
     
-    # הסרת אלמנטים מסוכנים
+    # הסרת אלמנטים מסוכנים בלבד (שמירה על מבנה ההערות והקישורים)
     for element in soup(["script", "style", "meta", "link", "form", "input", "button", "textarea", "select"]):
         element.decompose()
 
-    # שמירת מזהים ועוגנים לניווט
+    # תיקון חכם לוורד: הסרת הדגשה רק כאשר פסקה שלמה עטופה במיותר ב-strong/b, מבלי לגעת בהערות
+    for p in soup.find_all('p'):
+        children = [c for c in p.contents if (getattr(c, 'name', None) or str(c).strip())]
+        if len(children) == 1 and getattr(children[0], 'name', None) in ['strong', 'b']:
+            children[0].unwrap()
+
+    # שמירת מזהים, עוגנים, מחלקות וקישורים חיוניים להערות שוליים וניווט תקין
     for tag in soup.find_all(True):
         allowed_attrs = {}
-        if 'id' in tag.attrs:
-            allowed_attrs['id'] = tag['id']
-        if 'name' in tag.attrs:
-            allowed_attrs['name'] = tag['name']
-        if 'href' in tag.attrs:
-            allowed_attrs['href'] = tag['href']
+        for attr in ['id', 'name', 'href', 'class']:
+            if tag.has_attr(attr):
+                allowed_attrs[attr] = tag[attr]
         tag.attrs = allowed_attrs
 
     full_text = str(soup)
@@ -78,22 +81,12 @@ def import_zmani_book():
         intro_content = full_text
         simans_text = ""
 
-    # ניקוי הדגשות מפרק המבוא
-    intro_soup = BeautifulSoup(intro_content, 'html.parser')
-    for b_tag in intro_soup.find_all(['strong', 'b']):
-        b_tag.unwrap()
-    for tag in intro_soup.find_all(True):
-        if tag.has_attr('style'):
-            styles = [s for s in tag['style'].split(';') if 'font-weight' not in s.lower()]
-            if styles: tag['style'] = ';'.join(styles)
-            else: del tag['style']
-
     # יצירת פרק מבוא
     intro_ch = Chapter.objects.create(book=book, title="פתח דבר והקדמה", order=1)
     Section.objects.create(
         chapter=intro_ch,
         title="פתח דבר",
-        content=str(intro_soup),
+        content=intro_content,
         order=1
     )
 
@@ -159,31 +152,16 @@ def import_zmani_book():
             sections_data.append((siman_title, siman_body_html))
 
         for sec_order, (sec_title, sec_content) in enumerate(sections_data, start=1):
-            sec_soup = BeautifulSoup(sec_content, 'html.parser')
-            
-            # הסרת כל תגיות ההדגשה (<b> ו-<strong>) כדי למנוע טקסט מודגש בטעות
-            for b_tag in sec_soup.find_all(['strong', 'b']):
-                b_tag.unwrap()
-
-            # הסרת מאפייני עיצוב פנימיים של עובי גופן (font-weight: bold / 700)
-            for tag in sec_soup.find_all(True):
-                if tag.has_attr('style'):
-                    styles = [s for s in tag['style'].split(';') if 'font-weight' not in s.lower()]
-                    if styles:
-                        tag['style'] = ';'.join(styles)
-                    else:
-                        del tag['style']
-
             Section.objects.create(
                 chapter=chapter,
                 title=sec_title[:150],
-                content=str(sec_soup),
+                content=sec_content,
                 order=sec_order
             )
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה מלאה, ללא שום הדגשות מיותרות בגוף הטקסט!")
+    print("הספר יובא בהצלחה מלאה, כולל שימור ההערות, הקישורים והמספור!")
 
 if __name__ == "__main__":
     import_zmani_book()
