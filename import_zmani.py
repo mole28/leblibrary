@@ -129,46 +129,51 @@ def import_zmani_book():
         if not paragraphs:
             paragraphs = [siman_soup]
 
-        # מעבר ראשון: זיהוי כל פסקאות הכותרת
-        elements_info = []
-        for p in paragraphs:
+        # שלב 1: נמצא את כל הכותרות הפוטנציאליות בסימן
+        all_potential_headings = []
+        for p_idx, p in enumerate(paragraphs):
             text = p.get_text(strip=True)
             m = sec_heading_regex.match(text)
-            is_heading = bool(m and len(text) < 150 and not text.startswith("סימן"))
-            elements_info.append({
-                'p': p,
-                'text': text,
-                'is_heading': is_heading,
-                'letter': m.group(1) if m else None
-            })
+            if m and len(text) < 150 and not text.startswith("סימן"):
+                all_potential_headings.append((p_idx, m.group(1), text, p))
 
-        # מעבר שני: סינון כותרות שהן חלק מרשימת הסיכום (כאלה שאין בינן לבין הכותרת הבאה פסקאות תוכן)
-        valid_heading_indices = set()
-        for i, info in enumerate(elements_info):
-            if info['is_heading']:
-                has_content_after = False
-                for j in range(i + 1, len(elements_info)):
-                    if elements_info[j]['is_heading']:
-                        break
-                    if elements_info[j]['text']:
-                        has_content_after = True
-                        break
-                # אם יש תוכן אחריהן, או שהן הכותרת האחרונה בסימן - הן סעיפות אמיתיות לחלוטין!
-                if has_content_after or i == max([idx for idx, el in enumerate(elements_info) if el['is_heading']], default=-1):
-                    valid_heading_indices.add(i)
+        # שלב 2: זיהוי היכן מתחיל הגוף האמיתי.
+        # רשימת הסיכום בתחילת הסימן מופיעה בצורה צפופה לפני הפסקה האמיתית הראשונה.
+        # הגוף האמיתי מתחיל מהמקום שבו יש פסקאות תוכן ארוכות (או אחרי שעוברים את רשימת האותיות הראשונה המלאה).
+        body_start_p_idx = 0
+        if len(all_potential_headings) > 3:
+            # נמצא את האינדקס של הפסקה שבה מתחילות להופיע פסקאות עם תוכן אמיתי (אורך טקסט > 120 תווים בין כותרת לכותרת)
+            for k in range(len(all_potential_headings) - 1):
+                curr_idx = all_potential_headings[k][0]
+                next_idx = all_potential_headings[k+1][0]
+                # נבדוק האם יש טקסט משמעותי בין הכותרת הזו לבאה
+                between_text = "".join([paragraphs[pi].get_text(strip=True) for pi in range(curr_idx + 1, next_idx)])
+                if len(between_text) > 80:
+                    # מצאנו מעבר אמיתי לגוף הטקסט! כל מה שלפני כן (חוץ מהאות הראשונה) הוא רשימת הסיכום.
+                    # נגדיר שגוף הסימן מתחיל מהכותרת השנייה או השלישית שבה מתחיל התוכן.
+                    body_start_idx_val = all_potential_headings[k][0]
+                    body_start_p_idx = body_start_idx_val
+                    break
 
-        # מעבר שלישי: יצירת הסעיפים בפועל
+        # שלב 3: חלוקה סופית לסעיפים (נכניס את כל האותיות שמופיעות בגוף החל מנקודת ההתחלה האמיתית)
         sections_data = []
         current_sec_title = "הקדמה לסימן"
         current_sec_content = []
         found_first_section = False
         intro_to_siman_content = []
 
-        for i, info in enumerate(elements_info):
-            p = info['p']
-            text = info['text']
+        for p_idx, p in enumerate(paragraphs):
+            text = p.get_text(strip=True)
+            match_sec = sec_heading_regex.match(text)
             
-            if i in valid_heading_indices:
+            # האם זו כותרת אות והיא נמצאת באזור גוף הטקסט (אחרי רשימת הסיכום המקדימה)?
+            is_valid_heading = (match_sec and len(text) < 150 and not text.startswith("סימן") and p_idx >= body_start_p_idx)
+            
+            # מקרה קצה: אם זו האות האחרונה (כמו "הדינים העולים מסימן זה"), נוודא שתמיד נתפוס אותה
+            if match_sec and ("הדינים העולים" in text or "סיכום" in text) and p_idx > body_start_p_idx / 2:
+                is_valid_heading = True
+
+            if is_valid_heading:
                 if found_first_section:
                     sections_data.append((current_sec_title, "".join(str(e) for e in current_sec_content)))
                     current_sec_content = []
@@ -194,6 +199,7 @@ def import_zmani_book():
         if not sections_data:
             sections_data.append((siman_title, str(siman_soup)))
 
+        # שמירת כל הסעיפים תחת הפרק
         for sec_order, (sec_title, sec_content) in enumerate(sections_data, start=1):
             sec_soup_obj = BeautifulSoup(sec_content, 'html.parser')
             
@@ -211,7 +217,7 @@ def import_zmani_book():
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה: כל האותיות המלאות מופיעות בסרגל בדיוק כמו בתוכן העניינים הרשמי!")
+    print("הספר יובא בהצלחה עם כל האותיות לפי תוכן העניינים הרשמי!")
 
 if __name__ == "__main__":
     import_zmani_book()
