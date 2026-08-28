@@ -21,7 +21,7 @@ def import_zmani_book():
                 Section.objects.filter(chapter=ch).delete()
             chapters.delete()
         existing_books.delete()
-        print("נומחקו ספרים כפולים קודמים.")
+        print("נמחקו ספרים כפולים קודמים.")
 
     # יצירת ספר נקי ויחיד
     book = Book.objects.create(title=book_title)
@@ -54,7 +54,12 @@ def import_zmani_book():
 
     full_text = str(soup)
 
-    # 1. חילוץ ההקדמה ופתח דבר שמופיעים לפני הסימן הראשון
+    # 1. חיתוך אגרסיבי: הסרת כל מה שמופיע לפני המילים "פתח דבר" (מוחק עמודי שער ומכתבי ברכה קודמים)
+    pesah_davar_match = re.search(r'פתח\s+דבר', full_text, re.IGNORECASE)
+    if pesah_davar_match:
+        full_text = full_text[pesah_davar_match.start():]
+
+    # 2. חילוץ ההקדמה שמתחילה בדיוק מ"פתח דבר" ועד הסימן הראשון
     siman_start_match = re.search(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]+)', full_text, re.IGNORECASE)
     
     if siman_start_match:
@@ -65,7 +70,7 @@ def import_zmani_book():
         intro_content = full_text
         simans_text = ""
 
-    # יצירת פרק מבוא ראשון (פתח דבר והקדמה)
+    # יצירת פרק מבוא שמתחיל נקי מ"פתח דבר"
     intro_ch = Chapter.objects.create(book=book, title="פתח דבר והקדמה", order=1)
     Section.objects.create(
         chapter=intro_ch,
@@ -74,7 +79,7 @@ def import_zmani_book():
         order=1
     )
 
-    # 2. זיהוי מדויק של הסימנים (לדוגמה: סימן א – ...)
+    # 3. זיהוי מדויק של הסימנים (לדוגמה: סימן א – ...)
     siman_pattern = re.compile(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]+)', re.IGNORECASE)
     matches = list(siman_pattern.finditer(simans_text))
 
@@ -92,13 +97,12 @@ def import_zmani_book():
             order=ch_order
         )
 
-        # 3. ניתוח חכם של הסעיפים (האותיות א., ב., ג. וכו') בתוך הסימן
+        # 4. ניתוח חכם של הסעיפים (האותיות א., ב., ג. וכו') תחת הסימן
         siman_soup = BeautifulSoup(siman_body_html, 'html.parser')
         sections_data = []
         current_sec_title = "הקדמה לסימן"
         current_sec_content = []
 
-        # רגולר קשיח לכותרת סעיף בתחילת פסקה (אותיות א-ט, י, כ וכו' ואחריהן נקודה)
         sec_heading_regex = re.compile(r'^\s*([א-טכסרקדשת]{1,3})\.\s+(.*)$')
 
         paragraphs = siman_soup.find_all(['p', 'div', 'h2', 'h3', 'h4'], recursive=True)
@@ -112,7 +116,6 @@ def import_zmani_book():
             text = p.get_text(strip=True)
             match_sec = sec_heading_regex.match(text)
             
-            # התנאי: מתחיל באות ונקודה, אורך קצר (כותרת), ולא מכיל את המילה "סימן"
             if match_sec and len(text) < 100 and not text.startswith("סימן"):
                 if found_first_section:
                     sections_data.append((current_sec_title, "".join(str(e) for e in current_sec_content)))
@@ -139,7 +142,7 @@ def import_zmani_book():
         if not sections_data:
             sections_data.append((siman_title, siman_body_html))
 
-        # שמירת הסעיפים במסד הנתונים תחת הפרק
+        # שמירת הסעיפים תחת הפרק
         for sec_order, (sec_title, sec_content) in enumerate(sections_data, start=1):
             Section.objects.create(
                 chapter=chapter,
@@ -150,7 +153,7 @@ def import_zmani_book():
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה מלאה ובמבנה נקי ומדויק!")
+    print("הספר יובא בהצלחה החל מפתח דבר ועד הסוף!")
 
 if __name__ == "__main__":
     import_zmani_book()
