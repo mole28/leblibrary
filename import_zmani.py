@@ -41,12 +41,13 @@ def import_zmani_book():
     for element in soup(["script", "style", "meta", "link", "form", "input", "button", "textarea", "select"]):
         element.decompose()
 
-    # תיקון שורות שגויות שמחופשות לכותרות (כמו "סימן רכט - רל") - נהפוך אותן לפסקאות רגילות לחלוטין
-    for tag in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
+    # טיפול רדיקלי בשורות סוררות כמו "סימן רכט - רל" שמתחזות לכותרות
+    for tag in soup.find_all(True):
         text_content = tag.get_text(strip=True)
-        # אם הכותרת מתחילה במילים "סימן" אבל מכילה טקסט ארוך או סוגריים מוזרים שהם המשך הערה
-        if text_content.startswith("סימן") and (len(text_content) > 35 or "הכורת הברית" in text_content or "אות ברית" in text_content):
-            tag.name = 'p' # הפיכה לפסקה רגילה
+        if text_content.startswith("סימן") and ("הכורת הברית" in text_content or "אות ברית" in text_content or len(text_content) > 35):
+            # הפיכת התגית לפסקה רגילה וניקוי כל סטייל שגורם לה להיראות כמו כותרת
+            tag.name = 'p'
+            tag.attrs = {} # מחיקת כל ה-classes וה-styles המעוותים
 
     full_text = str(soup)
 
@@ -88,13 +89,18 @@ def import_zmani_book():
         order=1
     )
 
-    # זיהוי הסימנים האמיתיים (רק כותרות תקניות של סימן, למשל "סימן א – ...")
-    siman_pattern = re.compile(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]{2,35})', re.IGNORECASE)
+    # זיהוי הסימנים האמיתיים בלבד: חייבים להתחיל במילה סימן, אות קצרה, מקף אמיתי וכותרת קצרה (ללא אזכור של הכורת הברית וכדומה)
+    siman_pattern = re.compile(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]{2,30})', re.IGNORECASE)
     matches = list(siman_pattern.finditer(simans_text))
 
     ch_order = 2
     for idx, match in enumerate(matches):
         siman_title = match.group(1).strip()
+        
+        # הגנה נוספת: אם בטעות נפלה שורה שקרית, נדלג עליה מיד
+        if "הכורת הברית" in siman_title or "אות ברית" in siman_title:
+            continue
+
         start_pos = match.start()
         end_pos = matches[idx + 1].start() if idx + 1 < len(matches) else len(simans_text)
         siman_body_html = simans_text[start_pos:end_pos]
@@ -179,7 +185,7 @@ def import_zmani_book():
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה: שורות הערה שגויות תוקנו לפסקאות רגילות והוסרו מתוכן העניינים!")
+    print("הספר יובא בהצלחה: שורות הערה שגויות נוקו לחלוטין מהכותרות ומהתוכן!")
 
 if __name__ == "__main__":
     import_zmani_book()
