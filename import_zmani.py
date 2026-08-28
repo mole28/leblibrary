@@ -12,8 +12,21 @@ from articles.models import Book, Chapter, Section
 def import_zmani_book():
     book_title = "זמני המילה וברכותיה"
     
-    book, _ = Book.objects.get_or_create(title=book_title)
-    print(f"מעבד את הספר: {book.title}")
+    # ניקוי מלא של כל הספרים הכפולים הקודמים כדי למנוע התנגשויות
+    existing_books = Book.objects.filter(title=book_title)
+    if existing_books.exists():
+        for b in existing_books:
+            # מחיקת הפרקים והסעיפים השייכים להם
+            chapters = b.chapters.all()
+            for ch in chapters:
+                ch.section_set.all().delete()
+            chapters.delete()
+        existing_books.delete()
+        print("נמחקו ספרים כפולים קודמים.")
+
+    # יצירת ספר נקי ויחיד
+    book = Book.objects.create(title=book_title)
+    print(f"נוצר ספר נקי חדש: {book.title} (מזהה: {book.id})")
 
     html_file_path = "zmani_clean.html"
     if not os.path.exists(html_file_path):
@@ -25,11 +38,11 @@ def import_zmani_book():
 
     soup = BeautifulSoup(raw_html, 'html.parser')
     
-    # הסרת אלמנטים מסוכנים בלבד (שומרים על מזהים ותקינות התפריט)
+    # הסרת אלמנטים מסוכנים
     for element in soup(["script", "style", "meta", "link", "form", "input", "button", "textarea", "select"]):
         element.decompose()
 
-    # שומרים id, name ו-href כדי שהתפריט והניווט יוכלו להתחבר לתוכן
+    # שמירת מזהים ועוגנים לניווט
     for tag in soup.find_all(True):
         allowed_attrs = {}
         if 'id' in tag.attrs:
@@ -39,12 +52,6 @@ def import_zmani_book():
         if 'href' in tag.attrs:
             allowed_attrs['href'] = tag['href']
         tag.attrs = allowed_attrs
-
-    # ניקוי פרקים וסעיפים קודמים למניעת כפילויות
-    chapters_to_delete = Chapter.objects.filter(book=book)
-    Section.objects.filter(chapter__in=chapters_to_delete).delete()
-    chapters_to_delete.delete()
-    print("נוקו פרקים וסעיפים ישנים.")
 
     full_text = str(soup)
 
@@ -65,14 +72,14 @@ def import_zmani_book():
             siman_title = parts[i].strip()
             siman_body = parts[i+1] if i+1 < len(parts) else ""
 
-            # יצירת פרק (סימן) שיופיע מודגש בתפריט הצד
+            # יצירת פרק תחת הקשר chapters
             chapter = Chapter.objects.create(
                 book=book,
                 title=siman_title,
                 order=ch_order
             )
 
-            # יצירת סעיף תחתיו
+            # יצירת סעיף תחת הפרק
             Section.objects.create(
                 chapter=chapter,
                 title=siman_title,
@@ -81,7 +88,7 @@ def import_zmani_book():
             )
             ch_order += 1
 
-    print("הספר יובא בהצלחה עם שמירת מזהי הניווט!")
+    print("הספר יובא בהצלחה מלאה ובצורה נקייה!")
 
 if __name__ == "__main__":
     import_zmani_book()
