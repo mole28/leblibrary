@@ -1,5 +1,6 @@
 import os
 import django
+import re
 from bs4 import BeautifulSoup
 
 # הגדרת סביבת דג'נגו
@@ -24,74 +25,63 @@ def import_zmani_book():
 
     soup = BeautifulSoup(raw_html, 'html.parser')
     
-    # ניקוי פרקים וסעיפים קודמים של הספר למניעת כפילויות
+    # הסרת אלמנטים מסוכנים בלבד (שומרים על מזהים ותקינות התפריט)
+    for element in soup(["script", "style", "meta", "link", "form", "input", "button", "textarea", "select"]):
+        element.decompose()
+
+    # שומרים id, name ו-href כדי שהתפריט והניווט יוכלו להתחבר לתוכן
+    for tag in soup.find_all(True):
+        allowed_attrs = {}
+        if 'id' in tag.attrs:
+            allowed_attrs['id'] = tag['id']
+        if 'name' in tag.attrs:
+            allowed_attrs['name'] = tag['name']
+        if 'href' in tag.attrs:
+            allowed_attrs['href'] = tag['href']
+        tag.attrs = allowed_attrs
+
+    # ניקוי פרקים וסעיפים קודמים למניעת כפילויות
     chapters_to_delete = Chapter.objects.filter(book=book)
     Section.objects.filter(chapter__in=chapters_to_delete).delete()
     chapters_to_delete.delete()
     print("נוקו פרקים וסעיפים ישנים.")
 
-    # חלוקה חכמה לפי מציאת כותרות שמתחילות ב-"סימן"
-    intro_elements = []
-    siman_blocks = []
-    current_title = "פתח דבר והקדמה"
-    current_content = []
-    found_first_siman = False
+    full_text = str(soup)
 
-    # נעבור על כל אלמנט ברמה הכללית ב-HTML
-    for element in soup.body.children if soup.body else soup.children:
-        if element.name is None:
-            continue
-        
-        text = element.get_text(strip=True)
-        
-        # זיהוי תחילת סימן חדש על סמך הפלט שראינו
-        if text.startswith("סימן") and len(text) < 80:
-            if found_first_siman and current_content:
-                siman_blocks.append((current_title, "".join(str(e) for e in current_content)))
-                current_content = []
-            
-            current_title = text
-            found_first_siman = True
-            current_content.append(element)
-            continue
+    # פיצול לפי סימנים
+    parts = re.split(r'(?i)(סימן\s+[א-ת]+(?:\s*–\s*[^<\n]+)?)', full_text)
 
-        if not found_first_siman:
-            intro_elements.append(element)
-        else:
-            current_content.append(element)
-
-    # הוספת הבלוק האחרון שנשאר
-    if current_content:
-        siman_blocks.append((current_title, "".join(str(e) for e in current_content)))
-
-    # שמירה במסד הנתונים
-    # 1. שמירת ההקדמה/פתח דבר אם קיימת
-    if intro_elements:
-        intro_ch = Chapter.objects.create(book=book, title="פתח דבר והקדמה", order=1)
-        intro_html = "".join(str(e) for e in intro_elements)
-        Section.objects.create(chapter=intro_ch, title="פתח דבר", content=intro_html, order=1)
-        ch_order = 2
+    if len(parts) <= 1:
+        ch = Chapter.objects.create(book=book, title="זמני המילה וברכותיה", order=1)
+        Section.objects.create(chapter=ch, title="תוכן הספר", content=full_text, order=1)
     else:
-        ch_order = 1
+        intro_content = parts[0]
+        if intro_content.strip():
+            intro_ch = Chapter.objects.create(book=book, title="פתח דבר והקדמה", order=1)
+            Section.objects.create(chapter=intro_ch, title="פתח דבר", content=intro_content, order=1)
 
-    # 2. שמירת כל סימן כפרק נפרד (שיופיע מודגש בסרגל הצידי)
-    for title, body in siman_blocks:
-        chapter = Chapter.objects.create(
-            book=book,
-            title=title,
-            order=ch_order
-        )
+        ch_order = 2
+        for i in range(1, len(parts), 2):
+            siman_title = parts[i].strip()
+            siman_body = parts[i+1] if i+1 < len(parts) else ""
 
-        # יצירת סעיף תחת הסימן
-        Section.objects.create(
-            chapter=chapter,
-            title=title,
-            content=body,
-            order=1
-        )
-        ch_order += 1
+            # יצירת פרק (סימן) שיופיע מודגש בתפריט הצד
+            chapter = Chapter.objects.create(
+                book=book,
+                title=siman_title,
+                order=ch_order
+            )
 
-    print(f"הספר יובא בהצלחה! נוצרו {len(siman_blocks)} סימנים כפרקים במסד הנתונים.")
+            # יצירת סעיף תחתיו
+            Section.objects.create(
+                chapter=chapter,
+                title=siman_title,
+                content=siman_body,
+                order=1
+            )
+            ch_order += 1
+
+    print("הספר יובא בהצלחה עם שמירת מזהי הניווט!")
 
 if __name__ == "__main__":
     import_zmani_book()
