@@ -127,46 +127,22 @@ def import_zmani_book():
         current_sec_title = "הקדמה לסימן"
         current_sec_content = []
 
-        # רגולר מתוקן התומך בכל האותיות בעברית ([א-ת]{1,3})
+        # רגולר שמזהה כל סעיף שמתחיל באות עברית ונקודה (למשל א., ב., ג. וכו')
         sec_heading_regex = re.compile(r'^\s*([א-ת]{1,3})\.\s+(.*)$')
 
         paragraphs = siman_soup.find_all(['p', 'div', 'h2', 'h3', 'h4'], recursive=True)
         if not paragraphs:
             paragraphs = [siman_soup]
 
-        # זיהוי וסינון רשימת הסיכום בתחילת הסימן:
-        # נמצא קודם כל את כל המופעים של האותיות בטקסט כדי לדעת איזה מהם מופיעים ברשימת הסיכום בהתחלה ואיזה בגוף האמיתי.
-        all_headings_found = []
-        for p_idx, p in enumerate(paragraphs):
-            text = p.get_text(strip=True)
-            m = sec_heading_regex.match(text)
-            if m and len(text) < 120 and not text.startswith("סימן"):
-                all_headings_found.append((p_idx, m.group(1), text, p))
-
-        # אם יש רשימה מצטופפת בתחילת הסימן (סיכום האותיות), נזהה אותה ונתעלם ממנה ככותרות סעיפים
-        # רשימת סיכום מופיעה בדרך כלל ב-10 הפסקאות הראשונות ומרכזת מספר אותיות ברצף.
-        summary_indices = set()
-        if len(all_headings_found) > 3:
-            # בודקים אם יש צבר של אותיות בתחילת הטקסט (לפני פסקה עמוקה אמיתית)
-            first_few = [h[0] for h in all_headings_found if h[0] < 15]
-            if len(first_few) >= 2:
-                # כנראה שזהו סיכום מקדים, נסמן את המופעים הראשונים של כל אות כסיכום ונתייחס רק להופעה העיקרית בגוף
-                seen_letters = set()
-                for h in all_headings_found:
-                    let = h[1]
-                    if let in seen_letters and h[0] < 20:
-                        summary_indices.add(h[0])
-                    seen_letters.add(let)
-
         found_first_section = False
         intro_to_siman_content = []
 
-        for p_idx, p in enumerate(paragraphs):
+        for p in paragraphs:
             text = p.get_text(strip=True)
             match_sec = sec_heading_regex.match(text)
             
-            # האם זו כותרת סעיף תקנית והיא לא חלק מרשימת הסיכום המקדימה?
-            if match_sec and len(text) < 120 and not text.startswith("סימן") and p_idx not in summary_indices:
+            # אם מדובר בכותרת אות תקנית (אורך סביר ולא שייך לכותרת סימן)
+            if match_sec and len(text) < 150 and not text.startswith("סימן"):
                 if found_first_section:
                     sections_data.append((current_sec_title, "".join(str(e) for e in current_sec_content)))
                     current_sec_content = []
@@ -192,6 +168,7 @@ def import_zmani_book():
         if not sections_data:
             sections_data.append((siman_title, str(siman_soup)))
 
+        # שמירת כל הסעיפים (כל האותיות ללא יוצא מן הכלל) תחת הפרק
         for sec_order, (sec_title, sec_content) in enumerate(sections_data, start=1):
             sec_soup_obj = BeautifulSoup(sec_content, 'html.parser')
             
@@ -209,7 +186,7 @@ def import_zmani_book():
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה עם כל האותיות ובדילוג על סיכומי ההתחלה!")
+    print("הספר יובא בהצלחה עם כל האותיות לפי הסדר!")
 
 if __name__ == "__main__":
     import_zmani_book()
