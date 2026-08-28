@@ -54,10 +54,16 @@ def import_zmani_book():
 
     full_text = str(soup)
 
-    # 1. חיתוך אגרסיבי: הסרת כל מה שמופיע לפני המילים "פתח דבר" (מוחק עמודי שער ומכתבי ברכה קודמים)
-    pesah_davar_match = re.search(r'פתח\s+דבר', full_text, re.IGNORECASE)
+    # 1. חיתוך מדויק: מציאת ה"פתח דבר" האמיתי שממנו מתחיל הספר (זה שמוביל אל "ספר זה")
+    pesah_davar_match = re.search(r'(פתח\s+דבר.*?ספר\s+זה)', full_text, re.DOTALL | re.IGNORECASE)
     if pesah_davar_match:
+        # חיתוך החל מהמופע האמיתי של פתח דבר
         full_text = full_text[pesah_davar_match.start():]
+    else:
+        # גיבוי למקרה שלא נמצא בדיוק כך
+        fallback = re.search(r'פתח\s+דבר', full_text, re.IGNORECASE)
+        if fallback:
+            full_text = full_text[fallback.start():]
 
     # 2. חילוץ ההקדמה שמתחילה בדיוק מ"פתח דבר" ועד הסימן הראשון
     siman_start_match = re.search(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]+)', full_text, re.IGNORECASE)
@@ -70,7 +76,7 @@ def import_zmani_book():
         intro_content = full_text
         simans_text = ""
 
-    # יצירת פרק מבוא שמתחיל נקי מ"פתח דבר"
+    # יצירת פרק מבוא שמתחיל נקי מ"פתח דבר" האמיתי
     intro_ch = Chapter.objects.create(book=book, title="פתח דבר והקדמה", order=1)
     Section.objects.create(
         chapter=intro_ch,
@@ -153,7 +159,7 @@ def import_zmani_book():
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה החל מפתח דבר ועד הסוף!")
+    print("הספר יובא בהצלחה החל מפתח דבר האמיתי ועד הסוף!")
 
 if __name__ == "__main__":
     import_zmani_book()
