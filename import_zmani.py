@@ -37,7 +37,7 @@ def import_zmani_book():
 
     soup = BeautifulSoup(raw_html, 'html.parser')
     
-    # הסרת סקריפטים וסטיילים גולמיים בלבד (שמירה מלאה על כל התגיות, המספור, וההערות)
+    # הסרת סקריפטים וסטיילים גולמיים בלבד
     for element in soup(["script", "style", "meta", "link", "form", "input", "button", "textarea", "select"]):
         element.decompose()
 
@@ -95,13 +95,26 @@ def import_zmani_book():
 
         siman_soup = BeautifulSoup(siman_body_html, 'html.parser')
 
-        # איסוף כל ההערות/הגדרות ששייכות לסימן זה (מופיעות בסוף הסימן עם id שמכיל ftn או footnote)
+        # איסוף כל ההערות ששייכות לסימן זה
         all_footnotes = siman_soup.find_all(lambda tag: tag.has_attr('id') and ('ftn' in tag['id'] or 'footnote' in tag['id']))
-        footnotes_html = "".join(str(fn) for fn in all_footnotes)
-
-        # הסרת ההערות מהגוף הראשי כדי למנוע כפילויות לפני החלוקה לסעיפים
+        
+        cleaned_footnotes = []
         for fn in all_footnotes:
+            # הסרת הדגשות מתוך ההערות עצמן כך שלא יהיו מודגשות, אך שמירת ה-id והמספור בשלמותם!
+            for b_tag in fn.find_all(['strong', 'b']):
+                b_tag.unwrap()
+            for tag_with_style in fn.find_all(True):
+                if tag_with_style.has_attr('style'):
+                    styles = [s for s in tag_with_style['style'].split(';') if 'font-weight' not in s.lower()]
+                    if styles:
+                        tag_with_style['style'] = ';'.join(styles)
+                    else:
+                        del tag_with_style['style']
+            cleaned_footnotes.append(str(fn))
+            # הסרת ההערה מהמיקום המקורי בגוף הסימן כדי שלא תופיע כפולה
             fn.decompose()
+
+        footnotes_html = "".join(cleaned_footnotes)
 
         sections_data = []
         current_sec_title = "הקדמה לסימן"
@@ -146,7 +159,7 @@ def import_zmani_book():
         if not sections_data:
             sections_data.append((siman_title, str(siman_soup)))
 
-        # שמירת הסעיפים תחת הפרק, כשבסוף כל סעיף מצורפות כל הערות השוליים של הסימן לנוחות ניווט מושלמת
+        # שמירת הסעיפים תחת הפרק עם ההערות הנקיות (לא מודגשות) בסופם
         for sec_order, (sec_title, sec_content) in enumerate(sections_data, start=1):
             full_sec_content = sec_content + "<hr class='footnotes-divider'>" + footnotes_html
             Section.objects.create(
@@ -158,7 +171,7 @@ def import_zmani_book():
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה מלאה, כולל שימור ההערות, המספור והקישורים!")
+    print("הספר יובא בהצלחה: ההערות ממוספרות, הקישורים פעילים, והטקסט שלהן רגיש ונקי ללא הדגשה!")
 
 if __name__ == "__main__":
     import_zmani_book()
