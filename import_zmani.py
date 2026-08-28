@@ -37,17 +37,16 @@ def import_zmani_book():
 
     soup = BeautifulSoup(raw_html, 'html.parser')
     
-    # הסרת סקריפטים וסטיילים גולמיים בלבד
+    # הסרת סקריפטים וסטיילים גולמיים
     for element in soup(["script", "style", "meta", "link", "form", "input", "button", "textarea", "select"]):
         element.decompose()
 
-    # טיפול רדיקלי בשורות סוררות כמו "סימן רכט - רל" שמתחזות לכותרות
+    # ניקוי שורות שגויות שמתחזות לכותרות
     for tag in soup.find_all(True):
         text_content = tag.get_text(strip=True)
         if text_content.startswith("סימן") and ("הכורת הברית" in text_content or "אות ברית" in text_content or len(text_content) > 35):
-            # הפיכת התגית לפסקה רגילה וניקוי כל סטייל שגורם לה להיראות כמו כותרת
             tag.name = 'p'
-            tag.attrs = {} # מחיקת כל ה-classes וה-styles המעוותים
+            tag.attrs = {}
 
     full_text = str(soup)
 
@@ -89,7 +88,7 @@ def import_zmani_book():
         order=1
     )
 
-    # זיהוי הסימנים האמיתיים בלבד: חייבים להתחיל במילה סימן, אות קצרה, מקף אמיתי וכותרת קצרה (ללא אזכור של הכורת הברית וכדומה)
+    # זיהוי הסימנים האמיתיים
     siman_pattern = re.compile(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]{2,30})', re.IGNORECASE)
     matches = list(siman_pattern.finditer(simans_text))
 
@@ -97,7 +96,6 @@ def import_zmani_book():
     for idx, match in enumerate(matches):
         siman_title = match.group(1).strip()
         
-        # הגנה נוספת: אם בטעות נפלה שורה שקרית, נדלג עליה מיד
         if "הכורת הברית" in siman_title or "אות ברית" in siman_title:
             continue
 
@@ -129,20 +127,46 @@ def import_zmani_book():
         current_sec_title = "הקדמה לסימן"
         current_sec_content = []
 
-        sec_heading_regex = re.compile(r'^\s*([א-טכסרקדשת]{1,3})\.\s+(.*)$')
+        # רגולר מתוקן התומך בכל האותיות בעברית ([א-ת]{1,3})
+        sec_heading_regex = re.compile(r'^\s*([א-ת]{1,3})\.\s+(.*)$')
 
         paragraphs = siman_soup.find_all(['p', 'div', 'h2', 'h3', 'h4'], recursive=True)
         if not paragraphs:
             paragraphs = [siman_soup]
 
+        # זיהוי וסינון רשימת הסיכום בתחילת הסימן:
+        # נמצא קודם כל את כל המופעים של האותיות בטקסט כדי לדעת איזה מהם מופיעים ברשימת הסיכום בהתחלה ואיזה בגוף האמיתי.
+        all_headings_found = []
+        for p_idx, p in enumerate(paragraphs):
+            text = p.get_text(strip=True)
+            m = sec_heading_regex.match(text)
+            if m and len(text) < 120 and not text.startswith("סימן"):
+                all_headings_found.append((p_idx, m.group(1), text, p))
+
+        # אם יש רשימה מצטופפת בתחילת הסימן (סיכום האותיות), נזהה אותה ונתעלם ממנה ככותרות סעיפים
+        # רשימת סיכום מופיעה בדרך כלל ב-10 הפסקאות הראשונות ומרכזת מספר אותיות ברצף.
+        summary_indices = set()
+        if len(all_headings_found) > 3:
+            # בודקים אם יש צבר של אותיות בתחילת הטקסט (לפני פסקה עמוקה אמיתית)
+            first_few = [h[0] for h in all_headings_found if h[0] < 15]
+            if len(first_few) >= 2:
+                # כנראה שזהו סיכום מקדים, נסמן את המופעים הראשונים של כל אות כסיכום ונתייחס רק להופעה העיקרית בגוף
+                seen_letters = set()
+                for h in all_headings_found:
+                    let = h[1]
+                    if let in seen_letters and h[0] < 20:
+                        summary_indices.add(h[0])
+                    seen_letters.add(let)
+
         found_first_section = False
         intro_to_siman_content = []
 
-        for p in paragraphs:
+        for p_idx, p in enumerate(paragraphs):
             text = p.get_text(strip=True)
             match_sec = sec_heading_regex.match(text)
             
-            if match_sec and len(text) < 100 and not text.startswith("סימן"):
+            # האם זו כותרת סעיף תקנית והיא לא חלק מרשימת הסיכום המקדימה?
+            if match_sec and len(text) < 120 and not text.startswith("סימן") and p_idx not in summary_indices:
                 if found_first_section:
                     sections_data.append((current_sec_title, "".join(str(e) for e in current_sec_content)))
                     current_sec_content = []
@@ -185,7 +209,7 @@ def import_zmani_book():
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה: שורות הערה שגויות נוקו לחלוטין מהכותרות ומהתוכן!")
+    print("הספר יובא בהצלחה עם כל האותיות ובדילוג על סיכומי ההתחלה!")
 
 if __name__ == "__main__":
     import_zmani_book()
