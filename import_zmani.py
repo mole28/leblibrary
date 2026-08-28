@@ -78,7 +78,7 @@ def import_zmani_book():
         order=1
     )
 
-    # חלוקה לסימנים בלבד (ללא שום פירוק פנימי לאותיות)
+    # חלוקה לסימנים בלבד
     siman_pattern = re.compile(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]{2,40})', re.IGNORECASE)
     matches = list(siman_pattern.finditer(simans_text))
 
@@ -94,9 +94,16 @@ def import_zmani_book():
 
         siman_soup = BeautifulSoup(siman_body_html, 'html.parser')
 
-        # הסרת הדגשות מיותרות בגוף הטקסט לניקוי מושלם
+        # הסרת הדגשות מיותרות בגוף הטקסט
         for tag_b in siman_soup.find_all(['strong', 'b']):
             tag_b.unwrap()
+
+        # הגדלת ההפניות להערות: המרת תגיות sup או סגנונות כתב עילי לכתב רגיל ובגודל מלא
+        for sup_tag in siman_soup.find_all(['sup', 'span']):
+            # בדיקה אם מדובר בהפניה להערה (לפי תוכן מספרי או מחלקת/סגנון כתב עילי)
+            style_str = sup_tag.get('style', '').lower()
+            if sup_tag.name == 'sup' or 'superscript' in style_str or 'font-size: smaller' in style_str or 'font-size: 70%' in style_str:
+                sup_tag.unwrap() # הסרת תגית הקטנה/עילי כך שהמספר יחזור להיות בגודל הטקסט הרגיל
 
         # איסוף הערות שוליים וצרופן בסוף הסימן
         all_footnotes = siman_soup.find_all(lambda tag: tag.has_attr('id') and ('ftn' in tag['id'] or 'footnote' in tag['id']))
@@ -117,7 +124,7 @@ def import_zmani_book():
             order=ch_order
         )
 
-        # יצירת סעיף יחיד תחת הסימן – כך שבתוכן העניינים יופיעו אך ורק שמות הסימנים!
+        # יצירת סעיף יחיד תחת הסימן
         Section.objects.create(
             chapter=chapter,
             title=siman_title,
@@ -127,7 +134,7 @@ def import_zmani_book():
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה: תוכן העניינים מציג אך ורק את הסימנים ללא שום אותיות!")
+    print("הספר יובא בהצלחה: ההפניות להערות הוגדלו לכתב רגיל וברור!")
 
 if __name__ == "__main__":
     import_zmani_book()
