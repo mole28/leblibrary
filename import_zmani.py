@@ -67,12 +67,22 @@ def import_zmani_book():
         intro_content = full_text
         simans_text = ""
 
+    # ניקוי הדגשות מוחלט מפרק המבוא
+    intro_soup = BeautifulSoup(intro_content, 'html.parser')
+    for tag_b in intro_soup.find_all(['strong', 'b']):
+        tag_b.unwrap()
+    for tag in intro_soup.find_all(True):
+        if tag.has_attr('style'):
+            styles = [s for s in tag['style'].split(';') if 'font-weight' not in s.lower()]
+            if styles: tag['style'] = ';'.join(styles)
+            else: del tag['style']
+
     # יצירת פרק מבוא
     intro_ch = Chapter.objects.create(book=book, title="פתח דבר והקדמה", order=1)
     Section.objects.create(
         chapter=intro_ch,
         title="פתח דבר",
-        content=intro_content,
+        content=str(intro_soup),
         order=1
     )
 
@@ -100,7 +110,7 @@ def import_zmani_book():
         
         cleaned_footnotes = []
         for fn in all_footnotes:
-            # הסרת הדגשות מתוך ההערות עצמן כך שלא יהיו מודגשות, אך שמירת ה-id והמספור בשלמותם!
+            # הסרת הדגשות לחלוטין מההערות
             for b_tag in fn.find_all(['strong', 'b']):
                 b_tag.unwrap()
             for tag_with_style in fn.find_all(True):
@@ -111,7 +121,6 @@ def import_zmani_book():
                     else:
                         del tag_with_style['style']
             cleaned_footnotes.append(str(fn))
-            # הסרת ההערה מהמיקום המקורי בגוף הסימן כדי שלא תופיע כפולה
             fn.decompose()
 
         footnotes_html = "".join(cleaned_footnotes)
@@ -159,19 +168,35 @@ def import_zmani_book():
         if not sections_data:
             sections_data.append((siman_title, str(siman_soup)))
 
-        # שמירת הסעיפים תחת הפרק עם ההערות הנקיות (לא מודגשות) בסופם
+        # שמירת הסעיפים תחת הפרק תוך ניקוי מוחלט של כל תגיות ההדגשה מכל פסקה בגוף הטקסט
         for sec_order, (sec_title, sec_content) in enumerate(sections_data, start=1):
-            full_sec_content = sec_content + "<hr class='footnotes-divider'>" + footnotes_html
+            sec_soup_obj = BeautifulSoup(sec_content, 'html.parser')
+            
+            # הסרת כל תגיות ההדגשה (<b> וסתרים) מגוף הטקסט כדי להבטיח כתב רגיל לחלוטין
+            for tag_b in sec_soup_obj.find_all(['strong', 'b']):
+                tag_b.unwrap()
+            
+            # הסרת מאפייני font-weight: bold מכל תגית עיצוב פנימית
+            for tag in sec_soup_obj.find_all(True):
+                if tag.has_attr('style'):
+                    styles = [s for s in tag['style'].split(';') if 'font-weight' not in s.lower()]
+                    if styles:
+                        tag['style'] = ';'.join(styles)
+                    else:
+                        del tag['style']
+
+            final_sec_content = str(sec_soup_obj) + "<hr class='footnotes-divider'>" + footnotes_html
+            
             Section.objects.create(
                 chapter=chapter,
                 title=sec_title[:150],
-                content=full_sec_content,
+                content=final_sec_content,
                 order=sec_order
             )
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה: ההערות ממוספרות, הקישורים פעילים, והטקסט שלהן רגיש ונקי ללא הדגשה!")
+    print("הספר יובא בהצלחה: כל טקסט הגוף וההערות הפכו לנקיים ורגילים, והקישורים נשמרו!")
 
 if __name__ == "__main__":
     import_zmani_book()
