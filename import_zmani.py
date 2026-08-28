@@ -41,6 +41,13 @@ def import_zmani_book():
     for element in soup(["script", "style", "meta", "link", "form", "input", "button", "textarea", "select"]):
         element.decompose()
 
+    # תיקון שורות שגויות שמחופשות לכותרות (כמו "סימן רכט - רל") - נהפוך אותן לפסקאות רגילות לחלוטין
+    for tag in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
+        text_content = tag.get_text(strip=True)
+        # אם הכותרת מתחילה במילים "סימן" אבל מכילה טקסט ארוך או סוגריים מוזרים שהם המשך הערה
+        if text_content.startswith("סימן") and (len(text_content) > 35 or "הכורת הברית" in text_content or "אות ברית" in text_content):
+            tag.name = 'p' # הפיכה לפסקה רגילה
+
     full_text = str(soup)
 
     # דילוג על תוכן העניינים בתחילת המסמך ומציאת הפתח דבר האמיתי
@@ -56,7 +63,7 @@ def import_zmani_book():
     elif len(matches_pd) == 1:
         full_text = full_text[matches_pd[0]:]
 
-    # חילוץ ההקדמה שמתחילה מ"פתח דבר" ועד הסימן הראשון
+    # חילוץ ההקדמה שמתחילה מ"פתח דבר" ועד הסימן האמיתי הראשון
     siman_start_match = re.search(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]+)', full_text, re.IGNORECASE)
     
     if siman_start_match:
@@ -67,15 +74,10 @@ def import_zmani_book():
         intro_content = full_text
         simans_text = ""
 
-    # ניקוי הדגשות מוחלט מפרק המבוא
+    # ניקוי הדגשות מפרק המבוא
     intro_soup = BeautifulSoup(intro_content, 'html.parser')
     for tag_b in intro_soup.find_all(['strong', 'b']):
         tag_b.unwrap()
-    for tag in intro_soup.find_all(True):
-        if tag.has_attr('style'):
-            styles = [s for s in tag['style'].split(';') if 'font-weight' not in s.lower()]
-            if styles: tag['style'] = ';'.join(styles)
-            else: del tag['style']
 
     # יצירת פרק מבוא
     intro_ch = Chapter.objects.create(book=book, title="פתח דבר והקדמה", order=1)
@@ -86,8 +88,8 @@ def import_zmani_book():
         order=1
     )
 
-    # זיהוי הסימנים
-    siman_pattern = re.compile(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]+)', re.IGNORECASE)
+    # זיהוי הסימנים האמיתיים (רק כותרות תקניות של סימן, למשל "סימן א – ...")
+    siman_pattern = re.compile(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]{2,35})', re.IGNORECASE)
     matches = list(siman_pattern.finditer(simans_text))
 
     ch_order = 2
@@ -105,21 +107,13 @@ def import_zmani_book():
 
         siman_soup = BeautifulSoup(siman_body_html, 'html.parser')
 
-        # איסוף כל ההערות ששייכות לסימן זה
+        # איסוף הערות שוליים
         all_footnotes = siman_soup.find_all(lambda tag: tag.has_attr('id') and ('ftn' in tag['id'] or 'footnote' in tag['id']))
         
         cleaned_footnotes = []
         for fn in all_footnotes:
-            # הסרת הדגשות לחלוטין מההערות
             for b_tag in fn.find_all(['strong', 'b']):
                 b_tag.unwrap()
-            for tag_with_style in fn.find_all(True):
-                if tag_with_style.has_attr('style'):
-                    styles = [s for s in tag_with_style['style'].split(';') if 'font-weight' not in s.lower()]
-                    if styles:
-                        tag_with_style['style'] = ';'.join(styles)
-                    else:
-                        del tag_with_style['style']
             cleaned_footnotes.append(str(fn))
             fn.decompose()
 
@@ -168,22 +162,11 @@ def import_zmani_book():
         if not sections_data:
             sections_data.append((siman_title, str(siman_soup)))
 
-        # שמירת הסעיפים תחת הפרק תוך ניקוי מוחלט של כל תגיות ההדגשה מכל פסקה בגוף הטקסט
         for sec_order, (sec_title, sec_content) in enumerate(sections_data, start=1):
             sec_soup_obj = BeautifulSoup(sec_content, 'html.parser')
             
-            # הסרת כל תגיות ההדגשה (<b> וסתרים) מגוף הטקסט כדי להבטיח כתב רגיל לחלוטין
             for tag_b in sec_soup_obj.find_all(['strong', 'b']):
                 tag_b.unwrap()
-            
-            # הסרת מאפייני font-weight: bold מכל תגית עיצוב פנימית
-            for tag in sec_soup_obj.find_all(True):
-                if tag.has_attr('style'):
-                    styles = [s for s in tag['style'].split(';') if 'font-weight' not in s.lower()]
-                    if styles:
-                        tag['style'] = ';'.join(styles)
-                    else:
-                        del tag['style']
 
             final_sec_content = str(sec_soup_obj) + "<hr class='footnotes-divider'>" + footnotes_html
             
@@ -196,7 +179,7 @@ def import_zmani_book():
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה: כל טקסט הגוף וההערות הפכו לנקיים ורגילים, והקישורים נשמרו!")
+    print("הספר יובא בהצלחה: שורות הערה שגויות תוקנו לפסקאות רגילות והוסרו מתוכן העניינים!")
 
 if __name__ == "__main__":
     import_zmani_book()
