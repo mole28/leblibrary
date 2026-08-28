@@ -21,7 +21,7 @@ def import_zmani_book():
                 Section.objects.filter(chapter=ch).delete()
             chapters.delete()
         existing_books.delete()
-        print("נמחקו ספרים כפולים קודמים.")
+        print("נומחקו ספרים כפולים קודמים.")
 
     # יצירת ספר נקי ויחיד
     book = Book.objects.create(title=book_title)
@@ -55,7 +55,7 @@ def import_zmani_book():
     full_text = str(soup)
 
     # 1. חילוץ ההקדמה ופתח דבר שמופיעים לפני הסימן הראשון
-    siman_start_match = re.search(r'(סימן\s+א\s*[–-]\s*[^<\n]+)', full_text, re.IGNORECASE)
+    siman_start_match = re.search(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]+)', full_text, re.IGNORECASE)
     
     if siman_start_match:
         intro_end_idx = siman_start_match.start()
@@ -65,7 +65,7 @@ def import_zmani_book():
         intro_content = full_text
         simans_text = ""
 
-    # יצירת פרק מבוא (פתח דבר והקדמה)
+    # יצירת פרק מבוא ראשון (פתח דבר והקדמה)
     intro_ch = Chapter.objects.create(book=book, title="פתח דבר והקדמה", order=1)
     Section.objects.create(
         chapter=intro_ch,
@@ -75,7 +75,7 @@ def import_zmani_book():
     )
 
     # 2. זיהוי מדויק של הסימנים (לדוגמה: סימן א – ...)
-    siman_pattern = re.compile(r'(סימן\s+[א-ת\']{1,4}\s*[–-]\s*[^<\n]+)', re.IGNORECASE)
+    siman_pattern = re.compile(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]+)', re.IGNORECASE)
     matches = list(siman_pattern.finditer(simans_text))
 
     ch_order = 2
@@ -83,7 +83,7 @@ def import_zmani_book():
         siman_title = match.group(1).strip()
         start_pos = match.start()
         end_pos = matches[idx + 1].start() if idx + 1 < len(matches) else len(simans_text)
-        siman_body = simans_text[start_pos:end_pos]
+        siman_body_html = simans_text[start_pos:end_pos]
 
         # יצירת פרק עבור כל סימן
         chapter = Chapter.objects.create(
@@ -92,52 +92,65 @@ def import_zmani_book():
             order=ch_order
         )
 
-        # 3. פיצול פנימי של הסימן לסעיפים לפי אותיות (א., ב., ג. וכו')
-        sub_pattern = re.compile(r'((?:<[^>]+>)*\s*([א-ת])\.\s+([^<\n]+)(?:</[^>]+>)*)', re.UNICODE)
-        sub_matches = list(sub_pattern.finditer(siman_body))
+        # 3. ניתוח חכם של הסעיפים (האותיות א., ב., ג. וכו') בתוך הסימן
+        siman_soup = BeautifulSoup(siman_body_html, 'html.parser')
+        sections_data = []
+        current_sec_title = "הקדמה לסימן"
+        current_sec_content = []
 
-        if not sub_matches:
-            # אם אין אותיות פנימיות, נכניס את כל הסימן כסעיף יחיד
+        # רגולר קשיח לכותרת סעיף בתחילת פסקה (אותיות א-ט, י, כ וכו' ואחריהן נקודה)
+        sec_heading_regex = re.compile(r'^\s*([א-טכסרקדשת]{1,3})\.\s+(.*)$')
+
+        paragraphs = siman_soup.find_all(['p', 'div', 'h2', 'h3', 'h4'], recursive=True)
+        if not paragraphs:
+            paragraphs = [siman_soup]
+
+        found_first_section = False
+        intro_to_siman_content = []
+
+        for p in paragraphs:
+            text = p.get_text(strip=True)
+            match_sec = sec_heading_regex.match(text)
+            
+            # התנאי: מתחיל באות ונקודה, אורך קצר (כותרת), ולא מכיל את המילה "סימן"
+            if match_sec and len(text) < 100 and not text.startswith("סימן"):
+                if found_first_section:
+                    sections_data.append((current_sec_title, "".join(str(e) for e in current_sec_content)))
+                    current_sec_content = []
+                else:
+                    if intro_to_siman_content:
+                        sections_data.append(("הקדמה לסימן", "".join(str(e) for e in intro_to_siman_content)))
+                        intro_to_siman_content = []
+                
+                current_sec_title = text
+                found_first_section = True
+                current_sec_content.append(p)
+            else:
+                if not found_first_section:
+                    intro_to_siman_content.append(p)
+                else:
+                    current_sec_content.append(p)
+
+        if current_sec_content:
+            sections_data.append((current_sec_title, "".join(str(e) for e in current_sec_content)))
+        elif intro_to_siman_content:
+            sections_data.append((siman_title, "".join(str(e) for e in intro_to_siman_content)))
+
+        if not sections_data:
+            sections_data.append((siman_title, siman_body_html))
+
+        # שמירת הסעיפים במסד הנתונים תחת הפרק
+        for sec_order, (sec_title, sec_content) in enumerate(sections_data, start=1):
             Section.objects.create(
                 chapter=chapter,
-                title=siman_title,
-                content=siman_body,
-                order=1
+                title=sec_title[:150],
+                content=sec_content,
+                order=sec_order
             )
-        else:
-            first_sub_start = sub_matches[0].start()
-            siman_intro = siman_body[:first_sub_start]
-            
-            sec_order = 1
-            if siman_intro.strip():
-                Section.objects.create(
-                    chapter=chapter,
-                    title="הקדמה לסימן",
-                    content=siman_intro,
-                    order=sec_order
-                )
-                sec_order += 1
-
-            for sub_idx, sub_match in enumerate(sub_matches):
-                sub_start = sub_match.start()
-                sub_end = sub_matches[sub_idx + 1].start() if sub_idx + 1 < len(sub_matches) else len(siman_body)
-                sub_body = siman_body[sub_start:sub_end]
-                
-                letter = sub_match.group(2)
-                desc = sub_match.group(3).strip()
-                sec_title = f"{letter}. {desc}"[:120]
-
-                Section.objects.create(
-                    chapter=chapter,
-                    title=sec_title,
-                    content=sub_body,
-                    order=sec_order
-                )
-                sec_order += 1
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה מלאה ובמבנה מדויק!")
+    print("הספר יובא בהצלחה מלאה ובמבנה נקי ומדויק!")
 
 if __name__ == "__main__":
     import_zmani_book()
