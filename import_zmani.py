@@ -12,7 +12,7 @@ from articles.models import Book, Chapter, Section
 def import_zmani_book():
     book_title = "זמני המילה וברכותיה"
     
-    # ניקוי מלא של ספרים כפולים קודמים
+    # ניקוי מלא של ספרים קודמים
     existing_books = Book.objects.filter(title=book_title)
     if existing_books.exists():
         for b in existing_books:
@@ -23,9 +23,8 @@ def import_zmani_book():
         existing_books.delete()
         print("נמחקו ספרים כפולים קודמים.")
 
-    # יצירת ספר נקי ויחיד
     book = Book.objects.create(title=book_title)
-    print(f"נוצר ספר נקי חדש: {book.title} (מזהה: {book.id})")
+    print(f"נוצר ספר נקי חדש: {book.title}")
 
     html_file_path = "zmani_clean.html"
     if not os.path.exists(html_file_path):
@@ -37,20 +36,13 @@ def import_zmani_book():
 
     soup = BeautifulSoup(raw_html, 'html.parser')
     
-    # הסרת סקריפטים וסטיילים גולמיים
+    # הסרת סקריפטים וסטיילים
     for element in soup(["script", "style", "meta", "link", "form", "input", "button", "textarea", "select"]):
         element.decompose()
 
-    # ניקוי שורות שגויות שמתחזות לכותרות
-    for tag in soup.find_all(True):
-        text_content = tag.get_text(strip=True)
-        if text_content.startswith("סימן") and ("הכורת הברית" in text_content or "אות ברית" in text_content or len(text_content) > 35):
-            tag.name = 'p'
-            tag.attrs = {}
-
     full_text = str(soup)
 
-    # דילוג על תוכן העניינים בתחילת המסמך ומציאת הפתח דבר האמיתי
+    # מציאת הפתח דבר האמיתי ותחילת הספר
     matches_pd = [m.start() for m in re.finditer(r'פתח\s+דבר', full_text, re.IGNORECASE)]
     if len(matches_pd) > 1:
         target_idx = matches_pd[1]
@@ -59,27 +51,25 @@ def import_zmani_book():
             if "ספר זה" in snippet or "עוסק בעיקר" in snippet:
                 target_idx = idx
                 break
-        full_text = full_text[target_idx:]
-    elif len(matches_pd) == 1:
-        full_text = full_text[matches_pd[0]:]
+        book_content_html = full_text[target_idx:]
+    else:
+        book_content_html = full_text
 
-    # חילוץ ההקדמה שמתחילה מ"פתח דבר" ועד הסימן האמיתי הראשון
-    siman_start_match = re.search(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]+)', full_text, re.IGNORECASE)
-    
+    # חילוץ ההקדמה שעד הסימן הראשון
+    siman_start_match = re.search(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]+)', book_content_html, re.IGNORECASE)
     if siman_start_match:
         intro_end_idx = siman_start_match.start()
-        intro_content = full_text[:intro_end_idx]
-        simans_text = full_text[intro_end_idx:]
+        intro_content = book_content_html[:intro_end_idx]
+        simans_text = book_content_html[intro_end_idx:]
     else:
-        intro_content = full_text
+        intro_content = book_content_html
         simans_text = ""
 
-    # ניקוי הדגשות מפרק המבוא
+    # יצירת פרק מבוא (פתח דבר)
     intro_soup = BeautifulSoup(intro_content, 'html.parser')
     for tag_b in intro_soup.find_all(['strong', 'b']):
         tag_b.unwrap()
 
-    # יצירת פרק מבוא
     intro_ch = Chapter.objects.create(book=book, title="פתח דבר והקדמה", order=1)
     Section.objects.create(
         chapter=intro_ch,
@@ -88,22 +78,13 @@ def import_zmani_book():
         order=1
     )
 
-    # זיהוי הסימנים האמיתיים
-    siman_pattern = re.compile(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]{2,30})', re.IGNORECASE)
+    # חלוקה מדויקת של כל הסימנים מתוך הטקסט
+    siman_pattern = re.compile(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]{2,40})', re.IGNORECASE)
     matches = list(siman_pattern.finditer(simans_text))
-
-    # מיפוי אותיות עבריות לערכים מספריים לצורך זיהוי התחלת הגוף האמיתי
-    hebrew_map = {
-        'א':1, 'ב':2, 'ג':3, 'ד':4, 'ה':5, 'ו':6, 'ז':7, 'ח':8, 'ט':9, 'י':10,
-        'יא':11, 'יב':12, 'יג':13, 'יד':14, 'טו':15, 'טז':16, 'יז':17, 'יח':18, 'יט':19, 'כ':20,
-        'כא':21, 'כב':22, 'כג':23, 'כד':24, 'כה':25, 'כו':26, 'כז':27, 'כח':28, 'כט':29, 'ל':30,
-        'לא':31, 'לב':32, 'לג':33, 'לד':34, 'לה':35, 'לו':36, 'לז':37, 'לח':38, 'לט':39, 'מ':40
-    }
 
     ch_order = 2
     for idx, match in enumerate(matches):
         siman_title = match.group(1).strip()
-        
         if "הכורת הברית" in siman_title or "אות ברית" in siman_title:
             continue
 
@@ -129,64 +110,57 @@ def import_zmani_book():
             fn.decompose()
         footnotes_html = "".join(cleaned_footnotes)
 
+        # זיהוי כל האותיות והסעיפים בסימן בצורה נקייה
         sec_heading_regex = re.compile(r'^\s*([א-ת]{1,3})\.\s+(.*)$')
         paragraphs = siman_soup.find_all(['p', 'div', 'h2', 'h3', 'h4'], recursive=True)
         if not paragraphs:
             paragraphs = [siman_soup]
 
-        heading_info = []
-        for p in paragraphs:
+        # נזהה איפה מתחיל גוף הטקסט האמיתי (נדלג על רשימת הסיכום הראשונית אם קיימת)
+        all_headings = []
+        for p_idx, p in enumerate(paragraphs):
             text = p.get_text(strip=True)
             m = sec_heading_regex.match(text)
             if m and len(text) < 150 and not text.startswith("סימן"):
-                let = m.group(1)
-                val = hebrew_map.get(let, 999)
-                heading_info.append({'p': p, 'letter': let, 'val': val, 'title': text})
+                all_headings.append((p_idx, m.group(1), text, p))
 
-        # זיהוי נקודת האפס שבה נגמרת רשימת הסיכום ומתחיל גוף הטקסט (כאשר הערך יורד חזרה לא')
-        body_start_idx = 0
-        if len(heading_info) > 2:
-            for i in range(1, len(heading_info)):
-                prev_val = heading_info[i-1]['val']
-                curr_val = heading_info[i]['val']
-                if curr_val == 1 and prev_val >= 3:
-                    body_start_idx = i
+        body_start_p_idx = 0
+        if len(all_headings) > 3:
+            seen_letters = set()
+            for h in all_headings:
+                let = h[1]
+                if let in seen_letters:
+                    body_start_p_idx = h[0]
                     break
-                if curr_val < prev_val and prev_val >= 4 and curr_val <= 2:
-                    body_start_idx = i
-                    break
-
-        # מחיקת שורות רשימת הסיכום המקדימה מה-DOM לחלוטין
-        for h in heading_info[:body_start_idx]:
-            h['p'].decompose()
-
-        body_headings = heading_info[body_start_idx:]
+                seen_letters.add(let)
 
         sections_data = []
+        current_sec_title = None
+        current_sec_content = []
 
-        if not body_headings:
+        for p_idx, p in enumerate(paragraphs):
+            text = p.get_text(strip=True)
+            match_sec = sec_heading_regex.match(text)
+            
+            is_valid = (match_sec and len(text) < 150 and not text.startswith("סימן") and p_idx >= body_start_p_idx)
+            if match_sec and ("הדינים העולים" in text or "סיכום" in text) and p_idx > body_start_p_idx / 2:
+                is_valid = True
+
+            if is_valid:
+                if current_sec_title:
+                    sections_data.append((current_sec_title, "".join(str(e) for e in current_sec_content)))
+                    current_sec_content = []
+                current_sec_title = text
+                current_sec_content.append(p)
+            else:
+                if current_sec_title:
+                    current_sec_content.append(p)
+
+        if current_sec_title and current_sec_content:
+            sections_data.append((current_sec_title, "".join(str(e) for e in current_sec_content)))
+
+        if not sections_data:
             sections_data.append((siman_title, str(siman_soup)))
-        else:
-            for i, h in enumerate(body_headings):
-                curr_p = h['p']
-                title_text = h['title']
-                next_p = body_headings[i+1]['p'] if i + 1 < len(body_headings) else None
-
-                # איסוף התוכן שבין הכותרת הנוכחית לבאה ומחיקת פסוקית הכותרת כדי למנוע כפילות
-                sec_content_list = []
-                capturing = False
-                for tag in siman_soup.find_all(True, recursive=True):
-                    if tag == curr_p:
-                        capturing = True
-                        curr_p.decompose() # מחיקת כותרת הכפילות מגוף הטקסט
-                        continue
-                    if tag == next_p:
-                        break
-                    if capturing:
-                        sec_content_list.append(str(tag))
-                
-                sec_content_html = "".join(sec_content_list)
-                sections_data.append((title_text, sec_content_html))
 
         for sec_order, (sec_title, sec_content) in enumerate(sections_data, start=1):
             sec_soup_obj = BeautifulSoup(sec_content, 'html.parser')
@@ -204,7 +178,7 @@ def import_zmani_book():
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה: סינון הסיכומים בוצע בהצלחה וכל הסעיפים מוצגים בנקיון מוחלט!")
+    print("הספר יובא בהצלחה רבה ובמבנה נקי ומדויק!")
 
 if __name__ == "__main__":
     import_zmani_book()
