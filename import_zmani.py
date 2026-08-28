@@ -12,13 +12,12 @@ from articles.models import Book, Chapter, Section
 def import_zmani_book():
     book_title = "זמני המילה וברכותיה"
     
-    # ניקוי מלא של כל הספרים הכפולים הקודמים כדי למנוע התנגשויות
+    # ניקוי מלא של ספרים כפולים קודמים
     existing_books = Book.objects.filter(title=book_title)
     if existing_books.exists():
         for b in existing_books:
             chapters = b.chapters.all()
             for ch in chapters:
-                # מחיקת סעיפים בצורה בטוחה ללא תלות בשם ה-related_name הפוך
                 Section.objects.filter(chapter=ch).delete()
             chapters.delete()
         existing_books.delete()
@@ -55,8 +54,8 @@ def import_zmani_book():
 
     full_text = str(soup)
 
-    # פיצול לפי סימנים
-    parts = re.split(r'(?i)(סימן\s+[א-ת]+(?:\s*–\s*[^<\n]+)?)', full_text)
+    # פיצול מדויק אך ורק לפי כותרות סימן אמיתיות (לדוגמה: סימן א – ...)
+    parts = re.split(r'(?i)(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]+)', full_text)
 
     if len(parts) <= 1:
         ch = Chapter.objects.create(book=book, title="זמני המילה וברכותיה", order=1)
@@ -72,23 +71,23 @@ def import_zmani_book():
             siman_title = parts[i].strip()
             siman_body = parts[i+1] if i+1 < len(parts) else ""
 
-            # יצירת פרק תחת הקשר chapters
+            # יצירת פרק (סימן)
             chapter = Chapter.objects.create(
                 book=book,
                 title=siman_title,
                 order=ch_order
             )
 
-            # יצירת סעיף תחת הפרק
+            # יצירת סעיף תחתיו
             Section.objects.create(
                 chapter=chapter,
-                title=siman_title,
+                title=f"גוף {siman_title}",
                 content=siman_body,
                 order=1
             )
             ch_order += 1
 
-    print("הספר יובא בהצלחה מלאה ובצורה נקייה!")
+    print("הספר יובא בהצלחה מלאה עם זיהוי מדויק של הסימנים!")
 
 if __name__ == "__main__":
     import_zmani_book()
