@@ -21,7 +21,7 @@ def import_zmani_book():
                 Section.objects.filter(chapter=ch).delete()
             chapters.delete()
         existing_books.delete()
-        print("נמחקו ספרים כפולים קודמים.")
+        print("נמחקו ספרים קודמים.")
 
     book = Book.objects.create(title=book_title)
     print(f"נוצר ספר נקי חדש: {book.title}")
@@ -78,7 +78,7 @@ def import_zmani_book():
         order=1
     )
 
-    # חלוקה מדויקת של כל הסימנים מתוך הטקסט
+    # חלוקה לסימנים
     siman_pattern = re.compile(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]{2,40})', re.IGNORECASE)
     matches = list(siman_pattern.finditer(simans_text))
 
@@ -110,40 +110,36 @@ def import_zmani_book():
             fn.decompose()
         footnotes_html = "".join(cleaned_footnotes)
 
-        # זיהוי כל האותיות והסעיפים בסימן בצורה נקייה
         sec_heading_regex = re.compile(r'^\s*([א-ת]{1,3})\.\s+(.*)$')
         paragraphs = siman_soup.find_all(['p', 'div', 'h2', 'h3', 'h4'], recursive=True)
         if not paragraphs:
             paragraphs = [siman_soup]
 
-        # נזהה איפה מתחיל גוף הטקסט האמיתי (נדלג על רשימת הסיכום הראשונית אם קיימת)
-        all_headings = []
+        # חוק האלף השנייה: מציאת כל המופעים של "א." בסימן
+        aleph_indices = []
         for p_idx, p in enumerate(paragraphs):
             text = p.get_text(strip=True)
-            m = sec_heading_regex.match(text)
-            if m and len(text) < 150 and not text.startswith("סימן"):
-                all_headings.append((p_idx, m.group(1), text, p))
+            if re.match(r'^\s*א\.\s+', text):
+                aleph_indices.append(p_idx)
 
-        body_start_p_idx = 0
-        if len(all_headings) > 3:
-            seen_letters = set()
-            for h in all_headings:
-                let = h[1]
-                if let in seen_letters:
-                    body_start_p_idx = h[0]
-                    break
-                seen_letters.add(let)
+        # אם יש לפחות שתי פעמים "א.", הראשונה היא רשימת הסיכום – נמחק אותה לחלוטין!
+        body_start_idx = 0
+        if len(aleph_indices) >= 2:
+            body_start_idx = aleph_indices[1] # מתחילים מה"א." השנייה והאמיתית של גוף הטקסט
+            for p_idx in range(body_start_idx):
+                paragraphs[p_idx].decompose() # מחיקה מוחלטת של רשימת הסיכום והכותרות המיותרות
 
+        # עכשיו נאסוף את כל הסעיפים האמיתיים שנותרו מה"א." השנייה ואילך
         sections_data = []
         current_sec_title = None
         current_sec_content = []
 
-        for p_idx, p in enumerate(paragraphs):
+        for p in paragraphs:
             text = p.get_text(strip=True)
             match_sec = sec_heading_regex.match(text)
             
-            is_valid = (match_sec and len(text) < 150 and not text.startswith("סימן") and p_idx >= body_start_p_idx)
-            if match_sec and ("הדינים העולים" in text or "סיכום" in text) and p_idx > body_start_p_idx / 2:
+            is_valid = (match_sec and len(text) < 150 and not text.startswith("סימן"))
+            if match_sec and ("הדינים העולים" in text or "סיכום" in text):
                 is_valid = True
 
             if is_valid:
@@ -155,6 +151,9 @@ def import_zmani_book():
             else:
                 if current_sec_title:
                     current_sec_content.append(p)
+                else:
+                    # תוכן מקדים אם קיים
+                    pass
 
         if current_sec_title and current_sec_content:
             sections_data.append((current_sec_title, "".join(str(e) for e in current_sec_content)))
@@ -178,7 +177,7 @@ def import_zmani_book():
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה רבה ובמבנה נקי ומדויק!")
+    print("הספר יובא בהצלחה מוחלטת לפי חוק האלף השנייה!")
 
 if __name__ == "__main__":
     import_zmani_book()
