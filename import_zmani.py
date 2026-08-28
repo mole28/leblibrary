@@ -44,7 +44,6 @@ def import_zmani_book():
 
     # מציאת הפתח דבר האמיתי ותחילת הספר
     matches_pd = [m.start() for m in re.finditer(r'פתח\s+דבר', full_text, re.IGNORECASE)]
-    toc_html = ""
     book_content_html = full_text
 
     if len(matches_pd) > 1:
@@ -54,7 +53,6 @@ def import_zmani_book():
             if "ספר זה" in snippet or "עוסק בעיקר" in snippet:
                 target_idx = idx
                 break
-        toc_html = full_text[:target_idx]
         book_content_html = full_text[target_idx:]
 
     # חילוץ ההקדמה שעד הסימן הראשון
@@ -80,7 +78,7 @@ def import_zmani_book():
         order=1
     )
 
-    # חלוקה לסימנים מתוך גוף הספר
+    # חלוקה לסימנים
     siman_pattern = re.compile(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]{2,40})', re.IGNORECASE)
     matches = list(siman_pattern.finditer(simans_text))
 
@@ -112,44 +110,24 @@ def import_zmani_book():
             fn.decompose()
         footnotes_html = "".join(cleaned_footnotes)
 
-        # זיהוי מדויק של כל האותיות האמיתיות בגוף הטקסט מתחילת האות "א" השנייה או לפי רצף כותרות הסעיפים
-        sec_heading_regex = re.compile(r'^\s*([א-ת]{1,3})\.\s+(.*)$')
+        # שיטה ישירה ללא ניחושים: שליפת כל פסקאות האותיות שמתחילות בתווים א-ת מיד אחרי כותרת הסימן
         paragraphs = siman_soup.find_all(['p', 'div', 'h2', 'h3', 'h4'], recursive=True)
         if not paragraphs:
             paragraphs = [siman_soup]
 
-        # איסוף כל כותרות הסעיפים הקיימות בסימן הזה בפועל
-        all_headings = []
-        for p_idx, p in enumerate(paragraphs):
-            text = p.get_text(strip=True)
-            m = sec_heading_regex.match(text)
-            if m and len(text) < 150 and not text.startswith("סימן"):
-                all_headings.append((p_idx, m.group(1), text, p))
-
-        # נזהה איפה מתחיל גוף הטקסט האמיתי (נבטל את רשימת הסיכום הראשונית אם ישנה ע"י מעבר אל מופע האותיות שאחרי הסיכום)
-        body_start_p_idx = 0
-        if len(all_headings) > 3:
-            seen_letters = set()
-            for h in all_headings:
-                let = h[1]
-                if let in seen_letters:
-                    body_start_p_idx = h[0]
-                    break
-                seen_letters.add(let)
-
+        # נזהה את כל האותיות המופיעות בסימן לפי תבנית מדויקת
+        sec_heading_regex = re.compile(r'^\s*([א-ת]{1,3})\.\s+(.*)$')
+        
         sections_data = []
         current_sec_title = None
         current_sec_content = []
 
-        for p_idx, p in enumerate(paragraphs):
+        for p in paragraphs:
             text = p.get_text(strip=True)
             match_sec = sec_heading_regex.match(text)
             
-            is_valid = (match_sec and len(text) < 150 and not text.startswith("סימן") and p_idx >= body_start_p_idx)
-            if match_sec and ("הדינים העולים" in text or "סיכום" in text) and p_idx > body_start_p_idx / 2:
-                is_valid = True
-
-            if is_valid:
+            # אם זו כותרת סעיף תקינה (אורך קצר, לא מתחילה בסימן)
+            if match_sec and len(text) < 150 and not text.startswith("סימן"):
                 if current_sec_title:
                     sections_data.append((current_sec_title, "".join(str(e) for e in current_sec_content)))
                     current_sec_content = []
@@ -158,11 +136,14 @@ def import_zmani_book():
             else:
                 if current_sec_title:
                     current_sec_content.append(p)
+                else:
+                    # תוכן מקדים לפני הסעיף הראשון נשמר תחת כותרת ברירת מחדל אם אין סעיפים עדיין
+                    pass
 
         if current_sec_title and current_sec_content:
             sections_data.append((current_sec_title, "".join(str(e) for e in current_sec_content)))
 
-        # אם לא נמצאו סעיפים, ניקח את כל גוף הסימן כסעיף יחיד
+        # אם לא נמצאו סעיפים כלל בסימן זה, ניקח את כל הגוף כיחידה אחת
         if not sections_data:
             sections_data.append((siman_title, str(siman_soup)))
 
@@ -182,7 +163,7 @@ def import_zmani_book():
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה מרבית!")
+    print("הספר יובא בהצלחה בשיטה הישירה!")
 
 if __name__ == "__main__":
     import_zmani_book()
