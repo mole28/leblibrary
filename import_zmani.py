@@ -98,12 +98,29 @@ def import_zmani_book():
         for tag_b in siman_soup.find_all(['strong', 'b']):
             tag_b.unwrap()
 
-        # הגדלת ההפניות להערות: המרת תגיות sup או סגנונות כתב עילי לכתב רגיל ובגודל מלא
-        for sup_tag in siman_soup.find_all(['sup', 'span']):
-            # בדיקה אם מדובר בהפניה להערה (לפי תוכן מספרי או מחלקת/סגנון כתב עילי)
-            style_str = sup_tag.get('style', '').lower()
-            if sup_tag.name == 'sup' or 'superscript' in style_str or 'font-size: smaller' in style_str or 'font-size: 70%' in style_str:
-                sup_tag.unwrap() # הסרת תגית הקטנה/עילי כך שהמספר יחזור להיות בגודל הטקסט הרגיל
+        # תיקון ההפניות להערות: שמירה מלאה על כל הקישורים וה-href/title, אבל איפוס סגנונות הקטנה (sup / font-size / vertical-align) כדי שיוגדלו לכתב רגיל
+        for tag in siman_soup.find_all(['sup', 'span', 'a']):
+            # בדיקה האם זה קישור להערת שוליים או תגית הקטנה
+            is_footnote_ref = False
+            if tag.name == 'sup':
+                is_footnote_ref = True
+            elif tag.has_attr('href') and ('ftn' in tag['href'] or 'footnote' in tag['href'] or '#' in tag['href']):
+                is_footnote_ref = True
+            elif tag.has_attr('style') and ('superscript' in tag['style'].lower() or 'font-size' in tag['style'].lower()):
+                is_footnote_ref = True
+
+            if is_footnote_ref:
+                # אם זו תגית sup טהורה בלי href, נהפוך אותה ל-span רגיל כדי שלא תקטין את הפונט
+                if tag.name == 'sup':
+                    tag.name = 'span'
+                
+                # ניקוי סגנונות המקטינים את הטקסט או ממקמים אותו ככתב עילי
+                existing_style = tag.get('style', '')
+                styles = [s for s in existing_style.split(';') if not any(k in s.lower() for k in ['font-size', 'vertical-align', 'baseline'])]
+                # הוספת סגנון שמוודא גודל טקסט רגיל (כמו שאר העמוד)
+                styles.append('font-size: 1rem')
+                styles.append('vertical-align: baseline')
+                tag['style'] = ';'.join(styles)
 
         # איסוף הערות שוליים וצרופן בסוף הסימן
         all_footnotes = siman_soup.find_all(lambda tag: tag.has_attr('id') and ('ftn' in tag['id'] or 'footnote' in tag['id']))
@@ -134,7 +151,7 @@ def import_zmani_book():
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה: ההפניות להערות הוגדלו לכתב רגיל וברור!")
+    print("הספר יובא בהצלחה: כל ההפניות הוגדלו לגודל טקסט רגיל תוך שמירה מלאה על קישורים והתצוגה המקדימה!")
 
 if __name__ == "__main__":
     import_zmani_book()
