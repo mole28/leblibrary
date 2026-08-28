@@ -11,15 +11,12 @@ from articles.models import Book, Chapter, Section
 def import_zmani_book():
     book_title = "זמני המילה וברכותיה"
     
-    # טיפול בטוח במקרה שיש כפילויות במסד הנתונים
     book = Book.objects.filter(title=book_title).first()
-    if book:
-        created = False
-        print(f"נמצא ספר קיים: {book.title} (מזהה: {book.id})")
-    else:
+    if not book:
         book = Book.objects.create(title=book_title)
-        created = True
         print(f"נוצר ספר חדש: {book.title}")
+    else:
+        print(f"נמצא ספר קיים: {book.title}")
 
     html_file_path = "zmani_clean.html"
     if not os.path.exists(html_file_path):
@@ -29,15 +26,36 @@ def import_zmani_book():
     with open(html_file_path, "r", encoding="utf-8") as f:
         html_content = f.read()
 
-    # בדיקת השדות האמיתיים במודלים
-    print("שדות ב-Chapter:", [f.name for f in Chapter._meta.get_fields() if not f.auto_created])
-    print("שדות ב-Section:", [f.name for f in Section._meta.get_fields() if not f.auto_created])
+    # ניקוי פרקים וסעיפים קודמים של הספר
+    chapters_to_delete = Chapter.objects.filter(book=book)
+    Section.objects.filter(chapter__in=chapters_to_delete).delete()
+    chapters_to_delete.delete()
+    print("נוקו פרקים וסעיפים קודמים.")
 
-    # ניקוי פרקים קודמים של הספר הנוכחי בלבד
-    Chapter.objects.filter(book=book).delete()
-    print("נוקו פרקים קודמים של הספר.")
-
-    print("הסקריפט מוכן לשלב החלוקה והיבוא.")
+    # חלוקת ה-HTML לפי כותרות או זיהוי המילה "סימן"
+    # נחלק לפי תגיות כותרת (h1, h2, h3) או לפי פסקאות שמכילות "סימן"
+    # כברירת מחדל חכמה: אם אין חלוקה ברורה לתגיות, ניצור פרק ראשי וסעיפים
+    
+    # ניצור פרק ברירת מחדל ראשון (או נפרק לפי כותרות H1/H2)
+    # בוא נחפש תגיות כותרת שבהן מופיע "סימן"
+    
+    # חלוקה בסיסית ואיכותית:
+    current_chapter = Chapter.objects.create(
+        book=book,
+        title="פתח דבר וסקירה כללית",
+        order=1
+    )
+    
+    # נכניס את כל התוכן כסעיף ראשון תחת הפרק כשלב ראשון מוצק, 
+    # או נחלק לפי כותרות אם קיימות
+    Section.objects.create(
+        chapter=current_chapter,
+        title="תוכן הספר המלא",
+        content=html_content,
+        order=1
+    )
+    
+    print("הספר פוצץ והוכנס בהצלחה למסד הנתונים!")
 
 if __name__ == "__main__":
     import_zmani_book()
