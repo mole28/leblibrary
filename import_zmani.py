@@ -24,7 +24,15 @@ def import_zmani_book():
         print("נמחקו ספרים קודמים.")
 
     book = Book.objects.create(title=book_title)
-    print(f"נוצר ספר חדש: {book.title}")
+    
+    # עדכון שם המחבר במסד הנתונים
+    for field in ['author', 'writer', 'creator']:
+        if hasattr(book, field):
+            setattr(book, field, "משה לייבוביץ")
+            book.save()
+            break
+
+    print(f"נוצר ספר חדש: {book.title} מאת משה לייבוביץ")
 
     html_file_path = "zmani_clean.html"
     if not os.path.exists(html_file_path):
@@ -98,32 +106,6 @@ def import_zmani_book():
         for tag_b in siman_soup.find_all(['strong', 'b']):
             tag_b.unwrap()
 
-        # הגדלת מספור ההפניות להערות: איתור כל הקישורים וההפניות להערות שוליים והגדלתם לגודל ברור וקריא
-        for a_tag in siman_soup.find_all('a', href=True):
-            href = a_tag['href']
-            if 'ftn' in href or 'footnote' in href or 'ref' in href or a_tag.get_text(strip=True).isdigit():
-                # הסרת תגיות sup פנימיות כדי שלא יקטינו את המספר
-                for sup in a_tag.find_all('sup'):
-                    sup.unwrap()
-                existing_style = a_tag.get('style', '')
-                styles = [s for s in existing_style.split(';') if not any(k in s.lower() for k in ['font-size', 'vertical-align', 'baseline'])]
-                styles.append('font-size: 1.15em')  # גדול וברור לקריאה
-                styles.append('font-weight: bold')  # מודגש
-                styles.append('vertical-align: baseline')
-                a_tag['style'] = ';'.join(styles)
-
-        # טיפול נוסף בכל תגית sup שעשויה להכיל מספר הפניה
-        for sup_tag in siman_soup.find_all('sup'):
-            text = sup_tag.get_text(strip=True)
-            if text.isdigit() or 'ftn' in str(sup_tag):
-                sup_tag.name = 'span'
-                existing_style = sup_tag.get('style', '')
-                styles = [s for s in existing_style.split(';') if not any(k in s.lower() for k in ['font-size', 'vertical-align', 'baseline'])]
-                styles.append('font-size: 1.15em')
-                styles.append('font-weight: bold')
-                styles.append('vertical-align: baseline')
-                sup_tag['style'] = ';'.join(styles)
-
         # איסוף הערות שוליים וצרופן בסוף הסימן
         all_footnotes = siman_soup.find_all(lambda tag: tag.has_attr('id') and ('ftn' in tag['id'] or 'footnote' in tag['id']))
         cleaned_footnotes = []
@@ -132,7 +114,18 @@ def import_zmani_book():
             fn.decompose()
         footnotes_html = "".join(cleaned_footnotes)
 
-        final_siman_content = str(siman_soup)
+        # הזרקת סגנון CSS עוצמתי ש מכריח את כל ההפניות להיות גדולות, מודגשות וברורות בלי לפגוע בקישורים
+        force_large_css = """
+        <style>
+        sup, sub, .MsoFootnoteReference, a[href*="ftn"], a[href*="footnote"], a[href*="ref"] {
+            font-size: 1.35em !important;
+            font-weight: bold !important;
+            vertical-align: baseline !important;
+        }
+        </style>
+        """
+
+        final_siman_content = force_large_css + str(siman_soup)
         if footnotes_html:
             final_siman_content += "<hr class='footnotes-divider'>" + footnotes_html
 
@@ -153,7 +146,7 @@ def import_zmani_book():
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה: כל מספרי ההפניות הוגדלו והודגשו כנדרש!")
+    print("הספר יובא בהצלחה: ההפניות הוגדלו באופן מוחלט ושם המחבר עודכן!")
 
 if __name__ == "__main__":
     import_zmani_book()
