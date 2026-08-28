@@ -92,6 +92,14 @@ def import_zmani_book():
     siman_pattern = re.compile(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]{2,30})', re.IGNORECASE)
     matches = list(siman_pattern.finditer(simans_text))
 
+    # מיפוי אותיות עבריות לערכים מספריים לצורך זיהוי התחלת הגוף האמיתי
+    hebrew_map = {
+        'א':1, 'ב':2, 'ג':3, 'ד':4, 'ה':5, 'ו':6, 'ז':7, 'ח':8, 'ט':9, 'י':10,
+        'יא':11, 'יב':12, 'יג':13, 'יד':14, 'טו':15, 'טז':16, 'יז':17, 'יח':18, 'יט':19, 'כ':20,
+        'כא':21, 'כב':22, 'כג':23, 'כד':24, 'כה':25, 'כו':26, 'כז':27, 'כח':28, 'כט':29, 'ל':30,
+        'לא':31, 'לב':32, 'לג':33, 'לד':34, 'לה':35, 'לו':36, 'לז':37, 'לח':38, 'לט':39, 'מ':40
+    }
+
     ch_order = 2
     for idx, match in enumerate(matches):
         siman_title = match.group(1).strip()
@@ -113,81 +121,75 @@ def import_zmani_book():
 
         # איסוף הערות שוליים
         all_footnotes = siman_soup.find_all(lambda tag: tag.has_attr('id') and ('ftn' in tag['id'] or 'footnote' in tag['id']))
-        
         cleaned_footnotes = []
         for fn in all_footnotes:
             for b_tag in fn.find_all(['strong', 'b']):
                 b_tag.unwrap()
             cleaned_footnotes.append(str(fn))
             fn.decompose()
-
         footnotes_html = "".join(cleaned_footnotes)
 
         sec_heading_regex = re.compile(r'^\s*([א-ת]{1,3})\.\s+(.*)$')
-
         paragraphs = siman_soup.find_all(['p', 'div', 'h2', 'h3', 'h4'], recursive=True)
         if not paragraphs:
             paragraphs = [siman_soup]
 
-        # שלב 1: נמצא את כל המופעים של האותיות בסימן
-        all_headings = []
-        for p_idx, p in enumerate(paragraphs):
+        heading_info = []
+        for p in paragraphs:
             text = p.get_text(strip=True)
             m = sec_heading_regex.match(text)
             if m and len(text) < 150 and not text.startswith("סימן"):
-                all_headings.append((p_idx, m.group(1), text, p))
+                let = m.group(1)
+                val = hebrew_map.get(let, 999)
+                heading_info.append({'p': p, 'letter': let, 'val': val, 'title': text})
 
-        # שלב 2: נזהה את תחילת הגוף האמיתי. רשימת הסיכום בתחילת הסימן מופיעה ברצף צפוף (לפני הפסקה האמיתית).
-        # הגוף האמיתי מתחיל מהמופע שבו האותיות חוזרות על עצמן בפעם השנייה או אחרי מעבר פסקה משמעותי.
-        body_start_p_idx = 0
-        seen_letters = set()
-        for h in all_headings:
-            let = h[1]
-            if let in seen_letters:
-                body_start_p_idx = h[0]
-                break
-            seen_letters.add(let)
+        # זיהוי נקודת האפס שבה נגמרת רשימת הסיכום ומתחיל גוף הטקסט (כאשר הערך יורד חזרה לא')
+        body_start_idx = 0
+        if len(heading_info) > 2:
+            for i in range(1, len(heading_info)):
+                prev_val = heading_info[i-1]['val']
+                curr_val = heading_info[i]['val']
+                if curr_val == 1 and prev_val >= 3:
+                    body_start_idx = i
+                    break
+                if curr_val < prev_val and prev_val >= 4 and curr_val <= 2:
+                    body_start_idx = i
+                    break
 
-        # שלב 3: חיתוך וחלוקה נקייה אך ורק של האותיות האמיתיות בגוף הטקסט
+        # מחיקת שורות רשימת הסיכום המקדימה מה-DOM לחלוטין
+        for h in heading_info[:body_start_idx]:
+            h['p'].decompose()
+
+        body_headings = heading_info[body_start_idx:]
+
         sections_data = []
-        current_sec_title = None
-        current_sec_content = []
 
-        for p_idx, p in enumerate(paragraphs):
-            text = p.get_text(strip=True)
-            match_sec = sec_heading_regex.match(text)
-            
-            # האם זו כותרת אות אמיתית בגוף הטקסט (אחרי רשימת הסיכום המקדימה)?
-            is_valid = (match_sec and len(text) < 150 and not text.startswith("סימן") and p_idx >= body_start_p_idx)
-            
-            # וידוא שגם "הדינים העולים מסעיף זה" נתפס כסעיף האחרון
-            if match_sec and ("הדינים העולים" in text or "סיכום" in text) and p_idx > body_start_p_idx / 2:
-                is_valid = True
-
-            if is_valid:
-                if current_sec_title:
-                    sections_data.append((current_sec_title, "".join(str(e) for e in current_sec_content)))
-                    current_sec_content = []
-                current_sec_title = text
-                current_sec_content.append(p)
-            else:
-                if current_sec_title:
-                    current_sec_content.append(p)
-                else:
-                    # תוכן שנמצא לפני האות הראשונה (אם יש) יצורף לכותרת הסימן הראשונית
-                    pass
-
-        if current_sec_title and current_sec_content:
-            sections_data.append((current_sec_title, "".join(str(e) for e in current_sec_content)))
-
-        # אם לא נמצאו סעיפים בכלל, ניקח את כל גוף הסימן כיחידה אחת
-        if not sections_data:
+        if not body_headings:
             sections_data.append((siman_title, str(siman_soup)))
+        else:
+            for i, h in enumerate(body_headings):
+                curr_p = h['p']
+                title_text = h['title']
+                next_p = body_headings[i+1]['p'] if i + 1 < len(body_headings) else None
 
-        # שמירת הסעיפים תחת הפרק
+                # איסוף התוכן שבין הכותרת הנוכחית לבאה ומחיקת פסוקית הכותרת כדי למנוע כפילות
+                sec_content_list = []
+                capturing = False
+                for tag in siman_soup.find_all(True, recursive=True):
+                    if tag == curr_p:
+                        capturing = True
+                        curr_p.decompose() # מחיקת כותרת הכפילות מגוף הטקסט
+                        continue
+                    if tag == next_p:
+                        break
+                    if capturing:
+                        sec_content_list.append(str(tag))
+                
+                sec_content_html = "".join(sec_content_list)
+                sections_data.append((title_text, sec_content_html))
+
         for sec_order, (sec_title, sec_content) in enumerate(sections_data, start=1):
             sec_soup_obj = BeautifulSoup(sec_content, 'html.parser')
-            
             for tag_b in sec_soup_obj.find_all(['strong', 'b']):
                 tag_b.unwrap()
 
@@ -202,7 +204,7 @@ def import_zmani_book():
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה בלי כפיפויות ובלי הקדמות מיותרות!")
+    print("הספר יובא בהצלחה: סינון הסיכומים בוצע בהצלחה וכל הסעיפים מוצגים בנקיון מוחלט!")
 
 if __name__ == "__main__":
     import_zmani_book()
