@@ -54,7 +54,7 @@ def import_zmani_book():
 
     full_text = str(soup)
 
-    # מציאת המופע האמיתי של פתח דבר (דילוג על תוכן העניינים)
+    # דילוג על תוכן העניינים בתחילת המסמך
     matches_pd = [m.start() for m in re.finditer(r'פתח\s+דבר', full_text, re.IGNORECASE)]
     if len(matches_pd) > 1:
         target_idx = matches_pd[1]
@@ -78,16 +78,26 @@ def import_zmani_book():
         intro_content = full_text
         simans_text = ""
 
+    # ניקוי הדגשות מפרק המבוא
+    intro_soup = BeautifulSoup(intro_content, 'html.parser')
+    for b_tag in intro_soup.find_all(['strong', 'b']):
+        b_tag.unwrap()
+    for tag in intro_soup.find_all(True):
+        if tag.has_attr('style'):
+            styles = [s for s in tag['style'].split(';') if 'font-weight' not in s.lower()]
+            if styles: tag['style'] = ';'.join(styles)
+            else: del tag['style']
+
     # יצירת פרק מבוא
     intro_ch = Chapter.objects.create(book=book, title="פתח דבר והקדמה", order=1)
     Section.objects.create(
         chapter=intro_ch,
         title="פתח דבר",
-        content=intro_content,
+        content=str(intro_soup),
         order=1
     )
 
-    # זיהוי מדויק של הסימנים
+    # זיהוי הסימנים
     siman_pattern = re.compile(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]+)', re.IGNORECASE)
     matches = list(siman_pattern.finditer(simans_text))
 
@@ -149,15 +159,20 @@ def import_zmani_book():
             sections_data.append((siman_title, siman_body_html))
 
         for sec_order, (sec_title, sec_content) in enumerate(sections_data, start=1):
-            # הסרת תגיות הדגשה גורפות (strong / b) מגוף הטקסט כדי שלא הכל יופיע מודגש
             sec_soup = BeautifulSoup(sec_content, 'html.parser')
-            for tag_b in sec_soup.find_all(['strong', 'b']):
-                # נשאיר את ההדגשה רק אם זו כותרת סעיף או מילת מפתח קצרה, נמיר לתגית רגילה את השאר אם הכל עטוף
-                pass
-            # פתרון נקי: נסיר את תגיות ה-strong המיותרות שעוטפות פסקאות שלמות בגוף הטקסט
-            for s_tag in sec_soup.find_all(['strong', 'b']):
-                if s_tag.parent and s_tag.parent.name == 'p' and len(s_tag.get_text()) > 30:
-                    s_tag.unwrap()
+            
+            # הסרת כל תגיות ההדגשה (<b> ו-<strong>) כדי למנוע טקסט מודגש בטעות
+            for b_tag in sec_soup.find_all(['strong', 'b']):
+                b_tag.unwrap()
+
+            # הסרת מאפייני עיצוב פנימיים של עובי גופן (font-weight: bold / 700)
+            for tag in sec_soup.find_all(True):
+                if tag.has_attr('style'):
+                    styles = [s for s in tag['style'].split(';') if 'font-weight' not in s.lower()]
+                    if styles:
+                        tag['style'] = ';'.join(styles)
+                    else:
+                        del tag['style']
 
             Section.objects.create(
                 chapter=chapter,
@@ -168,7 +183,7 @@ def import_zmani_book():
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה עם טקסט נקי וללא הדגשות מיותרות!")
+    print("הספר יובא בהצלחה מלאה, ללא שום הדגשות מיותרות בגוף הטקסט!")
 
 if __name__ == "__main__":
     import_zmani_book()
