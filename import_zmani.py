@@ -16,10 +16,10 @@ def import_zmani_book():
     existing_books = Book.objects.filter(title=book_title)
     if existing_books.exists():
         for b in existing_books:
-            # מחיקת הפרקים והסעיפים השייכים להם
             chapters = b.chapters.all()
             for ch in chapters:
-                ch.section_set.all().delete()
+                # מחיקת סעיפים בצורה בטוחה ללא תלות בשם ה-related_name הפוך
+                Section.objects.filter(chapter=ch).delete()
             chapters.delete()
         existing_books.delete()
         print("נמחקו ספרים כפולים קודמים.")
