@@ -54,16 +54,20 @@ def import_zmani_book():
 
     full_text = str(soup)
 
-    # 1. חיתוך מדויק: מציאת ה"פתח דבר" האמיתי שממנו מתחיל הספר (זה שמוביל אל "ספר זה")
-    pesah_davar_match = re.search(r'(פתח\s+דבר.*?ספר\s+זה)', full_text, re.DOTALL | re.IGNORECASE)
-    if pesah_davar_match:
-        # חיתוך החל מהמופע האמיתי של פתח דבר
-        full_text = full_text[pesah_davar_match.start():]
+    # 1. חיתוך מדויק ביותר: מחפש את המקום שבו מופיעה הכותרת "פתח דבר" ואחריה המילים "ספר זה"
+    # בצורה זו אנו מדלגים לחלוטין על תוכן העניינים שבתחילת המסמך שבו מופיעים מספרי עמודים בלבד.
+    real_start_pattern = re.compile(r'(פתח\s+דבר.*?ספר\s+זה)', re.DOTALL | re.IGNORECASE)
+    match_start = real_start_pattern.search(full_text)
+    
+    if match_start:
+        # חותכים את כל מה שלפני הפתח דבר האמיתי
+        full_text = full_text[match_start.start():]
     else:
-        # גיבוי למקרה שלא נמצא בדיוק כך
-        fallback = re.search(r'פתח\s+דבר', full_text, re.IGNORECASE)
-        if fallback:
-            full_text = full_text[fallback.start():]
+        # גיבוי: חיפוש כותרת פתח דבר שלא מוצמדת למספר עמוד
+        matches_pd = list(re.finditer(r'פתח\s+דבר', full_text, re.IGNORECASE))
+        if len(matches_pd) > 1:
+            # לוקחים את המופע השני (האמיתי, אחרי תוכן העניינים)
+            full_text = full_text[matches_pd[1].start():]
 
     # 2. חילוץ ההקדמה שמתחילה בדיוק מ"פתח דבר" ועד הסימן הראשון
     siman_start_match = re.search(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]+)', full_text, re.IGNORECASE)
