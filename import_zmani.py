@@ -54,22 +54,26 @@ def import_zmani_book():
 
     full_text = str(soup)
 
-    # 1. חיתוך מדויק ביותר: מחפש את המקום שבו מופיעה הכותרת "פתח דבר" ואחריה המילים "ספר זה"
-    # בצורה זו אנו מדלגים לחלוטין על תוכן העניינים שבתחילת המסמך שבו מופיעים מספרי עמודים בלבד.
-    real_start_pattern = re.compile(r'(פתח\s+דבר.*?ספר\s+זה)', re.DOTALL | re.IGNORECASE)
-    match_start = real_start_pattern.search(full_text)
+    # חיתוך גס ואפקטיבי: אנחנו מחפשים את המקום שבו מופיעה הכותרת "פתח דבר" 
+    # יחד עם הפסקה האמיתית של הספר ("ספר זה עוסק בעיקר..."), או לוקחים את ה"פתח דבר" השני ומעלה (אחרי תוכן העניינים).
+    # נחפש את כל המופעים של "פתח דבר"
+    matches_pd = [m.start() for m in re.finditer(r'פתח\s+דבר', full_text, re.IGNORECASE)]
     
-    if match_start:
-        # חותכים את כל מה שלפני הפתח דבר האמיתי
-        full_text = full_text[match_start.start():]
-    else:
-        # גיבוי: חיפוש כותרת פתח דבר שלא מוצמדת למספר עמוד
-        matches_pd = list(re.finditer(r'פתח\s+דבר', full_text, re.IGNORECASE))
-        if len(matches_pd) > 1:
-            # לוקחים את המופע השני (האמיתי, אחרי תוכן העניינים)
-            full_text = full_text[matches_pd[1].start():]
+    if len(matches_pd) > 1:
+        # בדרך כלל המופע הראשון הוא בתוכן העניינים, השני הוא האמיתי
+        # נבחר את המופע שקרוב למילים "ספר זה" או פשוט ניקח את המופע השני
+        target_idx = matches_pd[1]
+        for idx in matches_pd[1:]:
+            # נבדוק אם יש "ספר זה" בטווח של 500 תווים קדימה
+            snippet = full_text[idx:idx+500]
+            if "ספר זה" in snippet or "עוסק בעיקר" in snippet:
+                target_idx = idx
+                break
+        full_text = full_text[target_idx:]
+    elif len(matches_pd) == 1:
+        full_text = full_text[matches_pd[0]:]
 
-    # 2. חילוץ ההקדמה שמתחילה בדיוק מ"פתח דבר" ועד הסימן הראשון
+    # חילוץ ההקדמה שמתחילה בדיוק מ"פתח דבר" ועד הסימן הראשון
     siman_start_match = re.search(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]+)', full_text, re.IGNORECASE)
     
     if siman_start_match:
@@ -89,7 +93,7 @@ def import_zmani_book():
         order=1
     )
 
-    # 3. זיהוי מדויק של הסימנים (לדוגמה: סימן א – ...)
+    # זיהוי מדויק של הסימנים
     siman_pattern = re.compile(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]+)', re.IGNORECASE)
     matches = list(siman_pattern.finditer(simans_text))
 
@@ -100,14 +104,12 @@ def import_zmani_book():
         end_pos = matches[idx + 1].start() if idx + 1 < len(matches) else len(simans_text)
         siman_body_html = simans_text[start_pos:end_pos]
 
-        # יצירת פרק עבור כל סימן
         chapter = Chapter.objects.create(
             book=book,
             title=siman_title,
             order=ch_order
         )
 
-        # 4. ניתוח חכם של הסעיפים (האותיות א., ב., ג. וכו') תחת הסימן
         siman_soup = BeautifulSoup(siman_body_html, 'html.parser')
         sections_data = []
         current_sec_title = "הקדמה לסימן"
@@ -152,7 +154,6 @@ def import_zmani_book():
         if not sections_data:
             sections_data.append((siman_title, siman_body_html))
 
-        # שמירת הסעיפים תחת הפרק
         for sec_order, (sec_title, sec_content) in enumerate(sections_data, start=1):
             Section.objects.create(
                 chapter=chapter,
@@ -163,7 +164,7 @@ def import_zmani_book():
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה החל מפתח דבר האמיתי ועד הסוף!")
+    print("הספר יובא בהצלחה החל מפתח דבר האמיתי!")
 
 if __name__ == "__main__":
     import_zmani_book()
