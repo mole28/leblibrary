@@ -12,7 +12,7 @@ from articles.models import Book, Chapter, Section
 def import_zmani_book():
     book_title = "זמני המילה וברכותיה"
     
-    # ניקוי ספרים קודמים
+    # ניקוי מלא של ספרים קודמים
     existing_books = Book.objects.filter(title=book_title)
     if existing_books.exists():
         for b in existing_books:
@@ -42,8 +42,11 @@ def import_zmani_book():
 
     full_text = str(soup)
 
-    # מציאת תחילת הספר האמיתי (אחרי תוכן העניינים המקורי)
+    # מציאת הפתח דבר האמיתי ותחילת הספר
     matches_pd = [m.start() for m in re.finditer(r'פתח\s+דבר', full_text, re.IGNORECASE)]
+    toc_html = ""
+    book_content_html = full_text
+
     if len(matches_pd) > 1:
         target_idx = matches_pd[1]
         for idx in matches_pd[1:]:
@@ -51,9 +54,8 @@ def import_zmani_book():
             if "ספר זה" in snippet or "עוסק בעיקר" in snippet:
                 target_idx = idx
                 break
+        toc_html = full_text[:target_idx]
         book_content_html = full_text[target_idx:]
-    else:
-        book_content_html = full_text
 
     # חילוץ ההקדמה שעד הסימן הראשון
     siman_start_match = re.search(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]+)', book_content_html, re.IGNORECASE)
@@ -78,7 +80,7 @@ def import_zmani_book():
         order=1
     )
 
-    # חלוקה מדויקת לסימנים לפי כותרות אמיתיות
+    # חלוקה לסימנים מתוך גוף הספר
     siman_pattern = re.compile(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]{2,40})', re.IGNORECASE)
     matches = list(siman_pattern.finditer(simans_text))
 
@@ -110,49 +112,57 @@ def import_zmani_book():
             fn.decompose()
         footnotes_html = "".join(cleaned_footnotes)
 
-        # שיטה נקייה וישירה: נזהה את כל האותיות האמיתיות בגוף הטקסט לפי תבנית א., ב., ג. וכו'
+        # זיהוי מדויק של כל האותיות האמיתיות בגוף הטקסט מתחילת האות "א" השנייה או לפי רצף כותרות הסעיפים
         sec_heading_regex = re.compile(r'^\s*([א-ת]{1,3})\.\s+(.*)$')
         paragraphs = siman_soup.find_all(['p', 'div', 'h2', 'h3', 'h4'], recursive=True)
         if not paragraphs:
             paragraphs = [siman_soup]
 
-        # נזהה את כל המופעים של האותיות בטקסט ונבחר רק את רצף האותיות הרשמי של הגוף
+        # איסוף כל כותרות הסעיפים הקיימות בסימן הזה בפועל
+        all_headings = []
+        for p_idx, p in enumerate(paragraphs):
+            text = p.get_text(strip=True)
+            m = sec_heading_regex.match(text)
+            if m and len(text) < 150 and not text.startswith("סימן"):
+                all_headings.append((p_idx, m.group(1), text, p))
+
+        # נזהה איפה מתחיל גוף הטקסט האמיתי (נבטל את רשימת הסיכום הראשונית אם ישנה ע"י מעבר אל מופע האותיות שאחרי הסיכום)
+        body_start_p_idx = 0
+        if len(all_headings) > 3:
+            seen_letters = set()
+            for h in all_headings:
+                let = h[1]
+                if let in seen_letters:
+                    body_start_p_idx = h[0]
+                    break
+                seen_letters.add(let)
+
         sections_data = []
         current_sec_title = None
         current_sec_content = []
 
-        found_first_real_aleph = False
-
-        for p in paragraphs:
+        for p_idx, p in enumerate(paragraphs):
             text = p.get_text(strip=True)
             match_sec = sec_heading_regex.match(text)
             
-            # בדיקה האם זו כותרת אות תקנית
-            is_heading = bool(match_sec and len(text) < 150 and not text.startswith("סימן"))
-            
-            # כדי לנטרל את רשימת הסיכום שבהתחלה: אנחנו מתחילים לקלוט סעיפים רק מה"א." השנייה (או הראשונה אם אין סיכום)
-            if is_heading and match_sec.group(1) == 'א':
-                if not found_first_real_aleph:
-                    found_first_real_aleph = True # זו ה"א." הראשונה של הסיכום, נתעלם ממנה
-                    continue
-                else:
-                    pass # זו ה"א." האמיתית של גוף הטקסט!
+            is_valid = (match_sec and len(text) < 150 and not text.startswith("סימן") and p_idx >= body_start_p_idx)
+            if match_sec and ("הדינים העולים" in text or "סיכום" in text) and p_idx > body_start_p_idx / 2:
+                is_valid = True
 
-            # אם כבר עברנו את רשימת הסיכום (או שהתחלנו), נאסוף את הסעיפים
-            if found_first_real_aleph or not any(re.match(r'^\s*א\.\s+', p.get_text(strip=True)) for p in paragraphs[:3]):
-                if is_heading:
-                    if current_sec_title:
-                        sections_data.append((current_sec_title, "".join(str(e) for e in current_sec_content)))
-                        current_sec_content = []
-                    current_sec_title = text
+            if is_valid:
+                if current_sec_title:
+                    sections_data.append((current_sec_title, "".join(str(e) for e in current_sec_content)))
+                    current_sec_content = []
+                current_sec_title = text
+                current_sec_content.append(p)
+            else:
+                if current_sec_title:
                     current_sec_content.append(p)
-                else:
-                    if current_sec_title:
-                        current_sec_content.append(p)
 
         if current_sec_title and current_sec_content:
             sections_data.append((current_sec_title, "".join(str(e) for e in current_sec_content)))
 
+        # אם לא נמצאו סעיפים, ניקח את כל גוף הסימן כסעיף יחיד
         if not sections_data:
             sections_data.append((siman_title, str(siman_soup)))
 
@@ -172,7 +182,7 @@ def import_zmani_book():
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה בשיטה החדשה והנקייה!")
+    print("הספר יובא בהצלחה מרבית!")
 
 if __name__ == "__main__":
     import_zmani_book()
