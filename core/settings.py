@@ -212,6 +212,12 @@ CKEDITOR_5_CONFIGS = {
                 'startIndex': True,
                 'reversed': True,
             }
+        },
+        # פקודת הקסם שמונעת מחיקה של הערות שוליים, עיצובים מוורד וכתב עילי בהדבקה:
+        'htmlSupport': {
+            'allow': [
+                {'name': '/.*/', 'attributes': True, 'classes': True, 'styles': True}
+            ]
         }
     }
 }
