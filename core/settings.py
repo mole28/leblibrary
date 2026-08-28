@@ -143,10 +143,16 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
 
 # ==========================================
-# Media files (Uploaded by users)
+# Media & Upload Settings
 # ==========================================
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# מאפשר קבלת טפסים וטקסטים גדולים מ-Django Admin (100MB)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600
+
+# מאפשר העלאת קבצים גדולים לזיכרון (100MB)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600
 
 # ==========================================
 # Caching Configuration
