@@ -36,30 +36,14 @@ def import_zmani_book():
 
     soup = BeautifulSoup(raw_html, 'html.parser')
     
-    # הסרת סקריפטים וסטיילים גולמיים
+    # הסרת סקריפטים וסטיילים
     for element in soup(["script", "style", "meta", "link", "form", "input", "button", "textarea", "select"]):
         element.decompose()
 
-    # איתור תוכן העניינים הרשמי מתוך הקישורים הפנימיים שהוורד יצר בתחילת המסמך
-    # קובץ Word מייצר בדרך כלל רשימת קישורים בתוכן העניינים שבהם href מתחיל ב-# ומצביע לעוגנים בגוף הטקסט
-    toc_items = []
-    seen_anchors = set()
-    
-    for a in soup.find_all('a', href=True):
-        href = a['href']
-        if href.startswith('#'):
-            anchor_id = href[1:]
-            text = a.get_text(strip=True)
-            # סינון טקסטים לא רלוונטיים מתוכן העניינים
-            if text and not text.isdigit() and len(text) < 100:
-                if anchor_id not in seen_anchors:
-                    seen_anchors.add(anchor_id)
-                    toc_items.append({'anchor': anchor_id, 'text': text})
-
-    # אם לא נמצאו קישורי תוכן עניינים מובנים, ניגש לגיבוי יציב של סריקת כותרות הסימנים האמיתיות מהטקסט
     full_text = str(soup)
+
+    # מציאת הפתח דבר האמיתי ותחילת הספר
     matches_pd = [m.start() for m in re.finditer(r'פתח\s+דבר', full_text, re.IGNORECASE)]
-    book_content_html = full_text
     if len(matches_pd) > 1:
         target_idx = matches_pd[1]
         for idx in matches_pd[1:]:
@@ -68,6 +52,8 @@ def import_zmani_book():
                 target_idx = idx
                 break
         book_content_html = full_text[target_idx:]
+    else:
+        book_content_html = full_text
 
     # חילוץ ההקדמה שעד הסימן הראשון
     siman_start_match = re.search(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]+)', book_content_html, re.IGNORECASE)
@@ -79,7 +65,7 @@ def import_zmani_book():
         intro_content = book_content_html
         simans_text = ""
 
-    # יצירת פרק מבוא (פתח דבר והקדמה)
+    # יצירת פרק מבוא (פתח דבר)
     intro_soup = BeautifulSoup(intro_content, 'html.parser')
     for tag_b in intro_soup.find_all(['strong', 'b']):
         tag_b.unwrap()
@@ -92,7 +78,7 @@ def import_zmani_book():
         order=1
     )
 
-    # חלוקה מדויקת לסימנים מתוך גוף הספר
+    # חלוקה לסימנים בלבד (ללא שום פירוק פנימי לאותיות)
     siman_pattern = re.compile(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]{2,40})', re.IGNORECASE)
     matches = list(siman_pattern.finditer(simans_text))
 
@@ -106,93 +92,42 @@ def import_zmani_book():
         end_pos = matches[idx + 1].start() if idx + 1 < len(matches) else len(simans_text)
         siman_body_html = simans_text[start_pos:end_pos]
 
+        siman_soup = BeautifulSoup(siman_body_html, 'html.parser')
+
+        # הסרת הדגשות מיותרות בגוף הטקסט לניקוי מושלם
+        for tag_b in siman_soup.find_all(['strong', 'b']):
+            tag_b.unwrap()
+
+        # איסוף הערות שוליים וצרופן בסוף הסימן
+        all_footnotes = siman_soup.find_all(lambda tag: tag.has_attr('id') and ('ftn' in tag['id'] or 'footnote' in tag['id']))
+        cleaned_footnotes = []
+        for fn in all_footnotes:
+            cleaned_footnotes.append(str(fn))
+            fn.decompose()
+        footnotes_html = "".join(cleaned_footnotes)
+
+        final_siman_content = str(siman_soup)
+        if footnotes_html:
+            final_siman_content += "<hr class='footnotes-divider'>" + footnotes_html
+
+        # יצירת פרק (סימן) יחיד
         chapter = Chapter.objects.create(
             book=book,
             title=siman_title,
             order=ch_order
         )
 
-        siman_soup = BeautifulSoup(siman_body_html, 'html.parser')
-
-        # איסוף הערות שוליים
-        all_footnotes = siman_soup.find_all(lambda tag: tag.has_attr('id') and ('ftn' in tag['id'] or 'footnote' in tag['id']))
-        cleaned_footnotes = []
-        for fn in all_footnotes:
-            for b_tag in fn.find_all(['strong', 'b']):
-                b_tag.unwrap()
-            cleaned_footnotes.append(str(fn))
-            fn.decompose()
-        footnotes_html = "".join(cleaned_footnotes)
-
-        # זיהוי נקי של האותיות לפי רשימת תוכן העניינים או תבנית א., ב., ג. בגוף שמופיעות לאחר רשימת הסיכום
-        sec_heading_regex = re.compile(r'^\s*([א-ת]{1,3})\.\s+(.*)$')
-        paragraphs = siman_soup.find_all(['p', 'div', 'h2', 'h3', 'h4'], recursive=True)
-        if not paragraphs:
-            paragraphs = [siman_soup]
-
-        all_headings = []
-        for p_idx, p in enumerate(paragraphs):
-            text = p.get_text(strip=True)
-            m = sec_heading_regex.match(text)
-            if m and len(text) < 150 and not text.startswith("סימן"):
-                all_headings.append((p_idx, m.group(1), text, p))
-
-        # דילוג על רשימת הסיכום הראשונית: מציאת המקום שבו האותיות מתחילות מחדש (הגוף האמיתי)
-        body_start_p_idx = 0
-        if len(all_headings) > 3:
-            seen_letters = set()
-            for h in all_headings:
-                let = h[1]
-                if let in seen_letters:
-                    body_start_p_idx = h[0]
-                    break
-                seen_letters.add(let)
-
-        sections_data = []
-        current_sec_title = None
-        current_sec_content = []
-
-        for p_idx, p in enumerate(paragraphs):
-            text = p.get_text(strip=True)
-            match_sec = sec_heading_regex.match(text)
-            
-            is_valid = (match_sec and len(text) < 150 and not text.startswith("סימן") and p_idx >= body_start_p_idx)
-            if match_sec and ("הדינים העולים" in text or "סיכום" in text) and p_idx > body_start_p_idx / 2:
-                is_valid = True
-
-            if is_valid:
-                if current_sec_title:
-                    sections_data.append((current_sec_title, "".join(str(e) for e in current_sec_content)))
-                    current_sec_content = []
-                current_sec_title = text
-                current_sec_content.append(p)
-            else:
-                if current_sec_title:
-                    current_sec_content.append(p)
-
-        if current_sec_title and current_sec_content:
-            sections_data.append((current_sec_title, "".join(str(e) for e in current_sec_content)))
-
-        if not sections_data:
-            sections_data.append((siman_title, str(siman_soup)))
-
-        for sec_order, (sec_title, sec_content) in enumerate(sections_data, start=1):
-            sec_soup_obj = BeautifulSoup(sec_content, 'html.parser')
-            for tag_b in sec_soup_obj.find_all(['strong', 'b']):
-                tag_b.unwrap()
-
-            final_sec_content = str(sec_soup_obj) + "<hr class='footnotes-divider'>" + footnotes_html
-            
-            Section.objects.create(
-                chapter=chapter,
-                title=sec_title[:150],
-                content=final_sec_content,
-                order=sec_order
-            )
+        # יצירת סעיף יחיד תחת הסימן – כך שבתוכן העניינים יופיעו אך ורק שמות הסימנים!
+        Section.objects.create(
+            chapter=chapter,
+            title=siman_title,
+            content=final_siman_content,
+            order=1
+        )
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה מוחלטת לפי תוכן העניינים הרשמי!")
+    print("הספר יובא בהצלחה: תוכן העניינים מציג אך ורק את הסימנים ללא שום אותיות!")
 
 if __name__ == "__main__":
     import_zmani_book()
