@@ -54,17 +54,11 @@ def import_zmani_book():
 
     full_text = str(soup)
 
-    # חיתוך גס ואפקטיבי: אנחנו מחפשים את המקום שבו מופיעה הכותרת "פתח דבר" 
-    # יחד עם הפסקה האמיתית של הספר ("ספר זה עוסק בעיקר..."), או לוקחים את ה"פתח דבר" השני ומעלה (אחרי תוכן העניינים).
-    # נחפש את כל המופעים של "פתח דבר"
+    # מציאת המופע האמיתי של פתח דבר (דילוג על תוכן העניינים)
     matches_pd = [m.start() for m in re.finditer(r'פתח\s+דבר', full_text, re.IGNORECASE)]
-    
     if len(matches_pd) > 1:
-        # בדרך כלל המופע הראשון הוא בתוכן העניינים, השני הוא האמיתי
-        # נבחר את המופע שקרוב למילים "ספר זה" או פשוט ניקח את המופע השני
         target_idx = matches_pd[1]
         for idx in matches_pd[1:]:
-            # נבדוק אם יש "ספר זה" בטווח של 500 תווים קדימה
             snippet = full_text[idx:idx+500]
             if "ספר זה" in snippet or "עוסק בעיקר" in snippet:
                 target_idx = idx
@@ -73,7 +67,7 @@ def import_zmani_book():
     elif len(matches_pd) == 1:
         full_text = full_text[matches_pd[0]:]
 
-    # חילוץ ההקדמה שמתחילה בדיוק מ"פתח דבר" ועד הסימן הראשון
+    # חילוץ ההקדמה שמתחילה מ"פתח דבר" ועד הסימן הראשון
     siman_start_match = re.search(r'(סימן\s+[א-ת]{1,3}\s*[–-]\s*[^<\n]+)', full_text, re.IGNORECASE)
     
     if siman_start_match:
@@ -84,7 +78,7 @@ def import_zmani_book():
         intro_content = full_text
         simans_text = ""
 
-    # יצירת פרק מבוא שמתחיל נקי מ"פתח דבר" האמיתי
+    # יצירת פרק מבוא
     intro_ch = Chapter.objects.create(book=book, title="פתח דבר והקדמה", order=1)
     Section.objects.create(
         chapter=intro_ch,
@@ -155,16 +149,26 @@ def import_zmani_book():
             sections_data.append((siman_title, siman_body_html))
 
         for sec_order, (sec_title, sec_content) in enumerate(sections_data, start=1):
+            # הסרת תגיות הדגשה גורפות (strong / b) מגוף הטקסט כדי שלא הכל יופיע מודגש
+            sec_soup = BeautifulSoup(sec_content, 'html.parser')
+            for tag_b in sec_soup.find_all(['strong', 'b']):
+                # נשאיר את ההדגשה רק אם זו כותרת סעיף או מילת מפתח קצרה, נמיר לתגית רגילה את השאר אם הכל עטוף
+                pass
+            # פתרון נקי: נסיר את תגיות ה-strong המיותרות שעוטפות פסקאות שלמות בגוף הטקסט
+            for s_tag in sec_soup.find_all(['strong', 'b']):
+                if s_tag.parent and s_tag.parent.name == 'p' and len(s_tag.get_text()) > 30:
+                    s_tag.unwrap()
+
             Section.objects.create(
                 chapter=chapter,
                 title=sec_title[:150],
-                content=sec_content,
+                content=str(sec_soup),
                 order=sec_order
             )
 
         ch_order += 1
 
-    print("הספר יובא בהצלחה החל מפתח דבר האמיתי!")
+    print("הספר יובא בהצלחה עם טקסט נקי וללא הדגשות מיותרות!")
 
 if __name__ == "__main__":
     import_zmani_book()
