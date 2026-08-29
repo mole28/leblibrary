@@ -9,10 +9,10 @@ django.setup()
 
 from articles.models import Book, Chapter, Section
 
-def import_zariz_zariz2():
+def import_zariz_perfect_hierarchy():
     book_title = "זריזין מקדימין למילה"
     
-    # ניקוי מהיר של גרסאות קודמות מהמסד
+    # ניקוי מהיר של הספר הישן מהמסד
     existing_books = Book.objects.filter(title=book_title)
     if existing_books.exists():
         for b in existing_books:
@@ -20,7 +20,7 @@ def import_zariz_zariz2():
                 Section.objects.filter(chapter=ch).delete()
             b.chapters.all().delete()
         existing_books.delete()
-        print("נמחקה הגרסה הישנה של הספר.")
+        print("נמחקה הגרסה הישנה מהמסד.")
 
     # יצירת הספר מחדש
     book = Book.objects.create(title=book_title)
@@ -42,9 +42,22 @@ def import_zariz_zariz2():
         el.decompose()
 
     body_tag = soup.find('body') or soup
-    elements = body_tag.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'div'], recursive=True)
+    elements = body_tag.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'div', 'hr'], recursive=True)
 
-    # יצירת פרק ראשון עבור פתח דבר
+    # מילות מפתח מדויקות שמזהות את הכותרות הראשיות (פרקים) בספר שלך
+    chapter_keywords = [
+        "כללי זריזין",
+        "זריזין או הידור מצוה",
+        "הקדמת מילה למצוות אחרות",
+        "זמני הברית מילה",
+        "אכילה ועשיית מלאכה",
+        "מילה במועדים",
+        "מילה עם סוגי מוהלים שונים",
+        "שלום זכר",
+        "מאמר של מנהג"
+    ]
+
+    # התחלה עם פרק ראשון: פתח דבר
     current_chapter = Chapter.objects.create(book=book, title="פתח דבר והקדמה", order=1)
     ch_order = 2
     sec_order = 1
@@ -67,36 +80,40 @@ def import_zariz_zariz2():
             sec_order += 1
             current_sec_content = []
 
-    # תבניות לזיהוי סעיפים (א., ב., ג' וכו') ומעבר למאמר שלום זכר
-    halacha_pattern = re.compile(r'^([א-ת]{1,2})\.\s+')
-    shalom_zachar_pattern = re.compile(r'^(שלום זכר|מאמר של מנהג)', re.IGNORECASE)
+    # זיהוי אותיות סעיף (א., ב., ג'...)
+    section_letter_pattern = re.compile(r'^([א-ת]{1,2})\.\s+')
 
     for el in elements:
         text = el.get_text(strip=True)
         if not text:
             continue
 
-        # מעבר אוטומטי לפרק "שלום זכר" כשמגיעים אליו בקובץ
-        if shalom_zachar_pattern.search(text) and len(text) < 50:
+        # בדיקה האם הפסקה הזו היא כותרת של פרק ראשי/משני
+        matched_chapter_title = None
+        for kw in chapter_keywords:
+            if kw in text and len(text) < 70:
+                matched_chapter_title = text
+                break
+
+        if matched_chapter_title:
             save_section()
-            current_chapter = Chapter.objects.create(book=book, title="מאמר של מנהג שלום זכר", order=ch_order)
+            current_chapter = Chapter.objects.create(book=book, title=matched_chapter_title, order=ch_order)
             ch_order += 1
             sec_order = 1
-            current_sec_title = "מקור המנהג וטעמיו"
+            current_sec_title = "מבוא"
             continue
 
-        # זיהוי תחילת סעיף/הלכה חדשה לפי האותיות (א., ב., ג'...)
-        if halacha_pattern.match(text) and len(text) < 120:
+        # בדיקה האם זו תחילת אות/סעיף (א., ב., ג'...)
+        if section_letter_pattern.match(text) and len(text) < 150:
             save_section()
             current_sec_title = text[:60] + "..." if len(text) > 60 else text
-            # עיצוב בולט לכותרת הסעיף באתר
             current_sec_content.append(f"<h3 style='color:#004085; border-bottom:1px solid #ccc; padding-bottom:5px; margin-top:20px;'>{text}</h3>")
             continue
 
         current_sec_content.append(el)
 
     save_section()
-    print("הספר מורכב ויובא בהצלחה עם כל הביאורים והסעיפים במסודר!")
+    print("הספר סודר בהיררכיה מושלמת של פרקים וסעיפים!")
 
 if __name__ == "__main__":
-    import_zariz_zariz2()
+    import_zariz_perfect_hierarchy()
