@@ -9,10 +9,10 @@ django.setup()
 
 from articles.models import Book, Chapter, Section
 
-def import_zariz_final_fixed():
+def import_zariz_perfect():
     book_title = "זריזין מקדימין למילה"
     
-    # ניקוי מהיר של הספר הישן מהמסד
+    # ניקוי הספר הישן מהמסד
     existing_books = Book.objects.filter(title=book_title)
     if existing_books.exists():
         for b in existing_books:
@@ -57,7 +57,7 @@ def import_zariz_final_fixed():
         "מאמר של מנהג"
     ]
 
-    # פרק ראשון: רק "פתח דבר" בלי הקדמה
+    # פרק ראשון: שֵׁם מדויק "פתח דבר" בלבד (ללא הקדמה!)
     current_chapter = Chapter.objects.create(book=book, title="פתח דבר", order=1)
     ch_order = 2
     sec_order = 1
@@ -80,19 +80,22 @@ def import_zariz_final_fixed():
             sec_order += 1
             current_sec_content = []
 
-    # תבנית שמזהה את כל האותיות מדויק (א., ב., לב., לז...) בלי הגבלת אורך קשוחה
-    halacha_pattern = re.compile(r'^([א-ת]{1,2})\.\s+')
+    # תבנית חזקה מאוד שתתפוס כל אות (א., ב., ג' וכו') ללא יוצא מן הכלל
+    halacha_pattern = re.compile(r'^\s*([א-ת]{1,3})[\.\,\'\"]\s+')
 
     for el in elements:
         text = el.get_text(strip=True)
-        if not text:
+        # ניקוי תווים בלתי נראים לצורך בדיקה מדויקת
+        clean_text = text.replace('\xa0', ' ')
+
+        if not clean_text:
             continue
 
-        # בדיקה אם זו כותרת פרק
+        # בדיקה האם זו כותרת פרק ראשי
         matched_chapter_title = None
         for kw in chapter_keywords:
-            if kw in text and len(text) < 70:
-                matched_chapter_title = text
+            if kw in clean_text and len(clean_text) < 70:
+                matched_chapter_title = clean_text
                 break
 
         if matched_chapter_title:
@@ -103,17 +106,17 @@ def import_zariz_final_fixed():
             current_sec_title = "מבוא"
             continue
 
-        # בדיקה אם זו תחילת סעיף/אות, מותאם גם להלכות הארוכות ביותר
-        if halacha_pattern.match(text) and len(text) < 500:
+        # בדיקה האם זו תחילת אות/סעיף
+        if halacha_pattern.match(clean_text) and len(clean_text) < 800:
             save_section()
-            current_sec_title = text[:60] + "..." if len(text) > 60 else text
-            current_sec_content.append(f"<h3 style='color:#004085; border-bottom:1px solid #ccc; padding-bottom:5px; margin-top:20px;'>{text}</h3>")
+            current_sec_title = clean_text[:60] + "..." if len(clean_text) > 60 else clean_text
+            current_sec_content.append(f"<h3 style='color:#004085; border-bottom:1px solid #ccc; padding-bottom:5px; margin-top:20px;'>{clean_text}</h3>")
             continue
 
         current_sec_content.append(el)
 
     save_section()
-    print("הספר סודר בהיררכיה מושלמת עם כל הסעיפים והאותיות!")
+    print("הספר טען את כל האותיות והפרקים בהצלחה מלאה!")
 
 if __name__ == "__main__":
-    import_zariz_final_fixed()
+    import_zariz_perfect()
