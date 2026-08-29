@@ -8,7 +8,7 @@ django.setup()
 
 from articles.models import Book, Chapter, Section
 
-def import_zariz_bulletproof():
+def import_zariz_final_perfect():
     book_title = "זריזין מקדימין למילה"
     
     existing_books = Book.objects.filter(title=book_title)
@@ -38,32 +38,33 @@ def import_zariz_bulletproof():
         el.decompose()
 
     body_tag = soup.find('body') or soup
-    # הוספנו כאן את 'li' כדי שלא נפספס אף אות שוורד הפך לרשימה!
     elements = body_tag.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'div', 'hr', 'li'], recursive=True)
 
-    chapter_keywords = [
-        "כללי זריזין",
-        "דיני זריזין",
-        "זריזין או הידור",
-        "הקדמת מילה למצוות",
-        "זמני הברית",
-        "אכילה ועשיית מלאכה",
+    # רשימת כותרות מדויקות בלבד (מונע ממשפטים רגילים להפוך לפרקים)
+    exact_chapters = [
+        "כללי זריזין מקדימין במצוות מילה",
+        "דיני זריזין מקדימין במצוות מילה",
+        "זריזין או הידור מצוה",
+        "הקדמת מילה למצוות אחרות",
+        "זמני הברית מילה",
+        "אכילה ועשיית מלאכה קודם הברית מילה",
         "מילה במועדים",
-        "מוהלים שונים",
-        "שלום זכר",
-        "מאמר של מנהג"
+        "מילה עם סוגי מוהלים שונים",
+        "מאמר של מנהג 'שלום זכר'",
+        "מאמר של מנהג שלום זכר",
+        "שלום זכר"
     ]
 
-    # פרק ראשון: "פתח דבר" בלבד ללא שום מילה מיותרת
     current_chapter = Chapter.objects.create(book=book, title="פתח דבר", order=1)
     ch_order = 2
     sec_order = 1
     
     current_sec_title = "פתח דבר"
     current_sec_content = []
+    hr_added_in_section = False
 
     def save_section():
-        nonlocal sec_order, current_sec_content, current_sec_title
+        nonlocal sec_order, current_sec_content, current_sec_title, hr_added_in_section
         if current_sec_content and current_chapter:
             css = "<style>sup, sub, a[href*=\"fnref\"], a[href*=\"footnote\"] { font-size: 1.35em !important; font-weight: bold !important; }</style>"
             content_html = css + "".join([str(t) for t in current_sec_content])
@@ -76,6 +77,7 @@ def import_zariz_bulletproof():
             )
             sec_order += 1
             current_sec_content = []
+            hr_added_in_section = False
 
     halacha_pattern = re.compile(r'^\s*([א-ת]{1,4})[\.\,\׳״]\s+')
 
@@ -85,19 +87,19 @@ def import_zariz_bulletproof():
         if not clean_text:
             continue
 
-        matched_chapter_title = None
-        for kw in chapter_keywords:
-            if kw in clean_text and len(clean_text) < 70:
-                matched_chapter_title = clean_text
-                break
-
-        if matched_chapter_title:
+        # בדיקה האם זו כותרת פרק אמיתית ומדויקת בלבד
+        if clean_text in exact_chapters:
             save_section()
-            current_chapter = Chapter.objects.create(book=book, title=matched_chapter_title, order=ch_order)
+            current_chapter = Chapter.objects.create(book=book, title=clean_text, order=ch_order)
             ch_order += 1
             sec_order = 1
             current_sec_title = "מבוא"
             continue
+
+        # הוספת פס שחור עבה ומובהק אוטומטית לפני אזור ההערות והמקורות (שמכילים את סימן ה-↩)
+        if not hr_added_in_section and ('↩' in clean_text or 'fnref' in str(el)):
+            current_sec_content.append('<hr style="border: 2px solid black; margin: 30px 0; width: 100%;" />')
+            hr_added_in_section = True
 
         if halacha_pattern.match(clean_text) and len(clean_text) < 1500:
             save_section()
@@ -108,7 +110,7 @@ def import_zariz_bulletproof():
         current_sec_content.append(el)
 
     save_section()
-    print("הספר יובא בהצלחה עם כל האותיות!")
+    print("הספר עודכן בהצלחה עם הפס השחור להערות ותיקון הכותרות!")
 
 if __name__ == "__main__":
-    import_zariz_bulletproof()
+    import_zariz_final_perfect()
