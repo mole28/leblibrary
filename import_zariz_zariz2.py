@@ -8,7 +8,7 @@ django.setup()
 
 from articles.models import Book, Chapter, Section
 
-def import_zariz_final_absolute():
+def import_zariz_final_clean():
     book_title = "זריזין מקדימין למילה"
     
     existing_books = Book.objects.filter(title=book_title)
@@ -76,7 +76,18 @@ def import_zariz_final_absolute():
             current_sec_content = []
 
     halacha_pattern = re.compile(r'^\s*([א-ת]{1,4})[\.\,\׳״]\s+')
-    shalom_zachar_main_pattern = re.compile(r'^[א-ח]\.\s+(מקור המנהג|טעמי המנהג|זמן השמחה|באיזה ליל|כשהתינוק|השמחה רק|שם השמחה|איזה סעודה)')
+    
+    # ביטוי שמזהה את שורות הסיכום של שלום זכר שמופיעות בתמונה כדי שלא יהפכו לכותרת
+    summary_lines_to_skip = [
+        "יש הנוהגים לעשות סעודה ולשמוח",
+        "כמה טעמים ניתנו לשמחה זו",
+        "יש אומרים שיש לעשות את השמחה",
+        "אם יש שתי שבתות מהלידה",
+        "אפשר לעשות את השמחה הזאת",
+        "שמחה זו שייכת רק בלידת זכרים",
+        "בימינו קוראים לשמחה זו",
+        "אין צריך לעשות סעודה זאת"
+    ]
 
     for el in elements:
         text = el.get_text(strip=True)
@@ -84,7 +95,6 @@ def import_zariz_final_absolute():
         if not clean_text:
             continue
 
-        # מעבר לפרק שלום זכר
         if clean_text in ["שלום זכר", "מאמר של מנהג 'שלום זכר'", "מאמר של מנהג שלום זכר"]:
             save_section()
             current_chapter = Chapter.objects.create(book=book, title="שלום זכר", order=ch_order)
@@ -94,7 +104,6 @@ def import_zariz_final_absolute():
             in_footnotes = False
             continue
 
-        # בדיקה האם זו כותרת פרק ראשית רגילה
         matched_chapter_title = None
         for kw in exact_chapters:
             if kw == clean_text:
@@ -110,13 +119,14 @@ def import_zariz_final_absolute():
             in_footnotes = False
             continue
 
-        # זיהוי מובהק של תחילת אזור ההערות (מכיל את סימן החזרה ↩ או רשימת מקורות בסוף סעיף)
         if not in_footnotes and ('↩' in clean_text or el.name == 'li' and ('רמב"ם' in clean_text or 'בראשית' in clean_text or 'שבת' in clean_text) and len(current_sec_content) > 5):
             current_sec_content.append('<hr style="border: 3px solid black; margin: 40px 0; width: 100%;" />')
             in_footnotes = True
 
-        # זיהוי תחילת סעיף ראשי (א., ב., ג'...)
-        if (halacha_pattern.match(clean_text) or shalom_zachar_main_pattern.match(clean_text)) and len(clean_text) < 1500 and not in_footnotes:
+        # בדיקה האם זו שורה מתוך הסיכום שבתמונה - אם כן, נוסיף אותה כטקסט רגיל ולא ככותרת!
+        is_summary_line = any(s in clean_text for s in summary_lines_to_skip)
+
+        if not is_summary_line and (halacha_pattern.match(clean_text)) and len(clean_text) < 1500 and not in_footnotes:
             save_section()
             current_sec_title = clean_text[:60] + "..." if len(clean_text) > 60 else clean_text
             current_sec_content.append(f"<h3 style='color:#004085; border-bottom:1px solid #ccc; padding-bottom:5px; margin-top:20px;'>{clean_text}</h3>")
@@ -126,7 +136,7 @@ def import_zariz_final_absolute():
         current_sec_content.append(el)
 
     save_section()
-    print("הספר סודר בצורה מוחלטת עם קו ההערות ותוכן עניינים מדויק לשלום זכר!")
+    print("הספר נוקה והשורשים של שלום זכר הוסרו מתוכן העניינים בהצלחה!")
 
 if __name__ == "__main__":
-    import_zariz_final_absolute()
+    import_zariz_final_clean()
