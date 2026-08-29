@@ -3,13 +3,12 @@ import django
 import re
 from bs4 import BeautifulSoup
 
-# הגדרת סביבת דג'נגו
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 django.setup()
 
 from articles.models import Book, Chapter, Section
 
-def import_zariz_perfect():
+def import_zariz_final_fix():
     book_title = "זריזין מקדימין למילה"
     
     # ניקוי הספר הישן מהמסד
@@ -20,9 +19,7 @@ def import_zariz_perfect():
                 Section.objects.filter(chapter=ch).delete()
             b.chapters.all().delete()
         existing_books.delete()
-        print("נמחקה הגרסה הישנה מהמסד.")
 
-    # יצירת הספר מחדש
     book = Book.objects.create(title=book_title)
     for field in ['author', 'writer', 'creator']:
         if hasattr(book, field):
@@ -57,7 +54,7 @@ def import_zariz_perfect():
         "מאמר של מנהג"
     ]
 
-    # פרק ראשון: שֵׁם מדויק "פתח דבר" בלבד (ללא הקדמה!)
+    # פרק ראשון: שֵׁם מדויק "פתח דבר" בלבד (בלי ההקדמה!)
     current_chapter = Chapter.objects.create(book=book, title="פתח דבר", order=1)
     ch_order = 2
     sec_order = 1
@@ -80,18 +77,15 @@ def import_zariz_perfect():
             sec_order += 1
             current_sec_content = []
 
-    # תבנית חזקה מאוד שתתפוס כל אות (א., ב., ג' וכו') ללא יוצא מן הכלל
-    halacha_pattern = re.compile(r'^\s*([א-ת]{1,3})[\.\,\'\"]\s+')
+    # תבנית שמזהה כל אות מדויק (א., ב., ג', ..., לז.) ללא הגבלה
+    halacha_pattern = re.compile(r'^\s*([א-ת]{1,4})[\.\,\'\"]\s+')
 
     for el in elements:
         text = el.get_text(strip=True)
-        # ניקוי תווים בלתי נראים לצורך בדיקה מדויקת
         clean_text = text.replace('\xa0', ' ')
-
         if not clean_text:
             continue
 
-        # בדיקה האם זו כותרת פרק ראשי
         matched_chapter_title = None
         for kw in chapter_keywords:
             if kw in clean_text and len(clean_text) < 70:
@@ -106,8 +100,7 @@ def import_zariz_perfect():
             current_sec_title = "מבוא"
             continue
 
-        # בדיקה האם זו תחילת אות/סעיף
-        if halacha_pattern.match(clean_text) and len(clean_text) < 800:
+        if halacha_pattern.match(clean_text) and len(clean_text) < 1500:
             save_section()
             current_sec_title = clean_text[:60] + "..." if len(clean_text) > 60 else clean_text
             current_sec_content.append(f"<h3 style='color:#004085; border-bottom:1px solid #ccc; padding-bottom:5px; margin-top:20px;'>{clean_text}</h3>")
@@ -116,7 +109,7 @@ def import_zariz_perfect():
         current_sec_content.append(el)
 
     save_section()
-    print("הספר טען את כל האותיות והפרקים בהצלחה מלאה!")
+    print("הספר נטען בהצלחה מלאה עם כל האותיות!")
 
 if __name__ == "__main__":
-    import_zariz_perfect()
+    import_zariz_final_fix()
