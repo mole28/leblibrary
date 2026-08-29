@@ -8,10 +8,9 @@ django.setup()
 
 from articles.models import Book, Chapter, Section
 
-def import_zariz_final_fix():
+def import_zariz_bulletproof():
     book_title = "זריזין מקדימין למילה"
     
-    # ניקוי הספר הישן מהמסד
     existing_books = Book.objects.filter(title=book_title)
     if existing_books.exists():
         for b in existing_books:
@@ -39,7 +38,8 @@ def import_zariz_final_fix():
         el.decompose()
 
     body_tag = soup.find('body') or soup
-    elements = body_tag.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'div', 'hr'], recursive=True)
+    # הוספנו כאן את 'li' כדי שלא נפספס אף אות שוורד הפך לרשימה!
+    elements = body_tag.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'div', 'hr', 'li'], recursive=True)
 
     chapter_keywords = [
         "כללי זריזין",
@@ -54,7 +54,7 @@ def import_zariz_final_fix():
         "מאמר של מנהג"
     ]
 
-    # פרק ראשון: שֵׁם מדויק "פתח דבר" בלבד (בלי ההקדמה!)
+    # פרק ראשון: "פתח דבר" בלבד ללא שום מילה מיותרת
     current_chapter = Chapter.objects.create(book=book, title="פתח דבר", order=1)
     ch_order = 2
     sec_order = 1
@@ -77,8 +77,7 @@ def import_zariz_final_fix():
             sec_order += 1
             current_sec_content = []
 
-    # תבנית שמזהה כל אות מדויק (א., ב., ג', ..., לז.) ללא הגבלה
-    halacha_pattern = re.compile(r'^\s*([א-ת]{1,4})[\.\,\'\"]\s+')
+    halacha_pattern = re.compile(r'^\s*([א-ת]{1,4})[\.\,\׳״]\s+')
 
     for el in elements:
         text = el.get_text(strip=True)
@@ -109,7 +108,7 @@ def import_zariz_final_fix():
         current_sec_content.append(el)
 
     save_section()
-    print("הספר נטען בהצלחה מלאה עם כל האותיות!")
+    print("הספר יובא בהצלחה עם כל האותיות!")
 
 if __name__ == "__main__":
-    import_zariz_final_fix()
+    import_zariz_bulletproof()
