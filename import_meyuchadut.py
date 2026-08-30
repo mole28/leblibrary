@@ -46,7 +46,7 @@ def import_meyuchadut_book():
         print(f"שגיאה: הקובץ {docx_path} לא נמצא בתיקייה!")
         return
 
-    print("ממיר את קובץ ה-Word לנתונים נקיים...")
+    print("ממיר את קובץ ה-Word ומייצר היררכיית תוכן עניינים...")
     
     with open(docx_path, "rb") as docx_file:
         result = mammoth.convert_to_html(docx_file)
@@ -54,6 +54,7 @@ def import_meyuchadut_book():
 
     soup = BeautifulSoup(raw_html, 'html.parser')
     
+    # חילוץ הערות השוליים
     footnotes_dict = {}
     for li in soup.find_all('li', id=re.compile(r'^footnote-')):
         fn_id = li['id']
@@ -66,34 +67,73 @@ def import_meyuchadut_book():
         if not ol.get_text(strip=True):
             ol.extract()
 
+    # היררכיה כפולה לתוכן העניינים
     chapters_data = []
-    current_title = "הקדמה"
-    current_content = []
+    current_chapter = None
+    current_section = None
     
-    def is_heading(text_to_check):
-        t = text_to_check.strip()
+    def is_chapter(t):
         if t == "פתח דבר": return True
         if re.match(r'^סוגיא\s+[א-ת]{1,2}\s*[-–]', t): return True
         if re.match(r'^(?:נספחים|נפחים)\s+לסוגיא\s+[א-ת]', t): return True
         if re.match(r'^סימן\s+[א-ת]{1,2}\s*[-–]', t): return True
         return False
 
+    def is_section(t):
+        if re.match(r'^אות\s+[א-ת]{1,2}\s*[-–]', t): return True
+        return False
+
     for tag in soup.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'div', 'ul', 'ol', 'table']):
         text = tag.get_text(strip=True)
         clean_text = re.sub(r'\s+', ' ', text).strip()
         
-        if len(clean_text) < 100 and is_heading(clean_text):
-            if current_content:
-                chapters_data.append((current_title, current_content))
-            current_title = clean_text
-            current_content = [tag]
-        else:
-            current_content.append(tag)
+        # זיהוי פרק ראשי (יופיע מודגש)
+        if len(clean_text) < 150 and is_chapter(clean_text):
+            current_chapter = {'title': clean_text, 'sections': []}
+            chapters_data.append(current_chapter)
+            # יצירת סעיף פתיחה לטקסט המקדים של הסוגיא
+            current_section = {'title': 'פתיחה', 'tags': [tag], 'is_intro': True}
+            current_chapter['sections'].append(current_section)
             
-    if current_content:
-        chapters_data.append((current_title, current_content))
+        # זיהוי סעיף פנימי - אותיות (יופיע רגיל, לא מודגש)
+        elif len(clean_text) < 150 and is_section(clean_text):
+            if not current_chapter:
+                current_chapter = {'title': "הקדמה", 'sections': []}
+                chapters_data.append(current_chapter)
+            current_section = {'title': clean_text, 'tags': [tag], 'is_intro': False}
+            current_chapter['sections'].append(current_section)
+            
+        # טקסט רגיל
+        else:
+            if not current_section:
+                current_chapter = {'title': "הקדמה", 'sections': []}
+                chapters_data.append(current_chapter)
+                current_section = {'title': 'פתיחה', 'tags': [], 'is_intro': True}
+                current_chapter['sections'].append(current_section)
+            current_section['tags'].append(tag)
 
-    # עיצוב מתוקן ומדויק - גודל נוח (0.9em), מודגש, ללא שבירת מרווח שורות
+    # סידור הסעיפים ומניעת "סעיפי פתיחה" ריקים במקום שאין הקדמה
+    for ch in chapters_data:
+        valid_sections = []
+        for i, sec in enumerate(ch['sections']):
+            if sec.get('is_intro'):
+                text_content = "".join(t.get_text(strip=True) for t in sec['tags'][1:])
+                if not text_content.strip():
+                    if i + 1 < len(ch['sections']):
+                        ch['sections'][i+1]['tags'] = sec['tags'] + ch['sections'][i+1]['tags']
+                    else:
+                        valid_sections.append(sec)
+                else:
+                    valid_sections.append(sec)
+            else:
+                valid_sections.append(sec)
+        
+        # אם יש בפרק רק סעיף אחד, נקרא לו בשם של הפרק
+        if len(valid_sections) == 1:
+            valid_sections[0]['title'] = ch['title']
+            
+        ch['sections'] = valid_sections
+
     force_large_css = """
     <style>
     sup, sub, .MsoFootnoteReference, a[href*="ftn"], a[href*="footnote"], a[href*="ref"] {
@@ -106,43 +146,46 @@ def import_meyuchadut_book():
     """
 
     ch_order = 1
-    for ch_title, ch_tags in chapters_data:
-        ch_html = "".join(str(tag) for tag in ch_tags)
-        ch_soup = BeautifulSoup(ch_html, 'html.parser')
-        
-        chapter_footnotes_html = ""
-        refs = ch_soup.find_all('a', href=re.compile(r'^#footnote-'))
-        if refs:
-            chapter_footnotes_html += "<hr class='footnotes-divider'><ol>"
-            seen_fns = set()
-            for ref in refs:
-                fn_target = ref['href'].replace('#', '')
-                if fn_target in footnotes_dict and fn_target not in seen_fns:
-                    chapter_footnotes_html += str(footnotes_dict[fn_target])
-                    seen_fns.add(fn_target)
-            chapter_footnotes_html += "</ol>"
-
-        for tag_b in ch_soup.find_all(['strong', 'b']):
-            tag_b.unwrap()
-
-        final_content = force_large_css + str(ch_soup) + chapter_footnotes_html
-
+    for ch_data in chapters_data:
         chapter = Chapter.objects.create(
             book=book,
-            title=ch_title[:150],
+            title=ch_data['title'][:150],
             order=ch_order
         )
-
-        Section.objects.create(
-            chapter=chapter,
-            title=ch_title[:150],
-            content=final_content,
-            order=1
-        )
         
+        sec_order = 1
+        for sec_data in ch_data['sections']:
+            sec_html = "".join(str(tag) for tag in sec_data['tags'])
+            sec_soup = BeautifulSoup(sec_html, 'html.parser')
+            
+            section_footnotes_html = ""
+            refs = sec_soup.find_all('a', href=re.compile(r'^#footnote-'))
+            if refs:
+                section_footnotes_html += "<hr class='footnotes-divider'><ol>"
+                seen_fns = set()
+                for ref in refs:
+                    fn_target = ref['href'].replace('#', '')
+                    if fn_target in footnotes_dict and fn_target not in seen_fns:
+                        section_footnotes_html += str(footnotes_dict[fn_target])
+                        seen_fns.add(fn_target)
+                section_footnotes_html += "</ol>"
+
+            for tag_b in sec_soup.find_all(['strong', 'b']):
+                tag_b.unwrap()
+
+            final_content = force_large_css + str(sec_soup) + section_footnotes_html
+
+            Section.objects.create(
+                chapter=chapter,
+                title=sec_data['title'][:150],
+                content=final_content,
+                order=sec_order
+            )
+            sec_order += 1
+            
         ch_order += 1
 
-    print(f"הספר '{book_title}' יובא בהצלחה עם עיצוב הערות שוליים מתוקן!")
+    print(f"הספר '{book_title}' יובא בהצלחה! האותיות שולבו בתוכן העניינים בהיררכיה הנכונה.")
 
 if __name__ == "__main__":
     import_meyuchadut_book()
