@@ -21,101 +21,82 @@ def clean_word_html(html_content):
         
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    # === 0. מחיקת עיצוב קודם שלנו (כדי ששמירה חוזרת לא תשכפל) ===
-    for old_h2 in soup.find_all('h2', string="הערות שוליים"):
-        old_hr = old_h2.find_previous_sibling('hr')
-        if old_hr:
-            old_hr.decompose()
-        old_ol = old_h2.find_next_sibling('ol', class_='custom-footnotes-list')
-        if old_ol:
-            old_ol.unwrap() 
-        old_h2.decompose()
+    # === 0. מחיקת אזור הערות שנוצר בעבר כדי למנוע כפילויות בשמירה חוזרת ===
+    for h2 in soup.find_all('h2', string="הערות שוליים"):
+        hr = h2.find_previous_sibling('hr')
+        if hr:
+            hr.decompose()
+        container = h2.find_next_sibling('div', class_='custom-footnotes-container')
+        if container:
+            container.decompose()
+        h2.decompose()
 
-    # === 1. איסוף כל ההערות מהתחתית *לפני* שמוחקים את הלינקים! ===
-    footnotes_to_move = []
-    
-    # זיהוי לפי לינק חזרה למעלה (backlink) - השיטה הכי בטוחה בוורד
-    for a_back in soup.find_all('a', href=re.compile(r'^#(_ftnref|ftnref|footnote-ref|ref)')):
-        parent_block = a_back.find_parent(['p', 'div', 'li'])
-        if parent_block and parent_block not in footnotes_to_move:
-            footnotes_to_move.append(parent_block)
-    
-    # זיהוי גיבוי לפי id או name
-    for tag in soup.find_all(['p', 'div', 'li']):
-        if tag in footnotes_to_move:
-            continue
-        # בדיקת ID
-        if tag.get('id') and re.match(r'^(_ftn|ftn|footnote)\d+', tag.get('id')):
-            footnotes_to_move.append(tag)
-            continue
-        # בדיקת name בתוך הבלוק
-        anchor = tag.find('a', attrs={"name": re.compile(r'^(_ftn|ftn|footnote)\d+')})
-        if anchor:
-            footnotes_to_move.append(tag)
-
-    # === 2. סידור ההפניות בגוף הטקסט ומחיקת חצים ===
-    for a in soup.find_all('a', href=True):
-        href = a['href']
+    # === 1. טיפול בהפניות שבתוך הטקסט (המספרים הקטנים) ===
+    # מחפש לינקים שמפנים למטה (למשל href="#_ftn1") - ה-Regex מזהה רק מספרים אחרי המילה
+    for a in soup.find_all('a', href=re.compile(r'^#(_ftn\d+|ftn\d+|footnote\d+)')):
+        # מסיר סוגריים וחצים מהטקסט המוצג בגוף המאמר
+        text = a.get_text(strip=True)
+        clean_text = re.sub(r'[\[\]\^↑]', '', text)
+        if clean_text:
+            a.string = clean_text
         
-        # אם זה לינק בגוף הטקסט שמפנה למטה להערה
-        if re.match(r'^#(_ftn\d+|ftn\d+|footnote\d+)', href):
-            text = a.get_text(strip=True)
-            # שולף רק את המספר עצמו (מתעלם מסוגריים, רווחים וכו')
-            num = re.sub(r'\D', '', text)
-            if num:
-                a.string = num
-                a['class'] = a.get('class', []) + ['footnote-ref']
-                
-        # אם זה לינק חזרה למעלה (החץ) - למחוק אותו עכשיו (אחרי שכבר אספנו את ההערה)!
-        elif re.match(r'^#(_ftnref|ftnref|footnote-ref|ref)', href):
-            a.decompose()
+        # מוסיף קלאס לעיצוב
+        a['class'] = a.get('class', []) + ['footnote-ref']
+        
+        # מוודא שהלינק נמצא בתוך תגית <sup> כדי שיופיע בקטן ולמעלה
+        if a.parent and a.parent.name != 'sup':
+            sup = soup.new_tag('sup')
+            a.wrap(sup)
 
-    # מחיקת חצים (↑ או ^) מכל מקום
-    for text_node in soup.find_all(string=re.compile(r'[↑^]')):
-        text_node.replace_with(text_node.replace('↑', '').replace('^', '').strip())
+    # === 2. איסוף ההערות מהתחתית והעברתן בבטחה ===
+    footnotes_blocks = []
+    
+    # חיפוש העוגנים (anchors) של ההערות שממוקמים למטה
+    for target_a in soup.find_all('a', attrs={'name': re.compile(r'^(_ftn\d+|ftn\d+|footnote\d+)')}):
+        # לוקח את הפסקה השלמה שעוטפת את ההערה
+        p = target_a.find_parent(['p', 'div', 'li'])
+        if p and p not in footnotes_blocks:
+            # מגדיר את ה-ID על הפסקה עצמה כדי שהקפיצה מהטקסט תעבוד ישירות אליה
+            p['id'] = target_a.get('name')
+            
+            # חיפוש לינק שחוזר למעלה (בדרך כלל הוא מכיל את מספר ההערה ולפעמים חץ)
+            for backlink in p.find_all('a', href=re.compile(r'^#(_ftnref|ftnref|footnote-ref)')):
+                bl_text = backlink.get_text(strip=True)
+                # מנקה סוגריים וחצים כדי לחלץ רק את המספר
+                clean_bl = re.sub(r'[\[\]\^↑]', '', bl_text)
+                
+                # אם מצאנו מספר, נהפוך אותו למספר יפהפה עם נקודה בסוף
+                if clean_bl:
+                    num_span = soup.new_tag('span', style='font-weight:bold; color:#d4af37; margin-left:8px;')
+                    num_span.string = f"{clean_bl}."
+                    backlink.replace_with(num_span)
+                else:
+                    backlink.decompose() # אם זה רק חץ ריק, נמחק
+            
+            footnotes_blocks.append(p)
 
     # === 3. בניית אזור ההערות המעוצב בסוף ===
-    if footnotes_to_move:
-        # בניית הקו המפריד היפהפה והעבה
+    if footnotes_blocks:
         hr = soup.new_tag('hr', style='border: 0; border-top: 5px solid #2c3e50; margin: 60px 0 40px 0; opacity: 1;')
         h2 = soup.new_tag('h2', style='text-align: center; color: #d4af37; margin-bottom: 30px; font-weight: bold;')
         h2.string = "הערות שוליים"
-        ol = soup.new_tag('ol', class_='custom-footnotes-list', style='font-size: 1.1em; line-height: 1.8; margin-right: 20px; padding-right: 20px;')
+        
+        # משתמשים ב-DIV פשוט במקום OL כדי לא לשבור את המבנה והטקסט של וורד
+        container = soup.new_tag('div', class_='custom-footnotes-container', style='font-size: 1.1em; line-height: 1.8;')
+        
+        for block in footnotes_blocks:
+            # עיצוב מרווח לכל הערה כדי שלא ידבקו אחת לשנייה
+            block['style'] = block.get('style', '') + '; margin-bottom: 12px; display: block;'
+            container.append(block.extract())
 
-        for fn_block in footnotes_to_move:
-            li = soup.new_tag('li', style='margin-bottom: 15px;')
-            
-            # מציאת ה-ID לחיבור נכון לטקסט
-            fn_id = fn_block.get('id')
-            if not fn_id:
-                anchor = fn_block.find('a', attrs={"name": re.compile(r'^(_ftn|ftn|footnote)\d+')})
-                if anchor:
-                    fn_id = anchor.get('name')
-            
-            if fn_id:
-                li['id'] = fn_id
+        # מחיקת קווים מפרידים קטנים שוורד מייצר אוטומטית בתחתית
+        for hr_tag in soup.find_all('hr'):
+            if hr_tag.get('size') == '1' or hr_tag.get('width') == '33%':
+                hr_tag.decompose()
 
-            # ביטול פסקאות פנימיות שגורמות לרווחי ענק
-            for p in fn_block.find_all('p'):
-                p.unwrap()
-                
-            # מחיקת המספרים בהתחלה (למשל "[1] ") כדי שהרשימה תמספר את עצמה יפה
-            for child in fn_block.contents:
-                if isinstance(child, str):
-                    stripped = re.sub(r'^[\s\[\]\(\)\.]*\d+[\s\.\)\]]*', '', child)
-                    child.replace_with(stripped)
-                    break
-                    
-            for child in list(fn_block.contents):
-                li.append(child)
-                
-            ol.append(li)
-            fn_block.extract() # מחיקה מוחלטת של ההערה המבולגנת מהמקור
-
-        # הוספת כל היופי הזה לסוף המאמר
         soup.append(hr)
         soup.append(h2)
-        soup.append(ol)
+        soup.append(container)
 
     # === 4. ניקוי פסקאות ריקות ===
     for p in soup.find_all('p'):
