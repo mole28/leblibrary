@@ -19,131 +19,152 @@ def clean_word_html(html_content):
     if not html_content:
         return html_content
         
+    # השמדה מוחלטת של כל סוגי החצים כבר ברמת המחרוזת הבסיסית!
+    html_content = html_content.replace('^', '').replace('↑', '').replace('ˆ', '')
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    # === 1. סידור ההפניות בגוף הטקסט (המספרים הקטנים) ===
-    # טיפול במספרים שהם קישורים (וורד סטנדרטי)
-    for a in soup.find_all('a'):
-        text = a.get_text(strip=True)
-        # זיהוי אם הקישור מכיל רק מספרים וסוגריים
-        num = re.sub(r'\D', '', text)
-        if num and re.sub(r'[\d\[\]\(\)]', '', text) == '':
-            a.string = num
-            a['href'] = f"#footnote-{num}"
-            a['class'] = a.get('class', []) + ['footnote-ref']
-            # עוטף ב-SUP כדי שיופיע בקטן למעלה
-            if a.parent and a.parent.name != 'sup':
-                a.wrap(soup.new_tag('sup'))
+    # === 0. מחיקת עיצוב קודם שלנו (כדי ששמירה חוזרת לא תשכפל) ===
+    for el in soup.find_all('div', class_='custom-footnotes-container'):
+        el.decompose()
+    for el in soup.find_all('h2', string="הערות שוליים"):
+        prev_hr = el.find_previous_sibling('hr')
+        if prev_hr: prev_hr.decompose()
+        el.decompose()
+
+    paragraphs = soup.find_all(['p', 'div'])
+    
+    # === 1. איתור חכם של אזור ההערות בתחתית הדף ===
+    footnote_start_idx = -1
+    for i, p in enumerate(paragraphs):
+        text = p.get_text(strip=True)
+        # מחפש פסקה שמכילה רק מספר הערה ראשון (למשל: "1", "1.", ".1", "[1]")
+        if re.match(r'^[\.\[\]\(\)]*\s*1\s*[\.\[\]\(\)]*$', text):
+            # מוודא שזה באמת אזור ההערות (בודק אם יש "2" קרוב או שזה סוף המסמך)
+            found_2 = False
+            for j in range(i+1, min(i+6, len(paragraphs))):
+                if re.match(r'^[\.\[\]\(\)]*\s*2\s*[\.\[\]\(\)]*$', paragraphs[j].get_text(strip=True)):
+                    found_2 = True
+                    break
+            if found_2 or i >= len(paragraphs) - 5:
+                footnote_start_idx = i
+                break
+
+    built_footnotes = []
+    if footnote_start_idx != -1:
+        current_fn = None
+        for p in paragraphs[footnote_start_idx:]:
+            text = p.get_text(strip=True)
+            if not text:
+                p.decompose()
+                continue
+            
+            # מצב א': פסקה שהיא רק מספר (כמו שקרה לך בצילום מסך)
+            match_standalone = re.match(r'^[\.\[\]\(\)]*\s*(\d+)\s*[\.\[\]\(\)]*$', text)
+            if match_standalone:
+                num = match_standalone.group(1)
+                current_fn = {'num': num, 'elements': []}
+                built_footnotes.append(current_fn)
+                p.decompose()
+                continue
                 
-    # טיפול במספרים עיליים רגילים ללא קישור (במידה ו-CKEditor מחק להם את הלינק)
+            # מצב ב': פסקה שמתחילה במספר ואז טקסט (כמו 1. ירושלמי...)
+            match_inline = re.match(r'^[\.\[\]\(\)]*\s*(\d+)[\.\[\]\(\)\-\:]*\s+(.*)$', text)
+            if match_inline:
+                num = match_inline.group(1)
+                expected_num = str(len(built_footnotes) + 1)
+                # וידוא שזה באמת המספר הבא ברצף
+                if num == expected_num or num == str(len(built_footnotes)):
+                    current_fn = {'num': num, 'elements': []}
+                    built_footnotes.append(current_fn)
+                    # מחיקת המספר מתחילת הטקסט ויזואלית (ללא איבוד תגיות HTML)
+                    for text_node in p.find_all(string=True):
+                        if num in text_node:
+                            new_val = re.sub(r'^[\s\.\[\]\(\)]*' + num + r'[\s\.\[\]\(\)\-\:]*', '', text_node, count=1)
+                            text_node.replace_with(new_val)
+                            break
+                    current_fn['elements'].append(p.extract())
+                    continue
+                    
+            # מצב ג': המשך של הערה קיימת שירדה שורה
+            if current_fn:
+                current_fn['elements'].append(p.extract())
+
+    # === 2. שחזור וסידור ההפניות (המספרים הקטנים) בגוף המאמר ===
+    
+    # א. אם וורד שמר על תגיות הקישור
+    for a in soup.find_all('a'):
+        href = a.get('href', '')
+        if href.startswith('#'):
+            text = a.get_text(strip=True)
+            clean_num = re.sub(r'\D', '', text)
+            if clean_num and clean_num.isdigit():
+                a.string = clean_num
+                a['href'] = f"#footnote-{clean_num}"
+                a['class'] = a.get('class', []) + ['footnote-ref']
+                if a.parent and a.parent.name != 'sup':
+                    a.wrap(soup.new_tag('sup'))
+                    
+    # ב. אם נשארו רק תגיות <sup> ללא קישור
     for sup in soup.find_all('sup'):
         if not sup.find('a'):
             text = sup.get_text(strip=True)
-            num = re.sub(r'\D', '', text)
-            if num and re.sub(r'[\d\[\]\(\)]', '', text) == '':
-                a = soup.new_tag('a', href=f"#footnote-{num}", class_="footnote-ref")
-                a.string = num
+            clean_num = re.sub(r'\D', '', text)
+            if clean_num and clean_num.isdigit():
+                a = soup.new_tag('a', href=f"#footnote-{clean_num}", class_="footnote-ref")
+                a.string = clean_num
                 sup.string = ''
                 sup.append(a)
 
-    # === 2. איתור תחילת אזור ההערות בתחתית הדף ===
-    first_fn_node = None
-    for p in soup.find_all(['p', 'div', 'li']):
-        text = p.get_text(strip=True)
-        # זיהוי שורה שמתחילה במספר כלשהו + חץ, למשל: "1. ^ ירושלמי..."
-        if re.match(r'^[\s\[\]\(\)]*\d+[\.\)\]\-]*\s*\^', text):
-            first_fn_node = p
-            break
+    # ג. מנגנון חילוץ עמוק: אם וורד הפך את ההפניה לטקסט רגיל לגמרי כמו [1]
+    if built_footnotes:
+        max_fn = len(built_footnotes)
+        for text_node in soup.find_all(string=re.compile(r'\[\d+\]')):
+            new_html = re.sub(
+                r'\[(\d+)\]', 
+                lambda m: f'<sup><a href="#footnote-{m.group(1)}" class="footnote-ref">{m.group(1)}</a></sup>' if int(m.group(1)) <= max_fn else m.group(0), 
+                text_node
+            )
+            if new_html != text_node:
+                new_soup = BeautifulSoup(new_html, 'html.parser')
+                text_node.replace_with(new_soup)
 
-    # === 3. חילוץ וסידור ההערות ===
-    if first_fn_node:
-        # מחיקת אזור הערות שנוצר בעבר (כדי ששמירה חוזרת לא תשכפל)
-        for h2 in soup.find_all('h2', string="הערות שוליים"):
-            hr = h2.find_previous_sibling('hr')
-            if hr: hr.decompose()
-            container = h2.find_next_sibling('div', class_='custom-footnotes-container')
-            if container: container.decompose()
-            old_ol = h2.find_next_sibling('ol', class_='custom-footnotes-list')
-            if old_ol: old_ol.decompose()
-            h2.decompose()
+    # === 3. הזרקת אזור ההערות המעוצב בסוף המאמר (Flexbox לעימוד מושלם) ===
+    if built_footnotes:
+        hr_new = soup.new_tag('hr', style='border: 0; border-top: 5px solid #2c3e50; margin: 60px 0 40px 0; opacity: 1;')
+        h2 = soup.new_tag('h2', style='text-align: center; color: #d4af37; margin-bottom: 30px; font-weight: bold;')
+        h2.string = "הערות שוליים"
+        container = soup.new_tag('div', class_='custom-footnotes-container', style='font-size: 1.1em; line-height: 1.8; margin-right: 10px;')
 
-        # איסוף כל האלמנטים מאזור ההערות ועד הסוף
-        raw_elements = []
-        curr = first_fn_node
-        while curr:
-            next_node = curr.next_sibling
-            raw_elements.append(curr.extract())
-            curr = next_node
-
-        built_footnotes = []
-        current_fn = None
-
-        for el in raw_elements:
-            if not hasattr(el, 'get_text'): continue
-            text = el.get_text(strip=True)
-            if not text: continue
+        for fn in built_footnotes:
+            div = soup.new_tag('div', style='margin-bottom: 15px; display: flex; align-items: flex-start;')
+            div['id'] = f"footnote-{fn['num']}"
             
-            # העלמת כל החצים
-            for text_node in el.find_all(string=re.compile(r'[↑^]')):
-                text_node.replace_with(text_node.replace('↑', '').replace('^', ''))
+            num_span = soup.new_tag('span', style='font-weight:bold; color:#d4af37; min-width: 35px; flex-shrink: 0;')
+            num_span.string = f"{fn['num']}."
+            
+            content_span = soup.new_tag('span', style='flex-grow: 1;')
+            for el in fn['elements']:
+                # הסרת פסקאות פנימיות כדי שהטקסט לא יישבר לשורה חדשה וישב צמוד למספר
+                if el.name == 'p':
+                    el.unwrap()
+                content_span.append(el)
+                content_span.append(soup.new_string(" ")) 
                 
-            # הסרת כל הקישורים הפנימיים המיותרים בתוך ההערה
-            for a in el.find_all('a'):
-                a.decompose()
-                
-            # זיהוי האם זו תחילת הערה חדשה
-            match = re.match(r'^[\s\[\]\(\)]*(\d+)[\.\)\]\-]*\s*(.*)', el.get_text(strip=True))
-            if match:
-                num = match.group(1)
-                
-                # הסרת המספר מתחילת הטקסט כדי למנוע כפילות בתצוגה
-                for text_node in el.find_all(string=True):
-                    if num in text_node:
-                        new_text = re.sub(r'^[\s\[\]\(\)]*' + num + r'[\.\)\]\-]*\s*', '', text_node, count=1)
-                        text_node.replace_with(new_text)
-                        break
-                        
-                for p in el.find_all('p'): p.unwrap() # ביטול שבירת שורות מיותרות
-                
-                current_fn = {'num': num, 'elements': [el]}
-                built_footnotes.append(current_fn)
-            elif current_fn:
-                for p in el.find_all('p'): p.unwrap()
-                current_fn['elements'].append(el)
+            div.append(num_span)
+            div.append(content_span)
+            container.append(div)
 
-        # === 4. הזרקת ההערות חזרה למסמך בעיצוב נקי ===
-        if built_footnotes:
-            hr_new = soup.new_tag('hr', style='border: 0; border-top: 5px solid #2c3e50; margin: 60px 0 40px 0; opacity: 1;')
-            h2 = soup.new_tag('h2', style='text-align: center; color: #d4af37; margin-bottom: 30px; font-weight: bold;')
-            h2.string = "הערות שוליים"
-            container = soup.new_tag('div', class_='custom-footnotes-container', style='font-size: 1.1em; line-height: 1.8; margin-right: 10px;')
+        soup.append(hr_new)
+        soup.append(h2)
+        soup.append(container)
 
-            for fn in built_footnotes:
-                # שימוש ב-flexbox פותר לחלוטין את בעיית שבירת השורות של וורד
-                div = soup.new_tag('div', style='margin-bottom: 15px; display: flex; align-items: flex-start;')
-                div['id'] = f"footnote-{fn['num']}"
-                
-                num_span = soup.new_tag('span', style='font-weight:bold; color:#d4af37; min-width: 35px; flex-shrink: 0;')
-                num_span.string = f"{fn['num']}."
-                
-                content_span = soup.new_tag('span', style='flex-grow: 1;')
-                for el in fn['elements']:
-                    content_span.append(el)
-                    
-                div.append(num_span)
-                div.append(content_span)
-                container.append(div)
-
-            soup.append(hr_new)
-            soup.append(h2)
-            soup.append(container)
-
-    # מחיקת פסקאות ריקות
+    # ניקוי סופי של פסקאות ריקות שעושות רווחים
     for p in soup.find_all('p'):
         if not p.get_text(strip=True) and not p.find(['img', 'iframe']):
             p.decompose()
 
     return str(soup)
+
 
 # ==========================================
 # רשימת פרשות השבוע (מסודרת לפי חומשים)
