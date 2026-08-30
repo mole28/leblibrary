@@ -24,10 +24,10 @@ def process_mammoth_html(raw_html):
     if not raw_html: return ""
     soup = BeautifulSoup(raw_html, 'html.parser')
 
-    # 1. סידור ההפניות (המספרים הקטנים בתוך המאמר) [1] -> 1
+    # 1. סידור ההפניות בתוך המאמר והוספת סוגריים [1]
     for ref in soup.find_all('a', id=re.compile(r'^footnote-ref-')):
         clean_num = ref.get_text(strip=True).replace('[', '').replace(']', '')
-        ref.string = clean_num
+        ref.string = f"[{clean_num}]" # הוספת סוגריים מרובעים מסביב למספר
         ref['class'] = ref.get('class', []) + ['footnote-ref']
         if ref.parent and ref.parent.name != 'sup':
             ref.wrap(soup.new_tag('sup'))
@@ -150,14 +150,13 @@ class Article(models.Model):
         return self.title
 
     def save(self, *args, **kwargs):
-        # אם המשתמש העלה קובץ וורד, קורא אותו ודורס את התוכן!
         if self.word_file and mammoth:
             try:
                 self.word_file.open('rb')
                 result = mammoth.convert_to_html(self.word_file.file)
                 self.content = process_mammoth_html(result.value)
                 self.word_file.close()
-                self.word_file = None # מוחק את הקובץ כדי שלא יעבד אותו מחדש בשמירה הבאה
+                self.word_file = None 
             except Exception as e:
                 print(f"Error parsing word: {e}")
                 

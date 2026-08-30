@@ -503,7 +503,6 @@
             display: flex !important;
         }
         
-        /* התיקון שלנו: שימוש ב-transform כדי להוציא בוודאות את התפריט מהמסך */
         .toc-nav-container {
             position: fixed !important;
             top: 0;
@@ -542,6 +541,16 @@
             box-shadow: none !important;
             padding-top: 50px !important;
         }
+    }
+
+    /* עיצוב הפניות והערות שוליים גלובלי לכל המאמרים והספרים */
+    sup, sub, .MsoFootnoteReference, .footnote-ref, a[href*="ftn"], a[href*="footnote"], a[href*="ref"] {
+        font-size: 1.15em !important; /* הפונט הוגדל בול כמו שביקשת */
+        font-weight: bold !important;
+        vertical-align: super !important;
+        text-decoration: none;
+        color: #d4af37; 
+        margin: 0 2px;
     }
 </style>
 
