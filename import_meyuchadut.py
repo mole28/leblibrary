@@ -48,18 +48,15 @@ def import_meyuchadut_book():
 
     print("ממיר את קובץ ה-Word לנתונים נקיים...")
     
-    # המרת קובץ הוורד ישירות דרך mammoth
     with open(docx_path, "rb") as docx_file:
         result = mammoth.convert_to_html(docx_file)
         raw_html = result.value
 
     soup = BeautifulSoup(raw_html, 'html.parser')
     
-    # חילוץ חכם של כל הערות השוליים מקובץ הוורד
     footnotes_dict = {}
     for li in soup.find_all('li', id=re.compile(r'^footnote-')):
         fn_id = li['id']
-        # נסיר את סימן החץ (↑) שמוחזר אוטומטית למעלה כדי שיהיה טקסט נקי
         for back_link in li.find_all('a', string='↑'):
             back_link.decompose()
         footnotes_dict[fn_id] = li
@@ -69,7 +66,6 @@ def import_meyuchadut_book():
         if not ol.get_text(strip=True):
             ol.extract()
 
-    # חלוקה לפרקים לפי כותרות ראשיות בלבד (ללא אותיות)
     chapters_data = []
     current_title = "הקדמה"
     current_content = []
@@ -78,7 +74,7 @@ def import_meyuchadut_book():
         t = text_to_check.strip()
         if t == "פתח דבר": return True
         if re.match(r'^סוגיא\s+[א-ת]{1,2}\s*[-–]', t): return True
-        if re.match(r'^(?:נספחים|נפחים)\s+לסוגיא\s+[א-ת]', t): return True # כולל הטיפול בשגיאת הכתיב "נפחים"
+        if re.match(r'^(?:נספחים|נפחים)\s+לסוגיא\s+[א-ת]', t): return True
         if re.match(r'^סימן\s+[א-ת]{1,2}\s*[-–]', t): return True
         return False
 
@@ -97,12 +93,14 @@ def import_meyuchadut_book():
     if current_content:
         chapters_data.append((current_title, current_content))
 
+    # עיצוב מתוקן ומדויק - גודל נוח (0.9em), מודגש, ללא שבירת מרווח שורות
     force_large_css = """
     <style>
     sup, sub, .MsoFootnoteReference, a[href*="ftn"], a[href*="footnote"], a[href*="ref"] {
-        font-size: 1.35em !important;
+        font-size: 0.9em !important;
         font-weight: bold !important;
-        vertical-align: baseline !important;
+        vertical-align: super !important;
+        line-height: 0;
     }
     </style>
     """
@@ -112,7 +110,6 @@ def import_meyuchadut_book():
         ch_html = "".join(str(tag) for tag in ch_tags)
         ch_soup = BeautifulSoup(ch_html, 'html.parser')
         
-        # הזרקת הערות השוליים הספציפיות ששייכות לפרק הזה בלבד!
         chapter_footnotes_html = ""
         refs = ch_soup.find_all('a', href=re.compile(r'^#footnote-'))
         if refs:
@@ -125,7 +122,6 @@ def import_meyuchadut_book():
                     seen_fns.add(fn_target)
             chapter_footnotes_html += "</ol>"
 
-        # ניקוי הדגשות מיותרות מהטקסט כמו בספרים הקודמים
         for tag_b in ch_soup.find_all(['strong', 'b']):
             tag_b.unwrap()
 
@@ -146,7 +142,7 @@ def import_meyuchadut_book():
         
         ch_order += 1
 
-    print(f"הספר '{book_title}' יובא בהצלחה ישירות מקובץ הוורד, הכל תקין!")
+    print(f"הספר '{book_title}' יובא בהצלחה עם עיצוב הערות שוליים מתוקן!")
 
 if __name__ == "__main__":
     import_meyuchadut_book()
