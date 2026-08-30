@@ -13,6 +13,110 @@ from django.contrib.auth.models import User
 from datetime import timedelta
 
 # ==========================================
+# פונקציית ניקוי גלובלית להעתקות מוורד
+# ==========================================
+def clean_word_html(html_content):
+    if not html_content:
+        return html_content
+        
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    # === 0. מחיקת עיצוב קודם שלנו (כדי ששמירה חוזרת לא תשכפל) ===
+    for old_h2 in soup.find_all('h2', string="הערות שוליים"):
+        old_hr = old_h2.find_previous_sibling('hr')
+        if old_hr:
+            old_hr.decompose()
+        old_ol = old_h2.find_next_sibling('ol', class_='custom-footnotes-list')
+        if old_ol:
+            old_ol.unwrap() 
+        old_h2.decompose()
+
+    # === 1. עיצוב הפניות להערות שוליים בתוך הטקסט (המספרים הקטנים) ===
+    for a in soup.find_all('a', href=True):
+        href = a['href']
+        # זיהוי לינקים שמפנים למטה להערות (כמו #_ftn1 או #footnote1)
+        if re.match(r'^#(_ftn|ftn|footnote)\d+', href) and not re.match(r'^#(_ftnref|ftnref|footnote-ref)', href):
+            text = a.get_text(strip=True)
+            clean_num = text.replace('[', '').replace(']', '') # הורדת סוגריים מרובעים
+            if clean_num.isdigit():
+                a.string = clean_num
+                a['class'] = a.get('class', []) + ['footnote-ref'] # מחלקה מיוחדת לעיצוב
+                
+        # מחיקת לינקים שמפנים חזרה למעלה (החצים)
+        elif re.match(r'^#(_ftnref|ftnref|footnote-ref)', href):
+            a.decompose()
+
+    # מחיקת חצים (↑ או ^) שנשארו כטקסט רגיל
+    for text_node in soup.find_all(string=re.compile(r'[↑^]')):
+        text_node.replace_with(text_node.replace('↑', '').replace('^', '').strip())
+
+    # === 2. איסוף כל ההערות מהתחתית (כפי שהועתקו מוורד) ===
+    footnotes_to_move = []
+    
+    # חיפוש תגיות שיש להן מאפיין name של הערה
+    for a_tag in soup.find_all('a', attrs={"name": re.compile(r'^(_ftn|ftn|footnote)\d+')}):
+        parent_block = a_tag.find_parent(['p', 'div', 'li'])
+        if parent_block and parent_block not in footnotes_to_move:
+            footnotes_to_move.append(parent_block)
+    
+    # חיפוש תגיות עם id של הערה
+    for tag in soup.find_all(['p', 'div', 'li'], id=re.compile(r'^(_ftn|ftn|footnote)\d+')):
+        if tag not in footnotes_to_move:
+            footnotes_to_move.append(tag)
+
+    # === 3. בניית אזור ההערות המעוצב בסוף ===
+    if footnotes_to_move:
+        # הקו העבה המפריד
+        hr = soup.new_tag('hr', style='border: 0; border-top: 5px solid #2c3e50; margin: 60px 0 40px 0; opacity: 1;')
+        # כותרת ההערות
+        h2 = soup.new_tag('h2', style='text-align: center; color: #d4af37; margin-bottom: 30px; font-weight: bold;')
+        h2.string = "הערות שוליים"
+        # רשימת ההערות המסודרת
+        ol = soup.new_tag('ol', class_='custom-footnotes-list', style='font-size: 1.1em; line-height: 1.8; margin-right: 20px; padding-right: 20px;')
+
+        for fn_block in footnotes_to_move:
+            li = soup.new_tag('li', style='margin-bottom: 15px;')
+            
+            # העברת ה-ID אל הפריט החדש כדי שהקישור מהטקסט יעבוד במדויק!
+            fn_id = fn_block.get('id')
+            if not fn_id:
+                anchor = fn_block.find('a', attrs={"name": re.compile(r'^(_ftn|ftn|footnote)\d+')})
+                if anchor:
+                    fn_id = anchor.get('name')
+                    anchor.decompose()
+            if fn_id:
+                li['id'] = fn_id
+
+            # ביטול פסקאות פנימיות שגורמות לריווח ענק
+            for p in fn_block.find_all('p'):
+                p.unwrap()
+                
+            # מחיקת מספרים כפולים בהתחלה ("1. ") כדי שהרשימה תמספר לבד
+            for child in fn_block.contents:
+                if isinstance(child, str):
+                    stripped = re.sub(r'^\s*\d+[\.\)\]]*\s*', '', child)
+                    child.replace_with(stripped)
+                    break
+                    
+            for child in list(fn_block.contents):
+                li.append(child)
+                
+            ol.append(li)
+            fn_block.extract() # מחיקת ההערה המבולגנת מהמיקום המקורי
+
+        soup.append(hr)
+        soup.append(h2)
+        soup.append(ol)
+
+    # === 4. ניקוי שאריות ורווחים מיותרים ===
+    for tag in soup.find_all(['p', 'div', 'ol', 'ul']):
+        if not tag.get_text(strip=True) and not tag.find(['img', 'iframe']):
+            tag.decompose()
+
+    return str(soup)
+
+
+# ==========================================
 # רשימת פרשות השבוע (מסודרת לפי חומשים)
 # ==========================================
 PARASHA_CHOICES = [
@@ -75,46 +179,7 @@ class Article(models.Model):
         return self.title
 
     def save(self, *args, **kwargs):
-        if self.content:
-            soup = BeautifulSoup(self.content, 'html.parser')
-
-            # 1. מחיקת חצי חזרה (הסימן ^ או ↑) שמועתקים מוורד
-            for a in soup.find_all('a'):
-                text = a.get_text(strip=True)
-                if '^' in text or '↑' in text:
-                    a.decompose() # מוחק את הלינק של החץ לחלוטין
-
-            # גיבוי: מחיקת חצים שהועתקו כטקסט רגיל
-            for text_node in soup.find_all(string=re.compile(r'[↑^]')):
-                text_node.replace_with(text_node.replace('↑', '').replace('^', '').strip())
-
-            # 2. הורדת הסוגריים המרובעים ממספרי ההערות בטקסט: [1] הופך ל- 1
-            for a in soup.find_all('a'):
-                clean_text = a.get_text(strip=True).replace('[', '').replace(']', '')
-                # מוודא שזה רק מספר כדי לא לפגוע בלינקים אמיתיים לאתרים אחרים
-                if clean_text.isdigit():
-                    a.string = clean_text
-
-            # 3. מחיקת פסקאות ריקות שיוצרות רווחים ענקיים
-            for p in soup.find_all('p'):
-                if not p.get_text(strip=True) and not p.find('img'):
-                    p.decompose()
-
-            # 4. תיקון שבירת שורה בהערות: מחבר את המספר "1." לטקסט שירד שורה מתחתיו
-            for p in soup.find_all('p'):
-                text = p.get_text(strip=True)
-                # מזהה אם הפסקה מכילה רק מספר עם נקודה (כמו שמופיע בתמונה שלך: "1.")
-                if re.match(r'^\d+\.$', text):
-                    next_p = p.find_next_sibling('p')
-                    if next_p:
-                        # מדביק את הטקסט של הפסקה הבאה לתוך הפסקה של המספר ומוחק את המיותרת
-                        p.append(" " + next_p.get_text(strip=True))
-                        next_p.decompose()
-
-            # עדכון התוכן הנקי בחזרה
-            self.content = str(soup)
-
-        # קריאה לפעולת השמירה המקורית של דג'נגו
+        self.content = clean_word_html(self.content)
         super().save(*args, **kwargs)
 
 
@@ -168,6 +233,10 @@ class Section(models.Model):
 
     def __str__(self):
         return f"{self.chapter.title} - {self.title}"
+
+    def save(self, *args, **kwargs):
+        self.content = clean_word_html(self.content)
+        super().save(*args, **kwargs)
 
 
 # ==========================================

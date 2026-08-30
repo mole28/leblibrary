@@ -440,12 +440,17 @@
     body.zen-mode .zen-toggle-btn { background: #3f4050; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); }
 
     /* עיצוב הפניות והערות שוליים גלובלי לכל המאמרים מתוך וורד */
-    sup, sub, .MsoFootnoteReference, a[href*="ftn"], a[href*="footnote"], a[href*="ref"] {
+    sup, sub, .MsoFootnoteReference, .footnote-ref, a[href*="ftn"], a[href*="footnote"], a[href*="ref"] {
         font-size: 0.9em !important;
         font-weight: bold !important;
         vertical-align: super !important;
         line-height: 0;
         text-decoration: none;
+        color: #d4af37; /* צבע זהוב המראה שזה קישור */
+    }
+    
+    sup:hover, .footnote-ref:hover {
+        text-decoration: underline;
     }
 </style>
 {% endblock %}
