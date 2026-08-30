@@ -31,70 +31,78 @@ def clean_word_html(html_content):
             old_ol.unwrap() 
         old_h2.decompose()
 
-    # === 1. עיצוב הפניות להערות שוליים בתוך הטקסט (המספרים הקטנים) ===
-    for a in soup.find_all('a', href=True):
-        href = a['href']
-        # זיהוי לינקים שמפנים למטה להערות (כמו #_ftn1 או #footnote1)
-        if re.match(r'^#(_ftn|ftn|footnote)\d+', href) and not re.match(r'^#(_ftnref|ftnref|footnote-ref)', href):
-            text = a.get_text(strip=True)
-            clean_num = text.replace('[', '').replace(']', '') # הורדת סוגריים מרובעים
-            if clean_num.isdigit():
-                a.string = clean_num
-                a['class'] = a.get('class', []) + ['footnote-ref'] # מחלקה מיוחדת לעיצוב
-                
-        # מחיקת לינקים שמפנים חזרה למעלה (החצים)
-        elif re.match(r'^#(_ftnref|ftnref|footnote-ref)', href):
-            a.decompose()
-
-    # מחיקת חצים (↑ או ^) שנשארו כטקסט רגיל
-    for text_node in soup.find_all(string=re.compile(r'[↑^]')):
-        text_node.replace_with(text_node.replace('↑', '').replace('^', '').strip())
-
-    # === 2. איסוף כל ההערות מהתחתית (כפי שהועתקו מוורד) ===
+    # === 1. איסוף כל ההערות מהתחתית *לפני* שמוחקים את הלינקים! ===
     footnotes_to_move = []
     
-    # חיפוש תגיות שיש להן מאפיין name של הערה
-    for a_tag in soup.find_all('a', attrs={"name": re.compile(r'^(_ftn|ftn|footnote)\d+')}):
-        parent_block = a_tag.find_parent(['p', 'div', 'li'])
+    # זיהוי לפי לינק חזרה למעלה (backlink) - השיטה הכי בטוחה בוורד
+    for a_back in soup.find_all('a', href=re.compile(r'^#(_ftnref|ftnref|footnote-ref|ref)')):
+        parent_block = a_back.find_parent(['p', 'div', 'li'])
         if parent_block and parent_block not in footnotes_to_move:
             footnotes_to_move.append(parent_block)
     
-    # חיפוש תגיות עם id של הערה
-    for tag in soup.find_all(['p', 'div', 'li'], id=re.compile(r'^(_ftn|ftn|footnote)\d+')):
-        if tag not in footnotes_to_move:
+    # זיהוי גיבוי לפי id או name
+    for tag in soup.find_all(['p', 'div', 'li']):
+        if tag in footnotes_to_move:
+            continue
+        # בדיקת ID
+        if tag.get('id') and re.match(r'^(_ftn|ftn|footnote)\d+', tag.get('id')):
             footnotes_to_move.append(tag)
+            continue
+        # בדיקת name בתוך הבלוק
+        anchor = tag.find('a', attrs={"name": re.compile(r'^(_ftn|ftn|footnote)\d+')})
+        if anchor:
+            footnotes_to_move.append(tag)
+
+    # === 2. סידור ההפניות בגוף הטקסט ומחיקת חצים ===
+    for a in soup.find_all('a', href=True):
+        href = a['href']
+        
+        # אם זה לינק בגוף הטקסט שמפנה למטה להערה
+        if re.match(r'^#(_ftn\d+|ftn\d+|footnote\d+)', href):
+            text = a.get_text(strip=True)
+            # שולף רק את המספר עצמו (מתעלם מסוגריים, רווחים וכו')
+            num = re.sub(r'\D', '', text)
+            if num:
+                a.string = num
+                a['class'] = a.get('class', []) + ['footnote-ref']
+                
+        # אם זה לינק חזרה למעלה (החץ) - למחוק אותו עכשיו (אחרי שכבר אספנו את ההערה)!
+        elif re.match(r'^#(_ftnref|ftnref|footnote-ref|ref)', href):
+            a.decompose()
+
+    # מחיקת חצים (↑ או ^) מכל מקום
+    for text_node in soup.find_all(string=re.compile(r'[↑^]')):
+        text_node.replace_with(text_node.replace('↑', '').replace('^', '').strip())
 
     # === 3. בניית אזור ההערות המעוצב בסוף ===
     if footnotes_to_move:
-        # הקו העבה המפריד
+        # בניית הקו המפריד היפהפה והעבה
         hr = soup.new_tag('hr', style='border: 0; border-top: 5px solid #2c3e50; margin: 60px 0 40px 0; opacity: 1;')
-        # כותרת ההערות
         h2 = soup.new_tag('h2', style='text-align: center; color: #d4af37; margin-bottom: 30px; font-weight: bold;')
         h2.string = "הערות שוליים"
-        # רשימת ההערות המסודרת
         ol = soup.new_tag('ol', class_='custom-footnotes-list', style='font-size: 1.1em; line-height: 1.8; margin-right: 20px; padding-right: 20px;')
 
         for fn_block in footnotes_to_move:
             li = soup.new_tag('li', style='margin-bottom: 15px;')
             
-            # העברת ה-ID אל הפריט החדש כדי שהקישור מהטקסט יעבוד במדויק!
+            # מציאת ה-ID לחיבור נכון לטקסט
             fn_id = fn_block.get('id')
             if not fn_id:
                 anchor = fn_block.find('a', attrs={"name": re.compile(r'^(_ftn|ftn|footnote)\d+')})
                 if anchor:
                     fn_id = anchor.get('name')
-                    anchor.decompose()
+            
             if fn_id:
                 li['id'] = fn_id
 
-            # ביטול פסקאות פנימיות שגורמות לריווח ענק
+            # ביטול פסקאות פנימיות שגורמות לרווחי ענק
             for p in fn_block.find_all('p'):
                 p.unwrap()
                 
-            # מחיקת מספרים כפולים בהתחלה ("1. ") כדי שהרשימה תמספר לבד
+            # מחיקת המספרים בהתחלה (למשל "[1] ") כדי שהרשימה תמספר את עצמה יפה
             for child in fn_block.contents:
                 if isinstance(child, str):
-                    stripped = re.sub(r'^\s*\d+[\.\)\]]*\s*', '', child)
+                    stripped = re.sub(r'^[\s\[\]\(\)\.]*\d+[\s\.\)\]]*', '', child)
                     child.replace_with(stripped)
                     break
                     
@@ -102,19 +110,19 @@ def clean_word_html(html_content):
                 li.append(child)
                 
             ol.append(li)
-            fn_block.extract() # מחיקת ההערה המבולגנת מהמיקום המקורי
+            fn_block.extract() # מחיקה מוחלטת של ההערה המבולגנת מהמקור
 
+        # הוספת כל היופי הזה לסוף המאמר
         soup.append(hr)
         soup.append(h2)
         soup.append(ol)
 
-    # === 4. ניקוי שאריות ורווחים מיותרים ===
-    for tag in soup.find_all(['p', 'div', 'ol', 'ul']):
-        if not tag.get_text(strip=True) and not tag.find(['img', 'iframe']):
-            tag.decompose()
+    # === 4. ניקוי פסקאות ריקות ===
+    for p in soup.find_all('p'):
+        if not p.get_text(strip=True) and not p.find(['img', 'iframe']):
+            p.decompose()
 
     return str(soup)
-
 
 # ==========================================
 # רשימת פרשות השבוע (מסודרת לפי חומשים)
