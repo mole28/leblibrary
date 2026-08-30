@@ -1100,6 +1100,11 @@ def apply_tts_dictionary(text):
     if not text:
         return ""
         
+    # --- התיקון: מחיקה מוחלטת של קטעי קוד CSS ו-JS כדי שהקריין לא יקריא אותם ---
+    text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.IGNORECASE | re.DOTALL)
+    # -------------------------------------------------------------------------
+    
     text = text.replace('><', '> <').replace('</p>', '.\n').replace('</li>', '.\n')
     text = strip_tags(text)
     text = unescape(text)
