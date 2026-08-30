@@ -1,6 +1,15 @@
 import os
 import django
 import re
+import sys
+
+# בדיקה שהספרייה לקריאת וורד מותקנת
+try:
+    import mammoth
+except ImportError:
+    print("שגיאה: חבילת mammoth לא מותקנת. אנא הרץ בטרמינל: pip install mammoth")
+    sys.exit(1)
+
 from bs4 import BeautifulSoup
 
 # הגדרת סביבת דג'נגו
@@ -12,7 +21,7 @@ from articles.models import Book, Chapter, Section
 def import_meyuchadut_book():
     book_title = "מיוחדות המילה בישראל"
     
-    # ניקוי מלא של ספרים קודמים עם אותו שם כדי למנוע כפילויות
+    # ניקוי מלא של ספרים קודמים
     existing_books = Book.objects.filter(title=book_title)
     if existing_books.exists():
         for b in existing_books:
@@ -25,60 +34,69 @@ def import_meyuchadut_book():
 
     book = Book.objects.create(title=book_title)
     
-    # הגדרת שם המחבר באופן אוטומטי
+    # הגדרת שם המחבר
     for field in ['author', 'writer', 'creator']:
         if hasattr(book, field):
             setattr(book, field, "משה לייבוביץ")
             book.save()
             break
 
-    print(f"נוצר ספר חדש: {book.title} מאת משה לייבוביץ")
-
-    html_file_path = "meyuchadut_clean.html"
-    if not os.path.exists(html_file_path):
-        print(f"שגיאה: הקובץ {html_file_path} לא נמצא! אנא ודא שהקובץ קיים בתיקייה.")
+    docx_path = "meyuhad.docx"
+    if not os.path.exists(docx_path):
+        print(f"שגיאה: הקובץ {docx_path} לא נמצא בתיקייה!")
         return
 
-    with open(html_file_path, "r", encoding="utf-8") as f:
-        raw_html = f.read()
+    print("ממיר את קובץ ה-Word לנתונים נקיים...")
+    
+    # המרת קובץ הוורד ישירות דרך mammoth
+    with open(docx_path, "rb") as docx_file:
+        result = mammoth.convert_to_html(docx_file)
+        raw_html = result.value
 
     soup = BeautifulSoup(raw_html, 'html.parser')
     
-    # הסרת סקריפטים וסטיילים גולמיים שמפריעים
-    for element in soup(["script", "style", "meta", "link", "form", "input", "button", "textarea", "select"]):
-        element.decompose()
+    # חילוץ חכם של כל הערות השוליים מקובץ הוורד
+    footnotes_dict = {}
+    for li in soup.find_all('li', id=re.compile(r'^footnote-')):
+        fn_id = li['id']
+        # נסיר את סימן החץ (↑) שמוחזר אוטומטית למעלה כדי שיהיה טקסט נקי
+        for back_link in li.find_all('a', string='↑'):
+            back_link.decompose()
+        footnotes_dict[fn_id] = li
+        li.extract()
+        
+    for ol in soup.find_all('ol'):
+        if not ol.get_text(strip=True):
+            ol.extract()
 
-    # שיטת חלוקה בטוחה: מעבר על כל הפסקאות וזיהוי כותרות ראשיות
+    # חלוקה לפרקים לפי כותרות ראשיות בלבד (ללא אותיות)
     chapters_data = []
     current_title = "הקדמה"
     current_content = []
     
-    # פונקציה לזיהוי כותרות פרקים (סוגיא, פתח דבר, נספחים, סימן)
     def is_heading(text_to_check):
         t = text_to_check.strip()
         if t == "פתח דבר": return True
         if re.match(r'^סוגיא\s+[א-ת]{1,2}\s*[-–]', t): return True
-        if re.match(r'^(?:נספחים|נפחים)\s+לסוגיא\s+[א-ת]', t): return True  # מטפל גם בשגיאת הכתיב "נפחים" שהייתה בטקסט
+        if re.match(r'^(?:נספחים|נפחים)\s+לסוגיא\s+[א-ת]', t): return True # כולל הטיפול בשגיאת הכתיב "נפחים"
         if re.match(r'^סימן\s+[א-ת]{1,2}\s*[-–]', t): return True
         return False
 
-    for tag in soup.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'div']):
+    for tag in soup.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'div', 'ul', 'ol', 'table']):
         text = tag.get_text(strip=True)
         clean_text = re.sub(r'\s+', ' ', text).strip()
         
-        # אם מצאנו כותרת ראשית, חותכים פרק חדש (מתעלמים מחלוקה לאותיות פנימיות)
         if len(clean_text) < 100 and is_heading(clean_text):
             if current_content:
-                chapters_data.append((current_title, "".join(str(e) for e in current_content)))
+                chapters_data.append((current_title, current_content))
             current_title = clean_text
             current_content = [tag]
         else:
             current_content.append(tag)
             
     if current_content:
-        chapters_data.append((current_title, "".join(str(e) for e in current_content)))
+        chapters_data.append((current_title, current_content))
 
-    # הזרקת סגנון CSS להגדלה והדגשה של כל ההפניות והערות השוליים
     force_large_css = """
     <style>
     sup, sub, .MsoFootnoteReference, a[href*="ftn"], a[href*="footnote"], a[href*="ref"] {
@@ -90,33 +108,35 @@ def import_meyuchadut_book():
     """
 
     ch_order = 1
-    for ch_title, ch_html in chapters_data:
+    for ch_title, ch_tags in chapters_data:
+        ch_html = "".join(str(tag) for tag in ch_tags)
         ch_soup = BeautifulSoup(ch_html, 'html.parser')
         
-        # הסרת הדגשות מיותרות מתוך הטקסט לבקשתך
+        # הזרקת הערות השוליים הספציפיות ששייכות לפרק הזה בלבד!
+        chapter_footnotes_html = ""
+        refs = ch_soup.find_all('a', href=re.compile(r'^#footnote-'))
+        if refs:
+            chapter_footnotes_html += "<hr class='footnotes-divider'><ol>"
+            seen_fns = set()
+            for ref in refs:
+                fn_target = ref['href'].replace('#', '')
+                if fn_target in footnotes_dict and fn_target not in seen_fns:
+                    chapter_footnotes_html += str(footnotes_dict[fn_target])
+                    seen_fns.add(fn_target)
+            chapter_footnotes_html += "</ol>"
+
+        # ניקוי הדגשות מיותרות מהטקסט כמו בספרים הקודמים
         for tag_b in ch_soup.find_all(['strong', 'b']):
             tag_b.unwrap()
 
-        # איסוף הערות שוליים וצרופן בצורה מסודרת בתחתית הפרק
-        all_footnotes = ch_soup.find_all(lambda tag: tag.has_attr('id') and ('ftn' in tag['id'] or 'footnote' in tag['id']))
-        cleaned_footnotes = []
-        for fn in all_footnotes:
-            cleaned_footnotes.append(str(fn))
-            fn.decompose()
-        footnotes_html = "".join(cleaned_footnotes)
+        final_content = force_large_css + str(ch_soup) + chapter_footnotes_html
 
-        final_content = force_large_css + str(ch_soup)
-        if footnotes_html:
-            final_content += "<hr class='footnotes-divider'>" + footnotes_html
-
-        # יצירת הפרק בספר (מה שיופיע בתוכן העניינים)
         chapter = Chapter.objects.create(
             book=book,
             title=ch_title[:150],
             order=ch_order
         )
 
-        # יצירת סעיף יחיד לכל פרק - כך לא יופיעו אותיות בתוכן העניינים
         Section.objects.create(
             chapter=chapter,
             title=ch_title[:150],
@@ -126,7 +146,7 @@ def import_meyuchadut_book():
         
         ch_order += 1
 
-    print(f"הספר '{book_title}' יובא בהצלחה בשיטה המנצחת מאתמול!")
+    print(f"הספר '{book_title}' יובא בהצלחה ישירות מקובץ הוורד, הכל תקין!")
 
 if __name__ == "__main__":
     import_meyuchadut_book()
