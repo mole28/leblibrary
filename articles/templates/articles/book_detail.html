@@ -162,9 +162,11 @@
             {% endif %}
 
             <div class="d-flex justify-content-end gap-3 mb-1 hide-in-zen flex-wrap align-items-center">
-                <button onclick="toggleSpeech()" id="speechBtn" class="btn-print btn btn-outline-warning border shadow-sm" title="האזנה לספר" style="color: #a67c52; border-color: #a67c52;">
-                    <i class="bi bi-volume-up-fill" id="speechIcon"></i> <span id="speechText">האזנה לקריאה</span>
-                </button>
+                {% if book.title != "זמני המילה וברכותיה" and book.title != "זריזין מקדימין למילה" %}
+                    <button onclick="toggleSpeech()" id="speechBtn" class="btn-print btn btn-outline-warning border shadow-sm" title="האזנה למאמר" style="color: #a67c52; border-color: #a67c52;">
+                        <i class="bi bi-volume-up-fill" id="speechIcon"></i> <span id="speechText">האזנה לקריאה</span>
+                    </button>
+                {% endif %}
                 <button onclick="openShareModal()" class="btn-print btn btn-outline-warning border shadow-sm" title="שתף ספר זה" style="color: #a67c52; border-color: #a67c52;">
                     <i class="bi bi-share-fill"></i> שיתוף
                 </button>
