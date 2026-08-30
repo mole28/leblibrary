@@ -62,7 +62,7 @@ def import_meyuchadut_book():
         for back_link in li.find_all('a', string='↑'):
             back_link.decompose()
         footnotes_dict[fn_id] = li
-        li.extract() # מוציא את ההערה מהטקסט כדי שלא תופיע באמצע
+        li.extract() 
         
     for ol in soup.find_all('ol'):
         if not ol.get_text(strip=True):
@@ -88,22 +88,22 @@ def import_meyuchadut_book():
         text = tag.get_text(strip=True)
         clean_text = re.sub(r'\s+', ' ', text).strip()
         
-        # זיהוי פרק ראשי (יופיע מודגש)
+        # זיהוי פרק ראשי (יופיע מודגש) - התיקון: לא מכניסים את התגית לתוך ה-tags
         if len(clean_text) < 150 and is_chapter(clean_text):
             current_chapter = {'title': clean_text, 'sections': []}
             chapters_data.append(current_chapter)
-            current_section = {'title': 'פתיחה', 'tags': [tag], 'is_intro': True}
+            current_section = {'title': 'פתיחה', 'tags': [], 'is_intro': True}
             current_chapter['sections'].append(current_section)
             
-        # זיהוי סעיף פנימי - אותיות (יופיע רגיל, לא מודגש)
+        # זיהוי סעיף פנימי - אותיות (יופיע רגיל, לא מודגש) - התיקון: לא מכניסים את התגית לתוך ה-tags
         elif len(clean_text) < 150 and is_section(clean_text):
             if not current_chapter:
                 current_chapter = {'title': "הקדמה", 'sections': []}
                 chapters_data.append(current_chapter)
-            current_section = {'title': clean_text, 'tags': [tag], 'is_intro': False}
+            current_section = {'title': clean_text, 'tags': [], 'is_intro': False}
             current_chapter['sections'].append(current_section)
             
-        # טקסט רגיל
+        # טקסט רגיל - הוספה לגוף הסעיף
         else:
             if not current_section:
                 current_chapter = {'title': "הקדמה", 'sections': []}
@@ -112,17 +112,16 @@ def import_meyuchadut_book():
                 current_chapter['sections'].append(current_section)
             current_section['tags'].append(tag)
 
-    # סידור הסעיפים
+    # סידור הסעיפים (הסרת פתיחים ריקים לחלוטין)
     for ch in chapters_data:
         valid_sections = []
         for i, sec in enumerate(ch['sections']):
             if sec.get('is_intro'):
-                text_content = "".join(t.get_text(strip=True) for t in sec['tags'][1:])
+                # התיקון בבדיקת הפתיח הריק
+                text_content = "".join(t.get_text(strip=True) for t in sec['tags'])
                 if not text_content.strip():
                     if i + 1 < len(ch['sections']):
                         ch['sections'][i+1]['tags'] = sec['tags'] + ch['sections'][i+1]['tags']
-                    else:
-                        valid_sections.append(sec)
                 else:
                     valid_sections.append(sec)
             else:
@@ -161,7 +160,6 @@ def import_meyuchadut_book():
             for tag_b in sec_soup.find_all(['strong', 'b']):
                 tag_b.unwrap()
 
-            # הערות השוליים כבר לא מוזרקות לכאן! רק הטקסט הרגיל.
             final_content = force_large_css + str(sec_soup)
 
             Section.objects.create(
@@ -183,7 +181,6 @@ def import_meyuchadut_book():
         title_html = "<h2 style='text-align: center; color: #d4af37; margin-bottom: 30px; font-weight: bold;'>הערות שוליים</h2>"
 
         all_fns_html = "<ol style='font-size: 1.1em; line-height: 1.8;'>"
-        # הוספת כל ההערות לפי הסדר שלהן
         for fn_id, li_tag in footnotes_dict.items():
             all_fns_html += str(li_tag)
         all_fns_html += "</ol>"
@@ -203,7 +200,7 @@ def import_meyuchadut_book():
             order=1
         )
 
-    print(f"הספר '{book_title}' יובא בהצלחה! כל הערות השוליים רוכזו בסוף הספר.")
+    print(f"הספר '{book_title}' יובא בהצלחה! הכפילויות בכותרות תוקנו.")
 
 if __name__ == "__main__":
     import_meyuchadut_book()
