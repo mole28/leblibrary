@@ -21,89 +21,125 @@ def clean_word_html(html_content):
         
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    # === 0. מחיקת אזור הערות שנוצר בעבר כדי למנוע כפילויות בשמירה חוזרת ===
+    # === 0. מחיקת עיצוב קודם שלנו (כדי ששמירה חוזרת לא תשכפל) ===
     for h2 in soup.find_all('h2', string="הערות שוליים"):
         hr = h2.find_previous_sibling('hr')
-        if hr:
-            hr.decompose()
+        if hr: hr.decompose()
         container = h2.find_next_sibling('div', class_='custom-footnotes-container')
-        if container:
-            container.decompose()
+        if container: container.decompose()
         h2.decompose()
 
-    # === 1. טיפול בהפניות שבתוך הטקסט (המספרים הקטנים) ===
-    # מחפש לינקים שמפנים למטה (למשל href="#_ftn1") - ה-Regex מזהה רק מספרים אחרי המילה
-    for a in soup.find_all('a', href=re.compile(r'^#(_ftn\d+|ftn\d+|footnote\d+)')):
-        # מסיר סוגריים וחצים מהטקסט המוצג בגוף המאמר
-        text = a.get_text(strip=True)
-        clean_text = re.sub(r'[\[\]\^↑]', '', text)
-        if clean_text:
-            a.string = clean_text
-        
-        # מוסיף קלאס לעיצוב
-        a['class'] = a.get('class', []) + ['footnote-ref']
-        
-        # מוודא שהלינק נמצא בתוך תגית <sup> כדי שיופיע בקטן ולמעלה
-        if a.parent and a.parent.name != 'sup':
-            sup = soup.new_tag('sup')
-            a.wrap(sup)
-
-    # === 2. איסוף ההערות מהתחתית והעברתן בבטחה ===
-    footnotes_blocks = []
+    # === 1. זיהוי וחילוץ אזור ההערות (כל מה שאחרי הקו המפריד האחרון) ===
+    hrs = soup.find_all('hr')
+    footnotes_raw_elements = []
     
-    # חיפוש העוגנים (anchors) של ההערות שממוקמים למטה
-    for target_a in soup.find_all('a', attrs={'name': re.compile(r'^(_ftn\d+|ftn\d+|footnote\d+)')}):
-        # לוקח את הפסקה השלמה שעוטפת את ההערה
-        p = target_a.find_parent(['p', 'div', 'li'])
-        if p and p not in footnotes_blocks:
-            # מגדיר את ה-ID על הפסקה עצמה כדי שהקפיצה מהטקסט תעבוד ישירות אליה
-            p['id'] = target_a.get('name')
-            
-            # חיפוש לינק שחוזר למעלה (בדרך כלל הוא מכיל את מספר ההערה ולפעמים חץ)
-            for backlink in p.find_all('a', href=re.compile(r'^#(_ftnref|ftnref|footnote-ref)')):
-                bl_text = backlink.get_text(strip=True)
-                # מנקה סוגריים וחצים כדי לחלץ רק את המספר
-                clean_bl = re.sub(r'[\[\]\^↑]', '', bl_text)
-                
-                # אם מצאנו מספר, נהפוך אותו למספר יפהפה עם נקודה בסוף
-                if clean_bl:
-                    num_span = soup.new_tag('span', style='font-weight:bold; color:#d4af37; margin-left:8px;')
-                    num_span.string = f"{clean_bl}."
-                    backlink.replace_with(num_span)
-                else:
-                    backlink.decompose() # אם זה רק חץ ריק, נמחק
-            
-            footnotes_blocks.append(p)
+    if hrs:
+        last_hr = hrs[-1]
+        curr = last_hr.next_sibling
+        while curr:
+            next_node = curr.next_sibling
+            footnotes_raw_elements.append(curr.extract())
+            curr = next_node
+        last_hr.decompose()
+    else:
+        # גיבוי במקרה שאין קו מפריד - זיהוי לפי id של הערה
+        for tag in soup.find_all(['p', 'div'], id=re.compile(r'^(_ftn|ftn|footnote)\d+')):
+            footnotes_raw_elements.append(tag.extract())
 
-    # === 3. בניית אזור ההערות המעוצב בסוף ===
-    if footnotes_blocks:
-        hr = soup.new_tag('hr', style='border: 0; border-top: 5px solid #2c3e50; margin: 60px 0 40px 0; opacity: 1;')
+    # === 2. בניה מחדש ונקייה לחלוטין של ההערות (בלי חצים ורווחים) ===
+    built_footnotes = []
+    if footnotes_raw_elements:
+        temp_soup = BeautifulSoup("", 'html.parser')
+        for el in footnotes_raw_elements:
+            temp_soup.append(el)
+            
+        # מחיקת כל הקישורים (כולל החצים) מתוך אזור ההערות
+        for a in temp_soup.find_all('a'):
+            a.decompose()
+        # גיבוי למחיקת חצים שהם טקסט רגיל
+        for text_node in temp_soup.find_all(string=re.compile(r'[↑^]')):
+            text_node.replace_with(re.sub(r'[↑^]', '', text_node))
+
+        paragraphs = temp_soup.find_all(['p', 'div'])
+        if not paragraphs:
+            paragraphs = [temp_soup]
+
+        current_fn = None
+        for p in paragraphs:
+            text = p.get_text(separator=" ", strip=True)
+            if not text: continue
+            
+            # זיהוי תחילת הערה חדשה: מחפש מספר, עם או בלי סוגריים/נקודות, ואחריו טקסט
+            match = re.match(r'^[\s\[\]\(\)\.\-]*(\d+)[\s\.\)\]\-\:]+(.*)', text)
+            if not match:
+                # זיהוי במקרה שוורד חיבר את המספר ישירות למילה בלי רווח
+                match = re.match(r'^[\s\[\]\(\)\.\-]*(\d+)\s*(.*)', text)
+
+            if match:
+                num = match.group(1)
+                content = match.group(2)
+                current_fn = {'num': num, 'content': content}
+                built_footnotes.append(current_fn)
+            elif current_fn:
+                current_fn['content'] += " " + text
+
+    # === 3. סידור ההפניות (המספרים הקטנים) בגוף הטקסט ===
+    # טיפול במספרים שהם קישורים (וורד סטנדרטי)
+    for a in soup.find_all('a', href=re.compile(r'^#(_ftn\d+|ftn\d+|footnote\d+)', re.IGNORECASE)):
+        text = a.get_text(strip=True)
+        clean_num = re.sub(r'\D', '', text) # מוציא רק את המספר, מוחק סוגריים מרובעים
+        if clean_num:
+            a.string = clean_num
+            a['href'] = f"#footnote-{clean_num}"
+            a['class'] = a.get('class', []) + ['footnote-ref']
+            # עוטף ב-SUP כדי שיופיע בקטן למעלה
+            if a.parent and a.parent.name != 'sup':
+                a.wrap(soup.new_tag('sup'))
+                
+    # טיפול במספרים עיליים רגילים ללא קישור (במידה ו-CKEditor מחק להם את הלינק)
+    for sup in soup.find_all('sup'):
+        if not sup.find('a'):
+            text = sup.get_text(strip=True)
+            clean_num = re.sub(r'\D', '', text)
+            if clean_num:
+                a = soup.new_tag('a', href=f"#footnote-{clean_num}", class_="footnote-ref")
+                a.string = clean_num
+                sup.string = ''
+                sup.append(a)
+
+    # === 4. הזרקת ההערות הנקיות לסוף המסמך בתצוגת גריד ישרה וחלקה ===
+    if built_footnotes:
+        hr_new = soup.new_tag('hr', style='border: 0; border-top: 5px solid #2c3e50; margin: 60px 0 40px 0; opacity: 1;')
         h2 = soup.new_tag('h2', style='text-align: center; color: #d4af37; margin-bottom: 30px; font-weight: bold;')
         h2.string = "הערות שוליים"
-        
-        # משתמשים ב-DIV פשוט במקום OL כדי לא לשבור את המבנה והטקסט של וורד
-        container = soup.new_tag('div', class_='custom-footnotes-container', style='font-size: 1.1em; line-height: 1.8;')
-        
-        for block in footnotes_blocks:
-            # עיצוב מרווח לכל הערה כדי שלא ידבקו אחת לשנייה
-            block['style'] = block.get('style', '') + '; margin-bottom: 12px; display: block;'
-            container.append(block.extract())
+        container = soup.new_tag('div', class_='custom-footnotes-container', style='font-size: 1.1em; line-height: 1.8; margin-right: 10px;')
 
-        # מחיקת קווים מפרידים קטנים שוורד מייצר אוטומטית בתחתית
-        for hr_tag in soup.find_all('hr'):
-            if hr_tag.get('size') == '1' or hr_tag.get('width') == '33%':
-                hr_tag.decompose()
+        for fn in built_footnotes:
+            # שימוש ב-flex מבטיח שהמספר והטקסט יהיו ישרים זה לצד זה ללא שבירת שורות מוזרה
+            div = soup.new_tag('div', style='margin-bottom: 15px; display: flex; align-items: flex-start;')
+            div['id'] = f"footnote-{fn['num']}"
+            
+            num_span = soup.new_tag('span', style='font-weight:bold; color:#d4af37; min-width: 35px; flex-shrink: 0;')
+            num_span.string = f"{fn['num']}."
+            
+            content_span = soup.new_tag('span', style='flex-grow: 1;')
+            content_span.string = fn['content']
+            
+            div.append(num_span)
+            div.append(content_span)
+            container.append(div)
 
-        soup.append(hr)
+        soup.append(hr_new)
         soup.append(h2)
         soup.append(container)
 
-    # === 4. ניקוי פסקאות ריקות ===
+    # מחיקת פסקאות ריקות
     for p in soup.find_all('p'):
         if not p.get_text(strip=True) and not p.find(['img', 'iframe']):
             p.decompose()
 
     return str(soup)
+
 
 # ==========================================
 # רשימת פרשות השבוע (מסודרת לפי חומשים)
@@ -139,13 +175,8 @@ PARASHA_CHOICES = [
 
 class Article(models.Model):
     title = models.CharField(max_length=200, verbose_name="כותרת המאמר")
-    
-    # הגדלנו את השדה כדי שיוכל להכיל מספר פרשות יחד כמו "בא,ואתחנן"
     parasha = models.CharField(max_length=500, default=',general,', verbose_name="שיוך לפרשות שבוע", blank=True)
-    
-    # תוקן: הוסרה המילה 'Text'
     content = CKEditor5Field(config_name='extends', verbose_name="תוכן המאמר") 
-    
     hebrew_date = models.CharField(max_length=100, verbose_name="תאריך עברי", blank=True)
     created_at = models.DateTimeField(default=timezone.now, verbose_name="תאריך יצירה")
     is_published = models.BooleanField(default=True, verbose_name="מפורסם")
@@ -159,7 +190,6 @@ class Article(models.Model):
 
     @property
     def is_new(self):
-        """מחזיר אמת אם המאמר נוצר ב-7 הימים האחרונים"""
         if not self.created_at:
             return False
         return self.created_at >= timezone.now() - timedelta(days=7)
@@ -176,21 +206,15 @@ class Book(models.Model):
     title = models.CharField(max_length=200, verbose_name="שם הספר")
     author = models.CharField(max_length=100, verbose_name="מחבר")
     cover_image = models.ImageField(upload_to='books/covers/', blank=True, null=True, verbose_name="תמונת כריכה")
-    
-    # תוקן: הוסרה המילה 'Text'
     summary = CKEditor5Field(config_name='extends', verbose_name="תקציר הספר", blank=True, null=True)
-    
     price = models.DecimalField(max_digits=6, decimal_places=2, default=0.00, verbose_name="מחיר הספר")
     is_for_sale = models.BooleanField(default=False, verbose_name="זמין לרכישה")
     stock = models.PositiveIntegerField(default=0, verbose_name="מלאי זמין")
     created_at = models.DateTimeField(default=timezone.now, verbose_name="תאריך הוספה")
-    
-    # השדה שמאפשר שליטה על סדר התצוגה בעמוד הספרים
     order = models.PositiveIntegerField(default=0, verbose_name="סדר תצוגה (1 יופיע ראשון)")
     
     @property
     def is_new(self):
-        """מחזיר אמת אם הספר נוסף ב-7 הימים האחרונים"""
         if not self.created_at:
             return False
         return self.created_at >= timezone.now() - timedelta(days=7)
@@ -214,10 +238,7 @@ class Chapter(models.Model):
 class Section(models.Model):
     chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE, related_name='sections', verbose_name="פרק")
     title = models.CharField(max_length=200, verbose_name="כותרת הסעיף")
-    
-    # תוקן: הוסרה המילה 'Text'
     content = CKEditor5Field(config_name='extends', verbose_name="תוכן")
-    
     order = models.PositiveIntegerField(verbose_name="סדר")
 
     def __str__(self):
@@ -228,9 +249,6 @@ class Section(models.Model):
         super().save(*args, **kwargs)
 
 
-# ==========================================
-# מודל מילון ראשי תיבות (הנתונים החדשים)
-# ==========================================
 class Acronym(models.Model):
     short = models.CharField(max_length=100, db_index=True, verbose_name="ראשי תיבות")
     meaning = models.TextField(verbose_name="פירוש / פיתוח ראשי תיבות")
@@ -243,9 +261,6 @@ class Acronym(models.Model):
     def __str__(self):
         return f"{self.short} - {self.meaning[:40]}..."
 
-# ==========================================
-# מודלים לעגלת קניות והזמנות
-# ==========================================
 class Cart(models.Model):
     session_id = models.CharField(max_length=255, blank=True, null=True, verbose_name="מזהה סשן")
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, verbose_name="משתמש (אם מחובר)")
@@ -301,9 +316,6 @@ class OrderItem(models.Model):
     def get_cost(self):
         return self.price * self.quantity
 
-# ==========================================
-# Signals (האזנה לאירועים במסד הנתונים)
-# ==========================================
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 
@@ -331,9 +343,6 @@ class QA(models.Model):
     def __str__(self):
         return self.question
 
-# ==========================================
-# מודל מעקב מבקרים (לצרכי סקרים ובדיקות)
-# ==========================================
 class VisitorLog(models.Model):
     ip_address = models.GenericIPAddressField(null=True, blank=True, verbose_name="כתובת IP")
     path = models.CharField(max_length=500, verbose_name="נתיב שביקר בו")
@@ -349,9 +358,6 @@ class VisitorLog(models.Model):
     def __str__(self):
         return f"{self.ip_address} - {self.path} ({self.timestamp})"
 
-# ==========================================
-# מודל טקסט תורני לחיפוש מתקדם (גימטריות / ELS)
-# ==========================================
 class TorahText(models.Model):
     book = models.CharField(max_length=100, verbose_name="ספר")
     chapter = models.CharField(max_length=10, verbose_name="פרק")
@@ -370,16 +376,12 @@ class TorahText(models.Model):
         return f"{self.book} {self.chapter} {self.verse}"
 
 
-# ==========================================
-# מודל וירטואלי עבור מנוע חיפוש מהיר (SQLite FTS5)
-# ==========================================
 class TorahTextFTS(models.Model):
-    """מודל וירטואלי הממפה את טבלת ה-FTS5 המובנית במסד הנתונים לשליפות מהירות ברמת C"""
     book = models.TextField(verbose_name="ספר")
     chapter = models.TextField(verbose_name="פרק")
     verse = models.TextField(verbose_name="פסוק")
     text_with_nikkud = models.TextField(verbose_name="טקסט מנוקד")
 
     class Meta:
-        managed = False  # מונע מ-Django לנסות ליצור או לשנות את הטבלה הזו דרך migrations רגילים
+        managed = False  
         db_table = 'articles_torahtext_fts'
