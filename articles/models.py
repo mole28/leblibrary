@@ -12,174 +12,76 @@ from pyluach import dates
 from django.contrib.auth.models import User
 from datetime import timedelta
 
+try:
+    import mammoth
+except ImportError:
+    mammoth = None
+
 # ==========================================
-# פונקציית ניקוי גלובלית להעתקות מוורד
+# פונקציית עיבוד גלובלית לייבוא מוורד (Mammoth)
 # ==========================================
-def clean_word_html(html_content):
-    if not html_content:
-        return html_content
+def process_mammoth_html(raw_html):
+    if not raw_html: return ""
+    soup = BeautifulSoup(raw_html, 'html.parser')
+
+    # 1. סידור ההפניות (המספרים הקטנים בתוך המאמר) [1] -> 1
+    for ref in soup.find_all('a', id=re.compile(r'^footnote-ref-')):
+        clean_num = ref.get_text(strip=True).replace('[', '').replace(']', '')
+        ref.string = clean_num
+        ref['class'] = ref.get('class', []) + ['footnote-ref']
+        if ref.parent and ref.parent.name != 'sup':
+            ref.wrap(soup.new_tag('sup'))
+
+    # 2. חילוץ כל ההערות מהתחתית
+    footnotes_dict = {}
+    for li in soup.find_all('li', id=re.compile(r'^footnote-')):
+        fn_id = li['id']
+        # מחיקת החצים לחזרה למעלה
+        for back_link in li.find_all('a', href=re.compile(r'^#footnote-ref-')):
+            parent = back_link.parent
+            back_link.decompose()
+            if parent and parent.name == 'sup' and not parent.get_text(strip=True):
+                parent.decompose()
         
-    soup = BeautifulSoup(html_content, 'html.parser')
-
-    # === 0. מחיקת אזור הערות שנוצר בעבר (כדי ששמירה חוזרת לא תשכפל) ===
-    for h2 in soup.find_all('h2', string="הערות שוליים"):
-        hr = h2.find_previous_sibling('hr')
-        if hr: hr.decompose()
-        container = h2.find_next_sibling('div', class_='custom-footnotes-container')
-        if container: container.decompose()
-        h2.decompose()
-
-    # === 1. איתור חכם ועוצמתי של אזור ההערות בתחתית הדף ===
-    footnotes_blocks = []
-    
-    # שיטה א': חיפוש פסקאות שמכילות עוגן של וורד (id או name שמתחילים ב ftn)
-    for p in soup.find_all(['p', 'div']):
-        is_footnote = False
-        if p.get('id') and re.match(r'^(_ftn|ftn|footnote)\d+', p.get('id')):
-            is_footnote = True
-        else:
-            if p.find('a', attrs={'name': re.compile(r'^(_ftn|ftn|footnote)\d+')}):
-                is_footnote = True
-            # שיטה ב': חיפוש פסקאות שמכילות לינק חזרה למעלה (backlink) עם חץ
-            elif p.find('a', href=re.compile(r'^#(_ftnref|ftnref|footnote-ref)')):
-                is_footnote = True
-                
-        if is_footnote and p not in footnotes_blocks:
-            footnotes_blocks.append(p)
+        # ביטול פסקאות שגורמות לשבירת שורות
+        for p in li.find_all('p'):
+            p.unwrap()
             
-    # שיטה ג' (גיבוי): אם וורד מחק את כל הלינקים, מחפשים רצף של פסקאות בסוף שמתחילות ב 1. ואז 2.
-    if not footnotes_blocks:
-        all_p = soup.find_all(['p', 'div'])
-        start_idx = -1
-        for i, p in enumerate(all_p):
-            text = p.get_text(strip=True)
-            # מחפש פסקה שמתחילה במספר 1
-            if re.match(r'^[\s\[\]\(\)]*1[\.\)\]\-]+', text):
-                # מוודא שהפסקה הבאה מתחילה במספר 2 כדי להיות בטוחים
-                if i + 1 < len(all_p) and re.match(r'^[\s\[\]\(\)]*2[\.\)\]\-]+', all_p[i+1].get_text(strip=True)):
-                    start_idx = i
-                    break
-        if start_idx != -1:
-            for i in range(start_idx, len(all_p)):
-                text = all_p[i].get_text(strip=True)
-                if re.match(r'^[\s\[\]\(\)]*\d+[\.\)\]\-]+', text) or footnotes_blocks:
-                    footnotes_blocks.append(all_p[i])
+        footnotes_dict[fn_id] = li
+        li.extract()
+        
+    for ol in soup.find_all('ol'):
+        if not ol.get_text(strip=True):
+            ol.extract()
 
-    # מחיקת קו מפריד שוורד שם לפני ההערות
-    if footnotes_blocks:
-        prev = footnotes_blocks[0].previous_sibling
-        while prev and prev.name not in ['p', 'div', 'li']:
-            if prev.name == 'hr':
-                prev.decompose()
-                break
-            prev = prev.previous_sibling
-
-    # === 2. חילוץ וניקוי גושי ההערות ===
-    built_footnotes = []
-    current_fn = None
-    
-    for p in footnotes_blocks:
-        text = p.get_text(strip=True)
-        if not text:
-            p.decompose()
-            continue
-            
-        # השמדת חצים מההערות
-        for text_node in p.find_all(string=re.compile(r'[↑^ˆ]')):
-            text_node.replace_with(re.sub(r'[↑^ˆ]', '', text_node))
-            
-        # מחיקת קישורים מיותרים בתוך תחתית ההערה
-        for a in p.find_all('a'):
-            a.decompose()
-            
-        # מזהה את המספר של ההערה
-        match = re.match(r'^[\s\[\]\(\)]*(\d+)[\.\)\]\-\:]*\s*(.*)', text)
-        if match:
-            num = match.group(1)
-            # מוחק את המספר מתחילת הפסקה כדי שלא יהיה כפול בתצוגה שלנו
-            for text_node in p.find_all(string=True):
-                if num in text_node:
-                    new_val = re.sub(r'^[\s\.\[\]\(\)]*' + num + r'[\s\.\[\]\(\)\-\:]*\s*', '', text_node, count=1)
-                    text_node.replace_with(new_val)
-                    break
-                    
-            current_fn = {'num': num, 'elements': [p.extract()]}
-            built_footnotes.append(current_fn)
-        elif current_fn:
-            current_fn['elements'].append(p.extract())
-
-    # === 3. שחזור וסידור ההפניות (המספרים הקטנים) בגוף המאמר ===
-    
-    # א. אם הקישור שרד את ההדבקה
-    for a in soup.find_all('a'):
-        href = a.get('href', '')
-        if re.match(r'^#(_ftn\d+|ftn\d+|footnote\d+)', href):
-            text = a.get_text(strip=True)
-            clean_num = re.sub(r'\D', '', text)
-            if clean_num:
-                a.string = clean_num
-                a['href'] = f"#footnote-{clean_num}"
-                a['class'] = a.get('class', []) + ['footnote-ref']
-                if a.parent and a.parent.name != 'sup':
-                    a.wrap(soup.new_tag('sup'))
-                    
-    # ב. אם נשאר רק ציון עילי (sup) בלי קישור
-    for sup in soup.find_all('sup'):
-        if not sup.find('a'):
-            text = sup.get_text(strip=True)
-            clean_num = re.sub(r'\D', '', text)
-            if clean_num and clean_num.isdigit():
-                a = soup.new_tag('a', href=f"#footnote-{clean_num}", class_="footnote-ref")
-                a.string = clean_num
-                sup.string = ''
-                sup.append(a)
-
-    # ג. מנגנון חילוץ עמוק: אם וורד השטיח את ההפניה לטקסט רגיל [1]
-    if built_footnotes:
-        max_fn = len(built_footnotes)
-        for text_node in soup.find_all(string=re.compile(r'\[\d+\]')):
-            # מונע החלפה של מספר שכבר טופל ונמצא בתוך sup או a
-            if text_node.find_parent(['sup', 'a']):
-                continue
-            
-            new_html = re.sub(
-                r'\[(\d+)\]', 
-                lambda m: f'<sup><a href="#footnote-{m.group(1)}" class="footnote-ref">{m.group(1)}</a></sup>' if int(m.group(1)) <= max_fn else m.group(0), 
-                text_node
-            )
-            if new_html != text_node:
-                new_soup = BeautifulSoup(new_html, 'html.parser')
-                text_node.replace_with(new_soup)
-
-    # === 4. הזרקת אזור ההערות המעוצב בסוף המאמר ===
-    if built_footnotes:
-        hr_new = soup.new_tag('hr', style='border: 0; border-top: 5px solid #2c3e50; margin: 60px 0 40px 0; opacity: 1;')
+    # 3. בניה מחדש של תחתית המאמר עם הערות בעיצוב חלק (Flexbox)
+    if footnotes_dict:
+        hr = soup.new_tag('hr', style='border: 0; border-top: 5px solid #2c3e50; margin: 60px 0 40px 0; opacity: 1;')
         h2 = soup.new_tag('h2', style='text-align: center; color: #d4af37; margin-bottom: 30px; font-weight: bold;')
         h2.string = "הערות שוליים"
         container = soup.new_tag('div', class_='custom-footnotes-container', style='font-size: 1.1em; line-height: 1.8; margin-right: 10px;')
 
-        for fn in built_footnotes:
+        for fn_id, li_tag in footnotes_dict.items():
+            num = fn_id.replace('footnote-', '')
             div = soup.new_tag('div', style='margin-bottom: 15px; display: flex; align-items: flex-start;')
-            div['id'] = f"footnote-{fn['num']}"
+            div['id'] = fn_id
             
             num_span = soup.new_tag('span', style='font-weight:bold; color:#d4af37; min-width: 35px; flex-shrink: 0;')
-            num_span.string = f"{fn['num']}."
+            num_span.string = f"{num}."
             
             content_span = soup.new_tag('span', style='flex-grow: 1;')
-            for el in fn['elements']:
-                if el.name == 'p': el.unwrap() # ביטול שבירת שורות פנימיות בוורד
-                content_span.append(el)
-                content_span.append(soup.new_string(" ")) 
-                
+            for child in list(li_tag.contents):
+                content_span.append(child)
+            
             div.append(num_span)
             div.append(content_span)
             container.append(div)
 
-        soup.append(hr_new)
+        soup.append(hr)
         soup.append(h2)
         soup.append(container)
 
-    # ניקוי סופי של פסקאות ריקות שעושות רווחים
+    # 4. ניקוי פסקאות ריקות
     for p in soup.find_all('p'):
         if not p.get_text(strip=True) and not p.find(['img', 'iframe']):
             p.decompose()
@@ -222,7 +124,11 @@ PARASHA_CHOICES = [
 class Article(models.Model):
     title = models.CharField(max_length=200, verbose_name="כותרת המאמר")
     parasha = models.CharField(max_length=500, default=',general,', verbose_name="שיוך לפרשות שבוע", blank=True)
-    content = CKEditor5Field(config_name='extends', verbose_name="תוכן המאמר") 
+    
+    # === הוספת שדה העלאת הוורד ===
+    word_file = models.FileField(upload_to='word_imports/', blank=True, null=True, verbose_name="ייבוא אוטומטי מוורד (מומלץ למאמרים עם הערות!)")
+    
+    content = CKEditor5Field(config_name='extends', verbose_name="תוכן המאמר", blank=True, null=True) 
     hebrew_date = models.CharField(max_length=100, verbose_name="תאריך עברי", blank=True)
     created_at = models.DateTimeField(default=timezone.now, verbose_name="תאריך יצירה")
     is_published = models.BooleanField(default=True, verbose_name="מפורסם")
@@ -244,7 +150,17 @@ class Article(models.Model):
         return self.title
 
     def save(self, *args, **kwargs):
-        self.content = clean_word_html(self.content)
+        # אם המשתמש העלה קובץ וורד, קורא אותו ודורס את התוכן!
+        if self.word_file and mammoth:
+            try:
+                self.word_file.open('rb')
+                result = mammoth.convert_to_html(self.word_file.file)
+                self.content = process_mammoth_html(result.value)
+                self.word_file.close()
+                self.word_file = None # מוחק את הקובץ כדי שלא יעבד אותו מחדש בשמירה הבאה
+            except Exception as e:
+                print(f"Error parsing word: {e}")
+                
         super().save(*args, **kwargs)
 
 
@@ -284,14 +200,27 @@ class Chapter(models.Model):
 class Section(models.Model):
     chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE, related_name='sections', verbose_name="פרק")
     title = models.CharField(max_length=200, verbose_name="כותרת הסעיף")
-    content = CKEditor5Field(config_name='extends', verbose_name="תוכן")
+    
+    # === הוספת שדה העלאת הוורד גם לסעיפי הספרים ===
+    word_file = models.FileField(upload_to='word_imports/', blank=True, null=True, verbose_name="ייבוא אוטומטי מוורד (מומלץ למאמרים עם הערות!)")
+    
+    content = CKEditor5Field(config_name='extends', verbose_name="תוכן", blank=True, null=True)
     order = models.PositiveIntegerField(verbose_name="סדר")
 
     def __str__(self):
         return f"{self.chapter.title} - {self.title}"
 
     def save(self, *args, **kwargs):
-        self.content = clean_word_html(self.content)
+        if self.word_file and mammoth:
+            try:
+                self.word_file.open('rb')
+                result = mammoth.convert_to_html(self.word_file.file)
+                self.content = process_mammoth_html(result.value)
+                self.word_file.close()
+                self.word_file = None
+            except Exception as e:
+                print(f"Error parsing word: {e}")
+                
         super().save(*args, **kwargs)
 
 
