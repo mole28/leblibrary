@@ -1154,7 +1154,23 @@ def generate_article_audio_background(article_id):
         file_path = os.path.join(audio_dir, file_name)
 
         if not os.path.exists(file_path):
-            raw_text = f"{article.title}. {article.content}"
+            raw_text = f"{article.title}. {article.content or ''}"
+            try:
+                if hasattr(article, 'chapter') and article.chapter:
+                    sections = Section.objects.filter(chapter=article.chapter).order_by('order')
+                    for sec in sections:
+                        if sec.title: raw_text += f" {sec.title}. "
+                        if sec.content: raw_text += f"{sec.content} "
+                elif hasattr(article, 'book') and article.book:
+                    chapters = Chapter.objects.filter(book=article.book).order_by('order')
+                    for ch in chapters:
+                        if ch.title: raw_text += f" {ch.title}. "
+                        sections = Section.objects.filter(chapter=ch).order_by('order')
+                        for sec in sections:
+                            if sec.title: raw_text += f" {sec.title}. "
+                            if sec.content: raw_text += f"{sec.content} "
+            except Exception:
+                pass
             final_text = apply_tts_dictionary(raw_text)
             generate_audio_sync(final_text, file_path)
     except Exception:
@@ -1182,7 +1198,23 @@ def get_article_audio(request, article_id):
     audio_url = f"{media_url}audio/{file_name}"
 
     if not os.path.exists(file_path):
-        raw_text = f"{article.title}. {article.content}"
+        raw_text = f"{article.title}. {article.content or ''}"
+        try:
+            if hasattr(article, 'chapter') and article.chapter:
+                sections = Section.objects.filter(chapter=article.chapter).order_by('order')
+                for sec in sections:
+                    if sec.title: raw_text += f" {sec.title}. "
+                    if sec.content: raw_text += f"{sec.content} "
+            elif hasattr(article, 'book') and article.book:
+                chapters = Chapter.objects.filter(book=article.book).order_by('order')
+                for ch in chapters:
+                    if ch.title: raw_text += f" {ch.title}. "
+                    sections = Section.objects.filter(chapter=ch).order_by('order')
+                    for sec in sections:
+                        if sec.title: raw_text += f" {sec.title}. "
+                        if sec.content: raw_text += f"{sec.content} "
+        except Exception:
+            pass
         final_text = apply_tts_dictionary(raw_text)
         try:
             generate_audio_sync(final_text, file_path)
@@ -1209,7 +1241,18 @@ def get_book_audio(request, book_id):
     if not os.path.exists(file_path):
         raw_text = f"{book.title}. "
         if book.summary:
-            raw_text += book.summary
+            raw_text += book.summary + " "
+            
+        try:
+            chapters = Chapter.objects.filter(book=book).order_by('order')
+            for ch in chapters:
+                if ch.title: raw_text += f" {ch.title}. "
+                sections = Section.objects.filter(chapter=ch).order_by('order')
+                for sec in sections:
+                    if sec.title: raw_text += f" {sec.title}. "
+                    if sec.content: raw_text += f"{sec.content} "
+        except Exception:
+            pass
             
         final_text = apply_tts_dictionary(raw_text)
         try:
