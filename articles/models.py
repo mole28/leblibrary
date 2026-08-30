@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils import timezone
 
+import re
+from bs4 import BeautifulSoup
 # ------------------------------------------
 # ייבוא מעודכן עבור CKEditor 5
 # ------------------------------------------
@@ -71,6 +73,49 @@ class Article(models.Model):
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        if self.content:
+            soup = BeautifulSoup(self.content, 'html.parser')
+
+            # 1. מחיקת חצי חזרה (הסימן ^ או ↑) שמועתקים מוורד
+            for a in soup.find_all('a'):
+                text = a.get_text(strip=True)
+                if '^' in text or '↑' in text:
+                    a.decompose() # מוחק את הלינק של החץ לחלוטין
+
+            # גיבוי: מחיקת חצים שהועתקו כטקסט רגיל
+            for text_node in soup.find_all(string=re.compile(r'[↑^]')):
+                text_node.replace_with(text_node.replace('↑', '').replace('^', '').strip())
+
+            # 2. הורדת הסוגריים המרובעים ממספרי ההערות בטקסט: [1] הופך ל- 1
+            for a in soup.find_all('a'):
+                clean_text = a.get_text(strip=True).replace('[', '').replace(']', '')
+                # מוודא שזה רק מספר כדי לא לפגוע בלינקים אמיתיים לאתרים אחרים
+                if clean_text.isdigit():
+                    a.string = clean_text
+
+            # 3. מחיקת פסקאות ריקות שיוצרות רווחים ענקיים
+            for p in soup.find_all('p'):
+                if not p.get_text(strip=True) and not p.find('img'):
+                    p.decompose()
+
+            # 4. תיקון שבירת שורה בהערות: מחבר את המספר "1." לטקסט שירד שורה מתחתיו
+            for p in soup.find_all('p'):
+                text = p.get_text(strip=True)
+                # מזהה אם הפסקה מכילה רק מספר עם נקודה (כמו שמופיע בתמונה שלך: "1.")
+                if re.match(r'^\d+\.$', text):
+                    next_p = p.find_next_sibling('p')
+                    if next_p:
+                        # מדביק את הטקסט של הפסקה הבאה לתוך הפסקה של המספר ומוחק את המיותרת
+                        p.append(" " + next_p.get_text(strip=True))
+                        next_p.decompose()
+
+            # עדכון התוכן הנקי בחזרה
+            self.content = str(soup)
+
+        # קריאה לפעולת השמירה המקורית של דג'נגו
+        super().save(*args, **kwargs)
 
 
 class Book(models.Model):

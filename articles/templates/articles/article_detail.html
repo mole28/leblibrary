@@ -438,5 +438,14 @@
     body.zen-mode .content-card-bg { box-shadow: none !important; background-color: transparent !important; border: none !important; }
     body.zen-mode #main-content-col { max-width: 850px !important; margin: 0 auto !important; flex: 0 0 100% !important; padding-top: 5vh !important; padding-bottom: 15vh !important; }
     body.zen-mode .zen-toggle-btn { background: #3f4050; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); }
+
+    /* עיצוב הפניות והערות שוליים גלובלי לכל המאמרים מתוך וורד */
+    sup, sub, .MsoFootnoteReference, a[href*="ftn"], a[href*="footnote"], a[href*="ref"] {
+        font-size: 0.9em !important;
+        font-weight: bold !important;
+        vertical-align: super !important;
+        line-height: 0;
+        text-decoration: none;
+    }
 </style>
 {% endblock %}
