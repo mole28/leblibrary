@@ -54,14 +54,15 @@ def import_meyuchadut_book():
 
     soup = BeautifulSoup(raw_html, 'html.parser')
     
-    # חילוץ הערות השוליים
+    # חילוץ כל הערות השוליים למילון ושמירתן לסוף הספר
     footnotes_dict = {}
     for li in soup.find_all('li', id=re.compile(r'^footnote-')):
         fn_id = li['id']
+        # הסרת חץ החזרה כדי לשמור על טקסט נקי
         for back_link in li.find_all('a', string='↑'):
             back_link.decompose()
         footnotes_dict[fn_id] = li
-        li.extract()
+        li.extract() # מוציא את ההערה מהטקסט כדי שלא תופיע באמצע
         
     for ol in soup.find_all('ol'):
         if not ol.get_text(strip=True):
@@ -91,7 +92,6 @@ def import_meyuchadut_book():
         if len(clean_text) < 150 and is_chapter(clean_text):
             current_chapter = {'title': clean_text, 'sections': []}
             chapters_data.append(current_chapter)
-            # יצירת סעיף פתיחה לטקסט המקדים של הסוגיא
             current_section = {'title': 'פתיחה', 'tags': [tag], 'is_intro': True}
             current_chapter['sections'].append(current_section)
             
@@ -112,7 +112,7 @@ def import_meyuchadut_book():
                 current_chapter['sections'].append(current_section)
             current_section['tags'].append(tag)
 
-    # סידור הסעיפים ומניעת "סעיפי פתיחה" ריקים במקום שאין הקדמה
+    # סידור הסעיפים
     for ch in chapters_data:
         valid_sections = []
         for i, sec in enumerate(ch['sections']):
@@ -128,7 +128,6 @@ def import_meyuchadut_book():
             else:
                 valid_sections.append(sec)
         
-        # אם יש בפרק רק סעיף אחד, נקרא לו בשם של הפרק
         if len(valid_sections) == 1:
             valid_sections[0]['title'] = ch['title']
             
@@ -146,6 +145,7 @@ def import_meyuchadut_book():
     """
 
     ch_order = 1
+    # יצירת כל הפרקים והסעיפים של הספר
     for ch_data in chapters_data:
         chapter = Chapter.objects.create(
             book=book,
@@ -157,23 +157,12 @@ def import_meyuchadut_book():
         for sec_data in ch_data['sections']:
             sec_html = "".join(str(tag) for tag in sec_data['tags'])
             sec_soup = BeautifulSoup(sec_html, 'html.parser')
-            
-            section_footnotes_html = ""
-            refs = sec_soup.find_all('a', href=re.compile(r'^#footnote-'))
-            if refs:
-                section_footnotes_html += "<hr class='footnotes-divider'><ol>"
-                seen_fns = set()
-                for ref in refs:
-                    fn_target = ref['href'].replace('#', '')
-                    if fn_target in footnotes_dict and fn_target not in seen_fns:
-                        section_footnotes_html += str(footnotes_dict[fn_target])
-                        seen_fns.add(fn_target)
-                section_footnotes_html += "</ol>"
 
             for tag_b in sec_soup.find_all(['strong', 'b']):
                 tag_b.unwrap()
 
-            final_content = force_large_css + str(sec_soup) + section_footnotes_html
+            # הערות השוליים כבר לא מוזרקות לכאן! רק הטקסט הרגיל.
+            final_content = force_large_css + str(sec_soup)
 
             Section.objects.create(
                 chapter=chapter,
@@ -185,7 +174,36 @@ def import_meyuchadut_book():
             
         ch_order += 1
 
-    print(f"הספר '{book_title}' יובא בהצלחה! האותיות שולבו בתוכן העניינים בהיררכיה הנכונה.")
+    # ==========================================
+    # יצירת פרק מיוחד בסוף הספר לרכז את כל ההערות
+    # ==========================================
+    if footnotes_dict:
+        # קו עבה, מודגש וברור המפריד בין הספר להערות
+        separator_html = "<hr style='border: 0; border-top: 5px solid #2c3e50; margin: 60px 0 40px 0; opacity: 1;'>"
+        title_html = "<h2 style='text-align: center; color: #d4af37; margin-bottom: 30px; font-weight: bold;'>הערות שוליים</h2>"
+
+        all_fns_html = "<ol style='font-size: 1.1em; line-height: 1.8;'>"
+        # הוספת כל ההערות לפי הסדר שלהן
+        for fn_id, li_tag in footnotes_dict.items():
+            all_fns_html += str(li_tag)
+        all_fns_html += "</ol>"
+
+        fn_final_content = force_large_css + separator_html + title_html + all_fns_html
+
+        fn_chapter = Chapter.objects.create(
+            book=book,
+            title="הערות שוליים",
+            order=ch_order
+        )
+
+        Section.objects.create(
+            chapter=fn_chapter,
+            title="ריכוז הערות",
+            content=fn_final_content,
+            order=1
+        )
+
+    print(f"הספר '{book_title}' יובא בהצלחה! כל הערות השוליים רוכזו בסוף הספר.")
 
 if __name__ == "__main__":
     import_meyuchadut_book()
