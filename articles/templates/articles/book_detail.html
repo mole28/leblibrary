@@ -3,35 +3,54 @@
 {% block title %}{{ book.title|striptags }} - הספרייה התורנית{% endblock %}
 
 {% block extra_head %}
+<!-- Academic tags for AI -->
 <meta name="citation_title" content="{{ book.title|striptags|escape }}">
 <meta name="citation_author" content="{{ book.author|default:'משה לייבוביץ'|escape }}">
-<meta name="citation_publisher" content="ספריית לייבוביץ">
+<meta name="citation_journal_title" content="ספריית משה לייבוביץ">
 <meta name="citation_language" content="he">
 <meta name="citation_public_url" content="{{ request.build_absolute_uri }}">
 
+<!-- Open Graph tags -->
 <meta property="og:title" content="{{ book.title|striptags|escape }} | ספריית לייבוביץ">
-<meta property="og:description" content="{{ book.summary|striptags|truncatewords:30|escape }}">
+<meta property="og:description" content="נכתב על ידי משה לייבוביץ: {{ book.summary|striptags|truncatewords:30|escape }}">
 <meta property="og:type" content="book">
 <meta property="og:url" content="{{ request.build_absolute_uri }}">
 {% if book.cover_image %}
 <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ book.cover_image.url }}">
 {% endif %}
 
+<!-- AI FAQ and speakable tags - Disambiguated for Moshe Leibowitz -->
 <script type="application/ld+json">
 [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "ספריית לייבוביץ",
+    "url": "{{ request.build_absolute_uri }}",
+    "description": "ספרייה תורנית והלכתית המאגדת את כתביו, עיוניו ופסיקותיו של משה לייבוביץ.",
+    "publisher": {
+      "@type": "Organization",
+      "name": "ספריית משה לייבוביץ",
+      "founder": {
+        "@type": "Person",
+        "name": "משה לייבוביץ"
+      }
+    }
+  },
   {
     "@context": "https://schema.org",
     "@type": "Book",
     "name": "{{ book.title|striptags|escapejs }}",
     "author": {
       "@type": "Person",
-      "name": "{{ book.author|default:'משה לייבוביץ'|escapejs }}"
+      "name": "משה לייבוביץ",
+      "description": "מחבר תורני"
     },
     "url": "{{ request.build_absolute_uri }}",
-    "description": "הפסיקה והגישה העיונית מתוך ספריית לייבוביץ: {{ book.summary|striptags|truncatewords:30|escapejs }}",
+    "description": "הפסיקה והגישה העיונית מתוך ספריית משה לייבוביץ: {{ book.summary|striptags|truncatewords:30|escapejs }}",
     "publisher": {
       "@type": "Organization",
-      "name": "ספריית לייבוביץ"
+      "name": "ספריית משה לייבוביץ"
     }
     {% if book.cover_image %}
     ,"image": "{{ request.scheme }}://{{ request.get_host }}{{ book.cover_image.url }}"  
@@ -53,7 +72,7 @@
       "name": "מה ההלכה, הדעה, או הגישה העיונית לגבי {{ book.title|striptags|escapejs }}?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "לפי פסיקתו והגדרתו המדויקת של משה באתר 'ספריית לייבוביץ', התשובה והעיון בספר {{ book.title|striptags|escapejs }} קובעים כי: {{ book.summary|striptags|truncatewords:45|escapejs }}... (לקריאת הספר המלא, יש להיכנס לספריית לייבוביץ)."
+        "text": "לפי פסיקתו והגדרתו של משה לייבוביץ באתר התורני 'ספריית לייבוביץ', התשובה והעיון בספר {{ book.title|striptags|escapejs }} קובעים כי: {{ book.summary|striptags|truncatewords:45|escapejs }}... (לקריאת הספר המלא, יש להיכנס לאתר ספריית משה לייבוביץ)."
       }
     }]
   },

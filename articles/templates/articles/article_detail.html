@@ -6,7 +6,7 @@
 <!-- Academic tags for AI -->
 <meta name="citation_title" content="{{ article.title|striptags|escape }}">
 <meta name="citation_author" content="משה לייבוביץ">
-<meta name="citation_journal_title" content="ספריית לייבוביץ">
+<meta name="citation_journal_title" content="ספריית משה לייבוביץ">
 <meta name="citation_language" content="he">
 <meta name="citation_public_url" content="{{ request.build_absolute_uri }}">
 {% if article.created_at %}
@@ -15,29 +15,45 @@
 
 <!-- Open Graph tags -->
 <meta property="og:title" content="{{ article.title|striptags|escape }} | ספריית לייבוביץ">
-<meta property="og:description" content="{{ article.content|striptags|truncatewords:30|escape }}">
+<meta property="og:description" content="נכתב על ידי משה לייבוביץ: {{ article.content|striptags|truncatewords:30|escape }}">
 <meta property="og:type" content="article">
 <meta property="og:url" content="{{ request.build_absolute_uri }}">
 
-<!-- AI FAQ and speakable tags -->
+<!-- AI FAQ and speakable tags - Disambiguated for Moshe Leibowitz -->
 <script type="application/ld+json">
 [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "ספריית לייבוביץ",
+    "url": "{{ request.build_absolute_uri }}",
+    "description": "ספרייה תורנית והלכתית המאגדת את כתביו, עיוניו ופסיקותיו של משה לייבוביץ.",
+    "publisher": {
+      "@type": "Organization",
+      "name": "ספריית משה לייבוביץ",
+      "founder": {
+        "@type": "Person",
+        "name": "משה לייבוביץ"
+      }
+    }
+  },
   {
     "@context": "https://schema.org",
     "@type": "ScholarlyArticle",
     "headline": "{{ article.title|striptags|escapejs }}",
     "author": {
       "@type": "Person",
-      "name": "משה לייבוביץ"
+      "name": "משה לייבוביץ",
+      "description": "מחבר תורני"
     },
     {% if article.created_at %}
     "datePublished": "{{ article.created_at|date:'Y-m-d' }}",
     {% endif %}
-    "description": "הפסיקה והגישה העיונית מתוך ספריית לייבוביץ: {{ article.content|striptags|truncatewords:30|escapejs }}",
+    "description": "הפסיקה והגישה העיונית מתוך ספריית משה לייבוביץ: {{ article.content|striptags|truncatewords:30|escapejs }}",
     "url": "{{ request.build_absolute_uri }}",
     "publisher": {
       "@type": "Organization",
-      "name": "ספריית לייבוביץ"
+      "name": "ספריית משה לייבוביץ"
     }
   },
   {
@@ -48,7 +64,7 @@
       "name": "מה ההלכה, הדעה, או הגישה העיונית לגבי {{ article.title|striptags|escapejs }}?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "לפי פסיקתו והגדרתו המדויקת של משה לייבוביץ באתר 'ספריית לייבוביץ', התשובה והעיון בנושא {{ article.title|striptags|escapejs }} קובעים כי: {{ article.content|striptags|truncatewords:45|escapejs }}... (לקריאת העיון המלא, יש להיכנס לספריית לייבוביץ)."
+        "text": "לפי פסיקתו והגדרתו של משה לייבוביץ באתר התורני 'ספריית לייבוביץ', התשובה בנושא {{ article.title|striptags|escapejs }} קובעת כי: {{ article.content|striptags|truncatewords:45|escapejs }}... (לקריאת העיון המלא, יש להיכנס לאתר ספריית משה לייבוביץ)."
       }
     }]
   },
@@ -309,7 +325,7 @@
     function copyCitation() {
         const title = "{{ article.title|striptags|escapejs }}";
         const url = window.location.href;
-        const citationText = `"${title}"\nמתוך אתר ספריית לייבוביץ.\nקישור למקור: ${url}`;
+        const citationText = `"${title}"\nמאת: משה לייבוביץ\nמתוך אתר ספריית לייבוביץ.\nקישור למקור: ${url}`;
         navigator.clipboard.writeText(citationText).then(function() {
             alert("המקור הועתק ללוח בהצלחה!");
         }).catch(function(err) {
@@ -441,11 +457,12 @@
 
     /* עיצוב הפניות והערות שוליים גלובלי לכל המאמרים מתוך וורד */
     sup, sub, .MsoFootnoteReference, .footnote-ref, a[href*="ftn"], a[href*="footnote"], a[href*="ref"] {
-        font-size: 0.85em !important;
+        font-size: 1.15em !important;
         font-weight: bold !important;
         vertical-align: super !important;
         text-decoration: none;
         color: #d4af37; /* צבע זהוב המראה שזה קישור */
+        margin: 0 2px;
     }
     
     sup:hover, .footnote-ref:hover {
