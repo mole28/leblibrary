@@ -17,13 +17,13 @@
             </a>
             
             <span class="nav-separator"></span> 
-            <a class="nav-link-custom {% if current_page == 'qa' %}active{% endif %}" href="{% url 'articles:qa' %}">
-                <i class="bi bi-chat-right-text"></i> <span data-i18n="nav_qa">שאלות ותשובות</span>
+            <a class="nav-link-custom {% if current_page == 'articles' %}active{% endif %}" href="{% url 'articles:articles_index' %}">
+                <i class="bi bi-file-earmark-text"></i> <span data-i18n="nav_articles">מאמרים</span>
             </a>
             
             <span class="nav-separator"></span> 
-            <a class="nav-link-custom {% if current_page == 'articles' %}active{% endif %}" href="{% url 'articles:articles_index' %}">
-                <i class="bi bi-file-earmark-text"></i> <span data-i18n="nav_articles">מאמרים</span>
+            <a class="nav-link-custom {% if current_page == 'qa' %}active{% endif %}" href="{% url 'articles:qa' %}">
+                <i class="bi bi-chat-right-text"></i> <span data-i18n="nav_qa">שאלות ותשובות</span>
             </a>
             
             <span class="nav-separator"></span> 
