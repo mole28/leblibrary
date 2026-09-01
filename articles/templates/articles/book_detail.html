@@ -564,12 +564,20 @@
 
     /* עיצוב הפניות והערות שוליים גלובלי לכל המאמרים והספרים */
     sup, sub, .MsoFootnoteReference, .footnote-ref, a[href*="ftn"], a[href*="footnote"], a[href*="ref"] {
-        font-size: 1.15em !important; /* הפונט הוגדל בול כמו שביקשת */
+        font-size: 0.9em !important; /* גודל מושלם וברור אבל לא ענק מדי */
         font-weight: bold !important;
-        vertical-align: super !important;
-        text-decoration: none;
-        color: #d4af37; 
-        margin: 0 2px;
+        line-height: 0 !important; /* מונע דחיפה של השורה למעלה ולמטה */
+        vertical-align: baseline !important;
+        position: relative !important;
+        top: -0.4em !important; /* מרים את המספר בעדינות בדיוק למקום */
+        text-decoration: none !important;
+        color: #d4af37 !important; 
+        margin: 0 2px !important;
+        display: inline-block;
+    }
+    
+    sup:hover, .footnote-ref:hover {
+        text-decoration: underline !important;
     }
 </style>
 
