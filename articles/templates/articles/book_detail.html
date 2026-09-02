@@ -659,7 +659,10 @@
         }
     }
 
+    // הפונקציה המעודכנת לשמירת מיקום הגלילה 
     function toggleZenMode() {
+        const currentScroll = window.scrollY; // שמירת המיקום הנוכחי
+        
         document.body.classList.toggle('zen-mode');
         const icon = document.getElementById('zenIcon');
         const btn = document.getElementById('zenToggleBtn');
@@ -668,12 +671,16 @@
             icon.classList.remove('bi-arrows-fullscreen');
             icon.classList.add('bi-fullscreen-exit');
             btn.title = "יציאה ממצב קריאה";
-            window.scrollTo({ top: 0, behavior: 'smooth' }); 
         } else {
             icon.classList.remove('bi-fullscreen-exit');
             icon.classList.add('bi-arrows-fullscreen');
             btn.title = "מצב קריאה נקי";
         }
+        
+        // החזרת הגלילה במדויק לאחר רינדור העמוד
+        setTimeout(() => {
+            window.scrollTo({ top: currentScroll, behavior: 'instant' });
+        }, 10);
     }
 
     function copyCitation() {
