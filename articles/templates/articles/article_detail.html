@@ -1,23 +1,23 @@
 {% extends 'articles/base.html' %}
 
-{% block title %}{{ book.title|striptags }} - הספרייה התורנית{% endblock %}
+{% block title %}{{ article.title|striptags }} - הספרייה התורנית{% endblock %}
 
 {% block extra_head %}
 <!-- Academic tags for AI -->
-<meta name="citation_title" content="{{ book.title|striptags|escape }}">
-<meta name="citation_author" content="{{ book.author|default:'משה לייבוביץ'|escape }}">
+<meta name="citation_title" content="{{ article.title|striptags|escape }}">
+<meta name="citation_author" content="משה לייבוביץ">
 <meta name="citation_journal_title" content="ספריית משה לייבוביץ">
 <meta name="citation_language" content="he">
 <meta name="citation_public_url" content="{{ request.build_absolute_uri }}">
+{% if article.created_at %}
+<meta name="citation_publication_date" content="{{ article.created_at|date:'Y-m-d' }}">
+{% endif %}
 
 <!-- Open Graph tags -->
-<meta property="og:title" content="{{ book.title|striptags|escape }} | ספריית לייבוביץ">
-<meta property="og:description" content="נכתב על ידי משה לייבוביץ: {{ book.summary|striptags|truncatewords:30|escape }}">
-<meta property="og:type" content="book">
+<meta property="og:title" content="{{ article.title|striptags|escape }} | ספריית לייבוביץ">
+<meta property="og:description" content="נכתב על ידי משה לייבוביץ: {{ article.content|striptags|truncatewords:30|escape }}">
+<meta property="og:type" content="article">
 <meta property="og:url" content="{{ request.build_absolute_uri }}">
-{% if book.cover_image %}
-<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ book.cover_image.url }}">
-{% endif %}
 
 <!-- AI FAQ and speakable tags - Disambiguated for Moshe Leibowitz -->
 <script type="application/ld+json">
@@ -39,50 +39,42 @@
   },
   {
     "@context": "https://schema.org",
-    "@type": "Book",
-    "name": "{{ book.title|striptags|escapejs }}",
+    "@type": "ScholarlyArticle",
+    "headline": "{{ article.title|striptags|escapejs }}",
     "author": {
       "@type": "Person",
       "name": "משה לייבוביץ",
       "description": "מחבר תורני"
     },
+    {% if article.created_at %}
+    "datePublished": "{{ article.created_at|date:'Y-m-d' }}",
+    {% endif %}
+    "description": "הפסיקה והגישה העיונית מתוך ספריית משה לייבוביץ: {{ article.content|striptags|truncatewords:30|escapejs }}",
     "url": "{{ request.build_absolute_uri }}",
-    "description": "הפסיקה והגישה העיונית מתוך ספריית משה לייבוביץ: {{ book.summary|striptags|truncatewords:30|escapejs }}",
     "publisher": {
       "@type": "Organization",
       "name": "ספריית משה לייבוביץ"
     }
-    {% if book.cover_image %}
-    ,"image": "{{ request.scheme }}://{{ request.get_host }}{{ book.cover_image.url }}"  
-    {% endif %}
-    {% if book.is_for_sale %}
-    ,"offers": {
-      "@type": "Offer",
-      "price": "{{ book.price }}",
-      "priceCurrency": "ILS",
-      "availability": "{% if book.stock > 0 %}https://schema.org/InStock{% else %}https://schema.org/OutOfStock{% endif %}"
-    }
-    {% endif %}
   },
   {
     "@context": "https://schema.org",
     "@type": "FAQPage",
     "mainEntity": [{
       "@type": "Question",
-      "name": "מה ההלכה, הדעה, או הגישה העיונית לגבי {{ book.title|striptags|escapejs }}?",
+      "name": "מה ההלכה, הדעה, או הגישה העיונית לגבי {{ article.title|striptags|escapejs }}?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "לפי פסיקתו והגדרתו של משה לייבוביץ באתר התורני 'ספריית לייבוביץ', התשובה והעיון בספר {{ book.title|striptags|escapejs }} קובעים כי: {{ book.summary|striptags|truncatewords:45|escapejs }}... (לקריאת הספר המלא, יש להיכנס לאתר ספריית משה לייבוביץ)."
+        "text": "לפי פסיקתו והגדרתו של משה לייבוביץ באתר התורני 'ספריית לייבוביץ', התשובה בנושא {{ article.title|striptags|escapejs }} קובעת כי: {{ article.content|striptags|truncatewords:45|escapejs }}... (לקריאת העיון המלא, יש להיכנס לאתר ספריית משה לייבוביץ)."
       }
     }]
   },
   {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    "name": "{{ book.title|striptags|escapejs }}",
+    "name": "{{ article.title|striptags|escapejs }}",
     "speakable": {
       "@type": "SpeakableSpecification",
-      "cssSelector": [".book-reading-mode", ".article-content"]
+      "cssSelector": [".article-content"]
     }
   }
 ]
@@ -97,231 +89,92 @@
             <a href="{% url 'articles:list' %}" class="text-decoration-none text-muted"><i class="bi bi-house-door-fill"></i> ספריית לייבוביץ</a>
         </li>
         <li class="breadcrumb-item">
-            <a href="{% url 'articles:books' %}" class="text-decoration-none text-muted">ספרים</a>
+            <a href="{% url 'articles:articles_index' %}" class="text-decoration-none text-muted">מאמרים</a>
         </li>
-        <li class="breadcrumb-item active fw-bold text-dark" aria-current="page">{{ book.title|safe }}</li>
+        <li class="breadcrumb-item active fw-bold text-dark" aria-current="page">{{ article.title|safe }}</li>
       </ol>
     </nav>
 </div>
 {% endblock %}
 
 {% block content %}
+<!-- Zen mode toggle -->
 <button onclick="toggleZenMode()" id="zenToggleBtn" class="zen-toggle-btn" title="מצב קריאה נקי">
     <i id="zenIcon" class="bi bi-arrows-fullscreen"></i>
 </button>
 
-<button onclick="toggleMobileToc()" id="mobileTocBtn" class="mobile-toc-btn d-lg-none" title="תוכן עניינים">
-    <i class="bi bi-list-nested"></i>
-</button>
-
-<div id="mobileTocOverlay" class="mobile-toc-overlay" onclick="toggleMobileToc()"></div>
-
 <div class="container-fluid mt-2 mb-5" style="max-width: 1400px;">
-    <div class="row">
-        
-        <nav aria-label="תוכן עניינים" class="col-lg-3 hide-in-zen toc-nav-container" id="toc-column">
-            <button onclick="toggleMobileToc()" class="btn-close-toc d-lg-none" title="סגור תוכן עניינים">
-                <i class="bi bi-x-lg"></i>
-            </button>
-            <div class="sticky-top shadow-sm rounded content-card-bg p-3" style="top: 100px; max-height: 80vh; overflow-y: auto; scroll-behavior: smooth;" id="toc-container">
-                <h2 class="fw-bold mb-3 border-bottom pb-2 text-primary fs-4">תוכן עניינים</h2>
-                <div class="list-group list-group-flush" id="toc-list">
-                    
-                    {% if book.chapters.all or book.chapter_set.all %}
-                        {% for chapter in book.chapters.all %}
-                            <a href="#chapter-{{ chapter.id }}" class="list-group-item list-group-item-action fw-bold bg-light mt-2 rounded toc-link scrollspy-target text-dark" onclick="closeTocOnMobile()">
-                                {{ chapter.title }}
-                            </a>
-                            {% for section in chapter.sections.all %}
-                                {% if "גדר" in section.title and "נכתב" in section.title %}
-                                {% elif section.title == "מבוא" or section.title == " מבוא" or section.title == "מבוא " or section.title == chapter.title %}
-                                {% elif "תוכן הנספח" in section.title %}
-                                {% else %}
-                                    {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;" onclick="closeTocOnMobile()">{{ section.title }}</a>
-                                    {% else %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-truncate text-muted toc-link scrollspy-target" style="font-size: 0.95rem;" onclick="closeTocOnMobile()">{{ section.title }}</a>
-                                    {% endif %}
-                                {% endif %}
-                            {% endfor %}
-                        {% endfor %}
-                        
-                        {% for chapter in book.chapter_set.all %}
-                            <a href="#chapter-{{ chapter.id }}" class="list-group-item list-group-item-action fw-bold bg-light mt-2 rounded toc-link scrollspy-target text-dark" onclick="closeTocOnMobile()">
-                                {{ chapter.title }}
-                            </a>
-                            {% for section in chapter.sections.all %}
-                                {% if "גדר" in section.title and "נכתב" in section.title %}
-                                {% elif section.title == "מבוא" or section.title == " מבוא" or section.title == "מבוא " or section.title == chapter.title %}
-                                {% elif "תוכן הנספח" in section.title %}
-                                {% else %}
-                                    {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;" onclick="closeTocOnMobile()">{{ section.title }}</a>
-                                    {% else %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-truncate text-muted toc-link scrollspy-target" style="font-size: 0.95rem;" onclick="closeTocOnMobile()">{{ section.title }}</a>
-                                    {% endif %}
-                                {% endif %}
-                            {% endfor %}
-                        {% endfor %}
-                    {% endif %}
-                    
-                </div>
-            </div>
-        </nav>
-
-        <article class="col-lg-8 offset-lg-1 content-card-bg shadow-sm p-4 p-md-5 rounded" id="main-content-col">
+    <div class="row justify-content-center">
+        <!-- Main article content -->
+        <article class="col-lg-10 content-card-bg shadow-sm p-4 p-md-5 rounded" id="main-content-col">
             
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-
-            <div class="d-flex justify-content-end gap-3 mb-1 hide-in-zen flex-wrap align-items-center">
-                
-                <!-- NEW PDF BUTTON HERE -->
-                {% if book.pdf_file %}
-                    <a href="{{ book.pdf_file.url }}" target="_blank" download class="btn-print btn btn-outline-danger border shadow-sm" title="הורד ספר ב-PDF" style="color: #dc3545; border-color: #dc3545;">
-                        <i class="bi bi-file-earmark-pdf-fill"></i> הורד PDF
-                    </a>
+            <!-- Action buttons -->
+            <div class="d-flex justify-content-end gap-3 mb-4 hide-in-zen flex-wrap align-items-center">
+                <!-- TTS Audio button - Hidden for specific books -->
+                {% if article.title != "זמני המילה וברכותיה" and article.title != "זריזין מקדימין למילה" and article.book.title != "זמני המילה וברכותיה" and article.chapter.book.title != "זמני המילה וברכותיה" and article.book.title != "זריזין מקדימין למילה" and article.chapter.book.title != "זריזין מקדימין למילה" %}
+                <button onclick="toggleSpeech()" id="speechBtn" class="btn-print btn btn-outline-warning border shadow-sm" title="האזנה למאמר" style="color: #a67c52; border-color: #a67c52;">
+                    <i class="bi bi-volume-up-fill" id="speechIcon"></i> <span id="speechText">האזנה לקריאה</span>
+                </button>
                 {% endif %}
-
-                {% if book.title != "זמני המילה וברכותיה" and book.title != "זריזין מקדימין למילה" %}
-                    <button onclick="toggleSpeech()" id="speechBtn" class="btn-print btn btn-outline-warning border shadow-sm" title="האזנה למאמר" style="color: #a67c52; border-color: #a67c52;">
-                        <i class="bi bi-volume-up-fill" id="speechIcon"></i> <span id="speechText">האזנה לקריאה</span>
-                    </button>
-                {% endif %}
-                <button onclick="openShareModal()" class="btn-print btn btn-outline-warning border shadow-sm" title="שתף ספר זה" style="color: #a67c52; border-color: #a67c52;">
+                <button onclick="openShareModal()" class="btn-print btn btn-outline-warning border shadow-sm" title="שתף מאמר זה" style="color: #a67c52; border-color: #a67c52;">
                     <i class="bi bi-share-fill"></i> שיתוף
                 </button>
                 <button onclick="copyCitation()" class="btn-print btn btn-outline-warning border shadow-sm" title="העתק קישור למקור" style="color: #a67c52; border-color: #a67c52;">
                     <i class="bi bi-link-45deg"></i> העתק מקור
                 </button>
-                <button onclick="window.print()" class="btn-print btn btn-light border shadow-sm" title="הדפס ספר">
+                <button onclick="window.print()" class="btn-print btn btn-light border shadow-sm" title="הדפס מאמר">
                     <i class="bi bi-printer"></i> הדפסה
                 </button>
+                <!-- Superuser edit button -->
+                {% if user.is_superuser %}
+                    <a href="{% url 'articles:edit' article.pk %}" class="btn btn-outline-secondary shadow-sm"><i class="bi bi-pencil"></i> ערוך מאמר</a>
+                {% endif %}
             </div>
 
-            <header class="text-center mb-5 mt-2">
-                <h1 class="display-4 fw-bold text-dark" style="font-family: 'Frank Ruhl Libre', serif;">{{ book.title|safe }}</h1>
-                <p class="text-muted fs-5">מאת: {{ book.author|default:'משה לייבוביץ' }}</p>
-                <hr class="w-25 mx-auto opacity-75">
+            <!-- Article header -->
+            <header class="text-center mb-5">
+                <h1 class="display-4 fw-bold text-dark" style="font-family: 'Frank Ruhl Libre', serif;">{{ article.title|safe }}</h1>
+                
+                <p class="text-muted fs-5 mt-3">
+                    <!-- שורה ראשונה: תאריך וזמן קריאה -->
+                    <span class="d-inline-block">
+                        <i class="bi bi-calendar3"></i> 
+                        <!-- Semantic time tag -->
+                        <time datetime="{% if article.created_at %}{{ article.created_at|date:'Y-m-d' }}{% endif %}">{{ article.hebrew_date }}</time>
+                        
+                        <span class="mx-2 opacity-50">|</span>
+                        
+                        <i class="bi bi-clock"></i>
+                        {% with words=article.content|striptags|wordcount %}
+                            {% if words < 200 %}
+                                דקת קריאה
+                            {% else %}
+                                כ-{% widthratio words 200 1 %} דקות קריאה
+                            {% endif %}
+                        {% endwith %}
+                    </span>
+                    
+                    <!-- שורה שנייה: פרשת שבוע -->
+                    {% if article.parasha and article.parasha != 'general' and article.parasha != ',general,' %}
+                        <span class="d-block mt-2 hide-in-zen">
+                            <i class="bi bi-book"></i> 
+                            <script>document.write("{{ article.parasha|escapejs }}".replace(/general/gi, '').replace(/^,+|,+$/g, '').replace(/,+/g, ', '));</script>
+                        </span>
+                    {% endif %}
+                </p>
+                <hr class="w-25 mx-auto opacity-75" style="border-color: #d4af37; border-width: 2px;">
             </header>
 
-            {% if book.is_for_sale or book.cover_image %}
-            <div class="card mb-5 border-0 shadow-sm hide-in-zen" style="border-radius: 16px; overflow: hidden; border: 1px solid rgba(212,175,55,0.2) !important; background-color: transparent;">
-                <div class="row g-0">
-                    {% if book.cover_image %}
-                    <div class="col-md-4 d-flex align-items-center justify-content-center p-4 book-cover-bg">
-                        <img src="{{ book.cover_image.url }}" alt="{{ book.title }}" loading="lazy" class="img-fluid rounded shadow" style="max-height: 320px; object-fit: contain;">
-                    </div>
-                    {% endif %}
-                    
-                    <div class="col-md-{% if book.cover_image %}8{% else %}12{% endif %} p-4 p-md-5 d-flex flex-column justify-content-center summary-bg">
-                        
-                        {% if book.chapters.all or book.chapter_set.all %}
-                            {% if book.summary %}
-                                <h2 class="fw-bold mb-3 fs-4" style="color: #a88132;"><i class="bi bi-info-circle me-2"></i>על הספר</h2>
-                                <div class="mb-4 text-dark" style="font-size: 1.15rem; line-height: 1.6;">
-                                    {{ book.summary|safe }}
-                                </div>
-                            {% endif %}
-                        {% endif %}
-                        
-                        {% if book.is_for_sale %}
-                        <div class="mt-auto p-4 rounded-3 d-flex flex-wrap justify-content-between align-items-center gap-3 buy-box-bg">
-                            <div>
-                                <span class="d-block text-muted small mb-1">מחיר לרכישה</span>
-                                <h2 class="fw-bold m-0" style="color: #a88132;">₪{{ book.price }}</h2>
-                            </div>
-                            <div>
-                                {% if book.stock > 0 %}
-                                    <a href="{% url 'articles:add_to_cart' book.id %}" class="btn px-4 py-2 rounded-pill fw-bold shadow-sm btn-cart-add" style="font-size: 1.1rem;">
-                                        <i class="bi bi-cart-plus me-2"></i> הוסף לעגלה
-                                    </a>
-                                {% else %}
-                                    <button class="btn btn-secondary px-4 py-2 rounded-pill fw-bold" disabled>אזל מהמלאי</button>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
+            <!-- Article body -->
+            <div class="article-content book-reading-mode">
+                {{ article.content|safe }}
             </div>
-            {% endif %}
-
-            <div class="book-reading-mode">
-                
-                {% if book.chapters.all %}
-                    {% for chapter in book.chapters.all %}
-                        <div class="chapter-section mb-5 pb-3 scrollspy-target" id="chapter-{{ chapter.id }}">
-                            <h2 class="fw-bold text-primary mb-4 border-bottom pb-2">{{ chapter.title }}</h2>
-                            {% for section in chapter.sections.all %}
-                                <div class="section-content mb-4 scrollspy-target" id="section-{{ section.id }}">
-                                    {% if "גדר" in section.title and "נכתב" in section.title %}
-                                    {% elif section.title == "מבוא" or section.title == " מבוא" or section.title == "מבוא " or section.title == chapter.title %}
-                                    {% elif "תוכן הנספח" in section.title %}
-                                    {% else %}
-                                        {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
-                                            <h3 class="fw-bold text-dark mb-3 mt-5" style="border-bottom: 2px solid #a67c52; padding-bottom: 5px; display: inline-block;">{{ section.title }}</h3>
-                                        {% else %}
-                                            <h3 class="fw-semibold text-secondary mb-3 fs-4">{{ section.title }}</h3>
-                                        {% endif %}
-                                    {% endif %}
-                                    
-                                    <div class="article-content">
-                                        {% if section.content %}{{ section.content|safe }}{% endif %}
-                                        {% if section.text %}{{ section.text|safe }}{% endif %}
-                                        {% if section.body %}{{ section.body|safe }}{% endif %}
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% endfor %}
-                    
-                {% elif book.chapter_set.all %}
-                    {% for chapter in book.chapter_set.all %}
-                        <div class="chapter-section mb-5 pb-3 scrollspy-target" id="chapter-{{ chapter.id }}">
-                            <h2 class="fw-bold text-primary mb-4 border-bottom pb-2">{{ chapter.title }}</h2>
-                            {% for section in chapter.sections.all %}
-                                {% if "גדר" in section.title and "נכתב" in section.title %}
-                                {% elif section.title == "מבוא" or section.title == " מבוא" or section.title == "מבוא " or section.title == chapter.title %}
-                                {% elif "תוכן הנספח" in section.title %}
-                                {% else %}
-                                    {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
-                                        <h3 class="fw-bold text-dark mb-3 mt-5" style="border-bottom: 2px solid #a67c52; padding-bottom: 5px; display: inline-block;">{{ section.title }}</h3>
-                                    {% else %}
-                                        <h3 class="fw-semibold text-secondary mb-3 fs-4">{{ section.title }}</h3>
-                                    {% endif %}
-                                {% endif %}
-                                <div class="article-content">
-                                    {% if section.content %}{{ section.content|safe }}{% endif %}
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% endfor %}
-                    
-                {% else %}
-                    {% if book.summary %}
-                        <div class="article-content" id="auto-toc-content">
-                            {{ book.summary|safe }}
-                        </div>
-                    {% else %}
-                        <div class="alert alert-info text-center py-4 rounded-3 shadow-sm hide-in-zen">
-                            <i class="bi bi-info-circle fs-1 d-block mb-2"></i>
-                            תוכן הספר טרם הוזן למערכת.
-                        </div>
-                    {% endif %}
-                {% endif %}
-                
-            </div>
+            
         </article>
     </div>
 </div>
 
+<!-- Share Modal -->
 <div class="modal fade" id="luxShareModal" tabindex="-1" aria-hidden="true" dir="rtl">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 450px;">
         <div class="modal-content lux-modal-content">
@@ -332,6 +185,7 @@
             <div class="modal-body text-center px-4 py-4">
                 <p class="text-muted mb-4" style="font-size: 1rem;">בחרו את הדרך המועדפת עליכם להפצת התוכן:</p>
                 
+                <!-- Social share links -->
                 <div class="d-flex justify-content-center gap-3 mb-4 flex-wrap">
                     <a id="shareWhatsapp" href="#" target="_blank" class="lux-share-icon-btn" style="background-color: #25d366;" title="שליחה בוואטסאפ">
                         <i class="bi bi-whatsapp"></i>
@@ -347,6 +201,7 @@
                     </a>
                 </div>
 
+                <!-- Copy link area -->
                 <div class="lux-copy-box">
                     <input type="text" id="luxShareUrl" readonly class="form-control-plaintext text-center text-secondary" style="font-size: 0.9rem; direction: ltr;">
                     <button class="lux-copy-btn" onclick="copyShareUrl()">
@@ -359,7 +214,153 @@
     </div>
 </div>
 
+<script>
+    // TTS Audio Logic
+    let currentAudio = null;
+    let isPlaying = false;
+
+    async function toggleSpeech() {
+        const speechText = document.getElementById('speechText');
+        const speechIcon = document.getElementById('speechIcon');
+
+        // Pause if playing
+        if (isPlaying && currentAudio) {
+            currentAudio.pause();
+            isPlaying = false;
+            speechText.innerText = 'המשך הקראה';
+            speechIcon.className = 'bi bi-play-fill';
+            return;
+        }
+
+        // Play if paused
+        if (!isPlaying && currentAudio) {
+            currentAudio.play();
+            isPlaying = true;
+            speechText.innerText = 'עצור הקראה';
+            speechIcon.className = 'bi bi-pause-fill';
+            return;
+        }
+
+        // Fetch audio from server on first click
+        speechText.innerText = 'מכין אודיו...';
+        speechIcon.className = 'bi bi-hourglass-split';
+
+        try {
+            const response = await fetch("{% url 'articles:get_article_audio' article.id %}");
+            const data = await response.json();
+
+            if (data.audio_url) {
+                currentAudio = new Audio(data.audio_url);
+                currentAudio.play();
+                isPlaying = true;
+                
+                speechText.innerText = 'עצור הקראה';
+                speechIcon.className = 'bi bi-pause-fill';
+
+                currentAudio.onended = function() {
+                    isPlaying = false;
+                    currentAudio = null;
+                    speechText.innerText = 'האזנה לקריאה';
+                    speechIcon.className = 'bi bi-volume-up-fill';
+                };
+            } else if (data.error) {
+                alert("שגיאה ביצירת שמע: " + data.error);
+                speechText.innerText = 'שגיאה';
+                speechIcon.className = 'bi bi-exclamation-triangle';
+            }
+        } catch (error) {
+            console.error("שגיאה בהבאת קובץ השמע:", error);
+            speechText.innerText = 'שגיאה בהשמעה';
+            speechIcon.className = 'bi bi-exclamation-triangle';
+        }
+    }
+
+    // Smart share function
+    function openShareModal() {
+        const shareData = {
+            title: document.title,
+            text: 'קראו את התוכן המרתק בספריית לייבוביץ:',
+            url: window.location.href
+        };
+
+        if (navigator.share) {
+            navigator.share(shareData).catch(() => {});
+        } else {
+            const currentUrl = window.location.href;
+            const titleEncoded = encodeURIComponent(document.title);
+            const urlEncoded = encodeURIComponent(currentUrl);
+
+            document.getElementById('luxShareUrl').value = currentUrl;
+            document.getElementById('shareWhatsapp').href = `https://api.whatsapp.com/send?text=${titleEncoded}%20-%20${urlEncoded}`;
+            document.getElementById('shareEmail').href = `mailto:?subject=${titleEncoded}&body=מוזמנים לקרוא:%20${urlEncoded}`;
+            document.getElementById('shareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${urlEncoded}`;
+            document.getElementById('shareTwitter').href = `https://twitter.com/intent/tweet?text=${titleEncoded}&url=${urlEncoded}`;
+
+            var modal = new bootstrap.Modal(document.getElementById('luxShareModal'));
+            modal.show();
+        }
+    }
+
+    // Copy link function
+    function copyShareUrl() {
+        const urlInput = document.getElementById('luxShareUrl');
+        urlInput.select();
+        urlInput.setSelectionRange(0, 99999);
+        
+        navigator.clipboard.writeText(urlInput.value).then(() => {
+            const copyText = document.getElementById('copyText');
+            const copyIcon = document.getElementById('copyIcon');
+            
+            copyText.innerText = 'הועתק בהצלחה!';
+            copyIcon.className = 'bi bi-check2-lg';
+            
+            setTimeout(() => {
+                copyText.innerText = 'העתק קישור';
+                copyIcon.className = 'bi bi-clipboard';
+            }, 2500);
+        });
+    }
+
+    // Copy citation function
+    function copyCitation() {
+        const title = "{{ article.title|striptags|escapejs }}";
+        const url = window.location.href;
+        const citationText = `"${title}"\nמאת: משה לייבוביץ\nמתוך אתר ספריית לייבוביץ.\nקישור למקור: ${url}`;
+        navigator.clipboard.writeText(citationText).then(function() {
+            alert("המקור הועתק ללוח בהצלחה!");
+        }).catch(function(err) {
+            console.error('שגיאה בהעתקת המקור: ', err);
+        });
+    }
+
+    // Zen mode toggle - FIXED VERSION
+    function toggleZenMode() {
+        const currentScroll = window.scrollY; // 1. שומרים את המיקום העכשווי
+        
+        document.body.classList.toggle('zen-mode');
+        
+        const icon = document.getElementById('zenIcon');
+        const btn = document.getElementById('zenToggleBtn');
+        
+        if (document.body.classList.contains('zen-mode')) {
+            icon.classList.remove('bi-arrows-fullscreen');
+            icon.classList.add('bi-fullscreen-exit');
+            btn.title = "יציאה ממצב קריאה";
+        } else {
+            icon.classList.remove('bi-fullscreen-exit');
+            icon.classList.add('bi-arrows-fullscreen');
+            btn.title = "מצב קריאה נקי";
+        }
+        
+        // 2. לאחר שה-CSS העלים או החזיר אלמנטים, מחזירים את הגלילה לאותו מקום בדיוק
+        setTimeout(() => {
+            window.scrollTo({ top: currentScroll, behavior: 'instant' });
+        }, 10);
+    }
+</script>
+
 <style>
+    /* Share modal styling */
     .lux-modal-content {
         background: linear-gradient(145deg, #1e202c 0%, #0f172a 100%);
         border: 1px solid rgba(212, 175, 55, 0.3);
@@ -413,30 +414,14 @@
         background: #b5952f;
     }
 
-    html { scroll-behavior: smooth; }
     .book-reading-mode { font-family: 'Frank Ruhl Libre', serif; font-size: 1.3rem; line-height: 2; color: #2c3e50; }
-    .book-cover-bg { background-color: rgba(0,0,0,0.02); border-left: 1px solid rgba(0,0,0,0.05); }
-    .summary-bg { background-color: #fafbfc; }
-    .buy-box-bg { background: rgba(212, 175, 55, 0.08); border: 1px dashed rgba(212, 175, 55, 0.4); }
-    .btn-cart-add { background: linear-gradient(135deg, #d4af37 0%, #b5952f 100%); color: #1e202c; border: none; transition: transform 0.2s ease, box-shadow 0.2s ease; }
-    .btn-cart-add:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4) !important; color: #1e202c; }
-    
-    .toc-link { transition: all 0.3s ease; border-right: 4px solid transparent; }
-    .toc-link.active-gold { background-color: #fdfbf7 !important; color: #d4af37 !important; border-right: 4px solid #d4af37 !important; font-weight: 800 !important; box-shadow: inset 0 0 10px rgba(212, 175, 55, 0.05); }
-    
+    .book-reading-mode h2, .book-reading-mode h3 { color: #d4af37; font-weight: bold; margin-top: 1.5rem; }
     .content-card-bg { background-color: #ffffff; transition: all 0.4s ease; }
-    
-    body.dark-mode .text-primary { color: #d4af37 !important; }
-    body.dark-mode .text-dark { color: #f8fafc !important; }
-    body.dark-mode .text-secondary { color: #cbd5e1 !important; }
-    body.dark-mode .bg-light { background-color: #334155 !important; color: #f8fafc !important; }
-    body.dark-mode .list-group-item { background-color: transparent !important; color: #cbd5e1 !important; border-color: rgba(255,255,255,0.1) !important; }
-    body.dark-mode .book-cover-bg { background-color: rgba(255,255,255,0.02); border-left-color: rgba(255,255,255,0.05); }
-    body.dark-mode .summary-bg { background-color: #1e293b; }
-    body.dark-mode .toc-link.active-gold { background-color: rgba(212, 175, 55, 0.1) !important; color: #d4af37 !important; }
     body.dark-mode .content-card-bg { background-color: #1e293b; border: 1px solid rgba(255,255,255,0.05) !important; }
+    body.dark-mode .text-dark { color: #f8fafc !important; }
     body.dark-mode .article-content { color: #cbd5e1 !important; }
 
+    /* Zen mode styling */
     .zen-toggle-btn {
         position: fixed;
         bottom: 110px;
@@ -476,101 +461,7 @@
     body.zen-mode #main-content-col { max-width: 850px !important; margin: 0 auto !important; flex: 0 0 100% !important; padding-top: 5vh !important; padding-bottom: 15vh !important; }
     body.zen-mode .zen-toggle-btn { background: #3f4050; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); }
 
-    .mobile-toc-btn {
-        position: fixed;
-        bottom: 180px;
-        right: 25px;
-        width: 55px;
-        height: 55px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #2c3e50 0%, #3f4050 100%);
-        color: #d4af37;
-        border: 2px solid #d4af37;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-        font-size: 1.5rem;
-        z-index: 10500;
-        cursor: pointer;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.3s ease;
-    }
-    
-    .mobile-toc-btn:hover {
-        transform: scale(1.1);
-        box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
-    }
-
-    .btn-close-toc {
-        position: absolute;
-        top: 15px;
-        left: 15px;
-        background: transparent;
-        border: none;
-        color: #dc3545;
-        font-size: 1.5rem;
-        z-index: 1060;
-    }
-
-    .mobile-toc-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 10490;
-        display: none;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-
-    @media (max-width: 991.98px) {
-        .mobile-toc-btn {
-            display: flex !important;
-        }
-        
-        .toc-nav-container {
-            position: fixed !important;
-            top: 0;
-            right: 0;
-            transform: translateX(100%);
-            width: 320px;
-            max-width: 85vw;
-            height: 100vh;
-            z-index: 10501;
-            background: #ffffff;
-            transition: transform 0.3s ease;
-            display: block !important;
-            padding: 0 !important;
-            box-shadow: -5px 0 25px rgba(0,0,0,0.2);
-        }
-        
-        body.dark-mode .toc-nav-container {
-            background: #1e293b;
-        }
-
-        .toc-nav-container.toc-open {
-            transform: translateX(0);
-        }
-        
-        .mobile-toc-overlay.overlay-open {
-            display: block;
-            opacity: 1;
-        }
-
-        #toc-container {
-            position: relative !important;
-            top: 0 !important;
-            height: 100% !important;
-            max-height: 100vh !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            padding-top: 50px !important;
-        }
-    }
-
-    /* עיצוב הפניות והערות שוליים גלובלי לכל המאמרים והספרים */
+    /* עיצוב הפניות והערות שוליים גלובלי לכל המאמרים מתוך וורד */
     sup, sub, .MsoFootnoteReference, .footnote-ref, a[href*="ftn"], a[href*="footnote"], a[href*="ref"] {
         font-size: 0.9em !important; /* גודל מושלם וברור אבל לא ענק מדי */
         font-weight: bold !important;
@@ -588,263 +479,4 @@
         text-decoration: underline !important;
     }
 </style>
-
-<script>
-    function toggleMobileToc() {
-        const tocNav = document.getElementById('toc-column');
-        const overlay = document.getElementById('mobileTocOverlay');
-        
-        tocNav.classList.toggle('toc-open');
-        
-        if (tocNav.classList.contains('toc-open')) {
-            overlay.classList.add('overlay-open');
-            document.body.style.overflow = 'hidden';
-        } else {
-            overlay.classList.remove('overlay-open');
-            document.body.style.overflow = '';
-        }
-    }
-
-    function closeTocOnMobile() {
-        if (window.innerWidth < 992) {
-            toggleMobileToc();
-        }
-    }
-
-    let currentAudio = null;
-    let isPlaying = false;
-
-    async function toggleSpeech() {
-        const speechText = document.getElementById('speechText');
-        const speechIcon = document.getElementById('speechIcon');
-
-        if (isPlaying && currentAudio) {
-            currentAudio.pause();
-            isPlaying = false;
-            speechText.innerText = 'המשך הקראה';
-            speechIcon.className = 'bi bi-play-fill';
-            return;
-        }
-
-        if (!isPlaying && currentAudio) {
-            currentAudio.play();
-            isPlaying = true;
-            speechText.innerText = 'עצור הקראה';
-            speechIcon.className = 'bi bi-pause-fill';
-            return;
-        }
-
-        speechText.innerText = 'מכין אודיו...';
-        speechIcon.className = 'bi bi-hourglass-split';
-
-        try {
-            const response = await fetch("{% url 'articles:get_book_audio' book.id %}");
-            const data = await response.json();
-
-            if (data.audio_url) {
-                currentAudio = new Audio(data.audio_url);
-                currentAudio.play();
-                isPlaying = true;
-                
-                speechText.innerText = 'עצור הקראה';
-                speechIcon.className = 'bi bi-pause-fill';
-
-                currentAudio.onended = function() {
-                    isPlaying = false;
-                    currentAudio = null;
-                    speechText.innerText = 'האזנה לקריאה';
-                    speechIcon.className = 'bi bi-volume-up-fill';
-                };
-            } else if (data.error) {
-                alert("שגיאה ביצירת שמע: " + data.error);
-                speechText.innerText = 'שגיאה';
-                speechIcon.className = 'bi bi-exclamation-triangle';
-            }
-        } catch (error) {
-            console.error("שגיאה בהבאת קובץ השמע:", error);
-            speechText.innerText = 'שגיאה בהשמעה';
-            speechIcon.className = 'bi bi-exclamation-triangle';
-        }
-    }
-
-    // הפונקציה המעודכנת לשמירת מיקום הגלילה 
-    function toggleZenMode() {
-        const currentScroll = window.scrollY; // שמירת המיקום הנוכחי
-        
-        document.body.classList.toggle('zen-mode');
-        const icon = document.getElementById('zenIcon');
-        const btn = document.getElementById('zenToggleBtn');
-        
-        if (document.body.classList.contains('zen-mode')) {
-            icon.classList.remove('bi-arrows-fullscreen');
-            icon.classList.add('bi-fullscreen-exit');
-            btn.title = "יציאה ממצב קריאה";
-        } else {
-            icon.classList.remove('bi-fullscreen-exit');
-            icon.classList.add('bi-arrows-fullscreen');
-            btn.title = "מצב קריאה נקי";
-        }
-        
-        // החזרת הגלילה במדויק לאחר רינדור העמוד
-        setTimeout(() => {
-            window.scrollTo({ top: currentScroll, behavior: 'instant' });
-        }, 10);
-    }
-
-    function copyCitation() {
-        const title = "{{ book.title|striptags|escapejs }}";
-        const author = "{{ book.author|default:'משה לייבוביץ'|escapejs }}";
-        const url = window.location.href;
-        const citationText = `"${title}" / מאת: ${author}\nמתוך אתר ספריית לייבוביץ.\nקישור למקור: ${url}`;
-        navigator.clipboard.writeText(citationText).then(function() {
-            alert("המקור הועתק ללוח בהצלחה!");
-        }).catch(function(err) {
-            console.error('שגיאה בהעתקת המקור: ', err);
-        });
-    }
-
-    function openShareModal() {
-        const shareData = {
-            title: document.title,
-            text: 'קראו את התוכן המרתק בספריית לייבוביץ:',
-            url: window.location.href
-        };
-
-        if (navigator.share) {
-            navigator.share(shareData).catch(() => {});
-        } else {
-            const currentUrl = window.location.href;
-            const titleEncoded = encodeURIComponent(document.title);
-            const urlEncoded = encodeURIComponent(currentUrl);
-
-            document.getElementById('luxShareUrl').value = currentUrl;
-            document.getElementById('shareWhatsapp').href = `https://api.whatsapp.com/send?text=${titleEncoded}%20-%20${urlEncoded}`;
-            document.getElementById('shareEmail').href = `mailto:?subject=${titleEncoded}&body=מוזמנים לקרוא:%20${urlEncoded}`;
-            document.getElementById('shareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${urlEncoded}`;
-            document.getElementById('shareTwitter').href = `https://twitter.com/intent/tweet?text=${titleEncoded}&url=${urlEncoded}`;
-
-            var modal = new bootstrap.Modal(document.getElementById('luxShareModal'));
-            modal.show();
-        }
-    }
-
-    function copyShareUrl() {
-        const urlInput = document.getElementById('luxShareUrl');
-        urlInput.select();
-        urlInput.setSelectionRange(0, 99999);
-        
-        navigator.clipboard.writeText(urlInput.value).then(() => {
-            const copyText = document.getElementById('copyText');
-            const copyIcon = document.getElementById('copyIcon');
-            
-            copyText.innerText = 'הועתק בהצלחה!';
-            copyIcon.className = 'bi bi-check2-lg';
-            
-            setTimeout(() => {
-                copyText.innerText = 'העתק קישור';
-                copyIcon.className = 'bi bi-clipboard';
-            }, 2500);
-        });
-    }
-
-    document.addEventListener("DOMContentLoaded", function() {
-        const tocList = document.getElementById('toc-list');
-        const autoContent = document.getElementById('auto-toc-content');
-        const tocColumn = document.getElementById('toc-column');
-        const mainContentCol = document.getElementById('main-content-col');
-
-        if (autoContent && tocList && tocList.children.length === 0) {
-            const headers = autoContent.querySelectorAll('h1, h2, h3, h4, h5, h6');
-            
-            if (headers.length > 0) {
-                headers.forEach((header, index) => {
-                    const id = 'auto-header-' + index;
-                    header.id = id;
-                    header.classList.add('scrollspy-target');
-
-                    const link = document.createElement('a');
-                    link.href = '#' + id;
-                    link.className = 'list-group-item list-group-item-action text-truncate toc-link';
-                    
-                    link.onclick = function() { closeTocOnMobile(); };
-                    
-                    const text = header.innerText.trim();
-                    
-                    const isMainChapter = text.startsWith("חלק") || 
-                                          text.startsWith("פרק") || 
-                                          text.startsWith('פ"ח') || 
-                                          text.startsWith("סימן") || 
-                                          text.includes("נספח") || 
-                                          text === "הקדמה" || 
-                                          text === "מבוא";
-                    
-                    const isHighlightedSub = text.includes("שיטת") || 
-                                             text.includes("סיכום השיטות") || 
-                                             text.includes("סיכום וביאור השיטות") ||
-                                             text.includes("ביאור סברת השיטות") ||
-                                             text.includes("סיכומא דמלתא") ||
-                                             text.includes("סיכומא דמילתא") ||
-                                             text.includes("בגדר") ||
-                                             text.includes("בעניין תשבו כעין תדורו") ||
-                                             text.includes("פתח דבר");
-
-                    if (isMainChapter) {
-                        link.classList.add('fw-bold', 'bg-light', 'mt-2', 'rounded', 'text-dark');
-                    } else if (isHighlightedSub) {
-                        link.classList.add('ps-3', 'fw-bold', 'text-dark', 'border-0', 'border-bottom');
-                        link.style.fontSize = '1.05rem';
-                        link.style.marginTop = '0.5rem';
-                        link.style.borderRight = '3px solid #d4af37';
-                    } else {
-                        link.classList.add('ps-4', 'border-0', 'border-bottom', 'text-muted');
-                        link.style.fontSize = '0.95rem';
-                    }
-                    
-                    link.innerText = text;
-                    tocList.appendChild(link);
-                });
-            } else {
-                if (tocColumn) {
-                    tocColumn.style.display = 'none';
-                    tocColumn.classList.remove('d-lg-block');
-                }
-                if (mainContentCol) {
-                    mainContentCol.classList.remove('col-lg-8', 'offset-lg-1');
-                    mainContentCol.classList.add('col-lg-12');
-                }
-            }
-        } else if (!autoContent && (!tocList || tocList.children.length === 0)) {
-            if (tocColumn) {
-                tocColumn.style.display = 'none';
-                tocColumn.classList.remove('d-lg-block');
-            }
-            if (mainContentCol) {
-                mainContentCol.classList.remove('col-lg-8', 'offset-lg-1');
-                mainContentCol.classList.add('col-lg-12');
-            }
-        }
-
-        const targets = document.querySelectorAll(".scrollspy-target");
-        const navLinks = document.querySelectorAll(".toc-link");
-
-        const observerOptions = {
-            root: null,
-            rootMargin: "-10% 0px -70% 0px",
-            threshold: 0
-        };
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    navLinks.forEach(link => link.classList.remove("active-gold"));
-                    const id = entry.target.getAttribute("id");
-                    const activeLink = document.querySelector(`.toc-link[href="#${id}"]`);
-                    if (activeLink) activeLink.classList.add("active-gold");
-                }
-            });
-        }, observerOptions);
-
-        targets.forEach(target => observer.observe(target));
-    });
-</script>
 {% endblock %}
