@@ -285,6 +285,7 @@ class Book(models.Model):
     title = models.CharField(max_length=200, verbose_name="שם הספר")
     author = models.CharField(max_length=100, verbose_name="מחבר")
     cover_image = models.ImageField(upload_to='books/covers/', blank=True, null=True, verbose_name="תמונת כריכה")
+    pdf_file = models.FileField(upload_to='books/pdfs/', blank=True, null=True, verbose_name="קובץ PDF להורדה") # השורה החדשה!
     summary = CKEditor5Field(config_name='extends', verbose_name="תקציר הספר", blank=True, null=True)
     price = models.DecimalField(max_digits=6, decimal_places=2, default=0.00, verbose_name="מחיר הספר")
     is_for_sale = models.BooleanField(default=False, verbose_name="זמין לרכישה")
