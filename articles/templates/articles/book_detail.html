@@ -59,7 +59,6 @@
     ,"offers": {
       "@type": "Offer",
       "price": "{{ book.price }}",
-      "priceCurrency": "ILS",
       "availability": "{% if book.stock > 0 %}https://schema.org/InStock{% else %}https://schema.org/OutOfStock{% endif %}"
     }
     {% endif %}
@@ -129,7 +128,7 @@
                     
                     {% if book.chapters.all or book.chapter_set.all %}
                         {% for chapter in book.chapters.all %}
-                            <a href="#chapter-{{ chapter.id }}" class="list-group-item list-group-item-action fw-bold bg-light mt-2 rounded toc-link scrollspy-target text-dark" onclick="closeTocOnMobile()" title="">
+                            <a href="#chapter-{{ chapter.id }}" class="list-group-item list-group-item-action fw-bold bg-light mt-2 rounded toc-link scrollspy-target text-dark" onclick="closeTocOnMobile()">
                                 {{ chapter.title }}
                             </a>
                             {% for section in chapter.sections.all %}
@@ -138,16 +137,16 @@
                                 {% elif "תוכן הנספח" in section.title %}
                                 {% else %}
                                     {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;" onclick="closeTocOnMobile()" title="">{{ section.title }}</a>
+                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;" onclick="closeTocOnMobile()">{{ section.title }}</a>
                                     {% else %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-truncate text-muted toc-link scrollspy-target" style="font-size: 0.95rem;" onclick="closeTocOnMobile()" title="">{{ section.title }}</a>
+                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-muted toc-link scrollspy-target" style="font-size: 0.95rem;" onclick="closeTocOnMobile()">{{ section.title }}</a>
                                     {% endif %}
                                 {% endif %}
                             {% endfor %}
                         {% endfor %}
                         
                         {% for chapter in book.chapter_set.all %}
-                            <a href="#chapter-{{ chapter.id }}" class="list-group-item list-group-item-action fw-bold bg-light mt-2 rounded toc-link scrollspy-target text-dark" onclick="closeTocOnMobile()" title="">
+                            <a href="#chapter-{{ chapter.id }}" class="list-group-item list-group-item-action fw-bold bg-light mt-2 rounded toc-link scrollspy-target text-dark" onclick="closeTocOnMobile()">
                                 {{ chapter.title }}
                             </a>
                             {% for section in chapter.sections.all %}
@@ -156,9 +155,9 @@
                                 {% elif "תוכן הנספח" in section.title %}
                                 {% else %}
                                     {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;" onclick="closeTocOnMobile()" title="">{{ section.title }}</a>
+                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;" onclick="closeTocOnMobile()">{{ section.title }}</a>
                                     {% else %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-truncate text-muted toc-link scrollspy-target" style="font-size: 0.95rem;" onclick="closeTocOnMobile()" title="">{{ section.title }}</a>
+                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-muted toc-link scrollspy-target" style="font-size: 0.95rem;" onclick="closeTocOnMobile()">{{ section.title }}</a>
                                     {% endif %}
                                 {% endif %}
                             {% endfor %}
@@ -413,7 +412,13 @@
     .btn-cart-add { background: linear-gradient(135deg, #d4af37 0%, #b5952f 100%); color: #1e202c; border: none; transition: transform 0.2s ease, box-shadow 0.2s ease; }
     .btn-cart-add:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4) !important; color: #1e202c; }
     
-    .toc-link { transition: all 0.3s ease; border-right: 4px solid transparent; }
+    .toc-link { 
+        transition: all 0.3s ease; 
+        border-right: 4px solid transparent; 
+        white-space: normal !important; 
+        line-height: 1.4 !important;
+        word-wrap: break-word;
+    }
     .toc-link.active-gold { background-color: #fdfbf7 !important; color: #d4af37 !important; border-right: 4px solid #d4af37 !important; font-weight: 800 !important; box-shadow: inset 0 0 10px rgba(212, 175, 55, 0.05); }
     
     .content-card-bg { background-color: #ffffff; transition: all 0.4s ease; }
@@ -756,7 +761,7 @@
 
                     const link = document.createElement('a');
                     link.href = '#' + id;
-                    link.className = 'list-group-item list-group-item-action text-truncate toc-link';
+                    link.className = 'list-group-item list-group-item-action toc-link';
                     
                     link.onclick = function() { closeTocOnMobile(); };
                     
@@ -793,7 +798,6 @@
                     }
                     
                     link.innerText = text;
-                    link.title = ""; // מונע הופעת מלבן צהוב/אפור של הדפדפן
                     tocList.appendChild(link);
                 });
             } else {
