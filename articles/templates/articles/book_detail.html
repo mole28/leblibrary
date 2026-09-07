@@ -129,7 +129,7 @@
                     
                     {% if book.chapters.all or book.chapter_set.all %}
                         {% for chapter in book.chapters.all %}
-                            <a href="#chapter-{{ chapter.id }}" class="list-group-item list-group-item-action fw-bold bg-light mt-2 rounded toc-link scrollspy-target text-dark" onclick="closeTocOnMobile()">
+                            <a href="#chapter-{{ chapter.id }}" class="list-group-item list-group-item-action fw-bold bg-light mt-2 rounded toc-link scrollspy-target text-dark" onclick="closeTocOnMobile()" title="">
                                 {{ chapter.title }}
                             </a>
                             {% for section in chapter.sections.all %}
@@ -138,16 +138,16 @@
                                 {% elif "תוכן הנספח" in section.title %}
                                 {% else %}
                                     {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;" onclick="closeTocOnMobile()">{{ section.title }}</a>
+                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;" onclick="closeTocOnMobile()" title="">{{ section.title }}</a>
                                     {% else %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-truncate text-muted toc-link scrollspy-target" style="font-size: 0.95rem;" onclick="closeTocOnMobile()">{{ section.title }}</a>
+                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-truncate text-muted toc-link scrollspy-target" style="font-size: 0.95rem;" onclick="closeTocOnMobile()" title="">{{ section.title }}</a>
                                     {% endif %}
                                 {% endif %}
                             {% endfor %}
                         {% endfor %}
                         
                         {% for chapter in book.chapter_set.all %}
-                            <a href="#chapter-{{ chapter.id }}" class="list-group-item list-group-item-action fw-bold bg-light mt-2 rounded toc-link scrollspy-target text-dark" onclick="closeTocOnMobile()">
+                            <a href="#chapter-{{ chapter.id }}" class="list-group-item list-group-item-action fw-bold bg-light mt-2 rounded toc-link scrollspy-target text-dark" onclick="closeTocOnMobile()" title="">
                                 {{ chapter.title }}
                             </a>
                             {% for section in chapter.sections.all %}
@@ -156,9 +156,9 @@
                                 {% elif "תוכן הנספח" in section.title %}
                                 {% else %}
                                     {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;" onclick="closeTocOnMobile()">{{ section.title }}</a>
+                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;" onclick="closeTocOnMobile()" title="">{{ section.title }}</a>
                                     {% else %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-truncate text-muted toc-link scrollspy-target" style="font-size: 0.95rem;" onclick="closeTocOnMobile()">{{ section.title }}</a>
+                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-truncate text-muted toc-link scrollspy-target" style="font-size: 0.95rem;" onclick="closeTocOnMobile()" title="">{{ section.title }}</a>
                                     {% endif %}
                                 {% endif %}
                             {% endfor %}
@@ -793,6 +793,7 @@
                     }
                     
                     link.innerText = text;
+                    link.title = ""; // מונע הופעת מלבן צהוב/אפור של הדפדפן
                     tocList.appendChild(link);
                 });
             } else {
