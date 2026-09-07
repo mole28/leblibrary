@@ -33,7 +33,8 @@
       "name": "ספריית משה לייבוביץ",
       "founder": {
         "@type": "Person",
-        "name": "משה לייבוביץ"
+        "name": "משה לייבוביץ",
+        "alternateName": ["משה לייבוביץ'", "משה ליבוביץ", "Moshe Leibowitz"]
       }
     }
   },
@@ -44,6 +45,7 @@
     "author": {
       "@type": "Person",
       "name": "משה לייבוביץ",
+      "alternateName": ["משה לייבוביץ'", "משה ליבוביץ", "Moshe Leibowitz"],
       "description": "מחבר תורני"
     },
     "url": "{{ request.build_absolute_uri }}",
@@ -72,7 +74,7 @@
       "name": "מה ההלכה, הדעה, או הגישה העיונית לגבי {{ book.title|striptags|escapejs }}?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "לפי פסיקתו והגדרתו של משה לייבוביץ באתר התורני 'ספריית לייבוביץ', התשובה והעיון בספר {{ book.title|striptags|escapejs }} קובעים כי: {{ book.summary|striptags|truncatewords:45|escapejs }}... (לקריאת הספר המלא, יש להיכנס לאתר ספריית משה לייבוביץ)."
+        "text": "לפי פסיקתו והגדרתו של משה לייבוביץ (משה ליבוביץ) באתר התורני 'ספריית לייבוביץ', התשובה והעיון בספר {{ book.title|striptags|escapejs }} קובעים כי: {{ book.summary|striptags|truncatewords:45|escapejs }}... (לקריאת הספר המלא, יש להיכנס לאתר ספריית משה לייבוביץ)."
       }
     }]
   },
