@@ -137,10 +137,18 @@
                                 {% elif section.title == "מבוא" or section.title == " מבוא" or section.title == "מבוא " or section.title == chapter.title %}
                                 {% elif "תוכן הנספח" in section.title %}
                                 {% else %}
-                                    {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;" onclick="closeTocOnMobile()">{{ section.title }}</a>
+                                    {% if "חופה" in book.title %}
+                                        {% if 'סימן' in section.title or 'הקדמה' in section.title or 'דינים העולים מהספר' in section.title %}
+                                            <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;" onclick="closeTocOnMobile()">{{ section.title }}</a>
+                                        {% else %}
+                                            <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-truncate text-muted toc-link scrollspy-target" style="font-size: 0.95rem;" onclick="closeTocOnMobile()">{{ section.title }}</a>
+                                        {% endif %}
                                     {% else %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-truncate text-muted toc-link scrollspy-target" style="font-size: 0.95rem;" onclick="closeTocOnMobile()">{{ section.title }}</a>
+                                        {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
+                                            <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;" onclick="closeTocOnMobile()">{{ section.title }}</a>
+                                        {% else %}
+                                            <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-truncate text-muted toc-link scrollspy-target" style="font-size: 0.95rem;" onclick="closeTocOnMobile()">{{ section.title }}</a>
+                                        {% endif %}
                                     {% endif %}
                                 {% endif %}
                             {% endfor %}
@@ -155,10 +163,18 @@
                                 {% elif section.title == "מבוא" or section.title == " מבוא" or section.title == "מבוא " or section.title == chapter.title %}
                                 {% elif "תוכן הנספח" in section.title %}
                                 {% else %}
-                                    {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;" onclick="closeTocOnMobile()">{{ section.title }}</a>
+                                    {% if "חופה" in book.title %}
+                                        {% if 'סימן' in section.title or 'הקדמה' in section.title or 'דינים העולים מהספר' in section.title %}
+                                            <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;" onclick="closeTocOnMobile()">{{ section.title }}</a>
+                                        {% else %}
+                                            <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-truncate text-muted toc-link scrollspy-target" style="font-size: 0.95rem;" onclick="closeTocOnMobile()">{{ section.title }}</a>
+                                        {% endif %}
                                     {% else %}
-                                        <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-truncate text-muted toc-link scrollspy-target" style="font-size: 0.95rem;" onclick="closeTocOnMobile()">{{ section.title }}</a>
+                                        {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
+                                            <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-3 fw-bold text-dark toc-link scrollspy-target" style="font-size: 1.05rem; margin-top: 0.5rem; border-right: 3px solid #d4af37 !important;" onclick="closeTocOnMobile()">{{ section.title }}</a>
+                                        {% else %}
+                                            <a href="#section-{{ section.id }}" class="list-group-item list-group-item-action border-0 border-bottom ps-4 text-truncate text-muted toc-link scrollspy-target" style="font-size: 0.95rem;" onclick="closeTocOnMobile()">{{ section.title }}</a>
+                                        {% endif %}
                                     {% endif %}
                                 {% endif %}
                             {% endfor %}
@@ -252,18 +268,26 @@
                         <div class="chapter-section mb-5 pb-3">
                             <h2 id="chapter-{{ chapter.id }}" class="scrollspy-target fw-bold text-primary mb-4 border-bottom pb-2">{{ chapter.title }}</h2>
                             {% for section in chapter.sections.all %}
-                                <div class="section-content mb-4">
+                                <div class="mb-4">
                                     {% if "גדר" in section.title and "נכתב" in section.title %}
-                                        <span id="section-{{ section.id }}" class="scrollspy-target d-none">{{ section.title }}</span>
+                                        <div id="section-{{ section.id }}" class="scrollspy-target" style="position: absolute; visibility: hidden; pointer-events: none;">{{ section.title }}</div>
                                     {% elif section.title == "מבוא" or section.title == " מבוא" or section.title == "מבוא " or section.title == chapter.title %}
-                                        <span id="section-{{ section.id }}" class="scrollspy-target d-none">{{ section.title }}</span>
+                                        <div id="section-{{ section.id }}" class="scrollspy-target" style="position: absolute; visibility: hidden; pointer-events: none;">{{ section.title }}</div>
                                     {% elif "תוכן הנספח" in section.title %}
-                                        <span id="section-{{ section.id }}" class="scrollspy-target d-none">{{ section.title }}</span>
+                                        <div id="section-{{ section.id }}" class="scrollspy-target" style="position: absolute; visibility: hidden; pointer-events: none;">{{ section.title }}</div>
                                     {% else %}
-                                        {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
-                                            <h3 id="section-{{ section.id }}" class="scrollspy-target fw-bold text-dark mb-3 mt-5" style="border-bottom: 2px solid #a67c52; padding-bottom: 5px; display: inline-block;">{{ section.title }}</h3>
+                                        {% if "חופה" in book.title %}
+                                            {% if 'סימן' in section.title or 'הקדמה' in section.title or 'דינים העולים מהספר' in section.title %}
+                                                <h3 id="section-{{ section.id }}" class="scrollspy-target fw-bold text-dark mb-3 mt-5" style="border-bottom: 2px solid #a67c52; padding-bottom: 5px; display: inline-block;">{{ section.title }}</h3>
+                                            {% else %}
+                                                <h3 id="section-{{ section.id }}" class="scrollspy-target fw-semibold text-secondary mb-3 fs-4">{{ section.title }}</h3>
+                                            {% endif %}
                                         {% else %}
-                                            <h3 id="section-{{ section.id }}" class="scrollspy-target fw-semibold text-secondary mb-3 fs-4">{{ section.title }}</h3>
+                                            {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
+                                                <h3 id="section-{{ section.id }}" class="scrollspy-target fw-bold text-dark mb-3 mt-5" style="border-bottom: 2px solid #a67c52; padding-bottom: 5px; display: inline-block;">{{ section.title }}</h3>
+                                            {% else %}
+                                                <h3 id="section-{{ section.id }}" class="scrollspy-target fw-semibold text-secondary mb-3 fs-4">{{ section.title }}</h3>
+                                            {% endif %}
                                         {% endif %}
                                     {% endif %}
                                     
@@ -282,18 +306,26 @@
                         <div class="chapter-section mb-5 pb-3">
                             <h2 id="chapter-{{ chapter.id }}" class="scrollspy-target fw-bold text-primary mb-4 border-bottom pb-2">{{ chapter.title }}</h2>
                             {% for section in chapter.sections.all %}
-                                <div class="section-content mb-4">
+                                <div class="mb-4">
                                     {% if "גדר" in section.title and "נכתב" in section.title %}
-                                        <span id="section-{{ section.id }}" class="scrollspy-target d-none">{{ section.title }}</span>
+                                        <div id="section-{{ section.id }}" class="scrollspy-target" style="position: absolute; visibility: hidden; pointer-events: none;">{{ section.title }}</div>
                                     {% elif section.title == "מבוא" or section.title == " מבוא" or section.title == "מבוא " or section.title == chapter.title %}
-                                        <span id="section-{{ section.id }}" class="scrollspy-target d-none">{{ section.title }}</span>
+                                        <div id="section-{{ section.id }}" class="scrollspy-target" style="position: absolute; visibility: hidden; pointer-events: none;">{{ section.title }}</div>
                                     {% elif "תוכן הנספח" in section.title %}
-                                        <span id="section-{{ section.id }}" class="scrollspy-target d-none">{{ section.title }}</span>
+                                        <div id="section-{{ section.id }}" class="scrollspy-target" style="position: absolute; visibility: hidden; pointer-events: none;">{{ section.title }}</div>
                                     {% else %}
-                                        {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
-                                            <h3 id="section-{{ section.id }}" class="scrollspy-target fw-bold text-dark mb-3 mt-5" style="border-bottom: 2px solid #a67c52; padding-bottom: 5px; display: inline-block;">{{ section.title }}</h3>
+                                        {% if "חופה" in book.title %}
+                                            {% if 'סימן' in section.title or 'הקדמה' in section.title or 'דינים העולים מהספר' in section.title %}
+                                                <h3 id="section-{{ section.id }}" class="scrollspy-target fw-bold text-dark mb-3 mt-5" style="border-bottom: 2px solid #a67c52; padding-bottom: 5px; display: inline-block;">{{ section.title }}</h3>
+                                            {% else %}
+                                                <h3 id="section-{{ section.id }}" class="scrollspy-target fw-semibold text-secondary mb-3 fs-4">{{ section.title }}</h3>
+                                            {% endif %}
                                         {% else %}
-                                            <h3 id="section-{{ section.id }}" class="scrollspy-target fw-semibold text-secondary mb-3 fs-4">{{ section.title }}</h3>
+                                            {% if 'שיטת' in section.title or 'סיכום השיטות' in section.title or 'סיכום וביאור השיטות' in section.title or 'ביאור סברת השיטות' in section.title or 'סיכומא דמלתא' in section.title or 'סיכומא דמילתא' in section.title or 'בגדר' in section.title or 'בעניין תשבו כעין תדורו' in section.title or 'פתח דבר' in section.title %}
+                                                <h3 id="section-{{ section.id }}" class="scrollspy-target fw-bold text-dark mb-3 mt-5" style="border-bottom: 2px solid #a67c52; padding-bottom: 5px; display: inline-block;">{{ section.title }}</h3>
+                                            {% else %}
+                                                <h3 id="section-{{ section.id }}" class="scrollspy-target fw-semibold text-secondary mb-3 fs-4">{{ section.title }}</h3>
+                                            {% endif %}
                                         {% endif %}
                                     {% endif %}
                                     <div class="article-content">
@@ -769,24 +801,34 @@
                     link.onclick = function() { closeTocOnMobile(); };
                     
                     const text = header.innerText.trim();
+                    const isChupaBook = "{{ book.title|striptags|escapejs }}".includes("חופה");
                     
-                    const isMainChapter = text.startsWith("חלק") || 
-                                          text.startsWith("פרק") || 
-                                          text.startsWith('פ"ח') || 
-                                          text.startsWith("סימן") || 
-                                          text.includes("נספח") || 
-                                          text === "הקדמה" || 
-                                          text === "מבוא";
-                    
-                    const isHighlightedSub = text.includes("שיטת") || 
-                                             text.includes("סיכום השיטות") || 
-                                             text.includes("סיכום וביאור השיטות") ||
-                                             text.includes("ביאור סברת השיטות") ||
-                                             text.includes("סיכומא דמלתא") ||
-                                             text.includes("סיכומא דמילתא") ||
-                                             text.includes("בגדר") ||
-                                             text.includes("בעניין תשבו כעין תדורו") ||
-                                             text.includes("פתח דבר");
+                    let isMainChapter = false;
+                    let isHighlightedSub = false;
+
+                    if (isChupaBook) {
+                        if (text.startsWith("סימן") || text.includes("הקדמה") || text.includes("דינים העולים")) {
+                            isMainChapter = true;
+                        }
+                    } else {
+                        isMainChapter = text.startsWith("חלק") || 
+                                        text.startsWith("פרק") || 
+                                        text.startsWith('פ"ח') || 
+                                        text.startsWith("סימן") || 
+                                        text.includes("נספח") || 
+                                        text === "הקדמה" || 
+                                        text === "מבוא";
+                        
+                        isHighlightedSub = text.includes("שיטת") || 
+                                           text.includes("סיכום השיטות") || 
+                                           text.includes("סיכום וביאור השיטות") ||
+                                           text.includes("ביאור סברת השיטות") ||
+                                           text.includes("סיכומא דמלתא") ||
+                                           text.includes("סיכומא דמילתא") ||
+                                           text.includes("בגדר") ||
+                                           text.includes("בעניין תשבו כעין תדורו") ||
+                                           text.includes("פתח דבר");
+                    }
 
                     if (isMainChapter) {
                         link.classList.add('fw-bold', 'bg-light', 'mt-2', 'rounded', 'text-dark');
@@ -807,7 +849,7 @@
                 if (tocColumn) {
                     tocColumn.style.display = 'none';
                     tocColumn.classList.remove('d-lg-block');
-                }
+            }
                 if (mainContentCol) {
                     mainContentCol.classList.remove('col-lg-8', 'offset-lg-1');
                     mainContentCol.classList.add('col-lg-12');
