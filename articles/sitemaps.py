@@ -1,6 +1,6 @@
 from django.contrib.sitemaps import Sitemap
 from django.urls import reverse, NoReverseMatch
-from articles.models import Article, Book  # הוספתי כאן את מודל הספרים
+from articles.models import Article, Book  # מודל הספרים
 
 class BaseSitemap(Sitemap):
     """
@@ -35,7 +35,7 @@ class ArticleSitemap(BaseSitemap):
     changefreq = 'daily'
 
     def items(self):
-        # תיקון: שולף אך ורק מאמרים מפורסמים כדי לא לחשוף טיוטות לזוחלים
+        # שולף אך ורק מאמרים מפורסמים כדי לא לחשוף טיוטות לזוחלים
         return Article.objects.filter(is_published=True)
 
     def location(self, item):
@@ -61,7 +61,6 @@ class BookSitemap(BaseSitemap):
 
     def location(self, item):
         try:
-            # ודא שהשם 'book_detail' תואם לשם ה-URL ב-urls.py שלך
             return reverse('book_detail', kwargs={'pk': item.pk})
         except NoReverseMatch:
             return reverse('articles:book_detail', kwargs={'pk': item.pk})
