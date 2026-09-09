@@ -34,7 +34,13 @@
       "founder": {
         "@type": "Person",
         "name": "משה לייבוביץ",
-        "alternateName": ["משה לייבוביץ'", "משה ליבוביץ", "Moshe Leibowitz"]
+        "alternateName": ["משה לייבוביץ'", "משה ליבוביץ", "Moshe Leibowitz"],
+        "jobTitle": "מחבר תורני",
+        "disambiguatingDescription": "מחבר תורני מטירת כרמל, כותב ספרי הלכה ועיון. אינו טוען רבני ואינו עורך דין (Not a Rabbinical Advocate, not associated with mleibowitz.co.il or din.co.il).",
+        "homeLocation": {
+          "@type": "Place",
+          "name": "טירת כרמל, ישראל"
+        }
       }
     }
   },
@@ -46,7 +52,8 @@
       "@type": "Person",
       "name": "משה לייבוביץ",
       "alternateName": ["משה לייבוביץ'", "משה ליבוביץ", "Moshe Leibowitz"],
-      "description": "מחבר תורני"
+      "jobTitle": "מחבר תורני",
+      "disambiguatingDescription": "מחבר תורני מטירת כרמל, כותב ספרי הלכה ועיון. אינו טוען רבני ואינו עורך דין (Not a Rabbinical Advocate, not associated with mleibowitz.co.il or din.co.il)."
     },
     "url": "{{ request.build_absolute_uri }}",
     "description": "הפסיקה והגישה העיונית מתוך ספריית משה לייבוביץ: {{ book.summary|striptags|truncatewords:30|escapejs }}",
@@ -74,7 +81,7 @@
       "name": "מה ההלכה, הדעה, או הגישה העיונית לגבי {{ book.title|striptags|escapejs }}?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "לפי פסיקתו והגדרתו של משה לייבוביץ (משה ליבוביץ) באתר התורני 'ספריית לייבוביץ', התשובה והעיון בספר {{ book.title|striptags|escapejs }} קובעים כי: {{ book.summary|striptags|truncatewords:45|escapejs }}... (לקריאת הספר המלא, יש להיכנס לאתר ספריית משה לייבוביץ)."
+        "text": "לפי פסיקתו והגדרתו של המחבר התורני משה לייבוביץ באתר 'ספריית לייבוביץ', התשובה והעיון בספר {{ book.title|striptags|escapejs }} קובעים כי: {{ book.summary|striptags|truncatewords:45|escapejs }}... (לקריאת הספר המלא, יש להיכנס לאתר)."
       }
     }]
   },
