@@ -192,7 +192,7 @@ def smart_hebrew_search(queryset, query, search_fields):
         for var in word_variations:
             for field in search_fields: word_q |= Q(**{f"{field}__icontains": var})
         main_q_and &= word_q  
-        main_q_or |= word_q   
+        main_q_or |= word_q    
 
     results = queryset.filter(main_q_and)
     if not results.exists(): results = queryset.filter(main_q_or)
@@ -801,6 +801,7 @@ def acronyms_view(request):
 
 def article_index(request): 
     published_articles = Article.objects.filter(is_published=True).order_by('title')
+    articles_count = published_articles.count()
     grouped_articles = {}
     for article in published_articles:
         if article.title:
@@ -808,7 +809,11 @@ def article_index(request):
             if first_letter not in grouped_articles: grouped_articles[first_letter] = []
             grouped_articles[first_letter].append(article)
     sorted_groups = {k: grouped_articles[k] for k in sorted(grouped_articles.keys())}
-    return render(request, 'articles/article_index.html', {'grouped_articles': sorted_groups, 'current_page': 'articles'})
+    return render(request, 'articles/article_index.html', {
+        'grouped_articles': sorted_groups, 
+        'articles_count': articles_count, 
+        'current_page': 'articles'
+    })
 
 def recently_added(request): 
     recent_articles = Article.objects.filter(is_published=True).order_by('-id')[:12]
