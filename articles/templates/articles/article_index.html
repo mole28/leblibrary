@@ -21,11 +21,19 @@
 {% endblock %}
 
 {% block hero %}
-<div class="hero-section" style="height: 280px;">
+<div class="hero-section" style="height: 320px;">
     <div class="hero-overlay"></div>
     <div class="hero-content text-center w-100">
         <h1 class="text-white mb-0 fw-bold display-4" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.8);">אינדקס מאמרים</h1>
         <p class="text-white mt-2 fs-4" style="text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">כל מאמרי האתר מסודרים לפי א"ב</p>
+        
+        <!-- מונה מאמרים יוקרתי -->
+        <div class="mt-3">
+            <div class="d-inline-flex align-items-center gap-2 px-4 py-1.5 rounded-pill text-sm shadow-lg backdrop-blur-md" style="background-color: rgba(15, 23, 42, 0.75); border: 1px solid rgba(212, 175, 55, 0.5); color: #f3e8ff;">
+                <i class="bi bi-journal-richtext" style="color: #d4af37 !important;"></i>
+                <span>במאגר זה ישנם כיום <strong class="px-1" style="color: #d4af37; font-size: 1.1em;">{{ articles_count }}</strong> מאמרים הלכתיים</span>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
