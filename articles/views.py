@@ -59,7 +59,9 @@ def get_base_schema_json():
                 "alternateName": ["משה ליבוביץ", "Moshe Leibowitz", "משה בן יעקב לייבוביץ"],
                 "url": "https://leblibrary.co.il",
                 "sameAs": [
-                    "https://leblibrary.co.il/about/"
+                    "https://leblibrary.co.il/about/",
+                    "https://merhav.nli.org.il/primo-explore/search?query=any,contains,משה%20לייבוביץ&vid=NLI",
+                    "https://hebrewbooks.org/"
                 ],
                 "jobTitle": "תלמיד חכם ואברך",
                 "worksFor": {
@@ -1304,6 +1306,15 @@ def search_acronyms_api(request):
 def advanced_search_view(request):
     return render(request, 'articles/advanced_search.html', {'current_page': 'advanced_search'})
 
+# ==========================================
+# עמוד מבודד: עלון אור הכרמל
+# ==========================================
+def or_hacarmel_view(request):
+    """
+    View עבור עמוד מבודד לעלוני 'אור הכרמל'.
+    עמוד זה אינו יורש את תבנית הבסיס של האתר.
+    """
+    return render(request, 'articles/or_hacarmel.html')
 
 # ==========================================
 # אלגוריתמי עזר לחיפוש תורני (גימטריה, ראשי תיבות וכו')
