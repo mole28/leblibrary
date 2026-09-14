@@ -831,11 +831,20 @@ def parasha_list(request):
     return render(request, 'articles/parasha_list.html', {'current_page': 'parasha', 'selected_parasha': selected_parasha, 'articles': articles})
 
 def book_detail(request, slug): 
-    return render(request, 'articles/book_detail.html', {'book': get_object_or_404(Book, slug=slug), 'current_page': 'books'})
+    book = get_object_or_404(Book, slug=slug)
+    mida_book = Book.objects.filter(title__contains="מידה של תורה").first()
+    return render(request, 'articles/book_detail.html', {
+        'book': book, 
+        'mida_book': mida_book,
+        'current_page': 'books'
+    })
 
 def books(request): 
     books_ordered = Book.objects.all().order_by('order', 'title')
-    return render(request, 'articles/books_list.html', {'books': books_ordered, 'current_page': 'books'})
+    return render(request, 'articles/books_list.html', {
+        'books': books_ordered, 
+        'current_page': 'books'
+    })
 
 def live_search(request):
     q = request.GET.get('q', '').strip()
