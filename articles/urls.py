@@ -22,6 +22,7 @@ urlpatterns = [
     # ספרים
     # ==========================
     path('books/', views.books, name='books'),
+    # --- התיקון הקריטי לספרים: str במקום slug ---
     path('book/<str:slug>/', views.book_detail, name='book_detail'),
     
     # ==========================
