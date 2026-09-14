@@ -578,77 +578,57 @@ def ai_chat_endpoint(request):
             return JsonResponse({'answer': f'שגיאת שרת פנימית (views): {str(e)}'})
     return JsonResponse({'error': 'Invalid method'}, status=400)
 
+from django.http import HttpResponse
 
 def article_list(request):
-    query = request.GET.get('q')
-    
-    if query:
-        query = query.strip()
-        published_articles = Article.objects.filter(is_published=True).order_by('-created_at')
-        articles = smart_hebrew_search(published_articles, query, ['title', 'content'])
-        return render(request, 'articles/article_list.html', {
-            'articles': articles, 'latest_articles': None, 'reading_books': None, 'sale_books': None,
-            'parasha_article': None, 'jewish_cal': None, 'query': query, 'current_page': 'home',
-            'schema_json_ld': get_base_schema_json()
-        })
-        
-    today_str = str(datetime.date.today())
-    cache_key = f'home_dynamic_content_{today_str}'
-    
-    dynamic_content = cache.get(cache_key)
-    
-    if not dynamic_content:
-        parasha_article = Article.objects.filter(is_published=True).exclude(
-            Q(parasha__isnull=True) | 
-            Q(parasha__exact='') | 
-            Q(parasha__exact=',') | 
-            Q(parasha__exact=',,') | 
-            Q(parasha__icontains='general')
-        ).order_by('?').first()
-        
-        recent_15 = list(Article.objects.filter(is_published=True).order_by('-created_at')[:15])
-        if parasha_article and parasha_article in recent_15:
-            recent_15.remove(parasha_article)
-        latest_articles = random.sample(recent_15, min(2, len(recent_15)))
-        
-        reading_books = list(Book.objects.filter(is_for_sale=False).order_by('?')[:3])
-        sale_books = list(Book.objects.filter(is_for_sale=True).order_by('?')[:3])
-        
-        dynamic_content = {
-            'parasha_article': parasha_article,
-            'latest_articles': latest_articles,
-            'reading_books': reading_books,
-            'sale_books': sale_books
-        }
-        cache.set(cache_key, dynamic_content, 60 * 60 * 24)
-        
-    parasha_article = dynamic_content['parasha_article']
-    latest_articles = dynamic_content['latest_articles']
-    reading_books = dynamic_content['reading_books']
-    sale_books = dynamic_content['sale_books']
-
-    latest_qa = None
-    try:
-        from .models import QA
-        qa_pool = list(QA.objects.order_by('-created_at')[:7])
-        if qa_pool:
-            latest_qa = random.choice(qa_pool)
-    except Exception:
-        pass
-        
-    jewish_cal = get_jewish_calendar_info()
-    
-    return render(request, 'articles/article_list.html', {
-        'articles': None,
-        'parasha_article': parasha_article,
-        'latest_articles': latest_articles,
-        'reading_books': reading_books,
-        'sale_books': sale_books,
-        'latest_qa': latest_qa,
-        'jewish_cal': jewish_cal,
-        'current_page': 'home',
-        'schema_json_ld': get_base_schema_json()
-    })
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="he" dir="rtl">
+    <head>
+        <meta charset="UTF-8">
+        <title>ספריית לייבוביץ - האתר בבנייה</title>
+        <style>
+            body {
+                background-color: #f7f9fc;
+                font-family: Arial, sans-serif;
+                text-align: center;
+                padding: 50px;
+                color: #2c3e50;
+                margin: 0;
+            }
+            .container {
+                max-width: 600px;
+                margin: 100px auto;
+                background: white;
+                padding: 50px;
+                border-radius: 20px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            }
+            h1 { color: #2c3e50; font-size: 2.5rem; margin-bottom: 20px; }
+            p { font-size: 1.3rem; color: #555; line-height: 1.6; }
+            .badge {
+                display: inline-block;
+                background: #d4af37;
+                color: white;
+                padding: 10px 25px;
+                border-radius: 30px;
+                font-weight: bold;
+                font-size: 1.2rem;
+                margin-top: 30px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>📚 ספריית לייבוביץ</h1>
+            <p><strong>האתר בבניה!!!!!!!!!!!!!!!!!!!!</strong></p>
+            <p>נשוב לפעילות מלאה בקרוב בעז"ה.</p>
+            <div class="badge">בבנייה</div>
+        </div>
+    </body>
+    </html>
+    """
+    return HttpResponse(html_content)
 
 def article_detail(request, slug):
     article = get_object_or_404(Article, slug=slug, is_published=True)
@@ -831,15 +811,17 @@ def parasha_list(request):
     return render(request, 'articles/parasha_list.html', {'current_page': 'parasha', 'selected_parasha': selected_parasha, 'articles': articles})
 
 def book_detail(request, pk):
-    # נבדוק האם ה-pk שקיבלנו הוא מספר (ID) או טקסט (כמו שם הספר בעברית)
     if str(pk).isdigit():
-        book = get_object_or_404(Book, pk=int(pk))
+        # שימוש ב-filter ו-first במקום get_object_or_404 כדי למנוע קריסה אם הספר לא קיים
+        book = Book.objects.filter(pk=int(pk)).first()
     else:
-        # אם נשלח טקסט, נחפש לפי כותרת הספר
         book = Book.objects.filter(title__icontains=pk).first()
-        if not book:
-            from django.http import Http404
-            raise Http404("הספר המבוקש לא נמצא.")
+        
+    if not book:
+        from django.http import Http404
+        raise Http404("הספר המבוקש אינו קיים במערכת.")
+            
+    return render(request, 'articles/book_detail.html', {'book': book, 'current_page': 'books'})
             
     return render(request, 'articles/book_detail.html', {'book': book, 'current_page': 'books'})
 
