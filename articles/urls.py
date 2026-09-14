@@ -23,7 +23,7 @@ urlpatterns = [
     # ==========================
     path('books/', views.books, name='books'),
     # --- התיקון הקריטי לספרים: str במקום slug ---
-    path('book/<path:pk>/', views.book_detail, name='book_detail'),
+    path('book/<str:slug>/', views.book_detail, name='book_detail'),
     
     # ==========================
     # שאלות ותשובות + פרשת שבוע
