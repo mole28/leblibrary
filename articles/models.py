@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.utils.text import slugify  # הוסף עבור יצירת סלאגים אוטומטית
 
 import re
 from bs4 import BeautifulSoup
@@ -244,6 +245,7 @@ PARASHA_CHOICES = [
 
 class Article(models.Model):
     title = models.CharField(max_length=200, verbose_name="כותרת המאמר")
+    slug = models.SlugField(max_length=255, unique=True, allow_unicode=True, blank=True, verbose_name="קישור (Slug)")
     parasha = models.CharField(max_length=500, default=',general,', verbose_name="שיוך לפרשות שבוע", blank=True)
     word_file = models.FileField(upload_to='word_imports/', blank=True, null=True, verbose_name="ייבוא אוטומטי מוורד (מומלץ למאמרים עם הערות!)")
     content = CKEditor5Field(config_name='extends', verbose_name="תוכן המאמר", blank=True, null=True) 
@@ -266,6 +268,9 @@ class Article(models.Model):
     def __str__(self): return self.title
 
     def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.title, allow_unicode=True)
+            
         if self.word_file and mammoth:
             try:
                 self.word_file.open('rb')
@@ -283,9 +288,10 @@ class Article(models.Model):
 
 class Book(models.Model):
     title = models.CharField(max_length=200, verbose_name="שם הספר")
+    slug = models.SlugField(max_length=255, unique=True, allow_unicode=True, blank=True, verbose_name="קישור (Slug)")
     author = models.CharField(max_length=100, verbose_name="מחבר")
     cover_image = models.ImageField(upload_to='books/covers/', blank=True, null=True, verbose_name="תמונת כריכה")
-    pdf_file = models.FileField(upload_to='books/pdfs/', blank=True, null=True, verbose_name="קובץ PDF להורדה") # השורה החדשה!
+    pdf_file = models.FileField(upload_to='books/pdfs/', blank=True, null=True, verbose_name="קובץ PDF להורדה") 
     summary = CKEditor5Field(config_name='extends', verbose_name="תקציר הספר", blank=True, null=True)
     price = models.DecimalField(max_digits=6, decimal_places=2, default=0.00, verbose_name="מחיר הספר")
     is_for_sale = models.BooleanField(default=False, verbose_name="זמין לרכישה")
@@ -302,6 +308,11 @@ class Book(models.Model):
         ordering = ['order', 'title']
 
     def __str__(self): return self.title
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.title, allow_unicode=True)
+        super().save(*args, **kwargs)
 
 
 class Chapter(models.Model):

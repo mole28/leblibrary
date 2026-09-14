@@ -194,7 +194,7 @@ def smart_hebrew_search(queryset, query, search_fields):
         for var in word_variations:
             for field in search_fields: word_q |= Q(**{f"{field}__icontains": var})
         main_q_and &= word_q  
-        main_q_or |= word_q    
+        main_q_or |= word_q   
 
     results = queryset.filter(main_q_and)
     if not results.exists(): results = queryset.filter(main_q_or)
@@ -438,15 +438,15 @@ def ai_chat_endpoint(request):
                         add_to_context(item.get('title', ''), item.get('url', ''), item.get('content_snippet', ''))
 
                 for a in db_articles:
-                    url = request.build_absolute_uri(reverse('articles:detail', args=[a.id]))
+                    url = request.build_absolute_uri(reverse('articles:detail', args=[a.slug]))
                     snippet = get_smart_content(get_item_text(a), words, max_chars=8000)
                     add_to_context(get_item_title(a), url, snippet)
 
                 for c in db_chapters:
                     try:
-                        book_id = getattr(c, 'book_id', None) or (c.book.id if hasattr(c, 'book') else None)
-                        if book_id:
-                            base_book_url = request.build_absolute_uri(reverse('articles:book_detail', args=[book_id]))
+                        book_slug = c.book.slug if hasattr(c, 'book') and c.book else None
+                        if book_slug:
+                            base_book_url = request.build_absolute_uri(reverse('articles:book_detail', args=[book_slug]))
                             url = f"{base_book_url}#chapter-{c.id}"
                             title = f"{get_item_title(c.book) if hasattr(c, 'book') else 'ספר'} - {get_item_title(c)}"
                             snippet = get_smart_content(get_item_text(c), words, max_chars=8000)
@@ -457,9 +457,9 @@ def ai_chat_endpoint(request):
                     try:
                         chapter = getattr(s, 'chapter', None)
                         if chapter:
-                            book_id = getattr(chapter, 'book_id', None) or (chapter.book.id if hasattr(chapter, 'book') else None)
-                            if book_id:
-                                base_book_url = request.build_absolute_uri(reverse('articles:book_detail', args=[book_id]))
+                            book_slug = chapter.book.slug if hasattr(chapter, 'book') and chapter.book else None
+                            if book_slug:
+                                base_book_url = request.build_absolute_uri(reverse('articles:book_detail', args=[book_slug]))
                                 url = f"{base_book_url}#chapter-{chapter.id}"
                                 title = f"{get_item_title(chapter.book) if hasattr(chapter, 'book') else 'ספר'} - {get_item_title(chapter)}"
                                 snippet = get_smart_content(get_item_text(s), words, max_chars=8000)
@@ -650,8 +650,8 @@ def article_list(request):
         'schema_json_ld': get_base_schema_json()
     })
 
-def article_detail(request, pk):
-    article = get_object_or_404(Article, pk=pk, is_published=True)
+def article_detail(request, slug):
+    article = get_object_or_404(Article, slug=slug, is_published=True)
     return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
 
 @login_required
@@ -660,24 +660,24 @@ def article_create(request):
         form = ArticleForm(request.POST)
         if form.is_valid(): 
             article = form.save()
-            ping_indexnow(request.build_absolute_uri(reverse('articles:detail', args=[article.pk])))
+            ping_indexnow(request.build_absolute_uri(reverse('articles:detail', args=[article.slug])))
         return redirect('articles:list')
     return render(request, 'articles/article_form.html', {'form': ArticleForm(), 'current_page': 'articles'})
 
 @login_required
-def article_edit(request, pk):
-    article = get_object_or_404(Article, pk=pk)
+def article_edit(request, slug):
+    article = get_object_or_404(Article, slug=slug)
     if request.method == 'POST':
         form = ArticleForm(request.POST, instance=article)
         if form.is_valid(): 
             article = form.save()
-            ping_indexnow(request.build_absolute_uri(reverse('articles:detail', args=[article.pk])))
-        return redirect('articles:detail', pk=article.pk)
+            ping_indexnow(request.build_absolute_uri(reverse('articles:detail', args=[article.slug])))
+        return redirect('articles:detail', slug=article.slug)
     return render(request, 'articles/article_form.html', {'form': ArticleForm(instance=article), 'current_page': 'articles'})
 
 @login_required
-def article_delete(request, pk):
-    article = get_object_or_404(Article, pk=pk)
+def article_delete(request, slug):
+    article = get_object_or_404(Article, slug=slug)
     if request.method == 'POST': article.delete()
     return redirect('articles:list')
 
@@ -830,8 +830,8 @@ def parasha_list(request):
         articles = Article.objects.filter(parasha_q, is_published=True).order_by('-created_at')
     return render(request, 'articles/parasha_list.html', {'current_page': 'parasha', 'selected_parasha': selected_parasha, 'articles': articles})
 
-def book_detail(request, pk): 
-    return render(request, 'articles/book_detail.html', {'book': get_object_or_404(Book, pk=pk), 'current_page': 'books'})
+def book_detail(request, slug): 
+    return render(request, 'articles/book_detail.html', {'book': get_object_or_404(Book, slug=slug), 'current_page': 'books'})
 
 def books(request): 
     books_ordered = Book.objects.all().order_by('order', 'title')
@@ -846,12 +846,12 @@ def live_search(request):
     
     books_qs = Book.objects.all()
     articles_qs = Article.objects.filter(is_published=True)
-    books = smart_hebrew_search(books_qs, q, ['title', 'author']).only('id', 'title')[:3]
-    articles = smart_hebrew_search(articles_qs, q, ['title', 'content']).only('id', 'title')[:4]
+    books = smart_hebrew_search(books_qs, q, ['title', 'author']).only('id', 'title', 'slug')[:3]
+    articles = smart_hebrew_search(articles_qs, q, ['title', 'content']).only('id', 'title', 'slug')[:4]
     
     results = []
-    for book in books: results.append({'title': book.title, 'type': 'ספר שלם', 'icon': 'bi-journal-bookmark-fill', 'url': reverse('articles:book_detail', args=[book.id])})
-    for article in articles: results.append({'title': article.title, 'type': 'מאמר', 'icon': 'bi-file-earmark-text', 'url': reverse('articles:detail', args=[article.id])})
+    for book in books: results.append({'title': book.title, 'type': 'ספר שלם', 'icon': 'bi-journal-bookmark-fill', 'url': reverse('articles:book_detail', args=[book.slug])})
+    for article in articles: results.append({'title': article.title, 'type': 'מאמר', 'icon': 'bi-file-earmark-text', 'url': reverse('articles:detail', args=[article.slug])})
         
     cache.set(cache_key, results, timeout=300)
     return JsonResponse({'results': results})
@@ -890,7 +890,7 @@ def ai_open_search(request):
             results.append({
                 'title': get_item_title(article),
                 'type': 'Article',
-                'url': request.build_absolute_uri(reverse('articles:detail', args=[article.id])),
+                'url': request.build_absolute_uri(reverse('articles:detail', args=[article.slug])),
                 'content_snippet': get_smart_content(get_item_text(article), words, max_chars=1500)
             })
             
@@ -898,7 +898,7 @@ def ai_open_search(request):
             results.append({
                 'title': get_item_title(book),
                 'type': 'Book',
-                'url': request.build_absolute_uri(reverse('articles:book_detail', args=[book.id])),
+                'url': request.build_absolute_uri(reverse('articles:book_detail', args=[book.slug])),
                 'content_snippet': get_smart_content(get_item_text(book), words, max_chars=1500)
             })
         

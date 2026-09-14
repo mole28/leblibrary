@@ -40,9 +40,9 @@ class ArticleSitemap(BaseSitemap):
 
     def location(self, item):
         try:
-            return reverse('detail', kwargs={'pk': item.pk})
+            return reverse('detail', kwargs={'slug': item.slug})
         except NoReverseMatch:
-            return reverse('articles:detail', kwargs={'pk': item.pk})
+            return reverse('articles:detail', kwargs={'slug': item.slug})
 
     def lastmod(self, obj):
         if hasattr(obj, 'updated_at'):
@@ -61,9 +61,9 @@ class BookSitemap(BaseSitemap):
 
     def location(self, item):
         try:
-            return reverse('book_detail', kwargs={'pk': item.pk})
+            return reverse('book_detail', kwargs={'slug': item.slug})
         except NoReverseMatch:
-            return reverse('articles:book_detail', kwargs={'pk': item.pk})
+            return reverse('articles:book_detail', kwargs={'slug': item.slug})
 
     def lastmod(self, obj):
         if hasattr(obj, 'updated_at'):

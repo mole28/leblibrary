@@ -11,16 +11,18 @@ urlpatterns = [
     # ==========================
     path('', views.article_list, name='list'),
     path('index/', views.article_index, name='articles_index'),
-    path('article/<int:pk>/', views.article_detail, name='detail'),
+    # --- תוקן ל-slug ---
+    path('article/<slug:slug>/', views.article_detail, name='detail'),
     path('article/new/', views.article_create, name='create'),
-    path('article/<int:pk>/edit/', views.article_edit, name='edit'),
-    path('article/<int:pk>/delete/', views.article_delete, name='delete'),
+    path('article/<slug:slug>/edit/', views.article_edit, name='edit'),
+    path('article/<slug:slug>/delete/', views.article_delete, name='delete'),
     
     # ==========================
     # ספרים
     # ==========================
     path('books/', views.books, name='books'),
-    path('book/<int:pk>/', views.book_detail, name='book_detail'),
+    # --- תוקן ל-slug ---
+    path('book/<slug:slug>/', views.book_detail, name='book_detail'),
     
     # ==========================
     # שאלות ותשובות + פרשת שבוע
@@ -44,12 +46,12 @@ urlpatterns = [
     path('api/ai-search/', views.ai_open_search, name='ai_open_search'), 
     path('api/search-acronyms/', views.search_acronyms_api, name='search_acronyms_api'),
     
-    # API הקראה קולית (חדש)
+    # API הקראה קולית (חדש) - נשאר עם ID כי זה מנגנון רקע שלא קשור ל-SEO
     path('api/audio/article/<int:article_id>/', views.get_article_audio, name='get_article_audio'),
     path('api/audio/book/<int:book_id>/', views.get_book_audio, name='get_book_audio'),
     
     # ==========================
-    # חנות ועגלת קניות (E-commerce)
+    # חנות ועגלת קניות (E-commerce) - נשאר עם ID
     # ==========================
     path('cart/', views.cart_detail, name='cart_detail'),
     path('cart/add/<int:book_id>/', views.add_to_cart, name='add_to_cart'),
