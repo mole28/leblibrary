@@ -12,18 +12,17 @@ urlpatterns = [
     path('', views.article_list, name='list'),
     path('index/', views.article_index, name='articles_index'),
     
-    # --- התיקון הקריטי: str במקום slug כדי לתמוך בעברית ---
-    path('article/<str:slug>/', views.article_detail, name='detail'),
+    # --- תיקון פרמטר ל-pk כדי להתאים ל-views (תומך גם במספרים וגם בעברית) ---
+    path('article/<str:pk>/', views.article_detail, name='detail'),
     path('article/new/', views.article_create, name='create'),
-    path('article/<str:slug>/edit/', views.article_edit, name='edit'),
-    path('article/<str:slug>/delete/', views.article_delete, name='delete'),
+    path('article/<str:pk>/edit/', views.article_edit, name='edit'),
+    path('article/<str:pk>/delete/', views.article_delete, name='delete'),
     
     # ==========================
     # ספרים
     # ==========================
     path('books/', views.books, name='books'),
-    # --- התיקון הקריטי לספרים: str במקום slug ---
-    path('book/<str:slug>/', views.book_detail, name='book_detail'),
+    path('book/<str:pk>/', views.book_detail, name='book_detail'),
     
     # ==========================
     # שאלות ותשובות + פרשת שבוע
@@ -47,7 +46,7 @@ urlpatterns = [
     path('api/ai-search/', views.ai_open_search, name='ai_open_search'), 
     path('api/search-acronyms/', views.search_acronyms_api, name='search_acronyms_api'),
     
-    # API הקראה קולית (חדש)
+    # API הקראה קולית
     path('api/audio/article/<int:article_id>/', views.get_article_audio, name='get_article_audio'),
     path('api/audio/book/<int:book_id>/', views.get_book_audio, name='get_book_audio'),
     
