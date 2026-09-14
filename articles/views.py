@@ -810,20 +810,57 @@ def parasha_list(request):
         articles = Article.objects.filter(parasha_q, is_published=True).order_by('-created_at')
     return render(request, 'articles/parasha_list.html', {'current_page': 'parasha', 'selected_parasha': selected_parasha, 'articles': articles})
 
+from django.http import HttpResponse
+
 def book_detail(request, pk):
-    if str(pk).isdigit():
-        # שימוש ב-filter ו-first במקום get_object_or_404 כדי למנוע קריסה אם הספר לא קיים
-        book = Book.objects.filter(pk=int(pk)).first()
-    else:
-        book = Book.objects.filter(title__icontains=pk).first()
-        
-    if not book:
-        from django.http import Http404
-        raise Http404("הספר המבוקש אינו קיים במערכת.")
-            
-    return render(request, 'articles/book_detail.html', {'book': book, 'current_page': 'books'})
-            
-    return render(request, 'articles/book_detail.html', {'book': book, 'current_page': 'books'})
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="he" dir="rtl">
+    <head>
+        <meta charset="UTF-8">
+        <title>ספריית לייבוביץ - האתר בבנייה</title>
+        <style>
+            body {
+                background-color: #f7f9fc;
+                font-family: Arial, sans-serif;
+                text-align: center;
+                padding: 50px;
+                color: #2c3e50;
+                margin: 0;
+            }
+            .container {
+                max-width: 600px;
+                margin: 100px auto;
+                background: white;
+                padding: 50px;
+                border-radius: 20px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            }
+            h1 { color: #2c3e50; font-size: 2.5rem; margin-bottom: 20px; }
+            p { font-size: 1.3rem; color: #555; line-height: 1.6; }
+            .badge {
+                display: inline-block;
+                background: #d4af37;
+                color: white;
+                padding: 10px 25px;
+                border-radius: 30px;
+                font-weight: bold;
+                font-size: 1.2rem;
+                margin-top: 30px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>📚 ספריית לייבוביץ</h1>
+            <p><strong>האתר בבניה!!!!!!!!!!!!!!!!!!!!</strong></p>
+            <p>נשוב לפעילות מלאה בקרוב בעז"ה.</p>
+            <div class="badge">בבנייה</div>
+        </div>
+    </body>
+    </html>
+    """
+    return HttpResponse(html_content)
 
 def books(request): 
     books_ordered = Book.objects.all().order_by('order', 'title')
