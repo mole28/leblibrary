@@ -830,15 +830,18 @@ def parasha_list(request):
         articles = Article.objects.filter(parasha_q, is_published=True).order_by('-created_at')
     return render(request, 'articles/parasha_list.html', {'current_page': 'parasha', 'selected_parasha': selected_parasha, 'articles': articles})
 
-def book_detail(request, pk, slug): 
-    # חיפוש מדוייק לפי ה-ID הייחודי של השורה במסד הנתונים
-    book = get_object_or_404(Book, pk=pk)
-    mida_book = Book.objects.filter(title__contains="מידה של תורה").first()
-    return render(request, 'articles/book_detail.html', {
-        'book': book, 
-        'mida_book': mida_book,
-        'current_page': 'books'
-    })
+def book_detail(request, slug):
+    # נבדוק האם ה-slug שקיבלנו הוא מספר (ID) או טקסט (שם הספר)
+    if str(slug).isdigit():
+        book = get_object_or_404(Book, pk=int(slug))
+    else:
+        # אם זה טקסט, נחפש לפי כותרת או מזהה אחר
+        book = Book.objects.filter(title__icontains=slug).first()
+        if not book:
+            from django.http import Http404
+            raise Http404("הספר המבוקש לא נמצא.")
+            
+    return render(request, 'articles/book_detail.html', {'book': book, 'current_page': 'books'})
 
 def books(request): 
     books_ordered = Book.objects.all().order_by('order', 'title')
@@ -849,27 +852,21 @@ def books(request):
 
 def live_search(request):
     q = request.GET.get('q', '').strip()
+    if len(q) < 2: return JsonResponse({'results': []})
+    cache_key = f'live_search_{q}'
+    cached_results = cache.get(cache_key)
+    if cached_results: return JsonResponse({'results': cached_results})
+    
+    books_qs = Book.objects.all()
+    articles_qs = Article.objects.filter(is_published=True)
+    books = smart_hebrew_search(books_qs, q, ['title', 'author']).only('id', 'title', 'slug')[:3]
+    articles = smart_hebrew_search(articles_qs, q, ['title', 'content']).only('id', 'title', 'slug')[:4]
+    
     results = []
-    if len(q) >= 2:
-        articles = Article.objects.filter(is_published=True).filter(Q(title__icontains=q) | Q(content__icontains=q))[:5]
-        for a in articles:
-            results.append({
-                'title': a.title,
-                'type': 'מאמר',
-                'url': f'/article/{a.slug}/',
-                'icon': 'bi-file-earmark-text'
-            })
+    for book in books: results.append({'title': book.title, 'type': 'ספר שלם', 'icon': 'bi-journal-bookmark-fill', 'url': reverse('articles:book_detail', args=[book.slug])})
+    for article in articles: results.append({'title': article.title, 'type': 'מאמר', 'icon': 'bi-file-earmark-text', 'url': reverse('articles:detail', args=[article.slug])})
         
-        # <<-- כאן בדיוק נמצא החלק שחיפשת: -->>
-        books = Book.objects.filter(Q(title__icontains=q) | Q(summary__icontains=q))[:3]
-        for b in books:
-            results.append({
-                'title': b.title,
-                'type': 'ספר',
-                'url': f'/book/{b.pk}/{b.slug}/',  # או רק f'/book/{b.slug}/' תלוי איך הגדרת את ה-URL
-                'icon': 'bi-book'
-            })
-            
+    cache.set(cache_key, results, timeout=300)
     return JsonResponse({'results': results})
 
 @ratelimit(rate=30, timeout=60)
