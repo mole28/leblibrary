@@ -831,7 +831,12 @@ def parasha_list(request):
     return render(request, 'articles/parasha_list.html', {'current_page': 'parasha', 'selected_parasha': selected_parasha, 'articles': articles})
 
 def book_detail(request, slug): 
-    book = get_object_or_404(Book, slug=slug)
+    # שימוש ב-first() במקום get מונע קריסה במקרה של כפילויות נתונים במסד
+    book = Book.objects.filter(slug=slug).first()
+    if not book:
+        from django.http import Http404
+        raise Http404("הספר אינו נמצא")
+        
     mida_book = Book.objects.filter(title__contains="מידה של תורה").first()
     return render(request, 'articles/book_detail.html', {
         'book': book, 
