@@ -245,7 +245,7 @@ PARASHA_CHOICES = [
 
 class Article(models.Model):
     title = models.CharField(max_length=200, verbose_name="כותרת המאמר")
-    slug = models.SlugField(max_length=255, unique=True, allow_unicode=True, blank=True, verbose_name="קישור (Slug)")
+    slug = models.SlugField(max_length=255, allow_unicode=True, blank=True, null=True, verbose_name="קישור (Slug)")
     parasha = models.CharField(max_length=500, default=',general,', verbose_name="שיוך לפרשות שבוע", blank=True)
     word_file = models.FileField(upload_to='word_imports/', blank=True, null=True, verbose_name="ייבוא אוטומטי מוורד (מומלץ למאמרים עם הערות!)")
     content = CKEditor5Field(config_name='extends', verbose_name="תוכן המאמר", blank=True, null=True) 
