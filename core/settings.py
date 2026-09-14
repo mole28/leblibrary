@@ -21,7 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-5^ip_@z$(vgsa#06rkrt$$i712i6#+8*$la%oc=$$0*b(t@v5h')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False') == 'True' 
+DEBUG = True # DEBUG = os.environ.get('DEBUG', 'False') == 'True' 
 
 # רשימת המארחים המורשים כוללת את הדומיין שלך וכתובת ה-IP
 ALLOWED_HOSTS = ['leblibrary.co.il', 'www.leblibrary.co.il', '5.75.224.152', '127.0.0.1', 'localhost']
