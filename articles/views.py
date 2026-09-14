@@ -830,13 +830,13 @@ def parasha_list(request):
         articles = Article.objects.filter(parasha_q, is_published=True).order_by('-created_at')
     return render(request, 'articles/parasha_list.html', {'current_page': 'parasha', 'selected_parasha': selected_parasha, 'articles': articles})
 
-def book_detail(request, slug):
-    # נבדוק האם ה-slug שקיבלנו הוא מספר (ID) או טקסט (שם הספר)
-    if str(slug).isdigit():
-        book = get_object_or_404(Book, pk=int(slug))
+def book_detail(request, pk):
+    # נבדוק האם ה-pk שקיבלנו הוא מספר (ID) או טקסט (כמו שם הספר בעברית)
+    if str(pk).isdigit():
+        book = get_object_or_404(Book, pk=int(pk))
     else:
-        # אם זה טקסט, נחפש לפי כותרת או מזהה אחר
-        book = Book.objects.filter(title__icontains=slug).first()
+        # אם נשלח טקסט, נחפש לפי כותרת הספר
+        book = Book.objects.filter(title__icontains=pk).first()
         if not book:
             from django.http import Http404
             raise Http404("הספר המבוקש לא נמצא.")
