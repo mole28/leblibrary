@@ -272,7 +272,7 @@
                                     <h4 class="fw-bold my-2" style="color: #a67c52;">₪{{ book.price }}</h4>
                                     <div class="d-grid gap-2 mt-auto">
                                         <!-- התיקון כאן: book.slug במקום book.pk -->
-                                        <a href="{% url 'articles:book_detail' book.slug %}" class="btn btn-light border rounded-pill fw-bold text-secondary text-sm">לפרטים</a>
+                                        <a href="{% url 'articles:book_detail' book.id %}" class="btn btn-light border rounded-pill fw-bold text-secondary text-sm">לפרטים</a>
                                         <a href="{% url 'articles:add_to_cart' book.id %}" class="btn rounded-pill fw-bold" style="background: linear-gradient(135deg, #d4af37 0%, #b5952f 100%); color: #1e202c;">
                                             הוסף <i class="bi bi-cart-plus"></i>
                                         </a>
