@@ -1,12 +1,9 @@
 from django.db import models
 from django.utils import timezone
-from django.utils.text import slugify  # הוסף עבור יצירת סלאגים אוטומטית
+from django.utils.text import slugify
 
 import re
 from bs4 import BeautifulSoup
-# ------------------------------------------
-# ייבוא מעודכן עבור CKEditor 5
-# ------------------------------------------
 from django_ckeditor_5.fields import CKEditor5Field
 
 from pyluach import dates
@@ -25,26 +22,22 @@ def process_mammoth_html(raw_html):
     if not raw_html: return ""
     soup = BeautifulSoup(raw_html, 'html.parser')
 
-    # 1. סידור ההפניות בתוך המאמר והוספת סוגריים [1]
     for ref in soup.find_all('a', id=re.compile(r'^footnote-ref-')):
         clean_num = ref.get_text(strip=True).replace('[', '').replace(']', '')
-        ref.string = f"[{clean_num}]" # הוספת סוגריים מרובעים מסביב למספר
+        ref.string = f"[{clean_num}]" 
         ref['class'] = ref.get('class', []) + ['footnote-ref']
         if ref.parent and ref.parent.name != 'sup':
             ref.wrap(soup.new_tag('sup'))
 
-    # 2. חילוץ כל ההערות מהתחתית
     footnotes_dict = {}
     for li in soup.find_all('li', id=re.compile(r'^footnote-')):
         fn_id = li['id']
-        # מחיקת החצים לחזרה למעלה
         for back_link in li.find_all('a', href=re.compile(r'^#footnote-ref-')):
             parent = back_link.parent
             back_link.decompose()
             if parent and parent.name == 'sup' and not parent.get_text(strip=True):
                 parent.decompose()
         
-        # ביטול פסקאות שגורמות לשבירת שורות
         for p in li.find_all('p'):
             p.unwrap()
             
@@ -55,7 +48,6 @@ def process_mammoth_html(raw_html):
         if not ol.get_text(strip=True):
             ol.extract()
 
-    # 3. בניה מחדש של תחתית המאמר עם הערות בעיצוב חלק (Flexbox)
     if footnotes_dict:
         hr = soup.new_tag('hr', style='border: 0; border-top: 5px solid #2c3e50; margin: 60px 0 40px 0; opacity: 1;')
         h2 = soup.new_tag('h2', style='text-align: center; color: #d4af37; margin-bottom: 30px; font-weight: bold;')
@@ -82,7 +74,6 @@ def process_mammoth_html(raw_html):
         soup.append(h2)
         soup.append(container)
 
-    # 4. ניקוי פסקאות ריקות
     for p in soup.find_all('p'):
         if not p.get_text(strip=True) and not p.find(['img', 'iframe']):
             p.decompose()
@@ -156,7 +147,7 @@ def clean_word_html(html_content):
             text = a.get_text(strip=True)
             clean_num = re.sub(r'\D', '', text)
             if clean_num and clean_num.isdigit():
-                a.string = f"[{clean_num}]" # הוספת סוגריים מרובעים!
+                a.string = f"[{clean_num}]" 
                 a['href'] = f"#footnote-{clean_num}"
                 a['class'] = a.get('class', []) + ['footnote-ref']
                 if a.parent and a.parent.name != 'sup':
@@ -168,7 +159,7 @@ def clean_word_html(html_content):
             clean_num = re.sub(r'\D', '', text)
             if clean_num and clean_num.isdigit():
                 a = soup.new_tag('a', href=f"#footnote-{clean_num}", class_="footnote-ref")
-                a.string = f"[{clean_num}]" # הוספת סוגריים מרובעים!
+                a.string = f"[{clean_num}]" 
                 sup.string = ''
                 sup.append(a)
 
@@ -288,7 +279,7 @@ class Article(models.Model):
 
 class Book(models.Model):
     title = models.CharField(max_length=200, verbose_name="שם הספר")
-    slug = models.SlugField(max_length=255, unique=True, allow_unicode=True, blank=True, verbose_name="קישור (Slug)")
+    slug = models.SlugField(max_length=255, allow_unicode=True, blank=True, null=True, verbose_name="קישור (Slug)")
     author = models.CharField(max_length=100, verbose_name="מחבר")
     cover_image = models.ImageField(upload_to='books/covers/', blank=True, null=True, verbose_name="תמונת כריכה")
     pdf_file = models.FileField(upload_to='books/pdfs/', blank=True, null=True, verbose_name="קובץ PDF להורדה") 
