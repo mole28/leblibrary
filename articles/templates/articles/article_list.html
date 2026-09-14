@@ -235,7 +235,7 @@
                                     </h5>
                                     <span class="text-muted small mb-3">{{ book.author }}</span>
                                     <!-- התיקון כאן: book.slug במקום book.pk -->
-                                    <a href="{% url 'articles:book_detail' book.slug %}" class="btn btn-light border mt-auto w-100 rounded-pill fw-bold text-secondary">פתח ספר</a>
+                                    <a href="{% url 'articles:book_detail' book.pk %}" class="btn btn-light border mt-auto w-100 rounded-pill fw-bold text-secondary">פתח ספר</a>
                                 </div>
                             </div>
                         </div>
