@@ -638,6 +638,16 @@
 </style>
 
 <script>
+    // הניתוב המדויק מ-617 ל-3753
+    window.addEventListener('DOMContentLoaded', (event) => {
+        if (window.location.hash === '#chapter-617') {
+            const target = document.getElementById('chapter-3753');
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+    });
+
     function toggleMobileToc() {
         const tocNav = document.getElementById('toc-column');
         const overlay = document.getElementById('mobileTocOverlay');
