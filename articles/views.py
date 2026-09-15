@@ -1298,17 +1298,30 @@ def get_book_audio(request, book_id):
 def search_acronyms_api(request):
     query = request.GET.get('q', '').strip()
     
-    query = re.sub(r'["״”“]', '"', query)
-    query = re.sub(r'[\'׳`]', "'", query)
-    
+    # מנקים רווחים מיותרים
+    query = query.strip()
     search_type = request.GET.get('type', 'short')
     
     results = []
     if len(query) >= 1:
+        # יוצרים גרסה בלי שום גרשיים כדי לחפש את שתי האפשרויות
+        query_clean = re.sub(r'["״”“\'׳`]', '', query)
+        
+        # אם יש יותר משתי אותיות בחיפוש, נוסיף גרשיים לפני האות האחרונה כדי למצוא גם אם הגולש כתב בלי
+        query_with_geresh = query_clean
+        if len(query_clean) > 1 and '"' not in query:
+            query_with_geresh = query_clean[:-1] + '"' + query_clean[-1]
+
         if search_type == 'meaning':
-            matches = Acronym.objects.filter(meaning__icontains=query)[:10]
+            # חיפוש בפירוש - פשוט בודקים אם קיים
+            matches = Acronym.objects.filter(meaning__icontains=query)[:20]
         else:
-            matches = Acronym.objects.filter(short__icontains=query)[:10]
+            # מחפש גם את מה שהגולש כתב בדיוק (למשל רמב"ם), גם נקי (רמבם) וגם עם גרשיים מאולץ (רמב"ם)
+            matches = Acronym.objects.filter(
+                Q(short__icontains=query) | 
+                Q(short__icontains=query_clean) |
+                Q(short__icontains=query_with_geresh)
+            ).distinct()[:20]
             
         for item in matches:
             results.append({
