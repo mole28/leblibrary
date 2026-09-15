@@ -755,19 +755,16 @@ def books_list(request):
 def qa_list(request): 
     try:
         from .models import QA
-        from django.db.models import Q
+        byte_q = Q()
         
         questions = QA.objects.all().order_by('-created_at')
         
-        # משיכת כל הקטגוריות הקיימות במסד הנתונים (ללא כפילויות וללא ריקים)
         categories = QA.objects.exclude(category__isnull=True).exclude(category__exact='').values_list('category', flat=True).distinct()
         
-        # טיפול בחיפוש טקסט חופשי (מתיבת החיפוש)
         q = request.GET.get('q')
         if q:
             questions = questions.filter(Q(question__icontains=q) | Q(answer__icontains=q))
             
-        # טיפול בסינון לפי קטגוריה (מלחיצה על התפריט בצד)
         category = request.GET.get('category')
         if category:
             questions = questions.filter(category=category)
@@ -786,12 +783,10 @@ def acronyms_view(request):
     from .models import Acronym
     query = request.GET.get('q', '').strip()
     
-    # === נרמול חיפוש ראשי תיבות ===
     query = re.sub(r'["״”“]', '"', query)
     query = re.sub(r'[\'׳`]', "'", query)
-    # ============================
     
-    search_type = request.GET.get('type', 'short') # 'short' עבור ראשי תיבות, 'meaning' עבור פירוש/מילים
+    search_type = request.GET.get('type', 'short')
     acronyms = None
     if query:
         if search_type == 'meaning':
@@ -831,7 +826,32 @@ def parasha_list(request):
     return render(request, 'articles/parasha_list.html', {'current_page': 'parasha', 'selected_parasha': selected_parasha, 'articles': articles})
 
 def book_detail(request, pk): 
-    return render(request, 'articles/book_detail.html', {'book': get_object_or_404(Book, pk=pk), 'current_page': 'books'})
+    book = get_object_or_404(Book, pk=pk)
+    
+    # --- תיקון מיוחד רק לספר 'זמני המילה וברכותיה' (id=84) כך שההפניות להערות יתאימו בדיוק לספר השני שעובד ---
+    if book.id == 84:
+        for ch in book.chapters.all():
+            for sec in ch.sections.all():
+                if sec.content:
+                    # המרת הפניות ה-sup לפורמט המסורתי של _ftnref ו-_ftn המקוריים שבדפדפן שלך
+                    # למשל החלפת fnref-X ל-_ftnrefX ו-fn-X ל-_ftnX
+                    def repl_ref(m):
+                        num = m.group(1)
+                        return f'<a class="sdfootnoteanc" name="_ftnref{num}" href="#_ftn{num}" title=""><u>[{num}]</u></a>'
+                    
+                    def repl_fn(m):
+                        num = m.group(1)
+                        return f'<li id="_ftn{num}"><span>'
+                    
+                    updated_content = re.sub(r'<sup[^>]*><a[^>]*href="#fn-(\d+)"[^>]*>.*?</a></sup>', repl_ref, sec.content)
+                    updated_content = re.sub(r'<li id="fn-(\d+)">', repl_fn, updated_content)
+                    
+                    if updated_content != sec.content:
+                        sec.content = updated_content
+                        sec.save()
+    # ----------------------------------------------------------------------------------------------------------
+
+    return render(request, 'articles/book_detail.html', {'book': book, 'current_page': 'books'})
 
 def books(request): 
     books_ordered = Book.objects.all().order_by('order', 'title')
@@ -1278,12 +1298,10 @@ def get_book_audio(request, book_id):
 def search_acronyms_api(request):
     query = request.GET.get('q', '').strip()
     
-    # --- התיקון: נרמול החיפוש לראשי תיבות ---
     query = re.sub(r'["״”“]', '"', query)
     query = re.sub(r'[\'׳`]', "'", query)
-    # ----------------------------------------
     
-    search_type = request.GET.get('type', 'short') # 'short' עבור ראשי תיבות, 'meaning' עבור פירוש/מילים
+    search_type = request.GET.get('type', 'short')
     
     results = []
     if len(query) >= 1:
@@ -1300,25 +1318,12 @@ def search_acronyms_api(request):
             
     return JsonResponse({'results': results})
 
-# ==========================================
-# תצוגת מנוע החיפוש המתקדם (Advanced Search)
-# ==========================================
 def advanced_search_view(request):
     return render(request, 'articles/advanced_search.html', {'current_page': 'advanced_search'})
 
-# ==========================================
-# עמוד מבודד: עלון אור הכרמל
-# ==========================================
 def or_hacarmel_view(request):
-    """
-    View עבור עמוד מבודד לעלוני 'אור הכרמל'.
-    עמוד זה אינו יורש את תבנית הבסיס של האתר.
-    """
     return render(request, 'articles/or_hacarmel.html')
 
-# ==========================================
-# אלגוריתמי עזר לחיפוש תורני (גימטריה, ראשי תיבות וכו')
-# ==========================================
 HEBREW_GEMATRIA = {
     'א': 1, 'ב': 2, 'ג': 3, 'ד': 4, 'ה': 5, 'ו': 6, 'ז': 7, 'ח': 8, 'ט': 9,
     'י': 10, 'כ': 20, 'ך': 20, 'ל': 30, 'מ': 40, 'ם': 40, 'נ': 50, 'ן': 50,
@@ -1346,17 +1351,11 @@ def get_book_order(book_name):
         'יונה': 19, 'מיכה': 20, 'נחום': 21, 'חבקוק': 22, 'צפניה': 23, 'חגי': 24, 'זכריה': 25, 'מלאכי': 26,
         'תהילים': 27, 'משלי': 28, 'איוב': 29, 'שיר השירים': 30, 'רות': 31, 'איכה': 32, 'קהלת': 33,
         'אסתר': 34, 'דניאל': 35, 'עזרא': 36, 'נחמיה': 37, 'דברי הימים א': 38, 'דברי הימים ב': 39,
-        # סדר זרעים
         'ברכות': 40, 'פאה': 41, 'דמאי': 42, 'כלאים': 43, 'שביעית': 44, 'תרומות': 45, 'מעשרות': 46, 'מעשר שני': 47, 'חלה': 48, 'ערלה': 49, 'ביכורים': 50,
-        # סדר מועד
         'שבת': 51, 'עירובין': 52, 'פסחים': 53, 'שקלים': 54, 'יומא': 55, 'סוכה': 56, 'ביצה': 57, 'ראש השנה': 58, 'תענית': 59, 'מגילה': 60, 'מועד קטן': 61, 'חגיגה': 62,
-        # סדר נשים
         'יבמות': 63, 'כתובות': 64, 'נדרים': 65, 'נזיר': 66, 'סוטה': 67, 'גיטין': 68, 'קידושין': 69,
-        # סדר נזיקין
         'בבא קמא': 70, 'בבא מציעא': 71, 'בבא בתרא': 72, 'סנהדרין': 73, 'מכות': 74, 'שבועות': 75, 'עדיות': 76, 'עבודה זרה': 77, 'אבות': 78, 'הוריות': 79,
-        # סדר קדשים
         'זבחים': 80, 'מנחות': 81, 'חולין': 82, 'בכורות': 83, 'ערכין': 84, 'תמורה': 85, 'כריתות': 86, 'מעילה': 87, 'תמיד': 88, 'מדות': 89, 'קינים': 90,
-        # סדר טהרות
         'כלים': 91, 'אהלות': 92, 'נגעים': 93, 'פרה': 94, 'טהרות': 95, 'מקואות': 96, 'נדה': 97, 'מכשירין': 98, 'זבים': 99, 'טבול יום': 100, 'ידים': 101, 'עוקצין': 102
     }
     return BOOK_ORDER.get(book_name.strip(), 999)
@@ -1368,7 +1367,6 @@ def safe_int(v):
         return 0
 
 def highlight_matched_text(text_with_nikkud, query_words, is_exact):
-    """מוסיף תגיות הדגשה <mark> למילים שנמצאו בתוך הטקסט המנוקד"""
     highlighted = text_with_nikkud
     
     NIKKUD_CORE = r'\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7'
