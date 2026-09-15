@@ -638,13 +638,20 @@
 </style>
 
 <script>
-    // הניתוב המדויק מ-617 ל-3753
+    // ניתוב מדויק והשהייה אמינה לגלילה נכונה לפרק המבוקש
     window.addEventListener('DOMContentLoaded', (event) => {
-        if (window.location.hash === '#chapter-617') {
-            const target = document.getElementById('chapter-3753');
-            if (target) {
-                target.scrollIntoView({ behavior: 'smooth' });
+        const hash = window.location.hash;
+        if (hash) {
+            let targetId = hash.substring(1);
+            if (targetId === 'chapter-617') {
+                targetId = 'chapter-3753';
             }
+            setTimeout(() => {
+                const target = document.getElementById(targetId);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 300);
         }
     });
 
