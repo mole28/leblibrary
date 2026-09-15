@@ -61,6 +61,9 @@ def process_word_file(word_file):
 # ==========================================
 # טופס חכם שמוסיף את אפשרות ייבוא הוורד לכל המודלים!
 # ==========================================
+# ==========================================
+# טופס חכם שמוסיף את אפשרות ייבוא הוורד לכל המודלים!
+# ==========================================
 class SmartImportForm(forms.ModelForm):
     word_import = forms.FileField(
         required=False, 
@@ -79,15 +82,18 @@ class SmartImportForm(forms.ModelForm):
         cleaned_data = super().clean()
         word_file = cleaned_data.get('word_import')
 
-        # אם המשתמש העלה קובץ וורד, נדרוס את הטקסט בעורך
         if word_file:
+            # 1. הפקודה הקריטית: החזרת סמן הקריאה של הקובץ להתחלה!
+            word_file.seek(0)
             final_html = process_word_file(word_file)
             
-            # דוחף את התוכן החכם לשדה המתאים במודל (content למאמרים/סעיפים, description לספרים)
+            # 2. הזרקה אגרסיבית וישירה גם לטופס וגם למסד הנתונים
             if 'content' in self.fields:
                 cleaned_data['content'] = final_html
+                self.instance.content = final_html
             elif 'description' in self.fields:
                 cleaned_data['description'] = final_html
+                self.instance.description = final_html
 
         return cleaned_data
 
