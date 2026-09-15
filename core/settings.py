@@ -121,7 +121,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
 EMAIL_HOST_USER = 'moshe111moshe111@gmail.com' 
-EMAIL_HOST_PASSWORD = 'rnzbgeruqpfrtvko' 
+EMAIL_HOST_PASSWORD = 'wuhphlqfagffzoue' 
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
