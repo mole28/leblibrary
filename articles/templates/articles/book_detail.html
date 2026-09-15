@@ -832,8 +832,8 @@
                                         text.startsWith('פ"ח') || 
                                         text.startsWith("סימן") || 
                                         text.includes("נספח") || 
-                                        text === "הקדמה" || 
-                                        text === "מבוא";
+                                        text.includes("הקדמה") || 
+                                        text.includes("מבוא");
                         
                         isHighlightedSub = text.includes("שיטת") || 
                                            text.includes("סיכום השיטות") || 

@@ -194,7 +194,7 @@ def smart_hebrew_search(queryset, query, search_fields):
         for var in word_variations:
             for field in search_fields: word_q |= Q(**{f"{field}__icontains": var})
         main_q_and &= word_q  
-        main_q_or |= word_q   
+        main_q_or |= word_q    
 
     results = queryset.filter(main_q_and)
     if not results.exists(): results = queryset.filter(main_q_or)
@@ -438,15 +438,15 @@ def ai_chat_endpoint(request):
                         add_to_context(item.get('title', ''), item.get('url', ''), item.get('content_snippet', ''))
 
                 for a in db_articles:
-                    url = request.build_absolute_uri(reverse('articles:detail', args=[a.slug]))
+                    url = request.build_absolute_uri(reverse('articles:detail', args=[a.id]))
                     snippet = get_smart_content(get_item_text(a), words, max_chars=8000)
                     add_to_context(get_item_title(a), url, snippet)
 
                 for c in db_chapters:
                     try:
-                        book_slug = c.book.slug if hasattr(c, 'book') and c.book else None
-                        if book_slug:
-                            base_book_url = request.build_absolute_uri(reverse('articles:book_detail', args=[book_slug]))
+                        book_id = getattr(c, 'book_id', None) or (c.book.id if hasattr(c, 'book') else None)
+                        if book_id:
+                            base_book_url = request.build_absolute_uri(reverse('articles:book_detail', args=[book_id]))
                             url = f"{base_book_url}#chapter-{c.id}"
                             title = f"{get_item_title(c.book) if hasattr(c, 'book') else 'ספר'} - {get_item_title(c)}"
                             snippet = get_smart_content(get_item_text(c), words, max_chars=8000)
@@ -457,9 +457,9 @@ def ai_chat_endpoint(request):
                     try:
                         chapter = getattr(s, 'chapter', None)
                         if chapter:
-                            book_slug = chapter.book.slug if hasattr(chapter, 'book') and chapter.book else None
-                            if book_slug:
-                                base_book_url = request.build_absolute_uri(reverse('articles:book_detail', args=[book_slug]))
+                            book_id = getattr(chapter, 'book_id', None) or (chapter.book.id if hasattr(chapter, 'book') else None)
+                            if book_id:
+                                base_book_url = request.build_absolute_uri(reverse('articles:book_detail', args=[book_id]))
                                 url = f"{base_book_url}#chapter-{chapter.id}"
                                 title = f"{get_item_title(chapter.book) if hasattr(chapter, 'book') else 'ספר'} - {get_item_title(chapter)}"
                                 snippet = get_smart_content(get_item_text(s), words, max_chars=8000)
@@ -578,60 +578,80 @@ def ai_chat_endpoint(request):
             return JsonResponse({'answer': f'שגיאת שרת פנימית (views): {str(e)}'})
     return JsonResponse({'error': 'Invalid method'}, status=400)
 
-from django.http import HttpResponse
 
 def article_list(request):
-    html_content = """
-    <!DOCTYPE html>
-    <html lang="he" dir="rtl">
-    <head>
-        <meta charset="UTF-8">
-        <title>ספריית לייבוביץ - האתר בבנייה</title>
-        <style>
-            body {
-                background-color: #f7f9fc;
-                font-family: Arial, sans-serif;
-                text-align: center;
-                padding: 50px;
-                color: #2c3e50;
-                margin: 0;
-            }
-            .container {
-                max-width: 600px;
-                margin: 100px auto;
-                background: white;
-                padding: 50px;
-                border-radius: 20px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            }
-            h1 { color: #2c3e50; font-size: 2.5rem; margin-bottom: 20px; }
-            p { font-size: 1.3rem; color: #555; line-height: 1.6; }
-            .badge {
-                display: inline-block;
-                background: #d4af37;
-                color: white;
-                padding: 10px 25px;
-                border-radius: 30px;
-                font-weight: bold;
-                font-size: 1.2rem;
-                margin-top: 30px;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>📚 ספריית לייבוביץ</h1>
-            <p><strong>האתר בבניה!!!!!!!!!!!!!!!!!!!!</strong></p>
-            <p>נשוב לפעילות מלאה בקרוב בעז"ה.</p>
-            <div class="badge">בבנייה</div>
-        </div>
-    </body>
-    </html>
-    """
-    return HttpResponse(html_content)
+    query = request.GET.get('q')
+    
+    if query:
+        query = query.strip()
+        published_articles = Article.objects.filter(is_published=True).order_by('-created_at')
+        articles = smart_hebrew_search(published_articles, query, ['title', 'content'])
+        return render(request, 'articles/article_list.html', {
+            'articles': articles, 'latest_articles': None, 'reading_books': None, 'sale_books': None,
+            'parasha_article': None, 'jewish_cal': None, 'query': query, 'current_page': 'home',
+            'schema_json_ld': get_base_schema_json()
+        })
+        
+    today_str = str(datetime.date.today())
+    cache_key = f'home_dynamic_content_{today_str}'
+    
+    dynamic_content = cache.get(cache_key)
+    
+    if not dynamic_content:
+        parasha_article = Article.objects.filter(is_published=True).exclude(
+            Q(parasha__isnull=True) | 
+            Q(parasha__exact='') | 
+            Q(parasha__exact=',') | 
+            Q(parasha__exact=',,') | 
+            Q(parasha__icontains='general')
+        ).order_by('?').first()
+        
+        recent_15 = list(Article.objects.filter(is_published=True).order_by('-created_at')[:15])
+        if parasha_article and parasha_article in recent_15:
+            recent_15.remove(parasha_article)
+        latest_articles = random.sample(recent_15, min(2, len(recent_15)))
+        
+        reading_books = list(Book.objects.filter(is_for_sale=False).order_by('?')[:3])
+        sale_books = list(Book.objects.filter(is_for_sale=True).order_by('?')[:3])
+        
+        dynamic_content = {
+            'parasha_article': parasha_article,
+            'latest_articles': latest_articles,
+            'reading_books': reading_books,
+            'sale_books': sale_books
+        }
+        cache.set(cache_key, dynamic_content, 60 * 60 * 24)
+        
+    parasha_article = dynamic_content['parasha_article']
+    latest_articles = dynamic_content['latest_articles']
+    reading_books = dynamic_content['reading_books']
+    sale_books = dynamic_content['sale_books']
 
-def article_detail(request, slug):
-    article = get_object_or_404(Article, slug=slug, is_published=True)
+    latest_qa = None
+    try:
+        from .models import QA
+        qa_pool = list(QA.objects.order_by('-created_at')[:7])
+        if qa_pool:
+            latest_qa = random.choice(qa_pool)
+    except Exception:
+        pass
+        
+    jewish_cal = get_jewish_calendar_info()
+    
+    return render(request, 'articles/article_list.html', {
+        'articles': None,
+        'parasha_article': parasha_article,
+        'latest_articles': latest_articles,
+        'reading_books': reading_books,
+        'sale_books': sale_books,
+        'latest_qa': latest_qa,
+        'jewish_cal': jewish_cal,
+        'current_page': 'home',
+        'schema_json_ld': get_base_schema_json()
+    })
+
+def article_detail(request, pk):
+    article = get_object_or_404(Article, pk=pk, is_published=True)
     return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
 
 @login_required
@@ -640,24 +660,24 @@ def article_create(request):
         form = ArticleForm(request.POST)
         if form.is_valid(): 
             article = form.save()
-            ping_indexnow(request.build_absolute_uri(reverse('articles:detail', args=[article.slug])))
+            ping_indexnow(request.build_absolute_uri(reverse('articles:detail', args=[article.pk])))
         return redirect('articles:list')
     return render(request, 'articles/article_form.html', {'form': ArticleForm(), 'current_page': 'articles'})
 
 @login_required
-def article_edit(request, slug):
-    article = get_object_or_404(Article, slug=slug)
+def article_edit(request, pk):
+    article = get_object_or_404(Article, pk=pk)
     if request.method == 'POST':
         form = ArticleForm(request.POST, instance=article)
         if form.is_valid(): 
             article = form.save()
-            ping_indexnow(request.build_absolute_uri(reverse('articles:detail', args=[article.slug])))
-        return redirect('articles:detail', slug=article.slug)
+            ping_indexnow(request.build_absolute_uri(reverse('articles:detail', args=[article.pk])))
+        return redirect('articles:detail', pk=article.pk)
     return render(request, 'articles/article_form.html', {'form': ArticleForm(instance=article), 'current_page': 'articles'})
 
 @login_required
-def article_delete(request, slug):
-    article = get_object_or_404(Article, slug=slug)
+def article_delete(request, pk):
+    article = get_object_or_404(Article, pk=pk)
     if request.method == 'POST': article.delete()
     return redirect('articles:list')
 
@@ -810,64 +830,12 @@ def parasha_list(request):
         articles = Article.objects.filter(parasha_q, is_published=True).order_by('-created_at')
     return render(request, 'articles/parasha_list.html', {'current_page': 'parasha', 'selected_parasha': selected_parasha, 'articles': articles})
 
-from django.http import HttpResponse
-
-def book_detail(request, pk):
-    html_content = """
-    <!DOCTYPE html>
-    <html lang="he" dir="rtl">
-    <head>
-        <meta charset="UTF-8">
-        <title>ספריית לייבוביץ - האתר בבנייה</title>
-        <style>
-            body {
-                background-color: #f7f9fc;
-                font-family: Arial, sans-serif;
-                text-align: center;
-                padding: 50px;
-                color: #2c3e50;
-                margin: 0;
-            }
-            .container {
-                max-width: 600px;
-                margin: 100px auto;
-                background: white;
-                padding: 50px;
-                border-radius: 20px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            }
-            h1 { color: #2c3e50; font-size: 2.5rem; margin-bottom: 20px; }
-            p { font-size: 1.3rem; color: #555; line-height: 1.6; }
-            .badge {
-                display: inline-block;
-                background: #d4af37;
-                color: white;
-                padding: 10px 25px;
-                border-radius: 30px;
-                font-weight: bold;
-                font-size: 1.2rem;
-                margin-top: 30px;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>📚 ספריית לייבוביץ</h1>
-            <p><strong>האתר בבניה!!!!!!!!!!!!!!!!!!!!</strong></p>
-            <p>נשוב לפעילות מלאה בקרוב בעז"ה.</p>
-            <div class="badge">בבנייה</div>
-        </div>
-    </body>
-    </html>
-    """
-    return HttpResponse(html_content)
+def book_detail(request, pk): 
+    return render(request, 'articles/book_detail.html', {'book': get_object_or_404(Book, pk=pk), 'current_page': 'books'})
 
 def books(request): 
     books_ordered = Book.objects.all().order_by('order', 'title')
-    return render(request, 'articles/books_list.html', {
-        'books': books_ordered, 
-        'current_page': 'books'
-    })
+    return render(request, 'articles/books_list.html', {'books': books_ordered, 'current_page': 'books'})
 
 def live_search(request):
     q = request.GET.get('q', '').strip()
@@ -878,12 +846,12 @@ def live_search(request):
     
     books_qs = Book.objects.all()
     articles_qs = Article.objects.filter(is_published=True)
-    books = smart_hebrew_search(books_qs, q, ['title', 'author']).only('id', 'title', 'slug')[:3]
-    articles = smart_hebrew_search(articles_qs, q, ['title', 'content']).only('id', 'title', 'slug')[:4]
+    books = smart_hebrew_search(books_qs, q, ['title', 'author']).only('id', 'title')[:3]
+    articles = smart_hebrew_search(articles_qs, q, ['title', 'content']).only('id', 'title')[:4]
     
     results = []
-    for book in books: results.append({'title': book.title, 'type': 'ספר שלם', 'icon': 'bi-journal-bookmark-fill', 'url': reverse('articles:book_detail', args=[book.slug])})
-    for article in articles: results.append({'title': article.title, 'type': 'מאמר', 'icon': 'bi-file-earmark-text', 'url': reverse('articles:detail', args=[article.slug])})
+    for book in books: results.append({'title': book.title, 'type': 'ספר שלם', 'icon': 'bi-journal-bookmark-fill', 'url': reverse('articles:book_detail', args=[book.id])})
+    for article in articles: results.append({'title': article.title, 'type': 'מאמר', 'icon': 'bi-file-earmark-text', 'url': reverse('articles:detail', args=[article.id])})
         
     cache.set(cache_key, results, timeout=300)
     return JsonResponse({'results': results})
@@ -922,7 +890,7 @@ def ai_open_search(request):
             results.append({
                 'title': get_item_title(article),
                 'type': 'Article',
-                'url': request.build_absolute_uri(reverse('articles:detail', args=[article.slug])),
+                'url': request.build_absolute_uri(reverse('articles:detail', args=[article.id])),
                 'content_snippet': get_smart_content(get_item_text(article), words, max_chars=1500)
             })
             
@@ -930,7 +898,7 @@ def ai_open_search(request):
             results.append({
                 'title': get_item_title(book),
                 'type': 'Book',
-                'url': request.build_absolute_uri(reverse('articles:book_detail', args=[book.slug])),
+                'url': request.build_absolute_uri(reverse('articles:book_detail', args=[book.id])),
                 'content_snippet': get_smart_content(get_item_text(book), words, max_chars=1500)
             })
         

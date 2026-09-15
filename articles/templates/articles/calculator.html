@@ -202,8 +202,7 @@
                 <i class="bi bi-book me-2" style="color: #a67c52;"></i>
                 <span class="text-muted" style="font-size: 1.1rem;">לעיון בסוגיא ניתן ללמוד הספר </span>
                 {% if mida_book %}
-                <!-- התיקון כאן: mida_book.slug במקום mida_book.pk -->
-                <a href="{% url 'articles:book_detail' mida_book.slug %}" class="fw-bold text-decoration-none" style="color: #a67c52; border-bottom: 1px dashed #a67c52;">
+                <a href="{% url 'articles:book_detail' mida_book.pk %}" class="fw-bold text-decoration-none" style="color: #a67c52; border-bottom: 1px dashed #a67c52;">
                     "מידה של תורה"
                 </a>
                 {% else %}
@@ -223,7 +222,7 @@
                             <input type="number" id="inputValue1" class="form-control calc-input" placeholder="הזן מספר..." oninput="calculateRegular()">
                             <select id="unitSelect1" class="form-select calc-select" onchange="calculateRegular()">
                                 <option value="cm">סנטימטר (ס"מ)</option>
-                                <option value="m">מטר (מ')</option>
+                                <option value="m">מטר (מ' בחירה)</option>
                                 <option value="km">קילומטר (ק"מ)</option>
                             </select>
                         </div>

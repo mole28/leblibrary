@@ -212,8 +212,7 @@
                 <i class="bi bi-book me-2" style="color: #a67c52;"></i>
                 <span class="text-muted" style="font-size: 1.1rem;">לעיון בסוגיא ניתן ללמוד הספר </span>
                 {% if mida_book %}
-                <!-- תוקן ל-slug -->
-                <a href="{% url 'articles:book_detail' mida_book.slug %}" class="fw-bold text-decoration-none" style="color: #a67c52; border-bottom: 1px dashed #a67c52;">
+                <a href="{% url 'articles:book_detail' mida_book.pk %}" class="fw-bold text-decoration-none" style="color: #a67c52; border-bottom: 1px dashed #a67c52;">
                     "מידה של תורה"
                 </a>
                 {% else %}

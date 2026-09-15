@@ -136,7 +136,7 @@
                 </button>
                 <!-- Superuser edit button -->
                 {% if user.is_superuser %}
-                    <a href="{% url 'articles:edit' article.slug %}" class="btn btn-outline-secondary shadow-sm"><i class="bi bi-pencil"></i> ערוך מאמר</a>
+                    <a href="{% url 'articles:edit' article.pk %}" class="btn btn-outline-secondary shadow-sm"><i class="bi bi-pencil"></i> ערוך מאמר</a>
                 {% endif %}
             </div>
 

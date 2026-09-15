@@ -7,11 +7,11 @@
     <div class="row justify-content-center">
         <div class="col-md-8">
             <h1 class="mb-4 fw-bold text-dark">
-                {% if form.instance.slug %}
+                {% if form.instance.pk %}
                     עריכת מאמר: {{ form.instance.title }}
-                {% else %}
-                     כתיבת מאמר חדש
-                {% endif %}
+                    {% else %}
+                        כתיבת מאמר חדש
+                    {% endif %}
             </h1>
             
             <form method="post" class="card p-4 shadow-sm mb-5">

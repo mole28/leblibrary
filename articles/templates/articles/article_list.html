@@ -1,22 +1,565 @@
 {% extends 'articles/base.html' %}
 
-{% block title %}האתר בבנייה | ספריית לייבוביץ{% endblock %}
-
-{% block content %}
-<div class="container py-5 my-5 text-center">
-    <div class="row justify-content-center">
-        <div class="col-lg-6">
-            <div class="card shadow-lg p-5 border-0" style="border-radius: 20px; background: linear-gradient(to bottom, #ffffff, #fdfbf7);">
-                <div class="mb-4">
-                    <h1 class="display-1" style="color: #d4af37;">🚧</h1>
+{% block hero %}
+<div class="hero-section">
+    <div class="hero-overlay"></div>
+    <div class="hero-content text-center w-100">
+        <h1 class="text-white mb-4 fw-bold display-4" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.8);" data-i18n="site_title">ספריית לייבוביץ</h1>
+        
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-md-10 col-lg-8">
+                    <div style="position: relative; z-index: 1051;">
+                        <form action="{% url 'articles:list' %}" method="get" class="input-group shadow-lg mb-4" style="border-radius: 50px; overflow: hidden; height: 55px; position: relative;">
+                            <input type="text" name="q" id="live-search-input" class="form-control px-4 fs-5 border-0" data-i18n-placeholder="search_placeholder" placeholder="חיפוש חופשי במאמרים, שו״ת וספרים..." aria-label="Search" value="{{ request.GET.q|default_if_none:'' }}" style="box-shadow: none; outline: none;" autocomplete="off">
+                            <button class="btn btn-light bg-white border-0 px-4" type="submit">
+                                <svg viewBox="0 0 24 24" width="24" height="24" stroke="#d4af37" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                            </button>
+                        </form>
+                        <div id="live-search-results" class="live-search-dropdown d-none"></div>
+                    </div>
                 </div>
-                <h1 class="fw-bold mb-4" style="color: #2c3e50;">האתר בבניה עד מחר בחצות הלילה!!!</h1>
-                <div style="width: 80px; height: 4px; background: #d4af37; margin: 20px auto; border-radius: 2px;"></div>
-                <p class="text-muted mt-3" style="font-size: 1.1rem;">
-                    ספריית לייבוביץ מתחדשת עבורכם. תודה על ההבנה והסבלנות.
-                </p>
             </div>
         </div>
+
     </div>
 </div>
+{% endblock %}
+
+{% block content %}
+<style>
+    .home-dashboard { max-width: 1400px; margin: 0 auto; padding-top: 2rem; position: relative; }
+    .section-title { font-family: 'Frank Ruhl Libre', serif; color: #1a252f; font-weight: 800; position: relative; padding-bottom: 12px; margin-bottom: 30px; }
+    .section-title::after { content: ''; position: absolute; bottom: 0; right: 0; width: 60px; height: 4px; background: linear-gradient(90deg, #d4af37, #a67c52); border-radius: 2px; }
+    
+    .live-search-dropdown { position: absolute; top: 100%; left: 0; right: 0; background-color: #ffffff; border-radius: 16px; box-shadow: 0 15px 40px rgba(0,0,0,0.25); z-index: 1055; max-height: 350px; overflow-y: auto; margin-top: -15px; border: 1px solid #eaeaea; text-align: right; }
+    .hover-bg-light:hover { background-color: #f8f9fa !important; }
+
+    .floating-widget-container {
+        position: absolute;
+        right: 0;
+        transform: translateX(110%);
+        top: 0;
+        height: 100%;
+        width: 220px;
+        z-index: 1040;
+    }
+    @media (max-width: 1600px) { .floating-widget-container { transform: translateX(100%); width: 200px; } }
+    @media (max-width: 1450px) { .floating-widget-container { display: none !important; } }
+
+    .site-intro-card-floating {
+        position: sticky;
+        top: 100px;
+        background: linear-gradient(180deg, #ffffff 0%, #fdfbf7 100%);
+        border: 1px solid rgba(212, 175, 55, 0.3);
+        border-radius: 12px;
+        padding: 20px 15px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+        text-align: center;
+    }
+    .intro-icon-wrapper { width: 50px; height: 50px; background: #fdfbf7; border: 2px solid #d4af37; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; color: #d4af37; margin: 0 auto 15px; box-shadow: 0 4px 10px rgba(212,175,55,0.2); }
+
+    .premium-card { background: #fff; border: 1px solid rgba(0,0,0,0.05); border-radius: 12px; transition: all 0.3s ease; height: 100%; display: flex; flex-direction: column; }
+    .premium-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.08); border-color: rgba(212, 175, 55, 0.3); }
+    .book-card-img { height: 200px; object-fit: contain; background: #f8f9fa; padding: 15px; border-radius: 12px 12px 0 0; }
+    
+    .calc-sidebar-card { background: linear-gradient(145deg, #fdfbf7 0%, #f4ebd8 100%); border: 1px solid rgba(166, 124, 82, 0.3); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08); border-radius: 16px; position: relative; overflow: hidden; }
+    .calc-sidebar-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, #d4af37, #a67c52, #d4af37); }
+    .icon-circle { background-color: #ffffff; border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; transition: transform 0.3s ease; }
+    .icon-circle i { font-size: 1.5rem; background: linear-gradient(135deg, #a67c52 0%, #d4af37 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .calc-btn-primary { border-radius: 12px; padding: 13px 20px; font-weight: 600; display: flex; justify-content: space-between; text-decoration: none; background: linear-gradient(135deg, #a67c52 0%, #835c39 100%); color: white !important; }
+    .calc-btn-secondary { border-radius: 12px; padding: 13px 20px; font-weight: 600; display: flex; justify-content: space-between; text-decoration: none; background-color: #ffffff; color: #946b45 !important; border: 1px solid rgba(166, 124, 82, 0.4); }
+    
+    .qa-mini-sidebar { background: linear-gradient(180deg, #ffffff 0%, #fdfbf7 100%); border: 1px solid #e2d5c5; border-radius: 16px; padding: 25px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+    .qa-mini-icon { width: 40px; height: 40px; background: #d4af37; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; position: absolute; top: -20px; right: 20px; box-shadow: 0 4px 10px rgba(212,175,55,0.4); }
+
+    .qa-small-banner { background: linear-gradient(135deg, #a67c52 0%, #d4af37 100%); border-radius: 16px; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(166, 124, 82, 0.25); padding: 25px; }
+    .qa-small-banner::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml;utf8,<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="2" cy="2" r="2" fill="white" opacity="0.1"/></svg>'); pointer-events: none; }
+
+    .parasha-sidebar { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-right: 6px solid #d4af37; border-radius: 16px; position: relative; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15); }
+    .parasha-sidebar::before { content: '\F13E'; font-family: 'bootstrap-icons'; position: absolute; left: -20px; bottom: -20px; font-size: 14rem; color: rgba(255,255,255,0.04); transform: rotate(-15deg); }
+
+    .btn-gold-outline { color: #a67c52; border: 1px solid #a67c52; border-radius: 50px; padding: 8px 25px; font-weight: 600; transition: all 0.3s; background: transparent; }
+    .btn-gold-outline:hover { background: #a67c52; color: white; }
+    
+    body.dark-mode .section-title { color: #f8fafc; }
+    body.dark-mode .premium-card, body.dark-mode .qa-mini-sidebar { background: #1e293b; border-color: #334155; }
+    body.dark-mode .book-card-img { background: #0f172a; }
+    
+    body.dark-mode .site-intro-card-floating { background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%) !important; border-color: rgba(212, 175, 55, 0.25) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.6) !important; }
+    body.dark-mode .intro-icon-wrapper { background: #0f172a; border-color: rgba(212, 175, 55, 0.5); }
+    body.dark-mode .intro-text-sq { color: #e2e8f0 !important; }
+
+    body.dark-mode .live-search-dropdown { background-color: #1e293b; border-color: #334155; box-shadow: 0 15px 40px rgba(0,0,0,0.6); }
+    body.dark-mode .live-search-dropdown .text-dark { color: #f8fafc !important; }
+    body.dark-mode .live-search-dropdown .border-bottom { border-color: #334155 !important; }
+    body.dark-mode .hover-bg-light:hover { background-color: #0f172a !important; }
+
+    .acronym-widget-card { background: linear-gradient(145deg, #fdfbf7 0%, #f4ebd8 100%); border: 1px solid rgba(166, 124, 82, 0.3); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08); border-radius: 16px; padding: 24px; margin-bottom: 25px; position: relative; overflow: hidden; }
+    .acronym-widget-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, #d4af37, #a67c52, #d4af37); }
+    body.dark-mode .acronym-widget-card { background: #1e293b; border-color: #334155; }
+    body.dark-mode .acronym-widget-card h5 { color: #f8fafc !important; }
+    body.dark-mode .acronym-widget-card p { color: #94a3b8 !important; }
+    body.dark-mode .acronym-widget-card input[type="text"] { background-color: #0f172a; border-color: #334155; color: #f8fafc; }
+    body.dark-mode .acronym-widget-card label { color: #cbd5e1; }
+    body.dark-mode .acronym-widget-card li { border-bottom-color: #334155 !important; }
+    body.dark-mode .acronym-widget-card span { color: #cbd5e1 !important; }
+
+    /* Pulse animation for the NEW badge */
+    @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.7; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+</style>
+
+<div class="home-dashboard container-fluid px-2 px-xl-0 mb-5">
+
+    {% if request.GET.q %}
+        <div class="alert alert-warning shadow-sm border-0 mb-5 d-flex justify-content-between align-items-center" style="background: #fdfbf7; border-right: 5px solid #d4af37 !important; border-radius: 12px;">
+            <div>
+                <h4 class="fw-bold mb-1" style="color: #a67c52;"><i class="bi bi-search me-2"></i>תוצאות חיפוש עבור: "{{ request.GET.q }}"</h4>
+                <p class="mb-0 text-muted">אנו מציגים כרגע תוצאות מתוך המאמרים. לחץ על הלשוניות השונות למעלה (ספרים / שו"ת) לחיפוש ספציפי שם.</p>
+            </div>
+            <a href="{% url 'articles:list' %}" class="btn btn-outline-dark rounded-pill px-4">חזור לדף הבית</a>
+        </div>
+
+        <div class="row g-4 mb-5">
+            {% for article in articles %}
+            <div class="col-md-6 col-lg-4">
+                <div class="premium-card p-4">
+                    <div class="text-muted small mb-2 d-flex justify-content-between">
+                        <span><i class="bi bi-calendar3"></i> {{ article.hebrew_date }}</span>
+                    </div>
+                    <h4 class="fw-bold mb-3" style="color: #1a252f;">
+                        <a href="{% url 'articles:detail' article.pk %}" class="text-decoration-none text-dark">
+                            {{ article.title|striptags }}
+                            {% if article.is_new %}
+                                <span class="ms-1" style="color: #dc3545; font-size: 0.8em; font-weight: 800; display: inline-block; animation: pulse 1.5s infinite;">(חדש)</span>
+                            {% endif %}
+                        </a>
+                    </h4>
+                    <p class="text-muted flex-grow-1">{{ article.content|striptags|truncatewords:20|safe }}</p>
+                    <div class="mt-3">
+                        <a href="{% url 'articles:detail' article.pk %}" class="btn-gold-outline d-inline-block text-center w-100">קרא מאמר מלא</a>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-5">
+                <i class="bi bi-journal-x" style="font-size: 4rem; color: #d1c8bc;"></i>
+                <h3 class="mt-3 text-muted">לא נמצאו מאמרים התואמים לחיפוש.</h3>
+            </div>
+            {% endfor %}
+        </div>
+
+    {% else %}
+        <!-- שורת התוכן המרכזית (ספרים, מאמרים, פרשה ומחשבונים) -->
+        <div class="row g-5" style="position: relative;">
+            
+            <div class="floating-widget-container d-none d-xl-block">
+                <div class="site-intro-card-floating">
+                    <div class="intro-icon-wrapper mb-3">
+                        <i class="bi bi-book-half"></i>
+                    </div>
+                    <p class="text-muted mb-0 intro-text-sq fw-bold" style="font-size: 1.2rem; line-height: 1.5; color: #2c3e50 !important;">
+                        ספריית לייבוביץ לספרים ומאמרים בענייני תורה, הלכה ואגדה.
+                    </p>
+                </div>
+            </div>
+
+            <!-- עמודה ימנית: מאמרים, ספרים, ושו"ת -->
+            <div class="col-lg-8">
+                
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3 class="section-title mb-0">מאמרים נבחרים לאחרונה</h3>
+                    <a href="{% url 'articles:recently_added' %}" class="text-muted text-decoration-none small fw-bold hover-gold">לכל המאמרים <i class="bi bi-chevron-left"></i></a>
+                </div>
+                
+                <div class="row g-4">
+                    {% for article in latest_articles %}
+                    <div class="col-md-6">
+                        <div class="premium-card p-4">
+                            <div class="text-muted small mb-2 d-flex justify-content-between">
+                                <span><i class="bi bi-calendar3"></i> {{ article.hebrew_date }}</span>
+                            </div>
+                            <h4 class="fw-bold mb-3" style="color: #1a252f;">
+                                <a href="{% url 'articles:detail' article.pk %}" class="text-decoration-none text-dark">
+                                    {{ article.title|striptags }}
+                                    {% if article.is_new %}
+                                        <span class="ms-1" style="color: #dc3545; font-size: 0.8em; font-weight: 800; display: inline-block; animation: pulse 1.5s infinite;">(חדש)</span>
+                                    {% endif %}
+                                </a>
+                            </h4>
+                            <p class="text-muted flex-grow-1">{{ article.content|striptags|truncatewords:20|safe }}</p>
+                            <div class="mt-3">
+                                <a href="{% url 'articles:detail' article.pk %}" class="btn-gold-outline d-inline-block text-center w-100">קרא מאמר מלא</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12"><p class="text-muted">אין מאמרים להצגה כרגע.</p></div>
+                    {% endfor %}
+                </div>
+
+                <div class="mt-5 pt-3">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h3 class="section-title mb-0">ספריית קריאה דיגיטלית</h3>
+                        <a href="{% url 'articles:books' %}" class="text-muted text-decoration-none small fw-bold hover-gold">לכל הספרים <i class="bi bi-chevron-left"></i></a>
+                    </div>
+                    
+                    <div class="row g-4">
+                        {% for book in reading_books %}
+                        <div class="col-md-4">
+                            <div class="premium-card text-center">
+                                {% if book.cover_image %}
+                                    <img src="{{ book.cover_image.url }}" class="book-card-img w-100" alt="{{ book.title|striptags }}" loading="lazy">
+                                {% else %}
+                                    <div class="book-card-img w-100 d-flex align-items-center justify-content-center">
+                                        <i class="bi bi-book text-muted" style="font-size: 4rem; opacity: 0.2;"></i>
+                                    </div>
+                                {% endif %}
+                                <div class="p-3 d-flex flex-column flex-grow-1">
+                                    <h5 class="fw-bold mb-1">
+                                        {{ book.title|striptags }}
+                                        {% if book.is_new %}
+                                            <span class="ms-1" style="color: #dc3545; font-size: 0.8em; font-weight: 800; display: inline-block; animation: pulse 1.5s infinite;">(חדש)</span>
+                                        {% endif %}
+                                    </h5>
+                                    <span class="text-muted small mb-3">{{ book.author }}</span>
+                                    <a href="{% url 'articles:book_detail' book.pk %}" class="btn btn-light border mt-auto w-100 rounded-pill fw-bold text-secondary">פתח ספר</a>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="col-12"><p class="text-muted">עודכן בקרוב.</p></div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="mt-5 pt-3">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h3 class="section-title mb-0">ספרים לרכישה עד הבית</h3>
+                        <a href="{% url 'articles:books' %}?sale=1" class="text-muted text-decoration-none small fw-bold hover-gold">לחנות המלאה <i class="bi bi-chevron-left"></i></a>
+                    </div>
+                    
+                    <div class="row g-4">
+                        {% for book in sale_books %}
+                        <div class="col-md-4">
+                            <div class="premium-card text-center" style="border: 1px solid rgba(212, 175, 55, 0.4);">
+                                {% if book.cover_image %}
+                                    <img src="{{ book.cover_image.url }}" class="book-card-img w-100" alt="{{ book.title|striptags }}" loading="lazy">
+                                {% else %}
+                                    <div class="book-card-img w-100 d-flex align-items-center justify-content-center">
+                                        <i class="bi bi-cart3 text-muted" style="font-size: 4rem; opacity: 0.2;"></i>
+                                    </div>
+                                {% endif %}
+                                <div class="p-3 d-flex flex-column flex-grow-1">
+                                    <h5 class="fw-bold mb-1">
+                                        {{ book.title|striptags }}
+                                        {% if book.is_new %}
+                                            <span class="ms-1" style="color: #dc3545; font-size: 0.8em; font-weight: 800; display: inline-block; animation: pulse 1.5s infinite;">(חדש)</span>
+                                        {% endif %}
+                                    </h5>
+                                    <h4 class="fw-bold my-2" style="color: #a67c52;">₪{{ book.price }}</h4>
+                                    <div class="d-grid gap-2 mt-auto">
+                                        <a href="{% url 'articles:book_detail' book.pk %}" class="btn btn-light border rounded-pill fw-bold text-secondary text-sm">לפרטים</a>
+                                        <a href="{% url 'articles:add_to_cart' book.id %}" class="btn rounded-pill fw-bold" style="background: linear-gradient(135deg, #d4af37 0%, #b5952f 100%); color: #1e202c;">
+                                            הוסף <i class="bi bi-cart-plus"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="col-12"><p class="text-muted">אין כרגע ספרים במלאי החנות.</p></div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- חלונית שו"ת (ימין) מקורית -->
+                <div class="mt-5 pt-3 mb-5">
+                    <div class="qa-mini-sidebar shadow-sm h-100 d-flex flex-column justify-content-center" style="min-height: 280px;">
+                        <div class="qa-mini-icon"><i class="bi bi-chat-quote-fill"></i></div>
+                        <h4 class="fw-bold mb-2 mt-1" style="color: #2c3e50; font-size: 1.2rem;">שאלות ותשובות</h4>
+                        <p class="text-muted mb-3" style="font-size: 0.9rem;">מדור הלכה ובירורים מרכזי.</p>
+                        
+                        {% if latest_qa %}
+                        <div class="p-3 bg-white rounded-3 border mb-3 shadow-sm flex-grow-1">
+                            <p class="fw-bold mb-1" style="color: #a67c52; font-size: 0.85rem;"><i class="bi bi-patch-question me-1"></i> שאלה אחרונה:</p>
+                            <p class="mb-0 text-dark" style="font-size: 0.95rem; line-height: 1.5;">{{ latest_qa.question }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        <a href="{% url 'articles:qa' %}" class="btn btn-outline-dark w-100 rounded-pill fw-bold mt-auto" style="font-size: 0.95rem;">היכנס למדור השו"ת המלא</a>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- עמודה שמאלית: מחשבונים, ראשי תיבות, פרשת שבוע, צור קשר -->
+            <div class="col-lg-4">
+                
+                <div class="calc-sidebar-card p-4 text-center mb-5">
+                    <div class="mb-4 d-flex justify-content-center gap-3">
+                        <div class="icon-circle" title="אורך"><i class="bi bi-rulers"></i></div>
+                        <div class="icon-circle" title="נפח"><i class="bi bi-cup-straw"></i></div>
+                        <div class="icon-circle" title="משקל ומטבעות"><i class="bi bi-coin"></i></div>
+                    </div>
+                    <h4 class="fw-bold mb-2" style="color: #2c3e50; font-family: 'Frank Ruhl Libre', serif;">מחשבוני מידות התורה וחז"ל</h4>
+                    <div class="mx-auto mb-4" style="width: 50px; height: 3px; background: linear-gradient(90deg, #d4af37, #a67c52); border-radius: 2px;"></div>
+                    <p class="mb-4 pb-2 px-2 text-muted" style="font-size: 0.95rem;">
+                        כלי עזר מהיר ואלגנטי להמרת מידות אורך, נפח, ומשקל מטבעות.
+                    </p>
+                    <div class="d-grid gap-3">
+                        <a href="{% url 'articles:calculator' %}" class="calc-btn-primary">
+                            מחשבון מידות אורך <i class="bi bi-arrow-left-short fs-5"></i>
+                        </a>
+                        <a href="{% url 'articles:volume_calculator' %}" class="calc-btn-secondary">
+                            מחשבון מידות נפח <i class="bi bi-arrow-left-short fs-5"></i>
+                        </a>
+                        <a href="{% url 'articles:weight_calculator' %}" class="calc-btn-secondary">
+                            מחשבון משקל ומטבעות <i class="bi bi-arrow-left-short fs-5"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="acronym-widget-card mb-5">
+                    <div style="display: flex; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #d4af37; padding-bottom: 10px;">
+                        <i class="bi bi-journal-text" style="font-size: 1.4rem; color: #d4af37; margin-left: 10px;"></i>
+                        <h5 style="margin: 0; font-weight: 700; color: #2d3748; font-size: 1.1rem;">מילון ראשי תיבות</h5>
+                    </div>
+                    
+                    <p style="font-size: 0.85em; color: #718096; margin-bottom: 12px;">הקלד ראשי תיבות (כמו "רש"י") או מילה מתוך הפירוש:</p>
+                    
+                    <div style="position: relative; margin-bottom: 12px;">
+                        <input type="text" id="acronymSearchInput" placeholder="חפש ראשי תיבות או פירוש..." style="width: 100%; padding: 10px 15px; background-color: #ffffff; border: 1px solid #dcd3c1; border-radius: 8px; font-size: 0.95em; outline: none; transition: border-color 0.2s;">
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px; font-size: 0.85em;">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="radio" name="acronymSearchType" value="short" checked style="accent-color: #d4af37;"> לפי ראשי תיבות
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="radio" name="acronymSearchType" value="meaning" style="accent-color: #d4af37;"> לפי מילים בפירוש
+                        </label>
+                    </div>
+
+                    <div id="acronymResultsContainer" style="max-height: 220px; overflow-y: auto; font-size: 0.9em; background: #ffffff; border: 1px solid #dcd3c1; border-radius: 8px; padding: 10px;">
+                        <div style="color: #a0aec0; text-align: center; padding: 10px; font-style: italic;">הקלד לחיפוש מהיר במאגר...</div>
+                    </div>
+                </div>
+
+                <div class="mb-5">
+                    <div class="parasha-sidebar p-4 p-md-5 d-flex flex-column justify-content-center" style="min-height: 460px;">
+                        <div style="z-index: 1;">
+                            
+                            <div class="text-center mb-4">
+                                <span class="bg-warning text-dark px-4 py-2 rounded-pill fw-bold fs-6 shadow-sm"><i class="bi bi-book me-2"></i> לוח שנה שבועי</span>
+                            </div>
+                            
+                            {% if jewish_cal %}
+                            <div class="bg-white bg-opacity-10 rounded-4 p-4 mb-4 text-center border border-light border-opacity-25 shadow-sm">
+                                <h3 class="fw-bold text-white mb-2" style="font-family: 'Frank Ruhl Libre', serif; letter-spacing: 1px;">
+                                    <i class="bi bi-bookmark-star text-warning me-2"></i> {% if jewish_cal.parasha %}{{ jewish_cal.parasha }}{% else %}פרשת השבוע{% endif %}
+                                </h3>
+                                
+                                {% if jewish_cal.haftarah %}
+                                <div class="mt-3 pt-3 border-top border-light border-opacity-25">
+                                    <p class="text-warning mb-1 small fw-bold">הפטרה:</p>
+                                    <p class="text-white mb-0 fs-6" dir="ltr" style="text-align: center;">{{ jewish_cal.haftarah }}</p>
+                                </div>
+                                {% endif %}
+                                
+                                {% if jewish_cal.holidays %}
+                                <div class="mt-3 pt-3 border-top border-light border-opacity-25">
+                                    <p class="text-warning mb-2 small fw-bold"><i class="bi bi-calendar-event"></i> צומות ומועדים השבוע:</p>
+                                    {% for holiday in jewish_cal.holidays %}
+                                    <span class="badge bg-light text-dark m-1 fs-6 px-3 py-2 rounded-pill shadow-sm">{{ holiday }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+
+                            {% if parasha_article %}
+                            <div class="text-center">
+                                <p class="text-white opacity-75 mb-3 px-2 small">מאמר עיוני על פרשיות השבוע מומלץ:</p>
+                                <p class="text-white fw-bold mb-3 fs-5">{{ parasha_article.title|striptags }}</p>
+                                <a href="{% url 'articles:detail' parasha_article.pk %}" class="btn btn-light w-100 rounded-pill fw-bold text-dark shadow-sm py-2 mb-3">
+                                    לקריאת המאמר <i class="bi bi-arrow-left-short fs-5 align-middle"></i>
+                                </a>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="text-center mt-3">
+                                <a href="/parasha/" class="text-white opacity-75 fw-bold text-decoration-none hover-white" style="border-bottom: 1px dashed rgba(255,255,255,0.5);">
+                                    לכל מאמרי פרשת שבוע ומועדים <i class="bi bi-chevron-left small"></i>
+                                </a>
+                            </div>
+                            
+                        </div>
+                    </div>
+                </div>
+
+                <!-- חלונית קשר (שמאל) -->
+                <div class="mb-4">
+                    <div class="qa-small-banner text-center text-white d-flex flex-column justify-content-center" style="min-height: 280px;">
+                        <div style="position: relative; z-index: 1;">
+                            <h5 class="fw-bold mb-3 text-white" style="font-size: 1.25rem;">יש לכם שאלה הלכתית?</h5>
+                            <p class="small mb-4 text-white opacity-75" style="font-size: 0.95rem;">זקוקים להכוונה? צוות האתר ישמח לענות.</p>
+                            <a href="{% url 'articles:contact' %}" class="btn btn-light rounded-pill fw-bold px-4 py-2 shadow-sm" style="color: #a67c52; font-size: 1rem;">
+                                <i class="bi bi-envelope-paper me-1"></i> צור קשר עכשיו
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- כרטיסיית חיפוש מתקדם מלבנית רחבה (מתחת לשתי העמודות) -->
+        <div class="card shadow-lg border-0 mb-5" style="background: linear-gradient(145deg, #1e202c 0%, #2a2d3e 100%); border-radius: 16px; overflow: hidden; position: relative;">
+            <div style="position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(212,175,55,0.15) 0%, rgba(212,175,55,0) 70%); border-radius: 50%;"></div>
+            <div style="position: absolute; bottom: -50px; left: -50px; width: 150px; height: 150px; background: radial-gradient(circle, rgba(212,175,55,0.1) 0%, rgba(212,175,55,0) 70%); border-radius: 50%;"></div>
+            
+            <div class="card-body p-4 p-md-5 position-relative z-2">
+                <div class="row align-items-center">
+                    <div class="col-md-8 text-center text-md-start mb-4 mb-md-0 d-flex flex-column flex-md-row align-items-center gap-4">
+                        <div style="width: 80px; height: 80px; background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(212,175,55,0.2); flex-shrink: 0;">
+                            <i class="bi bi-gem" style="font-size: 2.5rem; color: #d4af37;"></i>
+                        </div>
+                        <div>
+                            <h3 class="fw-bold mb-2" style="color: #d4af37; text-shadow: 1px 1px 3px rgba(0,0,0,0.5);">חיפוש תורני מתקדם</h3>
+                            <p class="mb-0 fs-5" style="color: #e2e8f0; opacity: 0.9;">
+                                גלה צפונות בתנ"ך! איתור גימטריות, ראשי תיבות ודילוגים.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center text-md-end">
+                        <a href="{% url 'articles:advanced_search' %}" class="btn fw-bold shadow-sm px-4 py-3" style="background-color: #d4af37; color: #1e202c; border-radius: 12px; font-size: 1.15rem; transition: all 0.3s ease;">
+                            למערכת החיפוש <i class="bi bi-arrow-left-short ms-1" style="font-size: 1.3rem; vertical-align: middle;"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    {% endif %}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('live-search-input');
+        const searchResults = document.getElementById('live-search-results');
+        let debounceTimer;
+
+        if (searchInput && searchResults) {
+            searchInput.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+                const q = this.value.trim();
+                
+                if (q.length < 2) {
+                    searchResults.classList.add('d-none');
+                    return;
+                }
+
+                searchResults.innerHTML = '<div class="p-4 text-center text-muted fw-bold"><div class="spinner-border text-warning spinner-border-sm me-2" role="status"></div>מחפש בספרייה...</div>';
+                searchResults.classList.remove('d-none');
+
+                debounceTimer = setTimeout(async () => {
+                    try {
+                        const response = await fetch(`/api/live-search/?q=${encodeURIComponent(q)}`);
+                        if (!response.ok) throw new Error("Network Error");
+                        const data = await response.json();
+                        
+                        if (data.results.length === 0) {
+                            searchResults.innerHTML = '<div class="p-4 text-center text-muted"><i class="bi bi-search fs-2 d-block mb-2 opacity-50"></i>לא נמצאו תוצאות.</div>';
+                            return;
+                        }
+
+                        let html = '';
+                        data.results.forEach(item => {
+                            html += `
+                                <a href="${item.url}" class="d-flex align-items-center p-3 text-decoration-none border-bottom text-dark hover-bg-light">
+                                    <i class="bi ${item.icon} fs-4 text-warning ms-3"></i>
+                                    <div>
+                                        <div class="fw-bold">${item.title}</div>
+                                        <div class="small text-muted">${item.type}</div>
+                                    </div>
+                                </a>
+                            `;
+                        });
+                        searchResults.innerHTML = html;
+                        
+                    } catch (err) {
+                        searchResults.innerHTML = '<div class="p-3 text-center text-danger">שגיאה בטעינה</div>';
+                    }
+                }, 350); 
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                    searchResults.classList.add('d-none');
+                }
+            });
+        }
+
+        const acronymInput = document.getElementById('acronymSearchInput');
+        const acronymContainer = document.getElementById('acronymResultsContainer');
+        const radioButtons = document.querySelectorAll('input[name="acronymSearchType"]');
+        let acronymDebounceTimer;
+
+        if (acronymInput && acronymContainer) {
+            function performAcronymSearch() {
+                const query = acronymInput.value.trim();
+                const searchType = document.querySelector('input[name="acronymSearchType"]:checked').value;
+
+                if (query.length < 1) {
+                    acronymContainer.innerHTML = '<div style="color: #a0aec0; text-align: center; padding: 10px; font-style: italic;">הקלד לחיפוש מהיר במאגר...</div>';
+                    return;
+                }
+
+                acronymContainer.innerHTML = '<div style="color: #718096; text-align: center; padding: 10px;">מחפש במאגר...</div>';
+
+                fetch(`/api/search-acronyms/?q=${encodeURIComponent(query)}&type=${searchType}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.results || data.results.length === 0) {
+                            acronymContainer.innerHTML = '<div style="color: #e53e3e; text-align: center; padding: 10px;">לא נמצאו תוצאות.</div>';
+                            return;
+                        }
+
+                        let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+                        data.results.duplicates = false;
+                        data.results.forEach(item => {
+                            html += `
+                                <li style="padding: 8px 10px; border-bottom: 1px solid #e6dec9; margin-bottom: 4px;">
+                                    <strong style="color: #a67c52; font-size: 1.05em;">${item.short}</strong>: 
+                                    <span style="color: #2c3e50;">${item.meaning}</span>
+                                </li>
+                            `;
+                        });
+                        html += '</ul>';
+                        acronymContainer.innerHTML = html;
+                    })
+                    .catch(error => {
+                        acronymContainer.innerHTML = '<div style="color: #e53e3e; text-align: center; padding: 10px;">שגיאה בביצוע החיפוש.</div>';
+                    });
+            }
+
+            acronymInput.addEventListener('input', function() {
+                clearTimeout(acronymDebounceTimer);
+                acronymDebounceTimer = setTimeout(performAcronymSearch, 300);
+            });
+
+            radioButtons.forEach(radio => {
+                radio.addEventListener('change', performAcronymSearch);
+            });
+        }
+    });
+</script>
 {% endblock %}

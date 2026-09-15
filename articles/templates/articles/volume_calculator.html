@@ -181,7 +181,7 @@
 </style>
 
 <div class="container-fluid mt-4 mb-5" style="max-width: 1400px;">
-
+    
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb" style="font-size: 1.15rem; font-weight: 600;">
             <li class="breadcrumb-item"><a href="{% url 'articles:list' %}" style="color: #a67c52; text-decoration: none;"><i class="bi bi-house-door"></i> ראשי</a></li>
@@ -202,8 +202,7 @@
                 <i class="bi bi-book me-2" style="color: #a67c52;"></i>
                 <span class="text-muted" style="font-size: 1.1rem;">לעיון בסוגיא ניתן ללמוד הספר </span>
                 {% if mida_book %}
-                <!-- תוקן ל-slug -->
-                <a href="{% url 'articles:book_detail' mida_book.slug %}" class="fw-bold text-decoration-none" style="color: #a67c52; border-bottom: 1px dashed #a67c52;">
+                <a href="{% url 'articles:book_detail' mida_book.pk %}" class="fw-bold text-decoration-none" style="color: #a67c52; border-bottom: 1px dashed #a67c52;">
                     "מידה של תורה"
                 </a>
                 {% else %}
@@ -229,7 +228,6 @@
                     </div>
                 </div>
 
-                <!-- גריד 4 עמודות (col-md-3) -->
                 <div class="row g-3 justify-content-center">
                     <div class="col-6 col-md-3">
                         <div class="result-card">
@@ -276,7 +274,6 @@
                         </div>
                     </div>
                     
-                    <!-- שורה שנייה: הנותרים -->
                     <div class="col-6 col-md-3">
                         <div class="result-card">
                             <div class="result-value">

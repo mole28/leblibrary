@@ -60,8 +60,7 @@
                         </div>
                         
                         <div class="mt-auto">
-                            <!-- התיקון כאן: article.slug במקום article.pk -->
-                            <a href="{% url 'articles:detail' article.slug %}" class="btn btn-outline-dark rounded-pill w-100 fw-semibold">קרא מאמר מלא</a>
+                            <a href="{% url 'articles:detail' article.pk %}" class="btn btn-outline-dark rounded-pill w-100 fw-semibold">קרא מאמר מלא</a>
                         </div>
                     </div>
                 </div>

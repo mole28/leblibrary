@@ -4,7 +4,7 @@ from articles.models import Article, Book  # מודל הספרים
 
 class BaseSitemap(Sitemap):
     """
-    מחלקה בסיסית שפותרת את בעיית ה-example.com של ג'נגו
+    מחלקת בסיס שפותרת את בעיית ה-example.com של ג'אנגו
     וכופה את הדומיין והפרוטוקול האמיתיים של האתר על כל המפות
     """
     protocol = 'https'
@@ -21,7 +21,7 @@ class StaticViewSitemap(BaseSitemap):
     changefreq = 'weekly'
 
     def items(self):
-        return ['about', 'contact', 'terms', 'calculator', 'volume_calculator', 'weight_calculator', 'books', 'qa', 'parasha', 'articles_index']
+        return ['about', 'contact', 'terms', 'calculator', 'volume_calculator', 'weight_calculator']
 
     def location(self, item):
         try:
@@ -40,9 +40,9 @@ class ArticleSitemap(BaseSitemap):
 
     def location(self, item):
         try:
-            return reverse('detail', kwargs={'slug': item.slug})
+            return reverse('detail', kwargs={'pk': item.pk})
         except NoReverseMatch:
-            return reverse('articles:detail', kwargs={'slug': item.slug})
+            return reverse('articles:detail', kwargs={'pk': item.pk})
 
     def lastmod(self, obj):
         if hasattr(obj, 'updated_at'):
@@ -61,9 +61,9 @@ class BookSitemap(BaseSitemap):
 
     def location(self, item):
         try:
-            return reverse('book_detail', kwargs={'slug': item.slug})
+            return reverse('book_detail', kwargs={'pk': item.pk})
         except NoReverseMatch:
-            return reverse('articles:book_detail', kwargs={'slug': item.slug})
+            return reverse('articles:book_detail', kwargs={'pk': item.pk})
 
     def lastmod(self, obj):
         if hasattr(obj, 'updated_at'):

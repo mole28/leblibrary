@@ -25,8 +25,7 @@
                     {{ article.content|striptags|truncatewords:25|safe }}
                 </p>
                 <div class="mt-auto pt-3 border-top">
-                    <!-- התיקון כאן: article.slug במקום article.pk -->
-                    <a href="{% url 'articles:detail' article.slug %}" class="btn btn-outline-primary btn-sm rounded-pill px-4 fw-semibold" style="color: #2575fc; border-color: #2575fc;">כניסה למאמר</a>
+                    <a href="{% url 'articles:detail' article.pk %}" class="btn btn-outline-primary btn-sm rounded-pill px-4 fw-semibold" style="color: #2575fc; border-color: #2575fc;">כניסה למאמר</a>
                 </div>
             </div>
         </div>

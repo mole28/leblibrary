@@ -35,7 +35,6 @@
                             <td>{{ item.quantity }}</td>
                             <td class="fw-bold" style="color: #d4af37;">₪{{ item.get_total_price }}</td>
                             <td>
-                                <!-- הקישור הזה נשאר item.id כי זו פונקציה פנימית של הסרה מהעגלה -->
                                 <a href="{% url 'articles:remove_from_cart' item.id %}" class="btn btn-sm btn-outline-danger" title="הסר מהעגלה">
                                     <i class="bi bi-trash"></i>
                                 </a>

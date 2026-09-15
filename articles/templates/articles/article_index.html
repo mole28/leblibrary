@@ -68,8 +68,7 @@
                     <ul style="list-style-type: disc; padding-right: 25px; margin: 0;">
                         {% for article in articles %}
                         <li class="mb-3" style="color: #2c3e50;">
-                            <!-- עדכון לשימוש ב-SLUG במקום PK -->
-                            <a href="{% url 'articles:detail' article.slug %}" class="text-decoration-none article-link" style="color: #4e8cff; font-size: 1.15rem; transition: all 0.2s;">
+                            <a href="{% url 'articles:detail' article.pk %}" class="text-decoration-none article-link" style="color: #4e8cff; font-size: 1.15rem; transition: all 0.2s;">
                                 {{ article.title }}
                             </a>
                             {% if article.is_new %}
