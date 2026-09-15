@@ -781,21 +781,40 @@ def qa_list(request):
 
 def acronyms_view(request):
     from .models import Acronym
+    from django.db.models import Q
+    import re
+    
     query = request.GET.get('q', '').strip()
-    
-    query = re.sub(r'["״”“]', '"', query)
-    query = re.sub(r'[\'׳`]', "'", query)
-    
     search_type = request.GET.get('type', 'short')
+    
     acronyms = None
     if query:
+        # 1. מנקים את מילת החיפוש מכל סוגי הגרשיים
+        query_clean = re.sub(r'["״”“\'׳`]', '', query)
+        
+        # 2. מייצרים אוטומטית מילה עם גרשיים לפני האות האחרונה (כדי לתפוס למשל "רמבם" -> "רמב"ם")
+        query_with_geresh = query_clean
+        if len(query_clean) > 1 and '"' not in query:
+            query_with_geresh = query_clean[:-1] + '"' + query_clean[-1]
+
         if search_type == 'meaning':
             acronyms = Acronym.objects.filter(meaning__icontains=query).order_by('short')
         else:
-            acronyms = Acronym.objects.filter(short__icontains=query).order_by('short')
+            # 3. מחפשים את כל הווריאציות ביחד במסד הנתונים!
+            acronyms = Acronym.objects.filter(
+                Q(short__icontains=query) | 
+                Q(short__icontains=query_clean) |
+                Q(short__icontains=query_with_geresh)
+            ).distinct().order_by('short')
     else:
         acronyms = Acronym.objects.all().order_by('short')[:100]
-    return render(request, 'articles/acronyms.html', {'acronyms': acronyms, 'query': query, 'search_type': search_type, 'current_page': 'acronyms'})
+        
+    return render(request, 'articles/acronyms.html', {
+        'acronyms': acronyms, 
+        'query': query, 
+        'search_type': search_type, 
+        'current_page': 'acronyms'
+    })
 
 def article_index(request): 
     published_articles = Article.objects.filter(is_published=True).order_by('title')
