@@ -651,15 +651,22 @@ def article_list(request):
     })
 
 def article_detail(request, slug):
-    # אם הקישור הוא מזהה מספרי ישן (ID)
+    # טיפול במזהה מספרי ישן (ID)
     if str(slug).isdigit():
-        # מחפש את המאמר רק אם הוא קיים במסד הנתונים
-        article = get_object_or_404(Article, pk=int(slug), is_published=True)
-        # אם קיים - מפנה אותו ישר לכתובת החדשה בעברית
-        return redirect('articles:detail', slug=article.slug, permanent=True)
+        article = Article.objects.filter(pk=int(slug), is_published=True).first()
+        if article:
+            # אם המאמר קיים - מעביר אותו לכתובת החדשה בעברית
+            return redirect('articles:detail', slug=article.slug, permanent=True)
+        else:
+            # אם המאמר לא קיים במסד הנתונים (כמו ID 39 שנמחק) - מפנה מיד לדף הבית במקום שגיאה 404!
+            return redirect('articles:list')
     
-    # אם זה סלאג רגיל - מציג את המאמר או זורק 404 יוקרתי אם הוא לא קיים
-    article = get_object_or_404(Article, slug=slug, is_published=True)
+    # טיפול בסלאג טקסטואלי
+    article = Article.objects.filter(slug=slug, is_published=True).first()
+    if not article:
+        # אם הסלאג לא קיים - מפנה מיד לדף הבית במקום שגיאה 404!
+        return redirect('articles:list')
+        
     return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
 
 
