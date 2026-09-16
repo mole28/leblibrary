@@ -657,9 +657,16 @@ def article_detail(request, slug):
         if article:
             # אם המאמר קיים במסד הנתונים - מעביר אותו מיד לכתובת החדשה בעברית
             return redirect('articles:detail', slug=article.slug, permanent=True)
+        else:
+            # אם המאמר נמחק/לא קיים - מפנה ישירות לעמוד רשימת המאמרים (במקום שגיאה או דף הבית)
+            return redirect('articles:list')
     
-    # טיפול בסלאג טקסטואלי - מציג את המאמר או זורק 404 אמיתי אם לא קיים
-    article = get_object_or_404(Article, slug=slug)
+    # טיפול בסלאג טקסטואלי
+    article = Article.objects.filter(slug=slug).first()
+    if not article:
+        # אם הסלאג לא קיים - מפנה ישירות לעמוד רשימת המאמרים
+        return redirect('articles:list')
+        
     return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
 
 
