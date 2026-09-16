@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
+from django.urls import reverse  # <--- התוספת החשובה כדי לייצר קישורים נכונים
 
 import re
 from bs4 import BeautifulSoup
@@ -267,6 +268,11 @@ class Article(models.Model):
         return self.created_at >= timezone.now() - timedelta(days=7)
 
     def __str__(self): return self.title
+
+    # הנה התוספת הקריטית שפותרת את בעיית הקישורים מתוך האתר! 
+    # מעכשיו האתר ייצר קישור מהסלאג הטקסטואלי ולא מה-ID המספרי.
+    def get_absolute_url(self):
+        return reverse('articles:detail', kwargs={'slug': self.slug})
 
     def save(self, *args, **kwargs):
         # מערכת לייצור אוטומטי של סלאגים בעברית מכותרת המאמר
