@@ -650,6 +650,7 @@ def article_list(request):
         'schema_json_ld': get_base_schema_json()
     })
 
+from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from .models import Article
@@ -657,24 +658,38 @@ from .models import Article
 def article_detail(request, slug):
     slug_str = str(slug).strip()
     
-    # מילון סלאגים ישנים בלבד (בלי מספרים שעלולים להתנגש במסד הנתונים)
-    MANUAL_SLUG_REDIRECTS = {
-        'תקיעה-בשבת-ר-ה': 'תקיעה-בשבת-ראש-השנה',  # הסלאג המקוצר הישן של ראש השנה
+    # מיפוי ידני חד-משמעי לכתובות וישנות של גוגל (אין התנגשויות)
+    EXPLICIT_REDIRECTS = {
+        '39': 'מקור-מנהג-אמירת-הסליחות',          # מזהה 39 בגוגל מוביל לסליחות!
+        'תקיעה-בשבת-ר-ה': 'תקיעה-בשבת-ראש-השנה',  # הסלאג הישן של ראש השנה מוביל לראש השנה
     }
     
-    if slug_str in MANUAL_SLUG_REDIRECTS:
-        return redirect('articles:detail', slug=MANUAL_SLUG_REDIRECTS[slug_str], permanent=True)
+    if slug_str in EXPLICIT_REDIRECTS:
+        target_slug = EXPLICIT_REDIRECTS[slug_str]
+        article = Article.objects.filter(slug=target_slug).first()
+        if article:
+            if article.slug != slug_str:
+                return redirect('articles:detail', slug=article.slug, permanent=True)
+            return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
 
-    # 1. חיפוש מדויק לפי הסלאג הנוכחי במסד הנתונים (עובד מושלם עבור הסליחות ועבור ראש השנה)
+    # 1. חיפוש מדויק לפי הסלאג הנוכחי במסד הנתונים
     article = Article.objects.filter(slug=slug_str).first()
     
-    # 2. חיפוש לפי מזהה מספרי טבעי במסד הנתונים (אם מישהו נכנס עם ID אמיתי שקיים כרגע)
-    if not article and slug_str.isdigit():
+    # 2. חיפוש לפי מזהה מספרי רגיל (אך לא 39 שכבר טופל למעלה)
+    if not article and slug_str.isdigit() and slug_str != '39':
         article = Article.objects.filter(pk=int(slug_str)).first()
         if article:
             return redirect('articles:detail', slug=article.slug, permanent=True)
             
-    # 3. הצגת המאמר אם נמצא
+    # 3. גיבוי חכם למניעת שגיאות 404 למאמרים מרכזיים (אם הסלאג שונה במעט)
+    if not article:
+        clean = slug_str.replace('-', ' ').replace('_', '')
+        if 'תקיעה' in clean or 'ראש' in clean:
+            article = Article.objects.filter(Q(title__icontains='ראש') | Q(slug__icontains='ראש')).first()
+        elif 'סליחות' in clean:
+            article = Article.objects.filter(Q(title__icontains='סליחות') | Q(slug__icontains='סליחות')).first()
+
+    # 4. הצגה או הפניה סופית
     if article:
         if article.slug != slug_str:
             return redirect('articles:detail', slug=article.slug, permanent=True)
