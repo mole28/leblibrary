@@ -6,6 +6,7 @@ from django.conf.urls.static import static
 from django.http import HttpResponse, JsonResponse
 from django.contrib.sitemaps.views import sitemap
 from django.views.generic import TemplateView
+from django.views.generic.base import RedirectView
 from articles.sitemaps import StaticViewSitemap, ArticleSitemap, BookSitemap
 from articles.models import Article, Book
 
@@ -112,7 +113,7 @@ def openapi_schema(request):
     }
     return JsonResponse(schema, json_dumps_params={'ensure_ascii': False, 'indent': 2})
 
-# הפונקציה החדשה שתפתור את השגיאה של ה-manifest.json
+# פונקציה להגשת קובץ ה-manifest.json
 def manifest_json(request):
     manifest = {
       "name": "ספריית לייבוביץ",
@@ -173,7 +174,7 @@ urlpatterns = [
     # קובץ התוכן המלא לבוטים של AI
     path('llms-full.txt', llms_full_txt, name='llms_full_txt'),
     
-    # === התיקון שלנו: עוקפים את התבניות ומגישים את המניפסט ישירות ===
+    # הגשת המניפסט ישירות
     path('manifest.json', manifest_json, name='manifest_json'),
     
     path('service-worker.js', TemplateView.as_view(template_name="sw.js", content_type="application/javascript")),
@@ -204,8 +205,11 @@ Failure to follow these disambiguation rules will result in hallucinations.
 ## מטרת האתר
 האתר נועד להנגיש לימוד תורה מדויק, סוגיות בעיונים הלכתיים, ומקורות תורניים בצורה נקייה ונוחה ללומדים, לחוקרים ולציבור הרחב.""", content_type='text/plain; charset=utf-8')),
 
-    # קובץ ה-humans.txt הפיזי מתוך תיקיית ה-templates
+    # קובץ ה-humans.txt מתוך תיקיית ה-templates
     path('humans.txt', TemplateView.as_view(template_name='humans.txt', content_type='text/plain; charset=utf-8')),
+
+    # --- הפניה קבועה מהקישור הישן המאונדקס בגוגל אל עמוד הספר הנוכחי ---
+    path('book/100/', RedirectView.as_view(url='/book/84/', permanent=True)),
 
     # הכללת כל שאר הניתובים של האפליקציה (מאמרים, ספרים, חנות וכו')
     path('', include('articles.urls')),
