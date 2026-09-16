@@ -651,11 +651,15 @@ def article_list(request):
     })
 
 def article_detail(request, slug):
-    # --- מנגנון תמיכה לאחור לקישורים מבוססי מספר (ID) ---
-    if slug.isdigit():
-        article = get_object_or_404(Article, pk=int(slug), is_published=True)
-        # מפנה אוטומטית לקישור החדש בעברית עם 301 Permanent Redirect
-        return redirect('articles:detail', slug=article.slug, permanent=True)
+    # --- מנגנון ניתוב חכם לקישורים ישנים מבוססי מספר (ID) ---
+    if str(slug).isdigit():
+        try:
+            article = Article.objects.get(pk=int(slug), is_published=True)
+            # אם המאמר קיים - מפנה אותו לכתובת החדשה בעברית
+            return redirect('articles:detail', slug=article.slug, permanent=True)
+        except Article.DoesNotExist:
+            # אם המאמר נמחק ולא קיים כרגע - מפנה לאינדקס המאמרים במקום להציג שגיאה 404
+            return redirect('articles:articles_index')
     # -----------------------------------------------------
     
     article = get_object_or_404(Article, slug=slug, is_published=True)
@@ -675,10 +679,12 @@ def article_create(request):
 
 @login_required
 def article_edit(request, slug):
-    # תמיכה לאחור בעריכה
-    if slug.isdigit():
-        article = get_object_or_404(Article, pk=int(slug))
-        return redirect('articles:edit', slug=article.slug, permanent=True)
+    if str(slug).isdigit():
+        try:
+            article = Article.objects.get(pk=int(slug))
+            return redirect('articles:edit', slug=article.slug, permanent=True)
+        except Article.DoesNotExist:
+            return redirect('articles:articles_index')
         
     article = get_object_or_404(Article, slug=slug)
     if request.method == 'POST':
@@ -692,10 +698,12 @@ def article_edit(request, slug):
 
 @login_required
 def article_delete(request, slug):
-    # תמיכה לאחור במחיקה
-    if slug.isdigit():
-        article = get_object_or_404(Article, pk=int(slug))
-        return redirect('articles:delete', slug=article.slug, permanent=True)
+    if str(slug).isdigit():
+        try:
+            article = Article.objects.get(pk=int(slug))
+            return redirect('articles:delete', slug=article.slug, permanent=True)
+        except Article.DoesNotExist:
+            return redirect('articles:articles_index')
         
     article = get_object_or_404(Article, slug=slug)
     if request.method == 'POST': article.delete()
@@ -1272,7 +1280,6 @@ def trigger_article_audio_pregeneration(sender, instance, created, **kwargs):
 
 def get_article_audio(request, identifier):
     try:
-        # תמיכה חכמה: בודק אם קיבלנו מספר (מהמערכת הישנה) או טקסט בעברית (מהמערכת החדשה)
         if str(identifier).isdigit():
             article = Article.objects.get(id=int(identifier))
         else:
@@ -1284,11 +1291,9 @@ def get_article_audio(request, identifier):
     audio_dir = os.path.join(base_media, 'audio')
     os.makedirs(audio_dir, exist_ok=True)
     
-    # חשוב: שומרים את הקובץ עם ה-ID המספרי כדי למנוע באגים של עברית בשרת הלינוקס
     file_name = f"article_{article.id}.mp3"
     file_path = os.path.join(audio_dir, file_name)
     media_url = getattr(settings, 'MEDIA_URL', '/media/')
-    audio_url = f"{media_url}audio/{file_name}"
 
     if not os.path.exists(file_path):
         raw_text = f"{article.title}. {article.content or ''}"
@@ -1314,7 +1319,10 @@ def get_article_audio(request, identifier):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 
-    # מחזיר תשובת JSON סטנדרטית כמו שהיה פעם
+    # הפתרון למטמון: מוסיפים את החותמת של זמן יצירת הקובץ כדי להכריח את הדפדפן לרענן!
+    file_version = int(os.path.getmtime(file_path)) if os.path.exists(file_path) else 1
+    audio_url = f"{media_url}audio/{file_name}?v={file_version}"
+
     return JsonResponse({'audio_url': audio_url})
 
 def get_book_audio(request, book_id):
@@ -1330,7 +1338,6 @@ def get_book_audio(request, book_id):
     file_name = f"book_{book.id}.mp3"
     file_path = os.path.join(audio_dir, file_name)
     media_url = getattr(settings, 'MEDIA_URL', '/media/')
-    audio_url = f"{media_url}audio/{file_name}"
 
     if not os.path.exists(file_path):
         raw_text = f"{book.title}. "
@@ -1353,6 +1360,10 @@ def get_book_audio(request, book_id):
             generate_audio_sync(final_text, file_path)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
+
+    # אותו פתרון למטמון גם בספרים
+    file_version = int(os.path.getmtime(file_path)) if os.path.exists(file_path) else 1
+    audio_url = f"{media_url}audio/{file_name}?v={file_version}"
 
     return JsonResponse({'audio_url': audio_url})
 
