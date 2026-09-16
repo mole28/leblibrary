@@ -1,6 +1,6 @@
 {% extends "articles/base.html" %}
 
-{% block title %}שגיאת שרת | ספריית לייבוביץ{% endblock %}
+{% block title %}בקשה לא תקינה | ספריית לייבוביץ{% endblock %}
 
 {% block content %}
 <style>
@@ -98,21 +98,21 @@
 </style>
 
 <div class="error-page-wrapper">
-    <div class="watermark-bg">500</div>
+    <div class="watermark-bg">400</div>
     <div class="error-content">
-        <h1 class="error-title">תקלה פנימית</h1>
+        <h1 class="error-title">בקשה לא תקינה</h1>
         <p class="error-subtitle">
-            אופס! משהו השתבש בצד שלנו.<br>
-            השרת נתקל בשגיאה זמנית ולא הצליח להשלים את הבקשה שלך. צוות הפיתוח שלנו עודכן בפרטי השגיאה.
+            השרת לא הצליח להבין את הבקשה שנשלחה.<br>
+            ייתכן שהקישור שגוי, מקוטע, או שחסרים בו נתונים הכרחיים.
         </p>
         
         <div class="action-buttons">
-            <button onclick="window.location.reload();" class="btn-solid">
-                <i class="bi bi-arrow-clockwise me-2"></i> נסה לרענן את העמוד
-            </button>
             <a href="{% url 'articles:list' %}" class="btn-outline">
                 <i class="bi bi-house-door-fill me-2"></i> חזרה לדף הבית
             </a>
+            <button onclick="window.history.back();" class="btn-solid">
+                <i class="bi bi-arrow-right me-2"></i> חזרה לעמוד הקודם
+            </button>
         </div>
     </div>
 </div>

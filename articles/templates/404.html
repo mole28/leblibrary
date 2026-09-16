@@ -1,14 +1,153 @@
 {% extends "articles/base.html" %}
 
-{% block title %}הדף לא נמצא | ספריית לייבוביץ{% endblock %}
+{% block title %}העמוד לא נמצא | ספריית לייבוביץ{% endblock %}
 
 {% block content %}
-<div class="container text-center" style="margin-top: 10vh; margin-bottom: 10vh;">
-    <h1 style="font-size: 6rem; color: #d4af37; font-weight: bold;">404</h1>
-    <h2 class="mb-4">הדף שחיפשת אינו קיים</h2>
-    <p class="lead mb-5">ייתכן שהמאמר או הספר שחיפשת הוסרו מהספרייה או שהכתובת שגויה.</p>
-    <a href="{% url 'articles:list' %}" style="background-color: #2575fc; color: white; padding: 12px 25px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 1.2rem;">
-        <i class="bi bi-house-door-fill me-2"></i> חזרה לדף הבית
-    </a>
+<style>
+    .error-page-wrapper {
+        position: relative;
+        min-height: 60vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4rem 1rem;
+        overflow: hidden;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        background-color: #fafafa; /* רקע בהיר ויוקרתי */
+    }
+
+    /* סימן מים עדין של 404 ברקע */
+    .watermark-bg {
+        position: absolute;
+        font-size: 28vw;
+        font-weight: 900;
+        color: rgba(0, 0, 0, 0.015);
+        z-index: 0;
+        user-select: none;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+    }
+
+    .error-content {
+        position: relative;
+        z-index: 1;
+        max-width: 600px;
+        width: 100%;
+        text-align: center;
+        animation: fadeIn 0.8s ease-out;
+    }
+
+    .error-title {
+        color: #3f4050; /* צבע כהה ויוקרתי בדומה לאתרים מקצועיים */
+        font-size: 3.5rem;
+        font-weight: 400;
+        margin-bottom: 1rem;
+    }
+
+    .error-subtitle {
+        color: #555;
+        font-size: 1.3rem;
+        margin-bottom: 3rem;
+    }
+
+    /* עיצוב תיבת החיפוש בדיוק כמו בתמונה */
+    .premium-search-form {
+        display: flex;
+        flex-direction: row-reverse; /* שומר על הכפתור בצד שמאל ב-RTL */
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e0e0e0;
+        background: #fff;
+        transition: all 0.3s ease;
+        margin-bottom: 3rem;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .premium-search-form:focus-within {
+        box-shadow: 0 8px 25px rgba(63, 64, 80, 0.1);
+        border-color: #3f4050;
+    }
+
+    .premium-search-input {
+        flex-grow: 1;
+        border: none;
+        padding: 1.2rem 1.5rem;
+        font-size: 1.1rem;
+        outline: none;
+        color: #333;
+        background: transparent;
+        text-align: right;
+    }
+
+    .premium-search-input::placeholder {
+        color: #999;
+    }
+
+    .premium-search-btn {
+        background-color: #3f4050; /* צבע הכפתור */
+        color: white;
+        border: none;
+        padding: 0 1.5rem;
+        cursor: pointer;
+        transition: background 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .premium-search-btn:hover {
+        background-color: #2c2d38;
+    }
+
+    .premium-search-btn i {
+        font-size: 1.3rem;
+    }
+
+    /* עיצוב כפתור חזרה הביתה */
+    .btn-return {
+        display: inline-block;
+        background-color: transparent;
+        color: #3f4050;
+        border: 2px solid #3f4050;
+        padding: 10px 30px;
+        border-radius: 30px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 1.1rem;
+        transition: all 0.3s;
+    }
+
+    .btn-return:hover {
+        background-color: #3f4050;
+        color: white;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<div class="error-page-wrapper">
+    <div class="watermark-bg">404</div>
+    <div class="error-content">
+        <h1 class="error-title">לא נמצא</h1>
+        <p class="error-subtitle">מצטערים, אבל העמוד שביקשתם לא נמצא. אולי חיפוש יעזור.</p>
+        
+        <!-- טופס החיפוש -->
+        <form action="{% url 'articles:list' %}" method="GET" class="premium-search-form">
+            <button type="submit" class="premium-search-btn" aria-label="חפש">
+                <i class="bi bi-search"></i>
+            </button>
+            <input type="text" name="q" class="premium-search-input" placeholder="חפשו..." autocomplete="off">
+        </form>
+
+        <a href="{% url 'articles:list' %}" class="btn-return">
+            <i class="bi bi-house-door-fill me-2"></i> חזרה לדף הבית
+        </a>
+    </div>
 </div>
 {% endblock %}
