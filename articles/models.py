@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.utils.text import slugify
 
 import re
 from bs4 import BeautifulSoup
@@ -244,6 +245,8 @@ PARASHA_CHOICES = [
 
 class Article(models.Model):
     title = models.CharField(max_length=200, verbose_name="כותרת המאמר")
+    # התוספת החדשה: שדה הסלאג שייצר URL חכם!
+    slug = models.SlugField(max_length=255, unique=True, allow_unicode=True, verbose_name="קישור (Slug)", blank=True, null=True)
     parasha = models.CharField(max_length=500, default=',general,', verbose_name="שיוך לפרשות שבוע", blank=True)
     word_file = models.FileField(upload_to='word_imports/', blank=True, null=True, verbose_name="ייבוא אוטומטי מוורד (מומלץ למאמרים עם הערות!)")
     content = CKEditor5Field(config_name='extends', verbose_name="תוכן המאמר", blank=True, null=True) 
@@ -266,6 +269,18 @@ class Article(models.Model):
     def __str__(self): return self.title
 
     def save(self, *args, **kwargs):
+        # מערכת לייצור אוטומטי של סלאגים בעברית מכותרת המאמר
+        if not self.slug:
+            self.slug = slugify(self.title, allow_unicode=True)
+            if not self.slug:
+                self.slug = f"article-{timezone.now().strftime('%Y%m%d%H%M%S')}"
+            
+            original_slug = self.slug
+            counter = 1
+            while Article.objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
+                self.slug = f"{original_slug}-{counter}"
+                counter += 1
+
         if self.word_file and mammoth:
             try:
                 self.word_file.open('rb')

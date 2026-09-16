@@ -61,9 +61,6 @@ def process_word_file(word_file):
 # ==========================================
 # טופס חכם שמוסיף את אפשרות ייבוא הוורד לכל המודלים!
 # ==========================================
-# ==========================================
-# טופס חכם שמוסיף את אפשרות ייבוא הוורד לכל המודלים!
-# ==========================================
 class SmartImportForm(forms.ModelForm):
     word_import = forms.FileField(
         required=False, 
@@ -83,7 +80,6 @@ class SmartImportForm(forms.ModelForm):
         word_file = cleaned_data.get('word_import')
 
         if word_file:
-            # 1. הפקודה הקריטית: החזרת סמן הקריאה של הקובץ להתחלה!
             word_file.seek(0)
             final_html = process_word_file(word_file)
             
@@ -122,6 +118,7 @@ class ArticleAdmin(admin.ModelAdmin):
     list_display = ('title', 'parasha', 'is_published', 'created_at')
     list_filter = ('is_published', 'created_at')
     search_fields = ('title', 'content', 'parasha')
+    prepopulated_fields = {'slug': ('title',)} # מילוי אוטומטי של הסלאג מהכותרת בעת ההקלדה
 
 # ==========================================
 # ניהול ספרים

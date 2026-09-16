@@ -11,10 +11,14 @@ urlpatterns = [
     # ==========================
     path('', views.article_list, name='list'),
     path('index/', views.article_index, name='articles_index'),
-    path('article/<int:pk>/', views.article_detail, name='detail'),
+    
+    # חובה: נתיב ה-new חייב להיות מעל הנתיב עם הסלאג, אחרת הוא ייחשב בטעות כשם של מאמר
     path('article/new/', views.article_create, name='create'),
-    path('article/<int:pk>/edit/', views.article_edit, name='edit'),
-    path('article/<int:pk>/delete/', views.article_delete, name='delete'),
+    
+    # שינוי מ-ID לטקסט (slug) התומך בעברית מלאה
+    path('article/<str:slug>/', views.article_detail, name='detail'),
+    path('article/<str:slug>/edit/', views.article_edit, name='edit'),
+    path('article/<str:slug>/delete/', views.article_delete, name='delete'),
     
     # ==========================
     # ספרים
@@ -44,7 +48,7 @@ urlpatterns = [
     path('api/ai-search/', views.ai_open_search, name='ai_open_search'), 
     path('api/search-acronyms/', views.search_acronyms_api, name='search_acronyms_api'),
     
-    # API הקראה קולית (חדש)
+    # API הקראה קולית (נשאר עם ID לטובת מניעת שבירת נגני שמע ב-JS)
     path('api/audio/article/<int:article_id>/', views.get_article_audio, name='get_article_audio'),
     path('api/audio/book/<int:book_id>/', views.get_book_audio, name='get_book_audio'),
     

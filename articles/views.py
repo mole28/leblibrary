@@ -438,7 +438,7 @@ def ai_chat_endpoint(request):
                         add_to_context(item.get('title', ''), item.get('url', ''), item.get('content_snippet', ''))
 
                 for a in db_articles:
-                    url = request.build_absolute_uri(reverse('articles:detail', args=[a.id]))
+                    url = request.build_absolute_uri(reverse('articles:detail', args=[a.slug]))
                     snippet = get_smart_content(get_item_text(a), words, max_chars=8000)
                     add_to_context(get_item_title(a), url, snippet)
 
@@ -650,8 +650,8 @@ def article_list(request):
         'schema_json_ld': get_base_schema_json()
     })
 
-def article_detail(request, pk):
-    article = get_object_or_404(Article, pk=pk, is_published=True)
+def article_detail(request, slug):
+    article = get_object_or_404(Article, slug=slug, is_published=True)
     return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
 
 @login_required
@@ -660,24 +660,24 @@ def article_create(request):
         form = ArticleForm(request.POST)
         if form.is_valid(): 
             article = form.save()
-            ping_indexnow(request.build_absolute_uri(reverse('articles:detail', args=[article.pk])))
+            ping_indexnow(request.build_absolute_uri(reverse('articles:detail', args=[article.slug])))
         return redirect('articles:list')
     return render(request, 'articles/article_form.html', {'form': ArticleForm(), 'current_page': 'articles'})
 
 @login_required
-def article_edit(request, pk):
-    article = get_object_or_404(Article, pk=pk)
+def article_edit(request, slug):
+    article = get_object_or_404(Article, slug=slug)
     if request.method == 'POST':
         form = ArticleForm(request.POST, instance=article)
         if form.is_valid(): 
             article = form.save()
-            ping_indexnow(request.build_absolute_uri(reverse('articles:detail', args=[article.pk])))
-        return redirect('articles:detail', pk=article.pk)
+            ping_indexnow(request.build_absolute_uri(reverse('articles:detail', args=[article.slug])))
+        return redirect('articles:detail', slug=article.slug)
     return render(request, 'articles/article_form.html', {'form': ArticleForm(instance=article), 'current_page': 'articles'})
 
 @login_required
-def article_delete(request, pk):
-    article = get_object_or_404(Article, pk=pk)
+def article_delete(request, slug):
+    article = get_object_or_404(Article, slug=slug)
     if request.method == 'POST': article.delete()
     return redirect('articles:list')
 
@@ -886,11 +886,11 @@ def live_search(request):
     books_qs = Book.objects.all()
     articles_qs = Article.objects.filter(is_published=True)
     books = smart_hebrew_search(books_qs, q, ['title', 'author']).only('id', 'title')[:3]
-    articles = smart_hebrew_search(articles_qs, q, ['title', 'content']).only('id', 'title')[:4]
+    articles = smart_hebrew_search(articles_qs, q, ['title', 'content']).only('id', 'title', 'slug')[:4]
     
     results = []
     for book in books: results.append({'title': book.title, 'type': 'ספר שלם', 'icon': 'bi-journal-bookmark-fill', 'url': reverse('articles:book_detail', args=[book.id])})
-    for article in articles: results.append({'title': article.title, 'type': 'מאמר', 'icon': 'bi-file-earmark-text', 'url': reverse('articles:detail', args=[article.id])})
+    for article in articles: results.append({'title': article.title, 'type': 'מאמר', 'icon': 'bi-file-earmark-text', 'url': reverse('articles:detail', args=[article.slug])})
         
     cache.set(cache_key, results, timeout=300)
     return JsonResponse({'results': results})
@@ -929,7 +929,7 @@ def ai_open_search(request):
             results.append({
                 'title': get_item_title(article),
                 'type': 'Article',
-                'url': request.build_absolute_uri(reverse('articles:detail', args=[article.id])),
+                'url': request.build_absolute_uri(reverse('articles:detail', args=[article.slug])),
                 'content_snippet': get_smart_content(get_item_text(article), words, max_chars=1500)
             })
             
