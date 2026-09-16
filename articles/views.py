@@ -651,39 +651,17 @@ def article_list(request):
     })
 
 def article_detail(request, slug):
-    # 1. ניסיון חיפוש מדויק לפי סלאג
-    article = Article.objects.filter(slug=slug, is_published=True).first()
+    # אם הקישור הוא מזהה מספרי ישן (ID)
+    if str(slug).isdigit():
+        # מחפש את המאמר רק אם הוא קיים במסד הנתונים
+        article = get_object_or_404(Article, pk=int(slug), is_published=True)
+        # אם קיים - מפנה אותו ישר לכתובת החדשה בעברית
+        return redirect('articles:detail', slug=article.slug, permanent=True)
     
-    # 2. אם לא נמצא, בדיקה אם זה מזהה מספרי (ID) ישן
-    if not article and str(slug).isdigit():
-        article = Article.objects.filter(pk=int(slug), is_published=True).first()
-        
-    # 3. אם עדיין לא נמצא (קישור ישן מגוגל שהשתנה או נמחק)
-    if not article:
-        clean_query = str(slug).replace('-', ' ').replace('_', ' ').strip()
-        clean_query = re.sub(r'[^\w\sא-ת]', '', clean_query)
-        
-        words = [w for w in clean_query.split() if len(w) > 0]
-        matched_article = None
-        
-        if words:
-            for word in words:
-                if len(word) > 1:
-                    matched_article = Article.objects.filter(is_published=True).filter(
-                        Q(title__icontains=word) | Q(slug__icontains=word)
-                    ).first()
-                    if matched_article:
-                        break
-        
-        # אם נמצא מאמר קרוב - מפנה אליו ישירות
-        if matched_article:
-            return redirect('articles:detail', slug=matched_article.slug, permanent=True)
-        
-        # פתרון SEO חכם: אם המאמר הספציפי לא נמצא, שולחים את הגולש ישירות לתוצאות החיפוש באתר עם מילות המפתח מהקישור!
-        search_url = reverse('articles:list') + f"?q={urllib.parse.quote(clean_query)}"
-        return redirect(search_url)
-
+    # אם זה סלאג רגיל - מציג את המאמר או זורק 404 יוקרתי אם הוא לא קיים
+    article = get_object_or_404(Article, slug=slug, is_published=True)
     return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
+
 
 @login_required
 def article_create(request):
@@ -699,11 +677,8 @@ def article_create(request):
 @login_required
 def article_edit(request, slug):
     if str(slug).isdigit():
-        try:
-            article = Article.objects.get(pk=int(slug))
-            return redirect('articles:edit', slug=article.slug, permanent=True)
-        except Article.DoesNotExist:
-            return redirect('articles:articles_index')
+        article = get_object_or_404(Article, pk=int(slug))
+        return redirect('articles:edit', slug=article.slug, permanent=True)
         
     article = get_object_or_404(Article, slug=slug)
     if request.method == 'POST':
@@ -718,11 +693,8 @@ def article_edit(request, slug):
 @login_required
 def article_delete(request, slug):
     if str(slug).isdigit():
-        try:
-            article = Article.objects.get(pk=int(slug))
-            return redirect('articles:delete', slug=article.slug, permanent=True)
-        except Article.DoesNotExist:
-            return redirect('articles:articles_index')
+        article = get_object_or_404(Article, pk=int(slug))
+        return redirect('articles:delete', slug=article.slug, permanent=True)
         
     article = get_object_or_404(Article, slug=slug)
     if request.method == 'POST': article.delete()
