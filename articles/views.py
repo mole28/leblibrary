@@ -651,20 +651,33 @@ def article_list(request):
     })
 
 def article_detail(request, slug):
-    # --- מנגנון ניתוב חכם לקישורים ישנים מבוססי מספר (ID) ---
-    if str(slug).isdigit():
-        try:
-            article = Article.objects.get(pk=int(slug), is_published=True)
-            # אם המאמר קיים - מפנה אותו לכתובת החדשה בעברית
-            return redirect('articles:detail', slug=article.slug, permanent=True)
-        except Article.DoesNotExist:
-            # אם המאמר נמחק ולא קיים כרגע - מפנה לאינדקס המאמרים במקום להציג שגיאה 404
-            return redirect('articles:articles_index')
-    # -----------------------------------------------------
+    # 1. ניסיון חיפוש מדויק לפי סלאג קיים
+    article = Article.objects.filter(slug=slug, is_published=True).first()
     
-    article = get_object_or_404(Article, slug=slug, is_published=True)
-    return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
+    # 2. אם לא נמצא והקישור הוא מספר (מזהה ישן)
+    if not article and str(slug).isdigit():
+        article = Article.objects.filter(pk=int(slug), is_published=True).first()
+        
+    # 3. אם עדיין לא נמצא (קישור ישן מגוגל עם שינויי טקסט/סלאג שנמחק)
+    if not article:
+        # חילוץ מילות מפתח מתוך הקישור שנלחץ (החלפת מקפים ברווחים)
+        clean_query = str(slug).replace('-', ' ').strip()
+        words = [w for w in clean_query.split() if len(w) > 1]
+        
+        if words:
+            # חיפוש חכם במאמרים הקיימים אחר המילה הראשונה או המשמעותית ביותר
+            matched_article = Article.objects.filter(is_published=True).filter(
+                Q(title__icontains=words[0]) | Q(slug__icontains=words[0])
+            ).first()
+            
+            if matched_article:
+                # הפניה אוטומטית קבועה (301) ישר למאמר הנכון שקיים באתר!
+                return redirect('articles:detail', slug=matched_article.slug, permanent=True)
+        
+        # אם אין שום התאמה כלל, מפנה לאינדקס המאמרים במקום שגיאה
+        return redirect('articles:articles_index')
 
+    return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
 
 @login_required
 def article_create(request):
