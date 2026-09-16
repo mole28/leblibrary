@@ -658,14 +658,14 @@ def article_detail(request, slug):
             # אם המאמר קיים - מעביר אותו מיד לכתובת החדשה בעברית
             return redirect('articles:detail', slug=article.slug, permanent=True)
         else:
-            # אם המאמר לא קיים - הפניה ישירה 100% לעמוד המאמרים ולא לדף הבית
-            return redirect('/articles/')
+            # אם המאמר לא קיים במסד הנתונים - מפנה בצורה חלקה לעמוד הבית
+            return redirect('/')
     
     # טיפול בסלאג טקסטואלי
     article = Article.objects.filter(slug=slug).first()
     if not article:
-        # אם הסלאג לא קיים - הפניה ישירה לעמוד המאמרים
-        return redirect('/articles/')
+        # אם הסלאג לא קיים - מפנה בצורה חלקה לעמוד הבית
+        return redirect('/')
         
     return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
 
