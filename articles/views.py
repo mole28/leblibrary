@@ -1257,7 +1257,17 @@ def generate_article_audio_background(article_id):
 @receiver(post_save, sender=Article)
 def trigger_article_audio_pregeneration(sender, instance, created, **kwargs):
     if instance.is_published:
-        # שיפור בטוח מס' 3: שימוש ב-on_commit כדי למנוע קריסה של תהליכון
+        # פתרון אוטומטי: מוחק את קובץ השמע הישן בכל פעם ששומרים/עורכים מאמר 
+        # כדי להכריח את המערכת להקליט מחדש את התוכן המעודכן
+        base_media = getattr(settings, 'MEDIA_ROOT', os.path.join(settings.BASE_DIR, 'media'))
+        file_path = os.path.join(base_media, 'audio', f"article_{instance.id}.mp3")
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass
+                
+        # יצירת ההקלטה החדשה ברקע מיד לאחר המחיקה
         transaction.on_commit(lambda: threading.Thread(target=generate_article_audio_background, args=(instance.id,)).start())
 
 def get_article_audio(request, identifier):
