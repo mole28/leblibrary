@@ -650,24 +650,39 @@ def article_list(request):
         'schema_json_ld': get_base_schema_json()
     })
 
+from django.http import Http404
+
 def article_detail(request, slug):
-    # טיפול במזהה מספרי ישן (ID)
-    if str(slug).isdigit():
-        article = Article.objects.filter(pk=int(slug)).first()
-        if article:
-            # אם המאמר קיים - מעביר אותו מיד לכתובת החדשה בעברית
-            return redirect('articles:detail', slug=article.slug, permanent=True)
-        else:
-            # אם המאמר לא קיים במסד הנתונים - מפנה בצורה חלקה לעמוד הבית
-            return redirect('/')
-    
-    # טיפול בסלאג טקסטואלי
+    # 1. חיפוש מדויק לפי הסלאג הנוכחי
     article = Article.objects.filter(slug=slug).first()
-    if not article:
-        # אם הסלאג לא קיים - מפנה בצורה חלקה לעמוד הבית
-        return redirect('/')
+    
+    # 2. אם לא נמצא, בדיקה אם זה מזהה מספרי (ID) ישן
+    if not article and str(slug).isdigit():
+        article = Article.objects.filter(pk=int(slug)).first()
         
-    return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
+    # 3. אם עדיין לא נמצא (זו כתובת ישנה מגוגל עם טקסט ישן כמו תקיעה-בשבת-ר-ה)
+    if not article:
+        clean_query = str(slug).replace('-', ' ').replace('_', ' ').strip()
+        words = [w for w in clean_query.split() if len(w) > 1]
+        
+        if words:
+            # חיפוש חכם של המאמר הנכון לפי מילות מפתח מתוך הכתובת הישנה של גוגל
+            for word in words:
+                matched = Article.objects.filter(
+                    Q(title__icontains=word) | Q(slug__icontains=word)
+                ).first()
+                if matched:
+                    article = matched
+                    break
+                    
+    # 4. אם מצאנו את המאמר באחת מהדרכים - מבצעים הפניית 301 קבועה לכתובת החדשה הנכונה!
+    if article:
+        if article.slug != slug:
+            return redirect('articles:detail', slug=article.slug, permanent=True)
+        return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
+        
+    # 5. רק אם באמת אין שום קשר ושום מאמר תואם
+    raise Http404("Article not found")
 
 
 @login_required
