@@ -653,36 +653,42 @@ def article_list(request):
 from django.http import Http404
 
 def article_detail(request, slug):
-    # 1. חיפוש מדויק לפי הסלאג הנוכחי
+    # 1. ניסיון חיפוש מדויק לפי סלאג קיים
     article = Article.objects.filter(slug=slug).first()
     
-    # 2. אם לא נמצא, בדיקה אם זה מזהה מספרי (ID) ישן
+    # 2. אם לא נמצא, בדיקה האם מדובר במזהה מספרי (ID) ישן
     if not article and str(slug).isdigit():
         article = Article.objects.filter(pk=int(slug)).first()
-        
-    # 3. אם עדיין לא נמצא (זו כתובת ישנה מגוגל עם טקסט ישן כמו תקיעה-בשבת-ר-ה)
+        if article:
+            return redirect('articles:detail', slug=article.slug, permanent=True)
+            
+    # 3. פתרון חכם לקישורים ישנים/שגויים של גוגל (השוואת מילות מפתח מתוך הכתובת הישנה)
     if not article:
         clean_query = str(slug).replace('-', ' ').replace('_', ' ').strip()
         words = [w for w in clean_query.split() if len(w) > 1]
         
         if words:
-            # חיפוש חכם של המאמר הנכון לפי מילות מפתח מתוך הכתובת הישנה של גוגל
-            for word in words:
-                matched = Article.objects.filter(
-                    Q(title__icontains=word) | Q(slug__icontains=word)
-                ).first()
-                if matched:
-                    article = matched
-                    break
-                    
-    # 4. אם מצאנו את המאמר באחת מהדרכים - מבצעים הפניית 301 קבועה לכתובת החדשה הנכונה!
+            best_match = None
+            max_matches = 0
+            for art in Article.objects.all():
+                # ספירת כמה מילות מפתח מהכתובת הישנה מופיעות בכותרת או בסלאג של המאמר
+                matches = sum(1 for w in words if w in art.title or w in art.slug)
+                if matches > max_matches:
+                    max_matches = matches
+                    best_match = art
+            
+            # אם נמצאה התאמה טובה - מפנה את גוגל והגולש ישר למאמר הנכון!
+            if best_match and max_matches > 0:
+                return redirect('articles:detail', slug=best_match.slug, permanent=True)
+
+    # 4. אם המאמר נמצא לפי סלאג מדויק
     if article:
         if article.slug != slug:
             return redirect('articles:detail', slug=article.slug, permanent=True)
         return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
         
-    # 5. רק אם באמת אין שום קשר ושום מאמר תואם
-    raise Http404("Article not found")
+    # 5. ברירת מחדל נקייה למניעת שגיאות קריסה
+    return redirect('/')
 
 
 @login_required
