@@ -651,31 +651,37 @@ def article_list(request):
     })
 
 def article_detail(request, slug):
-    # 1. ניסיון חיפוש מדויק לפי סלאג קיים
+    # 1. ניסיון חיפוש מדויק לפי סלאג
     article = Article.objects.filter(slug=slug, is_published=True).first()
     
-    # 2. אם לא נמצא והקישור הוא מספר (מזהה ישן)
+    # 2. אם לא נמצא, בדיקה אם זה מזהה מספרי (ID) ישן
     if not article and str(slug).isdigit():
         article = Article.objects.filter(pk=int(slug), is_published=True).first()
         
-    # 3. אם עדיין לא נמצא (קישור ישן מגוגל עם שינויי טקסט/סלאג שנמחק)
+    # 3. אם עדיין לא נמצא (קישור ישן מגוגל שהשתנה או נמחק)
     if not article:
-        # חילוץ מילות מפתח מתוך הקישור שנלחץ (החלפת מקפים ברווחים)
-        clean_query = str(slug).replace('-', ' ').strip()
-        words = [w for w in clean_query.split() if len(w) > 1]
+        clean_query = str(slug).replace('-', ' ').replace('_', ' ').strip()
+        clean_query = re.sub(r'[^\w\sא-ת]', '', clean_query)
+        
+        words = [w for w in clean_query.split() if len(w) > 0]
+        matched_article = None
         
         if words:
-            # חיפוש חכם במאמרים הקיימים אחר המילה הראשונה או המשמעותית ביותר
-            matched_article = Article.objects.filter(is_published=True).filter(
-                Q(title__icontains=words[0]) | Q(slug__icontains=words[0])
-            ).first()
-            
-            if matched_article:
-                # הפניה אוטומטית קבועה (301) ישר למאמר הנכון שקיים באתר!
-                return redirect('articles:detail', slug=matched_article.slug, permanent=True)
+            for word in words:
+                if len(word) > 1:
+                    matched_article = Article.objects.filter(is_published=True).filter(
+                        Q(title__icontains=word) | Q(slug__icontains=word)
+                    ).first()
+                    if matched_article:
+                        break
         
-        # אם אין שום התאמה כלל, מפנה לאינדקס המאמרים במקום שגיאה
-        return redirect('articles:articles_index')
+        # אם נמצא מאמר קרוב - מפנה אליו ישירות
+        if matched_article:
+            return redirect('articles:detail', slug=matched_article.slug, permanent=True)
+        
+        # פתרון SEO חכם: אם המאמר הספציפי לא נמצא, שולחים את הגולש ישירות לתוצאות החיפוש באתר עם מילות המפתח מהקישור!
+        search_url = reverse('articles:list') + f"?q={urllib.parse.quote(clean_query)}"
+        return redirect(search_url)
 
     return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
 
