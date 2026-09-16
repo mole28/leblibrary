@@ -49,7 +49,7 @@ urlpatterns = [
     path('api/search-acronyms/', views.search_acronyms_api, name='search_acronyms_api'),
     
     # API הקראה קולית (נשאר עם ID לטובת מניעת שבירת נגני שמע ב-JS)
-    path('api/audio/article/<int:article_id>/', views.get_article_audio, name='get_article_audio'),
+    path('api/audio/article/<str:identifier>/', views.get_article_audio, name='get_article_audio'),
     path('api/audio/book/<int:book_id>/', views.get_book_audio, name='get_book_audio'),
     
     # ==========================

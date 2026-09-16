@@ -1260,9 +1260,13 @@ def trigger_article_audio_pregeneration(sender, instance, created, **kwargs):
         # שיפור בטוח מס' 3: שימוש ב-on_commit כדי למנוע קריסה של תהליכון
         transaction.on_commit(lambda: threading.Thread(target=generate_article_audio_background, args=(instance.id,)).start())
 
-def get_article_audio(request, article_id):
+def get_article_audio(request, identifier):
     try:
-        article = Article.objects.get(id=article_id)
+        # תמיכה חכמה: בודק אם קיבלנו מספר (מהמערכת הישנה) או טקסט בעברית (מהמערכת החדשה)
+        if str(identifier).isdigit():
+            article = Article.objects.get(id=int(identifier))
+        else:
+            article = Article.objects.get(slug=identifier)
     except Article.DoesNotExist:
         return JsonResponse({'error': 'Article not found'}, status=404)
 
@@ -1270,6 +1274,7 @@ def get_article_audio(request, article_id):
     audio_dir = os.path.join(base_media, 'audio')
     os.makedirs(audio_dir, exist_ok=True)
     
+    # חשוב: שומרים את הקובץ עם ה-ID המספרי כדי למנוע באגים של עברית בשרת הלינוקס
     file_name = f"article_{article.id}.mp3"
     file_path = os.path.join(audio_dir, file_name)
     media_url = getattr(settings, 'MEDIA_URL', '/media/')
@@ -1299,6 +1304,7 @@ def get_article_audio(request, article_id):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 
+    # מחזיר תשובת JSON סטנדרטית כמו שהיה פעם
     return JsonResponse({'audio_url': audio_url})
 
 def get_book_audio(request, book_id):
