@@ -655,17 +655,17 @@ def article_detail(request, slug):
     if str(slug).isdigit():
         article = Article.objects.filter(pk=int(slug)).first()
         if article:
-            # אם המאמר קיים במסד הנתונים - מעביר אותו מיד לכתובת החדשה בעברית
+            # אם המאמר קיים - מעביר אותו מיד לכתובת החדשה בעברית
             return redirect('articles:detail', slug=article.slug, permanent=True)
         else:
-            # אם המאמר נמחק/לא קיים - מפנה ישירות לעמוד רשימת המאמרים (במקום שגיאה או דף הבית)
-            return redirect('articles:list')
+            # אם המאמר לא קיים - הפניה ישירה 100% לעמוד המאמרים ולא לדף הבית
+            return redirect('/articles/')
     
     # טיפול בסלאג טקסטואלי
     article = Article.objects.filter(slug=slug).first()
     if not article:
-        # אם הסלאג לא קיים - מפנה ישירות לעמוד רשימת המאמרים
-        return redirect('articles:list')
+        # אם הסלאג לא קיים - הפניה ישירה לעמוד המאמרים
+        return redirect('/articles/')
         
     return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
 
