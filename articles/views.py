@@ -655,15 +655,14 @@ from django.http import Http404
 def article_detail(request, slug):
     slug_str = str(slug).strip()
     
-    # מילון הפניות ידני לקישורים ישנים שגוגל מכיר (ניתן להוסיף לכאן בקלות עוד כתובות/מזהים)
+    # מילון הפניות ידני מדויק לכל כתובת/מזהה ישן שגוגל מכיר
     MANUAL_REDIRECTS = {
-        '39': 'תקיעה-בשבת-ראש-השנה',
-        'תקיעה-בשבת-ר-ה': 'תקיעה-בשבת-ראש-השנה',
-        # אפשר להוסיף כאן עוד מפתחות בקלות לפי הצורך:
-        # '40': 'סלאג-של-מאמר-אחר',
+        '39': 'מקור-מנהג-אמירת-הסליחות',  # מזהה 39 שייך למאמר הסליחות שגוגל אינדקס
+        # אפשר להוסיף כאן עוד מפתחות לפי הצורך בעתיד:
+        # 'מספר_ישן': 'סלאג-חדש-בעברית',
     }
     
-    # אם הכתובת נמצאת במילון ההפניות הידני - מפנה מיד לעמוד הנכון!
+    # אם הכתובת/מזהה נמצאים במילון הידני - מפנה מיד למאמר הנכון שלהם!
     if slug_str in MANUAL_REDIRECTS:
         return redirect('articles:detail', slug=MANUAL_REDIRECTS[slug_str], permanent=True)
 
@@ -682,7 +681,7 @@ def article_detail(request, slug):
             return redirect('articles:detail', slug=article.slug, permanent=True)
         return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
         
-    # 4. אם באמת לא קיים כלל
+    # 4. אם המאמר באמת לא קיים כלל
     raise Http404("Article not found")
 
 
