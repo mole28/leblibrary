@@ -657,41 +657,31 @@ from .models import Article
 def article_detail(request, slug):
     slug_str = str(slug).strip()
     
-    # "שוטר התנועה" שלך. 
-    # צד ימין: מה שכתוב בשורת הכתובת כשאתה בא מגוגל. 
-    # צד שמאל: הסלאג החדש והנכון שאליו צריך להגיע.
+    # המילון היחיד שקובע לגבי מספרים ישנים!
     REDIRECTS = {
-        # אם הקישור של סליחות בגוגל מכיל את המספר 39:
-        '39': 'מקור-מנהג-אמירת-הסליחות', 
-        
-        # אם הקישור של תקיעה בשופר בגוגל מכיל מספר אחר (נניח 40, שנה למספר האמיתי שמופיע לך ב-URL):
-        '40': 'תקיעה-בשבת-ראש-השנה',
-        
-        # סלאגים ישנים
+        '39': 'תקיעה-בשבת-ראש-השנה',  # תיקנתי חזרה: 39 זה ראש השנה
         'תקיעה-בשבת-ר-ה': 'תקיעה-בשבת-ראש-השנה',
+        
+        # אם יש לך את המספר של הסליחות מגוגל (למשל 40), שים אותו פה:
+        '40': 'מקור-מנהג-אמירת-הסליחות', 
     }
     
-    # 1. עקיפה קשיחה: אם הכתובת מגוגל נמצאת במילון, זה מפנה מיד ולעולם לא יתבלבל!
+    # 1. בדיקה במילון בלבד! (אם יש מספר ישן, זה הולך ישר למאמר הנכון)
     if slug_str in REDIRECTS:
         target_slug = REDIRECTS[slug_str]
         if slug_str != target_slug:
             return redirect('articles:detail', slug=target_slug, permanent=True)
 
-    # 2. אם זו כניסה רגילה (לא דרך קישור ישן), מחפשים את המאמר לפי הסלאג שלו
+    # 2. חיפוש במסד הנתונים *אך ורק* לפי שם טקסטואלי (סלאג), ללא שום קשר למספרים!
     article = Article.objects.filter(slug=slug_str).first()
     
-    # 3. אם לא מצאנו וזה מספר (שלא נמצא במילון למעלה), נחפש לפי ה-ID החדש
-    if not article and slug_str.isdigit():
-        article = Article.objects.filter(pk=int(slug_str)).first()
-        if article:
-            return redirect('articles:detail', slug=article.slug, permanent=True)
-            
-    # 4. מציג את המאמר
+    # 3. הצגת המאמר (אם נכנסו דרך הכתובת החדשה והנכונה)
     if article:
         return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
         
-    # 5. אם באמת לא קיים כלל
-    raise Http404("המאמר לא נמצא")
+    # 4. אם נכנסת מקישור ישן של גוגל שעוד לא נמצא במילון - הוא לא יזרוק אותך למאמר אקראי, 
+    # אלא יראה לך בדיוק איזה מספר חסר כדי שתוכל להוסיף אותו למילון למעלה.
+    raise Http404(f"הקישור הישן '{slug_str}' לא נמצא במילון ההפניות.")
 
 @login_required
 def article_create(request):
