@@ -655,43 +655,34 @@ from django.http import Http404
 def article_detail(request, slug):
     slug_str = str(slug).strip()
     
-    # 1. חיפוש מדויק לפי הסלאג הנוכחי
+    # מילון הפניות ידני לקישורים ישנים שגוגל מכיר (ניתן להוסיף לכאן בקלות עוד כתובות/מזהים)
+    MANUAL_REDIRECTS = {
+        '39': 'תקיעה-בשבת-ראש-השנה',
+        'תקיעה-בשבת-ר-ה': 'תקיעה-בשבת-ראש-השנה',
+        # אפשר להוסיף כאן עוד מפתחות בקלות לפי הצורך:
+        # '40': 'סלאג-של-מאמר-אחר',
+    }
+    
+    # אם הכתובת נמצאת במילון ההפניות הידני - מפנה מיד לעמוד הנכון!
+    if slug_str in MANUAL_REDIRECTS:
+        return redirect('articles:detail', slug=MANUAL_REDIRECTS[slug_str], permanent=True)
+
+    # 1. חיפוש מדויק לפי הסלאג הנוכחי במסד הנתונים
     article = Article.objects.filter(slug=slug_str).first()
     
-    # 2. בדיקה לפי מזהה מספרי (ID) ישן
+    # 2. חיפוש לפי מזהה מספרי רגיל אם קיים בבסיס הנתונים
     if not article and slug_str.isdigit():
         article = Article.objects.filter(pk=int(slug_str)).first()
         if article:
             return redirect('articles:detail', slug=article.slug, permanent=True)
             
-    # 3. התאמה ישירה ומדויקת לקישורים הישנים של גוגל (כמו תקיעה בשבת ר"ה)
-    if not article:
-        clean_slug = slug_str.replace('-', ' ').replace('_', ' ')
-        if 'תקיעה' in clean_slug and 'שבת' in clean_slug:
-            article = Article.objects.filter(slug='תקיעה-בשבת-ראש-השנה').first()
-            
-    # 4. התאמת מילות מפתח כללית לכל מאמר ישן אחר
-    if not article:
-        clean_slug = slug_str.replace('-', ' ').replace('_', ' ')
-        words = [w for w in clean_slug.split() if len(w) > 1]
-        if words:
-            best_match = None
-            max_score = 0
-            for art in Article.objects.all():
-                score = sum(1 for w in words if w in art.title or w in art.slug)
-                if score > max_score:
-                    max_score = score
-                    best_match = art
-            if best_match and max_score > 0:
-                article = best_match
-
-    # 5. מציאת המאמר והפניה מיידית 301 לעמוד הנכון (העמוד שבתמונה השנייה)
+    # 3. הצגת המאמר אם נמצא
     if article:
         if article.slug != slug_str:
             return redirect('articles:detail', slug=article.slug, permanent=True)
         return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
         
-    # 6. אם המאמר באמת לא קיים כלל
+    # 4. אם באמת לא קיים כלל
     raise Http404("Article not found")
 
 
