@@ -656,34 +656,40 @@ from .models import Article
 
 def article_detail(request, slug):
     slug_str = str(slug).strip()
-    
+
+    # 1. מיפוי ידני קשיח לקישורים הישנים של גוגל
     REDIRECTS = {
-        '39': 'תקיעה-בשבת-ראש-השנה', 
+        '39': 'תקיעה-בשבת-ראש-השנה',
         'תקיעה-בשבת-ר-ה': 'תקיעה-בשבת-ראש-השנה',
         '35': 'מקור-מנהג-אמירת-הסליחות',
-        '36': 'ברכה-בעת-עשיית-מעקה', 
-        
+        '36': 'ברכה-בעת-עשיית-מעקה',
         '37': 'אופן-קריאת-פרשיית-הקללות',
         '41': 'ברכת-חכם-הרזים',
     }
-    
-    # 1. בדיקה במילון הפניות של גוגל
+
+    # אם זו כתובת ישנה של גוגל מהמילון — הפניה מידית
     if slug_str in REDIRECTS:
         target_slug = REDIRECTS[slug_str]
         if slug_str != target_slug:
             return redirect('articles:detail', slug=target_slug, permanent=True)
 
-    # 2. חיפוש טבעי אך ורק לפי טקסט בעברית (הסלאג החדש)
+    # 2. חיפוש ישיר לפי סלאג (טקסט בעברית)
     article = Article.objects.filter(slug=slug_str).first()
-    
-    # 3. הצגת המאמר (אם נכנסו דרך הקישור התקין בעברית)
+
+    # 3. אם לא נמצא לפי סלאג ומדובר במספר (כמו 42) שאינו במילון — חפש לפי ID והפנה לסלאג
+    if not article and slug_str.isdigit():
+        article = Article.objects.filter(pk=int(slug_str)).first()
+        if article and article.slug:
+            return redirect('articles:detail', slug=article.slug, permanent=True)
+
+    # 4. הצגת המאמר
     if article:
-        if article.slug != slug_str:
+        # אם הכתובת אינה תואמת בדיוק לסלאג המוגדר, מבצעים הפניה לסלאג התקין
+        if article.slug and article.slug != slug_str:
             return redirect('articles:detail', slug=article.slug, permanent=True)
         return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
-        
-    # 4. אם נכנסת מקישור ישן של גוגל שעוד לא נמצא במילון - הוא יעצור אותך פה!
-    raise Http404(f"הקישור הישן '{slug_str}' לא נמצא. בדוק את הכתובת למעלה והוסף למילון.")
+
+    raise Http404(f"העמוד '{slug_str}' לא נמצא.")
 
 @login_required
 def article_create(request):
