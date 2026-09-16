@@ -651,8 +651,16 @@ def article_list(request):
     })
 
 def article_detail(request, slug):
+    # --- מנגנון תמיכה לאחור לקישורים מבוססי מספר (ID) ---
+    if slug.isdigit():
+        article = get_object_or_404(Article, pk=int(slug), is_published=True)
+        # מפנה אוטומטית לקישור החדש בעברית עם 301 Permanent Redirect
+        return redirect('articles:detail', slug=article.slug, permanent=True)
+    # -----------------------------------------------------
+    
     article = get_object_or_404(Article, slug=slug, is_published=True)
     return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
+
 
 @login_required
 def article_create(request):
@@ -664,8 +672,14 @@ def article_create(request):
         return redirect('articles:list')
     return render(request, 'articles/article_form.html', {'form': ArticleForm(), 'current_page': 'articles'})
 
+
 @login_required
 def article_edit(request, slug):
+    # תמיכה לאחור בעריכה
+    if slug.isdigit():
+        article = get_object_or_404(Article, pk=int(slug))
+        return redirect('articles:edit', slug=article.slug, permanent=True)
+        
     article = get_object_or_404(Article, slug=slug)
     if request.method == 'POST':
         form = ArticleForm(request.POST, instance=article)
@@ -674,6 +688,18 @@ def article_edit(request, slug):
             ping_indexnow(request.build_absolute_uri(reverse('articles:detail', args=[article.slug])))
         return redirect('articles:detail', slug=article.slug)
     return render(request, 'articles/article_form.html', {'form': ArticleForm(instance=article), 'current_page': 'articles'})
+
+
+@login_required
+def article_delete(request, slug):
+    # תמיכה לאחור במחיקה
+    if slug.isdigit():
+        article = get_object_or_404(Article, pk=int(slug))
+        return redirect('articles:delete', slug=article.slug, permanent=True)
+        
+    article = get_object_or_404(Article, slug=slug)
+    if request.method == 'POST': article.delete()
+    return redirect('articles:list')
 
 @login_required
 def article_delete(request, slug):
