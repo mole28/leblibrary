@@ -657,39 +657,32 @@ from .models import Article
 def article_detail(request, slug):
     slug_str = str(slug).strip()
     
-    # 1. המילון שמגן עלינו מפני הקישורים הישנים של גוגל
+    # המילון בלבד מנהל את המספרים הישנים!
     REDIRECTS = {
         '39': 'תקיעה-בשבת-ראש-השנה', 
         'תקיעה-בשבת-ר-ה': 'תקיעה-בשבת-ראש-השנה',
         '35': 'מקור-מנהג-אמירת-הסליחות',
-        '41': 'ברכת-חכם-הרזים',
         '36': 'ברכה-בעת-עשיית-מעקה', 
-        '37': 'ברכת-חכם-הרזים',
-        '41': 'אופן-קריאת-פרשיית-הקללות',
+        # מחקתי בכוונה את השאר. אנחנו נוסיף אותם רק אחרי שנראה בוודאות מה המספר שלהם.
     }
     
+    # 1. בדיקה במילון הפניות של גוגל
     if slug_str in REDIRECTS:
         target_slug = REDIRECTS[slug_str]
         if slug_str != target_slug:
             return redirect('articles:detail', slug=target_slug, permanent=True)
 
-    # 2. חיפוש טבעי לפי הסלאג (טקסט)
+    # 2. חיפוש טבעי אך ורק לפי טקסט בעברית (הסלאג החדש)
     article = Article.objects.filter(slug=slug_str).first()
     
-    # 3. התיקון למאמרים החדשים: אם האתר שולח מספר (כמו 37 שראינו בתמונה), 
-    # זה ימצא אותו במסד הנתונים ויעביר אותך אוטומטית לכתובת עם הטקסט בעברית!
-    if not article and slug_str.isdigit():
-        article = Article.objects.filter(pk=int(slug_str)).first()
-        if article:
-            return redirect('articles:detail', slug=article.slug, permanent=True)
-            
-    # 4. מציג את המאמר או מחזיר שגיאה
+    # 3. הצגת המאמר (אם נכנסו דרך הקישור התקין בעברית)
     if article:
         if article.slug != slug_str:
             return redirect('articles:detail', slug=article.slug, permanent=True)
         return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
         
-    raise Http404(f"העמוד '{slug_str}' לא נמצא.")
+    # 4. אם נכנסת מקישור ישן של גוגל שעוד לא נמצא במילון - הוא יעצור אותך פה!
+    raise Http404(f"הקישור הישן '{slug_str}' לא נמצא. בדוק את הכתובת למעלה והוסף למילון.")
 
 @login_required
 def article_create(request):
