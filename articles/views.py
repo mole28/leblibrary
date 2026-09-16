@@ -653,42 +653,46 @@ def article_list(request):
 from django.http import Http404
 
 def article_detail(request, slug):
-    # 1. ניסיון חיפוש מדויק לפי סלאג קיים
-    article = Article.objects.filter(slug=slug).first()
+    slug_str = str(slug).strip()
     
-    # 2. אם לא נמצא, בדיקה האם מדובר במזהה מספרי (ID) ישן
-    if not article and str(slug).isdigit():
-        article = Article.objects.filter(pk=int(slug)).first()
+    # 1. חיפוש מדויק לפי הסלאג הנוכחי
+    article = Article.objects.filter(slug=slug_str).first()
+    
+    # 2. בדיקה לפי מזהה מספרי (ID) ישן
+    if not article and slug_str.isdigit():
+        article = Article.objects.filter(pk=int(slug_str)).first()
         if article:
             return redirect('articles:detail', slug=article.slug, permanent=True)
             
-    # 3. פתרון חכם לקישורים ישנים/שגויים של גוגל (השוואת מילות מפתח מתוך הכתובת הישנה)
+    # 3. התאמה ישירה ומדויקת לקישורים הישנים של גוגל (כמו תקיעה בשבת ר"ה)
     if not article:
-        clean_query = str(slug).replace('-', ' ').replace('_', ' ').strip()
-        words = [w for w in clean_query.split() if len(w) > 1]
-        
+        clean_slug = slug_str.replace('-', ' ').replace('_', ' ')
+        if 'תקיעה' in clean_slug and 'שבת' in clean_slug:
+            article = Article.objects.filter(slug='תקיעה-בשבת-ראש-השנה').first()
+            
+    # 4. התאמת מילות מפתח כללית לכל מאמר ישן אחר
+    if not article:
+        clean_slug = slug_str.replace('-', ' ').replace('_', ' ')
+        words = [w for w in clean_slug.split() if len(w) > 1]
         if words:
             best_match = None
-            max_matches = 0
+            max_score = 0
             for art in Article.objects.all():
-                # ספירת כמה מילות מפתח מהכתובת הישנה מופיעות בכותרת או בסלאג של המאמר
-                matches = sum(1 for w in words if w in art.title or w in art.slug)
-                if matches > max_matches:
-                    max_matches = matches
+                score = sum(1 for w in words if w in art.title or w in art.slug)
+                if score > max_score:
+                    max_score = score
                     best_match = art
-            
-            # אם נמצאה התאמה טובה - מפנה את גוגל והגולש ישר למאמר הנכון!
-            if best_match and max_matches > 0:
-                return redirect('articles:detail', slug=best_match.slug, permanent=True)
+            if best_match and max_score > 0:
+                article = best_match
 
-    # 4. אם המאמר נמצא לפי סלאג מדויק
+    # 5. מציאת המאמר והפניה מיידית 301 לעמוד הנכון (העמוד שבתמונה השנייה)
     if article:
-        if article.slug != slug:
+        if article.slug != slug_str:
             return redirect('articles:detail', slug=article.slug, permanent=True)
         return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
         
-    # 5. ברירת מחדל נקייה למניעת שגיאות קריסה
-    return redirect('/')
+    # 6. אם המאמר באמת לא קיים כלל
+    raise Http404("Article not found")
 
 
 @login_required
