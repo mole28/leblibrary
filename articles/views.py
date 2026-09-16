@@ -651,25 +651,38 @@ def article_list(request):
     })
 
 from django.http import Http404
+from django.shortcuts import get_object_or_404, redirect, render
+from .models import Article
 
 def article_detail(request, slug):
     slug_str = str(slug).strip()
     
-    # מילון הפניות ידני מדויק לכל כתובת/מזהה ישן שגוגל מכיר
+    # מילון הפניות ידני מוחלט וקשיח (מבטיח שכל כתובת ישנה מגיעה בדיוק למאמר הנכון שלה)
     MANUAL_REDIRECTS = {
-        '39': 'מקור-מנהג-אמירת-הסליחות',  # מזהה 39 שייך למאמר הסליחות שגוגל אינדקס
-        # אפשר להוסיף כאן עוד מפתחות לפי הצורך בעתיד:
-        # 'מספר_ישן': 'סלאג-חדש-בעברית',
+        # סלאגים או מזהים ישנים של ראש השנה -> למאמר ראש השנה
+        'תקיעה-בשבת-ר-ה': 'תקיעה-בשבת-ראש-השנה',
+        '39': 'תקיעה-בשבת-ראש-השנה', # עדכן כאן את המספר המדויק אם 39 שייך לראש השנה או לסליחות
+        
+        # סלאגים או מזהים ישנים של סליחות -> למאמר סליחות
+        'מקור-מנהג-אמירת-הסליחות': 'מקור-מנהג-אמירת-הסליחות',
+        # אם יש מזהה מספרי ישן של סליחות (למשל 40 או משהו אחר), תוסיף אותו לכאן:
+        # '40': 'מקור-מנהג-אמירת-הסליחות',
     }
     
-    # אם הכתובת/מזהה נמצאים במילון הידני - מפנה מיד למאמר הנכון שלהם!
+    # אם הכתובת נמצאת במילון הידני
     if slug_str in MANUAL_REDIRECTS:
-        return redirect('articles:detail', slug=MANUAL_REDIRECTS[slug_str], permanent=True)
+        target_slug = MANUAL_REDIRECTS[slug_str]
+        # אם הגולש כבר בכתובת החדשה והנכונה, הצג את המאמר
+        if slug_str == target_slug:
+            article = get_object_or_404(Article, slug=target_slug)
+            return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
+        # אחרת, בצע הפניה 301 מדויקת ליעד הנכון
+        return redirect('articles:detail', slug=target_slug, permanent=True)
 
-    # 1. חיפוש מדויק לפי הסלאג הנוכחי במסד הנתונים
+    # 1. חיפוש מדויק רגיל לפי סלאג במסד הנתונים
     article = Article.objects.filter(slug=slug_str).first()
     
-    # 2. חיפוש לפי מזהה מספרי רגיל אם קיים בבסיס הנתונים
+    # 2. בדיקה לפי מזהה מספרי רגיל אם קיים
     if not article and slug_str.isdigit():
         article = Article.objects.filter(pk=int(slug_str)).first()
         if article:
@@ -681,7 +694,7 @@ def article_detail(request, slug):
             return redirect('articles:detail', slug=article.slug, permanent=True)
         return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
         
-    # 4. אם המאמר באמת לא קיים כלל
+    # 4. אם לא קיים כלל
     raise Http404("Article not found")
 
 
