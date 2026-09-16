@@ -650,53 +650,48 @@ def article_list(request):
         'schema_json_ld': get_base_schema_json()
     })
 
-from django.db.models import Q
 from django.http import Http404
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import redirect, render
 from .models import Article
 
 def article_detail(request, slug):
     slug_str = str(slug).strip()
     
-    # מיפוי ידני חד-משמעי לכתובות וישנות של גוגל (אין התנגשויות)
-    EXPLICIT_REDIRECTS = {
-        '39': 'מקור-מנהג-אמירת-הסליחות',          # מזהה 39 בגוגל מוביל לסליחות!
-        'תקיעה-בשבת-ר-ה': 'תקיעה-בשבת-ראש-השנה',  # הסלאג הישן של ראש השנה מוביל לראש השנה
+    # "שוטר התנועה" שלך. 
+    # צד ימין: מה שכתוב בשורת הכתובת כשאתה בא מגוגל. 
+    # צד שמאל: הסלאג החדש והנכון שאליו צריך להגיע.
+    REDIRECTS = {
+        # אם הקישור של סליחות בגוגל מכיל את המספר 39:
+        '39': 'מקור-מנהג-אמירת-הסליחות', 
+        
+        # אם הקישור של תקיעה בשופר בגוגל מכיל מספר אחר (נניח 40, שנה למספר האמיתי שמופיע לך ב-URL):
+        '40': 'תקיעה-בשבת-ראש-השנה',
+        
+        # סלאגים ישנים
+        'תקיעה-בשבת-ר-ה': 'תקיעה-בשבת-ראש-השנה',
     }
     
-    if slug_str in EXPLICIT_REDIRECTS:
-        target_slug = EXPLICIT_REDIRECTS[slug_str]
-        article = Article.objects.filter(slug=target_slug).first()
-        if article:
-            if article.slug != slug_str:
-                return redirect('articles:detail', slug=article.slug, permanent=True)
-            return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
+    # 1. עקיפה קשיחה: אם הכתובת מגוגל נמצאת במילון, זה מפנה מיד ולעולם לא יתבלבל!
+    if slug_str in REDIRECTS:
+        target_slug = REDIRECTS[slug_str]
+        if slug_str != target_slug:
+            return redirect('articles:detail', slug=target_slug, permanent=True)
 
-    # 1. חיפוש מדויק לפי הסלאג הנוכחי במסד הנתונים
+    # 2. אם זו כניסה רגילה (לא דרך קישור ישן), מחפשים את המאמר לפי הסלאג שלו
     article = Article.objects.filter(slug=slug_str).first()
     
-    # 2. חיפוש לפי מזהה מספרי רגיל (אך לא 39 שכבר טופל למעלה)
-    if not article and slug_str.isdigit() and slug_str != '39':
+    # 3. אם לא מצאנו וזה מספר (שלא נמצא במילון למעלה), נחפש לפי ה-ID החדש
+    if not article and slug_str.isdigit():
         article = Article.objects.filter(pk=int(slug_str)).first()
         if article:
             return redirect('articles:detail', slug=article.slug, permanent=True)
             
-    # 3. גיבוי חכם למניעת שגיאות 404 למאמרים מרכזיים (אם הסלאג שונה במעט)
-    if not article:
-        clean = slug_str.replace('-', ' ').replace('_', '')
-        if 'תקיעה' in clean or 'ראש' in clean:
-            article = Article.objects.filter(Q(title__icontains='ראש') | Q(slug__icontains='ראש')).first()
-        elif 'סליחות' in clean:
-            article = Article.objects.filter(Q(title__icontains='סליחות') | Q(slug__icontains='סליחות')).first()
-
-    # 4. הצגה או הפניה סופית
+    # 4. מציג את המאמר
     if article:
-        if article.slug != slug_str:
-            return redirect('articles:detail', slug=article.slug, permanent=True)
         return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
         
-    raise Http404("Article not found")
-
+    # 5. אם באמת לא קיים כלל
+    raise Http404("המאמר לא נמצא")
 
 @login_required
 def article_create(request):
