@@ -657,26 +657,18 @@ from .models import Article
 def article_detail(request, slug):
     slug_str = str(slug).strip()
     
-    # מילון הפניות ידני מדויק שמתקן את ההיפוך:
-    MANUAL_REDIRECTS = {
-        '39': 'תקיעה-בשבת-ראש-השנה',          # מזהה 39 בגוגל שייך לראש השנה!
-        'תקיעה-בשבת-ר-ה': 'תקיעה-בשבת-ראש-השנה',  # הסלאג הישן של ראש השנה
-        
-        # אם יש מזהה או כתובת ישנה של הסליחות שגוגל שמר, תוסיף אותם לכאן:
-        # 'מספר_או_כתובת_של_סליחות': 'מקור-מנהג-אמירת-הסליחות',
+    # מילון סלאגים ישנים בלבד (בלי מספרים שעלולים להתנגש במסד הנתונים)
+    MANUAL_SLUG_REDIRECTS = {
+        'תקיעה-בשבת-ר-ה': 'תקיעה-בשבת-ראש-השנה',  # הסלאג המקוצר הישן של ראש השנה
     }
     
-    if slug_str in MANUAL_REDIRECTS:
-        target_slug = MANUAL_REDIRECTS[slug_str]
-        if slug_str == target_slug:
-            article = get_object_or_404(Article, slug=target_slug)
-            return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
-        return redirect('articles:detail', slug=target_slug, permanent=True)
+    if slug_str in MANUAL_SLUG_REDIRECTS:
+        return redirect('articles:detail', slug=MANUAL_SLUG_REDIRECTS[slug_str], permanent=True)
 
-    # 1. חיפוש מדויק לפי הסלאג הנוכחי במסד הנתונים
+    # 1. חיפוש מדויק לפי הסלאג הנוכחי במסד הנתונים (עובד מושלם עבור הסליחות ועבור ראש השנה)
     article = Article.objects.filter(slug=slug_str).first()
     
-    # 2. חיפוש לפי מזהה מספרי רגיל אם קיים
+    # 2. חיפוש לפי מזהה מספרי טבעי במסד הנתונים (אם מישהו נכנס עם ID אמיתי שקיים כרגע)
     if not article and slug_str.isdigit():
         article = Article.objects.filter(pk=int(slug_str)).first()
         if article:
