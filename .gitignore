@@ -7,4 +7,8 @@ staticfiles/
 venv/
 env/
 test_api.py
+chroma_db/
+*.docx
+*.txt
+!requirements.txt
 datadump.json
