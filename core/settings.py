@@ -23,8 +23,15 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-5^ip_@z$(vgsa#06rkrt$
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False # שונה ל-False כדי להציג את עמודי השגיאה המעוצבים
 
-# רשימת המארחים המורשים כוללת את הדומיין שלך וכתובת ה-IP
-ALLOWED_HOSTS = ['leblibrary.co.il', 'www.leblibrary.co.il', '5.75.224.152', '127.0.0.1', 'localhost']
+# רשימת המארחים המורשים מעודכנת עם הדומיין, ה-IP ומארח ה-Sentry
+ALLOWED_HOSTS = [
+    'leblibrary.co.il',
+    'www.leblibrary.co.il',
+    '5.75.224.152',
+    'static.152.224.75.5.clients.your-server.de',  # נוסף בעקבות דיווח Sentry
+    '127.0.0.1',
+    'localhost'
+]
 
 # Application definition
 INSTALLED_APPS = [
