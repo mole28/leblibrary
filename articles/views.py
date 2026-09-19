@@ -130,14 +130,11 @@ def int_to_hebrew(num):
 def translate_haftarah(text):
     if not text: return ""
     
-    # 1. חיתוך כל הטקסט באנגלית (כל מה שמופיע אחרי הקו האנכי)
+    # 1. חיתוך כל מה שמופיע אחרי הקו האנכי (|)
     if '|' in text:
         text = text.split('|')[0].strip()
-        
-    # 2. ניקוי שאריות באנגלית במידה ונשארו
-    text = re.sub(r'[a-zA-Z]', '', text).strip()
-    text = text.replace('()', '').replace('( )', '').strip()
 
+    # 2. קודם כל לתרגם את שמות הספרים מאנגלית לעברית!
     books = {
         'Genesis': 'בראשית', 'Exodus': 'שמות', 'Leviticus': 'ויקרא', 'Numbers': 'במדבר', 'Deuteronomy': 'דברים',
         'Joshua': 'יהושע', 'Judges': 'שופטים', 'I Samuel': 'שמואל א', 'II Samuel': 'שמואל ב', 'Samuel': 'שמואל',
@@ -151,14 +148,75 @@ def translate_haftarah(text):
     }
     for eng, heb in books.items():
         text = text.replace(eng, heb)
+
+    # 3. רק עכשיו למחוק שאריות של אותיות באנגלית (אם נשארו כאלו)
+    text = re.sub(r'[a-zA-Z]', '', text).strip()
+    text = text.replace('()', '').replace('( )', '').strip()
         
-    # 3. המרת כל הספרות לאותיות עבריות (גימטריה)
+    # 4. המרת כל הספרות לאותיות עבריות (גימטריה)
     text = re.sub(r'\d+', lambda m: int_to_hebrew(int(m.group())), text)
     
-    # 4. עיצוב הנקודתיים לפסיק רווח (כדי שיראה 'יד, י' במקום 'יד:י')
+    # 5. עיצוב הנקודתיים לפסיק רווח (יד, י)
     text = text.replace(':', ', ')
     
     return text
+
+def get_jewish_calendar_info():
+    today = datetime.date.today()
+    # שיניתי ל-v6 כדי לשבור את הקאש ולהראות לך את התוצאה מיד
+    cache_key = f'jewish_cal_data_v6_{today.strftime("%Y_%m_%d")}'
+    cached_data = cache.get(cache_key)
+    
+    if cached_data:
+        return cached_data
+        
+    cal_data = {'parasha': '', 'haftarah': '', 'holidays': [], 'hebrew_date': ''}
+    
+    try:
+        days_ahead = 5 - today.weekday()
+        if days_ahead < 0:
+            days_ahead += 7
+            
+        next_saturday = today + datetime.timedelta(days=days_ahead)
+        
+        start_date = today.strftime('%Y-%m-%d')
+        end_date = next_saturday.strftime('%Y-%m-%d')
+        
+        # New code for Hebrew date
+        try:
+            date_url = f'https://www.hebcal.com/converter?cfg=json&date={start_date}&g2h=1&strict=1'
+            date_req = urllib.request.Request(date_url, headers={'User-Agent': 'Mozilla/5.0'})
+            date_resp = urllib.request.urlopen(date_req, timeout=5)
+            date_data = json.loads(date_resp.read().decode('utf-8'))
+            cal_data['hebrew_date'] = date_data.get('hebrew', '')
+        except Exception:
+            cal_data['hebrew_date'] = ''
+            
+        url = f'https://www.hebcal.com/hebcal?v=1&cfg=json&geo=IL&lg=he&s=on&maj=on&min=on&start={start_date}&end={end_date}'
+        
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        response = urllib.request.urlopen(req, timeout=5)
+        data = json.loads(response.read().decode('utf-8'))
+        
+        for item in data.get('items', []):
+            cat = item.get('category')
+            hebrew_text = item.get('hebrew', '')
+            
+            if cat == 'parashat':
+                cal_data['parasha'] = hebrew_text
+                leyning = item.get('leyning', {})
+                if 'haftarah' in leyning:
+                    cal_data['haftarah'] = translate_haftarah(leyning.get('haftarah', ''))
+            elif cat in ['holiday', 'roshchodesh', 'fast']:
+                if hebrew_text and hebrew_text not in cal_data['holidays']:
+                    if not re.search('[a-zA-Z]', hebrew_text) and 'מבקרים' not in hebrew_text and 'שבת' not in hebrew_text:
+                        cal_data['holidays'].append(hebrew_text)
+                        
+        cache.set(cache_key, cal_data, 60 * 60 * 24)
+    except Exception as e:
+        pass
+        
+    return cal_data
 
 def get_jewish_calendar_info():
     today = datetime.date.today()
