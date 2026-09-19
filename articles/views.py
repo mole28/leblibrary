@@ -106,8 +106,38 @@ def ratelimit(rate=30, timeout=60):
         return _wrapped_view
     return decorator
 
+def int_to_hebrew(num):
+    """ממיר מספרים לאותיות עבריות (יד, טו, כז וכו')"""
+    if num <= 0: return str(num)
+    hebrew_letters = {
+        400: 'ת', 300: 'ש', 200: 'ר', 100: 'ק',
+        90: 'צ', 80: 'פ', 70: 'ע', 60: 'ס', 50: 'נ', 40: 'מ', 30: 'ל', 20: 'כ', 10: 'י',
+        9: 'ט', 8: 'ח', 7: 'ז', 6: 'ו', 5: 'ה', 4: 'ד', 3: 'ג', 2: 'ב', 1: 'א'
+    }
+    result = ""
+    # טיפול במספרים 15 ו-16 כדי למנוע כתיבת שם שמים
+    rem = num % 100
+    if rem in (15, 16):
+        result += 'טו' if rem == 15 else 'טז'
+        num -= rem
+    
+    for val in hebrew_letters.keys():
+        while num >= val:
+            result += hebrew_letters[val]
+            num -= val
+    return result
+
 def translate_haftarah(text):
     if not text: return ""
+    
+    # 1. חיתוך כל הטקסט באנגלית (כל מה שמופיע אחרי הקו האנכי)
+    if '|' in text:
+        text = text.split('|')[0].strip()
+        
+    # 2. ניקוי שאריות באנגלית במידה ונשארו
+    text = re.sub(r'[a-zA-Z]', '', text).strip()
+    text = text.replace('()', '').replace('( )', '').strip()
+
     books = {
         'Genesis': 'בראשית', 'Exodus': 'שמות', 'Leviticus': 'ויקרא', 'Numbers': 'במדבר', 'Deuteronomy': 'דברים',
         'Joshua': 'יהושע', 'Judges': 'שופטים', 'I Samuel': 'שמואל א', 'II Samuel': 'שמואל ב', 'Samuel': 'שמואל',
@@ -121,11 +151,19 @@ def translate_haftarah(text):
     }
     for eng, heb in books.items():
         text = text.replace(eng, heb)
+        
+    # 3. המרת כל הספרות לאותיות עבריות (גימטריה)
+    text = re.sub(r'\d+', lambda m: int_to_hebrew(int(m.group())), text)
+    
+    # 4. עיצוב הנקודתיים לפסיק רווח (כדי שיראה 'יד, י' במקום 'יד:י')
+    text = text.replace(':', ', ')
+    
     return text
 
 def get_jewish_calendar_info():
     today = datetime.date.today()
-    cache_key = f'jewish_cal_data_v3_{today.strftime("%Y_%m_%d")}'
+    # שינינו כאן ל-v5 כדי לשבור את הקאש הישן ולהכריח את השרת לטעון את העברית!
+    cache_key = f'jewish_cal_data_v5_{today.strftime("%Y_%m_%d")}'
     cached_data = cache.get(cache_key)
     
     if cached_data:
