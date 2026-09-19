@@ -360,6 +360,12 @@
                             <div class="text-center mb-4">
                                 <span class="bg-warning text-dark px-4 py-2 rounded-pill fw-bold fs-6 shadow-sm"><i class="bi bi-book me-2"></i> לוח שנה שבועי</span>
                             </div>
+
+                            {% if jewish_cal.hebrew_date %}
+                            <div class="text-center mb-3">
+                                <span class="text-light fw-bold fs-5">{{ jewish_cal.hebrew_date }}</span>
+                            </div>
+                            {% endif %}
                             
                             {% if jewish_cal %}
                             <div class="bg-white bg-opacity-10 rounded-4 p-4 mb-4 text-center border border-light border-opacity-25 shadow-sm">
@@ -370,7 +376,7 @@
                                 {% if jewish_cal.haftarah %}
                                 <div class="mt-3 pt-3 border-top border-light border-opacity-25">
                                     <p class="text-warning mb-1 small fw-bold">הפטרה:</p>
-                                    <p class="text-white mb-0 fs-6" dir="ltr" style="text-align: center;">{{ jewish_cal.haftarah }}</p>
+                                    <p class="text-white mb-0 fs-6" dir="rtl" style="text-align: center;">{{ jewish_cal.haftarah }}</p>
                                 </div>
                                 {% endif %}
                                 

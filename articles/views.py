@@ -131,7 +131,7 @@ def get_jewish_calendar_info():
     if cached_data:
         return cached_data
         
-    cal_data = {'parasha': '', 'haftarah': '', 'holidays': []}
+    cal_data = {'parasha': '', 'haftarah': '', 'holidays': [], 'hebrew_date': ''}
     
     try:
         days_ahead = 5 - today.weekday()
@@ -143,7 +143,17 @@ def get_jewish_calendar_info():
         start_date = today.strftime('%Y-%m-%d')
         end_date = next_saturday.strftime('%Y-%m-%d')
         
-        url = f'https://www.hebcal.com/hebcal?v=1&cfg=json&geo=IL&lg=h&s=on&maj=on&min=on&start={start_date}&end={end_date}'
+        # New code for Hebrew date
+        try:
+            date_url = f'https://www.hebcal.com/converter?cfg=json&date={start_date}&g2h=1&strict=1'
+            date_req = urllib.request.Request(date_url, headers={'User-Agent': 'Mozilla/5.0'})
+            date_resp = urllib.request.urlopen(date_req, timeout=5)
+            date_data = json.loads(date_resp.read().decode('utf-8'))
+            cal_data['hebrew_date'] = date_data.get('hebrew', '')
+        except Exception:
+            cal_data['hebrew_date'] = ''
+            
+        url = f'https://www.hebcal.com/hebcal?v=1&cfg=json&geo=IL&lg=he&s=on&maj=on&min=on&start={start_date}&end={end_date}'
         
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         response = urllib.request.urlopen(req, timeout=5)
