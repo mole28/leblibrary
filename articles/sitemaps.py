@@ -16,7 +16,7 @@ class BaseSitemap(Sitemap):
         return super().get_urls(page, site=SiteMock(), protocol=self.protocol)
 
     def lastmod(self, obj):
-        """פונקציית lastmod מרכזית שמשמשת את כל המפות באופן אוטומטי"""
+        """פונקציית lastmod בטוחה שבודקת קיום שדות לפני שליפה"""
         if hasattr(obj, 'updated_at') and obj.updated_at:
             return obj.updated_at
         elif hasattr(obj, 'created_at') and obj.created_at:
@@ -43,8 +43,7 @@ class ArticleSitemap(BaseSitemap):
     changefreq = 'daily'
 
     def items(self):
-        # שדרוג: שליפת שדות נדרשים בלבד + מיון מובטח למניעת בעיות פג'ינציה
-        return Article.objects.filter(is_published=True).only('slug', 'updated_at', 'created_at').order_by('-id')
+        return Article.objects.filter(is_published=True).order_by('-id')
 
     def location(self, item):
         try:
@@ -58,8 +57,7 @@ class BookSitemap(BaseSitemap):
     changefreq = 'weekly'
 
     def items(self):
-        # שדרוג: שליפת שדות נדרשים בלבד + מיון מובטח
-        return Book.objects.all().only('pk', 'updated_at', 'created_at').order_by('-pk')
+        return Book.objects.all().order_by('-pk')
 
     def location(self, item):
         try:
