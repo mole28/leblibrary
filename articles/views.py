@@ -763,39 +763,17 @@ from .models import Article
 def article_detail(request, slug):
     slug_str = str(slug).strip()
 
-    # 1. מיפוי ידני קשיח לקישורים הישנים של גוגל
-    REDIRECTS = {
-        '39': 'תקיעה-בשבת-ראש-השנה',
-        'תקיעה-בשבת-ר-ה': 'תקיעה-בשבת-ראש-השנה',
-        '35': 'מקור-מנהג-אמירת-הסליחות',
-        '36': 'ברכה-בעת-עשיית-מעקה',
-        '37': 'אופן-קריאת-פרשיית-הקללות',
-        '41': 'ברכת-חכם-הרזים',
-        '47': 'ברכה-בעת-ראיית-קשת-בענן',
-        '43': 'ברכת-בורא-מאורי-האש-במוצאי-יום-הכיפורים',
-        '46': 'ברכת-עושה-מעשה-בראשית-בראיית-נהרות',
-        '38': 'לקראת-שנת-מעשר-שני-התשפז',
-        '49': 'ברכת-אשר-ברא-צריכה-עשרה',
-    }
-
-    # אם זו כתובת ישנה של גוגל מהמילון — הפניה מידית
-    if slug_str in REDIRECTS:
-        target_slug = REDIRECTS[slug_str]
-        if slug_str != target_slug:
-            return redirect('articles:detail', slug=target_slug, permanent=True)
-
-    # 2. חיפוש ישיר לפי סלאג (טקסט בעברית)
+    # 1. חיפוש ישיר לפי סלאג (טקסט בעברית)
     article = Article.objects.filter(slug=slug_str).first()
 
-    # 3. אם לא נמצא לפי סלאג ומדובר במספר (כמו 42) שאינו במילון — חפש לפי ID והפנה לסלאג
+    # 2. אם לא נמצא לפי סלאג ומדובר במספר — חפש לפי ID (למקרה של ניווט פנימי לפי מספר)
     if not article and slug_str.isdigit():
         article = Article.objects.filter(pk=int(slug_str)).first()
         if article and article.slug:
             return redirect('articles:detail', slug=article.slug, permanent=True)
 
-    # 4. הצגת המאמר
+    # 3. הצגת המאמר (והפניה לסלאג התקין אם הכתובת אינה תואמת בדיוק)
     if article:
-        # אם הכתובת אינה תואמת בדיוק לסלאג המוגדר, מבצעים הפניה לסלאג התקין
         if article.slug and article.slug != slug_str:
             return redirect('articles:detail', slug=article.slug, permanent=True)
         return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
