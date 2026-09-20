@@ -1,6 +1,6 @@
 from django.contrib.sitemaps import Sitemap
 from django.urls import reverse, NoReverseMatch
-from articles.models import Article, Book  # מודל הספרים
+from articles.models import Article, Book
 
 class BaseSitemap(Sitemap):
     """
@@ -14,6 +14,14 @@ class BaseSitemap(Sitemap):
             domain = 'leblibrary.co.il'
             name = 'leblibrary.co.il'
         return super().get_urls(page, site=SiteMock(), protocol=self.protocol)
+
+    def lastmod(self, obj):
+        """פונקציית lastmod מרכזית שמשמשת את כל המפות באופן אוטומטי"""
+        if hasattr(obj, 'updated_at') and obj.updated_at:
+            return obj.updated_at
+        elif hasattr(obj, 'created_at') and obj.created_at:
+            return obj.created_at
+        return None
 
 class StaticViewSitemap(BaseSitemap):
     """מפת אתר לעמודים רגילים שאין להם מודל במסד הנתונים"""
@@ -35,8 +43,8 @@ class ArticleSitemap(BaseSitemap):
     changefreq = 'daily'
 
     def items(self):
-        # שולף אך ורק מאמרים מפורסמים כדי לא לחשוף טיוטות לזוחלים
-        return Article.objects.filter(is_published=True)
+        # שדרוג: שליפת שדות נדרשים בלבד + מיון מובטח למניעת בעיות פג'ינציה
+        return Article.objects.filter(is_published=True).only('slug', 'updated_at', 'created_at').order_by('-id')
 
     def location(self, item):
         try:
@@ -44,33 +52,20 @@ class ArticleSitemap(BaseSitemap):
         except NoReverseMatch:
             return reverse('articles:detail', kwargs={'slug': item.slug})
 
-    def lastmod(self, obj):
-        if hasattr(obj, 'updated_at'):
-            return obj.updated_at
-        elif hasattr(obj, 'created_at'):
-            return obj.created_at
-        return None
-
 class BookSitemap(BaseSitemap):
     """מפת אתר דינמית ששולפת אוטומטית את כל הספרים ממסד הנתונים"""
     priority = 0.8
     changefreq = 'weekly'
 
     def items(self):
-        return Book.objects.all()
+        # שדרוג: שליפת שדות נדרשים בלבד + מיון מובטח
+        return Book.objects.all().only('pk', 'updated_at', 'created_at').order_by('-pk')
 
     def location(self, item):
         try:
             return reverse('book_detail', kwargs={'pk': item.pk})
         except NoReverseMatch:
             return reverse('articles:book_detail', kwargs={'pk': item.pk})
-
-    def lastmod(self, obj):
-        if hasattr(obj, 'updated_at'):
-            return obj.updated_at
-        elif hasattr(obj, 'created_at'):
-            return obj.created_at
-        return None
 
 # =====================================
 # המילון שמאגד את כל מפות האתר
