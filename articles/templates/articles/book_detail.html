@@ -922,5 +922,22 @@
 
         targets.forEach(target => observer.observe(target));
     });
+
+    // --- הוספת הקוד לפתיחת הערות בספר 84 בלשונית חדשה ---
+    document.addEventListener("DOMContentLoaded", function() {
+        if (window.location.pathname.includes('/book/84/')) {
+            // בוחרים אך ורק קישורים פנימיים שמתחילים בסולמית ונמצאים בתוך תוכן הספר עצמו (כדי לא לגעת בתוכן העניינים)
+            const contentLinks = document.querySelectorAll('.article-content a[href^="#"]'); 
+            contentLinks.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href !== '#chapter-625') {
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault(); 
+                        window.open('https://leblibrary.co.il/book/84/#chapter-625', '_blank');
+                    });
+                }
+            });
+        }
+    });
 </script>
 {% endblock %}
