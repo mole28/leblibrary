@@ -19,9 +19,13 @@
         <li class="breadcrumb-item">
             <a href="{% url 'articles:list' %}" class="text-decoration-none text-muted"><i class="bi bi-house-door-fill"></i> ספריית לייבוביץ</a>
         </li>
-        <li class="breadcrumb-item active fw-bold text-dark" aria-current="page">פרשת שבוע</li>
         {% if selected_parasha %}
+        <li class="breadcrumb-item">
+            <a href="/parasha/" class="text-decoration-none text-muted">פרשת שבוע</a>
+        </li>
         <li class="breadcrumb-item active fw-bold" style="color: #a67c52;" aria-current="page">פרשת {{ selected_parasha }}</li>
+        {% else %}
+        <li class="breadcrumb-item active fw-bold text-dark" aria-current="page">פרשת שבוע</li>
         {% endif %}
       </ol>
     </nav>
