@@ -74,9 +74,9 @@
         </div>
     {% endif %}
 
-    <div class="card shadow-sm border-0 reveal-up" style="border-radius: 16px; overflow: hidden;">
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover text-center m-0 parasha-table" style="table-layout: fixed; min-width: 800px;">
+    <div class="card shadow-sm border-0 reveal-up" style="border-radius: 16px; overflow: hidden; background-color: transparent;">
+        <div class="table-responsive" style="border-radius: 16px; background-color: #ffffff;">
+            <table class="table text-center m-0 parasha-table" style="table-layout: fixed; min-width: 800px;">
                 <thead style="background-color: #3f4050; color: white;">
                     <tr>
                         <th class="py-3 fs-5" style="width: 20%;">ספר בראשית</th>
@@ -88,84 +88,84 @@
                 </thead>
                 <tbody class="bg-white">
                     <tr>
-                        <td><a href="?p=בראשית#parasha-articles" class="parasha-link {% if selected_parasha == 'בראשית' %}active{% endif %}">פרשת בראשית<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">א, א - ו, ח</span></a></td>
-                        <td><a href="?p=שמות#parasha-articles" class="parasha-link {% if selected_parasha == 'שמות' %}active{% endif %}">פרשת שמות<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">א, א - ו, א</span></a></td>
-                        <td><a href="?p=ויקרא#parasha-articles" class="parasha-link {% if selected_parasha == 'ויקרא' %}active{% endif %}">פרשת ויקרא<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">א, א - ה, כו</span></a></td>
-                        <td><a href="?p=במדבר#parasha-articles" class="parasha-link {% if selected_parasha == 'במדבר' %}active{% endif %}">פרשת במדבר<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">א, א - ד, כ</span></a></td>
-                        <td><a href="?p=דברים#parasha-articles" class="parasha-link {% if selected_parasha == 'דברים' %}active{% endif %}">פרשת דברים<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">א, א - ג, כב</span></a></td>
+                        <td><a href="?p=בראשית#parasha-articles" class="parasha-link {% if selected_parasha == 'בראשית' %}active{% endif %}">פרשת בראשית<span class="source-range">א, א - ו, ח</span></a></td>
+                        <td><a href="?p=שמות#parasha-articles" class="parasha-link {% if selected_parasha == 'שמות' %}active{% endif %}">פרשת שמות<span class="source-range">א, א - ו, א</span></a></td>
+                        <td><a href="?p=ויקרא#parasha-articles" class="parasha-link {% if selected_parasha == 'ויקרא' %}active{% endif %}">פרשת ויקרא<span class="source-range">א, א - ה, כו</span></a></td>
+                        <td><a href="?p=במדבר#parasha-articles" class="parasha-link {% if selected_parasha == 'במדבר' %}active{% endif %}">פרשת במדבר<span class="source-range">א, א - ד, כ</span></a></td>
+                        <td><a href="?p=דברים#parasha-articles" class="parasha-link {% if selected_parasha == 'דברים' %}active{% endif %}">פרשת דברים<span class="source-range">א, א - ג, כב</span></a></td>
                     </tr>
                     <tr>
-                        <td><a href="?p=נח#parasha-articles" class="parasha-link {% if selected_parasha == 'נח' %}active{% endif %}">פרשת נח<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">ו, ט - יא, לב</span></a></td>
-                        <td><a href="?p=וארא#parasha-articles" class="parasha-link {% if selected_parasha == 'וארא' %}active{% endif %}">פרשת וארא<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">ו, ב - ט, לה</span></a></td>
-                        <td><a href="?p=צו#parasha-articles" class="parasha-link {% if selected_parasha == 'צו' %}active{% endif %}">פרשת צו<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">ו, א - ח, לו</span></a></td>
-                        <td><a href="?p=נשא#parasha-articles" class="parasha-link {% if selected_parasha == 'נשא' %}active{% endif %}">פרשת נשא<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">ד, כא - ז, פט</span></a></td>
-                        <td><a href="?p=ואתחנן#parasha-articles" class="parasha-link {% if selected_parasha == 'ואתחנן' %}active{% endif %}">פרשת ואתחנן<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">ג, כג - ז, יא</span></a></td>
+                        <td><a href="?p=נח#parasha-articles" class="parasha-link {% if selected_parasha == 'נח' %}active{% endif %}">פרשת נח<span class="source-range">ו, ט - יא, לב</span></a></td>
+                        <td><a href="?p=וארא#parasha-articles" class="parasha-link {% if selected_parasha == 'וארא' %}active{% endif %}">פרשת וארא<span class="source-range">ו, ב - ט, לה</span></a></td>
+                        <td><a href="?p=צו#parasha-articles" class="parasha-link {% if selected_parasha == 'צו' %}active{% endif %}">פרשת צו<span class="source-range">ו, א - ח, לו</span></a></td>
+                        <td><a href="?p=נשא#parasha-articles" class="parasha-link {% if selected_parasha == 'נשא' %}active{% endif %}">פרשת נשא<span class="source-range">ד, כא - ז, פט</span></a></td>
+                        <td><a href="?p=ואתחנן#parasha-articles" class="parasha-link {% if selected_parasha == 'ואתחנן' %}active{% endif %}">פרשת ואתחנן<span class="source-range">ג, כג - ז, יא</span></a></td>
                     </tr>
                     <tr>
-                        <td><a href="?p=לך לך#parasha-articles" class="parasha-link {% if selected_parasha == 'לך לך' %}active{% endif %}">פרשת לך לך<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">יב, א - יז, כז</span></a></td>
-                        <td><a href="?p=בא#parasha-articles" class="parasha-link {% if selected_parasha == 'בא' %}active{% endif %}">פרשת בא<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">י, א - יג, טז</span></a></td>
-                        <td><a href="?p=שמיני#parasha-articles" class="parasha-link {% if selected_parasha == 'שמיני' %}active{% endif %}">פרשת שמיני<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">ט, א - יא, מז</span></a></td>
-                        <td><a href="?p=בהעלותך#parasha-articles" class="parasha-link {% if selected_parasha == 'בהעלותך' %}active{% endif %}">פרשת בהעלותך<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">ח, א - יב, טז</span></a></td>
-                        <td><a href="?p=עקב#parasha-articles" class="parasha-link {% if selected_parasha == 'עקב' %}active{% endif %}">פרשת עקב<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">ז, יב - יא, כה</span></a></td>
+                        <td><a href="?p=לך לך#parasha-articles" class="parasha-link {% if selected_parasha == 'לך לך' %}active{% endif %}">פרשת לך לך<span class="source-range">יב, א - יז, כז</span></a></td>
+                        <td><a href="?p=בא#parasha-articles" class="parasha-link {% if selected_parasha == 'בא' %}active{% endif %}">פרשת בא<span class="source-range">י, א - יג, טז</span></a></td>
+                        <td><a href="?p=שמיני#parasha-articles" class="parasha-link {% if selected_parasha == 'שמיני' %}active{% endif %}">פרשת שמיני<span class="source-range">ט, א - יא, מז</span></a></td>
+                        <td><a href="?p=בהעלותך#parasha-articles" class="parasha-link {% if selected_parasha == 'בהעלותך' %}active{% endif %}">פרשת בהעלותך<span class="source-range">ח, א - יב, טז</span></a></td>
+                        <td><a href="?p=עקב#parasha-articles" class="parasha-link {% if selected_parasha == 'עקב' %}active{% endif %}">פרשת עקב<span class="source-range">ז, יב - יא, כה</span></a></td>
                     </tr>
                     <tr>
-                        <td><a href="?p=וירא#parasha-articles" class="parasha-link {% if selected_parasha == 'וירא' %}active{% endif %}">פרשת וירא<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">יח, א - כב, כד</span></a></td>
-                        <td><a href="?p=בשלח#parasha-articles" class="parasha-link {% if selected_parasha == 'בשלח' %}active{% endif %}">פרשת בשלח<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">יג, יז - יז, טז</span></a></td>
-                        <td><a href="?p=תזריע#parasha-articles" class="parasha-link {% if selected_parasha == 'תזריע' %}active{% endif %}">פרשת תזריע<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">יב, א - יג, נט</span></a></td>
-                        <td><a href="?p=שלח לך#parasha-articles" class="parasha-link {% if selected_parasha == 'שלח לך' %}active{% endif %}">פרשת שלח לך<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">יג, א - טו, מא</span></a></td>
-                        <td><a href="?p=ראה#parasha-articles" class="parasha-link {% if selected_parasha == 'ראה' %}active{% endif %}">פרשת ראה<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">יא, כו - טז, יז</span></a></td>
+                        <td><a href="?p=וירא#parasha-articles" class="parasha-link {% if selected_parasha == 'וירא' %}active{% endif %}">פרשת וירא<span class="source-range">יח, א - כב, כד</span></a></td>
+                        <td><a href="?p=בשלח#parasha-articles" class="parasha-link {% if selected_parasha == 'בשלח' %}active{% endif %}">פרשת בשלח<span class="source-range">יג, יז - יז, טז</span></a></td>
+                        <td><a href="?p=תזריע#parasha-articles" class="parasha-link {% if selected_parasha == 'תזריע' %}active{% endif %}">פרשת תזריע<span class="source-range">יב, א - יג, נט</span></a></td>
+                        <td><a href="?p=שלח לך#parasha-articles" class="parasha-link {% if selected_parasha == 'שלח לך' %}active{% endif %}">פרשת שלח לך<span class="source-range">יג, א - טו, מא</span></a></td>
+                        <td><a href="?p=ראה#parasha-articles" class="parasha-link {% if selected_parasha == 'ראה' %}active{% endif %}">פרשת ראה<span class="source-range">יא, כו - טז, יז</span></a></td>
                     </tr>
                     <tr>
-                        <td><a href="?p=חיי שרה#parasha-articles" class="parasha-link {% if selected_parasha == 'חיי שרה' %}active{% endif %}">פרשת חיי שרה<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">כג, א - כה, יח</span></a></td>
-                        <td><a href="?p=יתרו#parasha-articles" class="parasha-link {% if selected_parasha == 'יתרו' %}active{% endif %}">פרשת יתרו<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">יח, א - כ, כג</span></a></td>
-                        <td><a href="?p=מצורע#parasha-articles" class="parasha-link {% if selected_parasha == 'מצורע' %}active{% endif %}">פרשת מצורע<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">יד, א - טו, לג</span></a></td>
-                        <td><a href="?p=קרח#parasha-articles" class="parasha-link {% if selected_parasha == 'קרח' %}active{% endif %}">פרשת קרח<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">טז, א - יח, לב</span></a></td>
-                        <td><a href="?p=שופטים#parasha-articles" class="parasha-link {% if selected_parasha == 'שופטים' %}active{% endif %}">פרשת שופטים<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">טז, יח - כא, ט</span></a></td>
+                        <td><a href="?p=חיי שרה#parasha-articles" class="parasha-link {% if selected_parasha == 'חיי שרה' %}active{% endif %}">פרשת חיי שרה<span class="source-range">כג, א - כה, יח</span></a></td>
+                        <td><a href="?p=יתרו#parasha-articles" class="parasha-link {% if selected_parasha == 'יתרו' %}active{% endif %}">פרשת יתרו<span class="source-range">יח, א - כ, כג</span></a></td>
+                        <td><a href="?p=מצורע#parasha-articles" class="parasha-link {% if selected_parasha == 'מצורע' %}active{% endif %}">פרשת מצורע<span class="source-range">יד, א - טו, לג</span></a></td>
+                        <td><a href="?p=קרח#parasha-articles" class="parasha-link {% if selected_parasha == 'קרח' %}active{% endif %}">פרשת קרח<span class="source-range">טז, א - יח, לב</span></a></td>
+                        <td><a href="?p=שופטים#parasha-articles" class="parasha-link {% if selected_parasha == 'שופטים' %}active{% endif %}">פרשת שופטים<span class="source-range">טז, יח - כא, ט</span></a></td>
                     </tr>
                     <tr>
-                        <td><a href="?p=תולדות#parasha-articles" class="parasha-link {% if selected_parasha == 'תולדות' %}active{% endif %}">פרשת תולדות<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">כה, יט - כח, ט</span></a></td>
-                        <td><a href="?p=משפטים#parasha-articles" class="parasha-link {% if selected_parasha == 'משפטים' %}active{% endif %}">פרשת משפטים<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">כא, א - כד, יח</span></a></td>
-                        <td><a href="?p=אחרי מות#parasha-articles" class="parasha-link {% if selected_parasha == 'אחרי מות' %}active{% endif %}">פרשת אחרי מות<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">טז, א - יח, ל</span></a></td>
-                        <td><a href="?p=חקת#parasha-articles" class="parasha-link {% if selected_parasha == 'חקת' %}active{% endif %}">פרשת חקת<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">יט, א - כב, א</span></a></td>
-                        <td><a href="?p=כי תצא#parasha-articles" class="parasha-link {% if selected_parasha == 'כי תצא' %}active{% endif %}">פרשת כי תצא<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">כא, י - כה, יט</span></a></td>
+                        <td><a href="?p=תולדות#parasha-articles" class="parasha-link {% if selected_parasha == 'תולדות' %}active{% endif %}">פרשת תולדות<span class="source-range">כה, יט - כח, ט</span></a></td>
+                        <td><a href="?p=משפטים#parasha-articles" class="parasha-link {% if selected_parasha == 'משפטים' %}active{% endif %}">פרשת משפטים<span class="source-range">כא, א - כד, יח</span></a></td>
+                        <td><a href="?p=אחרי מות#parasha-articles" class="parasha-link {% if selected_parasha == 'אחרי מות' %}active{% endif %}">פרשת אחרי מות<span class="source-range">טז, א - יח, ל</span></a></td>
+                        <td><a href="?p=חקת#parasha-articles" class="parasha-link {% if selected_parasha == 'חקת' %}active{% endif %}">פרשת חקת<span class="source-range">יט, א - כב, א</span></a></td>
+                        <td><a href="?p=כי תצא#parasha-articles" class="parasha-link {% if selected_parasha == 'כי תצא' %}active{% endif %}">פרשת כי תצא<span class="source-range">כא, י - כה, יט</span></a></td>
                     </tr>
                     <tr>
-                        <td><a href="?p=ויצא#parasha-articles" class="parasha-link {% if selected_parasha == 'ויצא' %}active{% endif %}">פרשת ויצא<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">כח, י - לב, ג</span></a></td>
-                        <td><a href="?p=תרומה#parasha-articles" class="parasha-link {% if selected_parasha == 'תרומה' %}active{% endif %}">פרשת תרומה<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">כה, א - כז, יט</span></a></td>
-                        <td><a href="?p=קדושים#parasha-articles" class="parasha-link {% if selected_parasha == 'קדושים' %}active{% endif %}">פרשת קדושים<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">יט, א - כ, כז</span></a></td>
-                        <td><a href="?p=בלק#parasha-articles" class="parasha-link {% if selected_parasha == 'בלק' %}active{% endif %}">פרשת בלק<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">כב, ב - כה, ט</span></a></td>
-                        <td><a href="?p=כי תבוא#parasha-articles" class="parasha-link {% if selected_parasha == 'כי תבוא' %}active{% endif %}">פרשת כי תבוא<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">כו, א - כט, ח</span></a></td>
+                        <td><a href="?p=ויצא#parasha-articles" class="parasha-link {% if selected_parasha == 'ויצא' %}active{% endif %}">פרשת ויצא<span class="source-range">כח, י - לב, ג</span></a></td>
+                        <td><a href="?p=תרומה#parasha-articles" class="parasha-link {% if selected_parasha == 'תרומה' %}active{% endif %}">פרשת תרומה<span class="source-range">כה, א - כז, יט</span></a></td>
+                        <td><a href="?p=קדושים#parasha-articles" class="parasha-link {% if selected_parasha == 'קדושים' %}active{% endif %}">פרשת קדושים<span class="source-range">יט, א - כ, כז</span></a></td>
+                        <td><a href="?p=בלק#parasha-articles" class="parasha-link {% if selected_parasha == 'בלק' %}active{% endif %}">פרשת בלק<span class="source-range">כב, ב - כה, ט</span></a></td>
+                        <td><a href="?p=כי תבוא#parasha-articles" class="parasha-link {% if selected_parasha == 'כי תבוא' %}active{% endif %}">פרשת כי תבוא<span class="source-range">כו, א - כט, ח</span></a></td>
                     </tr>
                     <tr>
-                        <td><a href="?p=וישלח#parasha-articles" class="parasha-link {% if selected_parasha == 'וישלח' %}active{% endif %}">פרשת וישלח<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">לב, ד - לו, מג</span></a></td>
-                        <td><a href="?p=תצוה#parasha-articles" class="parasha-link {% if selected_parasha == 'תצוה' %}active{% endif %}">פרשת תצוה<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">כז, כ - כט, מו</span></a></td>
-                        <td><a href="?p=אמור#parasha-articles" class="parasha-link {% if selected_parasha == 'אמור' %}active{% endif %}">פרשת אמור<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">כא, א - כד, כג</span></a></td>
-                        <td><a href="?p=פינחס#parasha-articles" class="parasha-link {% if selected_parasha == 'פינחס' %}active{% endif %}">פרשת פינחס<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">כה, י - ל, א</span></a></td>
-                        <td><a href="?p=ניצבים#parasha-articles" class="parasha-link {% if selected_parasha == 'ניצבים' %}active{% endif %}">פרשת ניצבים<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">כט, ט - ל, כ</span></a></td>
+                        <td><a href="?p=וישלח#parasha-articles" class="parasha-link {% if selected_parasha == 'וישלח' %}active{% endif %}">פרשת וישלח<span class="source-range">לב, ד - לו, מג</span></a></td>
+                        <td><a href="?p=תצוה#parasha-articles" class="parasha-link {% if selected_parasha == 'תצוה' %}active{% endif %}">פרשת תצוה<span class="source-range">כז, כ - כט, מו</span></a></td>
+                        <td><a href="?p=אמור#parasha-articles" class="parasha-link {% if selected_parasha == 'אמור' %}active{% endif %}">פרשת אמור<span class="source-range">כא, א - כד, כג</span></a></td>
+                        <td><a href="?p=פינחס#parasha-articles" class="parasha-link {% if selected_parasha == 'פינחס' %}active{% endif %}">פרשת פינחס<span class="source-range">כה, י - ל, א</span></a></td>
+                        <td><a href="?p=ניצבים#parasha-articles" class="parasha-link {% if selected_parasha == 'ניצבים' %}active{% endif %}">פרשת ניצבים<span class="source-range">כט, ט - ל, כ</span></a></td>
                     </tr>
                     <tr>
-                        <td><a href="?p=וישב#parasha-articles" class="parasha-link {% if selected_parasha == 'וישב' %}active{% endif %}">פרשת וישב<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">לז, א - מ, כג</span></a></td>
-                        <td><a href="?p=כי תשא#parasha-articles" class="parasha-link {% if selected_parasha == 'כי תשא' %}active{% endif %}">פרשת כי תשא<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">ל, א - לד, לה</span></a></td>
-                        <td><a href="?p=בהר#parasha-articles" class="parasha-link {% if selected_parasha == 'בהר' %}active{% endif %}">פרשת בהר<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">כה, א - כו, ב</span></a></td>
-                        <td><a href="?p=מטות#parasha-articles" class="parasha-link {% if selected_parasha == 'מטות' %}active{% endif %}">פרשת מטות<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">ל, ב - לב, מב</span></a></td>
-                        <td><a href="?p=וילך#parasha-articles" class="parasha-link {% if selected_parasha == 'וילך' %}active{% endif %}">פרשת וילך<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">לא, א - לא, ל</span></a></td>
+                        <td><a href="?p=וישב#parasha-articles" class="parasha-link {% if selected_parasha == 'וישב' %}active{% endif %}">פרשת וישב<span class="source-range">לז, א - מ, כג</span></a></td>
+                        <td><a href="?p=כי תשא#parasha-articles" class="parasha-link {% if selected_parasha == 'כי תשא' %}active{% endif %}">פרשת כי תשא<span class="source-range">ל, א - לד, לה</span></a></td>
+                        <td><a href="?p=בהר#parasha-articles" class="parasha-link {% if selected_parasha == 'בהר' %}active{% endif %}">פרשת בהר<span class="source-range">כה, א - כו, ב</span></a></td>
+                        <td><a href="?p=מטות#parasha-articles" class="parasha-link {% if selected_parasha == 'מטות' %}active{% endif %}">פרשת מטות<span class="source-range">ל, ב - לב, מב</span></a></td>
+                        <td><a href="?p=וילך#parasha-articles" class="parasha-link {% if selected_parasha == 'וילך' %}active{% endif %}">פרשת וילך<span class="source-range">לא, א - לא, ל</span></a></td>
                     </tr>
                     <tr>
-                        <td><a href="?p=מקץ#parasha-articles" class="parasha-link {% if selected_parasha == 'מקץ' %}active{% endif %}">פרשת מקץ<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">מא, א - מד, יז</span></a></td>
-                        <td><a href="?p=ויקהל#parasha-articles" class="parasha-link {% if selected_parasha == 'ויקהל' %}active{% endif %}">פרשת ויקהל<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">לה, א - לח, כ</span></a></td>
-                        <td><a href="?p=בחוקתי#parasha-articles" class="parasha-link {% if selected_parasha == 'בחוקתי' %}active{% endif %}">פרשת בחוקתי<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">כו, ג - כז, לד</span></a></td>
-                        <td><a href="?p=מסעי#parasha-articles" class="parasha-link {% if selected_parasha == 'מסעי' %}active{% endif %}">פרשת מסעי<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">לג, א - לו, יג</span></a></td>
-                        <td><a href="?p=האזינו#parasha-articles" class="parasha-link {% if selected_parasha == 'האזינו' %}active{% endif %}">פרשת האזינו<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">לב, א - לב, נב</span></a></td>
+                        <td><a href="?p=מקץ#parasha-articles" class="parasha-link {% if selected_parasha == 'מקץ' %}active{% endif %}">פרשת מקץ<span class="source-range">מא, א - מד, יז</span></a></td>
+                        <td><a href="?p=ויקהל#parasha-articles" class="parasha-link {% if selected_parasha == 'ויקהל' %}active{% endif %}">פרשת ויקהל<span class="source-range">לה, א - לח, כ</span></a></td>
+                        <td><a href="?p=בחוקתי#parasha-articles" class="parasha-link {% if selected_parasha == 'בחוקתי' %}active{% endif %}">פרשת בחוקתי<span class="source-range">כו, ג - כז, לד</span></a></td>
+                        <td><a href="?p=מסעי#parasha-articles" class="parasha-link {% if selected_parasha == 'מסעי' %}active{% endif %}">פרשת מסעי<span class="source-range">לג, א - לו, יג</span></a></td>
+                        <td><a href="?p=האזינו#parasha-articles" class="parasha-link {% if selected_parasha == 'האזינו' %}active{% endif %}">פרשת האזינו<span class="source-range">לב, א - לב, נב</span></a></td>
                     </tr>
                     <tr>
-                        <td><a href="?p=ויגש#parasha-articles" class="parasha-link {% if selected_parasha == 'ויגש' %}active{% endif %}">פרשת ויגש<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">מד, יח - מז, כז</span></a></td>
-                        <td><a href="?p=פקודי#parasha-articles" class="parasha-link {% if selected_parasha == 'פקודי' %}active{% endif %}">פרשת פקודי<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">לח, כא - מ, לח</span></a></td>
+                        <td><a href="?p=ויגש#parasha-articles" class="parasha-link {% if selected_parasha == 'ויגש' %}active{% endif %}">פרשת ויגש<span class="source-range">מד, יח - מז, כז</span></a></td>
+                        <td><a href="?p=פקודי#parasha-articles" class="parasha-link {% if selected_parasha == 'פקודי' %}active{% endif %}">פרשת פקודי<span class="source-range">לח, כא - מ, לח</span></a></td>
                         <td></td>
                         <td></td>
-                        <td><a href="?p=וזאת הברכה#parasha-articles" class="parasha-link {% if selected_parasha == 'וזאת הברכה' %}active{% endif %}">פרשת וזאת הברכה<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">לג, א - לד, יב</span></a></td>
+                        <td><a href="?p=וזאת הברכה#parasha-articles" class="parasha-link {% if selected_parasha == 'וזאת הברכה' %}active{% endif %}">פרשת וזאת הברכה<span class="source-range">לג, א - לד, יב</span></a></td>
                     </tr>
                     <tr>
-                        <td><a href="?p=ויחי#parasha-articles" class="parasha-link {% if selected_parasha == 'ויחי' %}active{% endif %}">פרשת ויחי<span class="d-block text-muted mt-1" style="font-size: 0.85rem; font-weight: normal;">מז, כח - נ, כו</span></a></td>
+                        <td><a href="?p=ויחי#parasha-articles" class="parasha-link {% if selected_parasha == 'ויחי' %}active{% endif %}">פרשת ויחי<span class="source-range">מז, כח - נ, כו</span></a></td>
                         <td></td>
                         <td></td>
                         <td></td>
@@ -181,38 +181,74 @@
     .article-card { transition: all 0.3s ease; border: 1px solid rgba(166, 124, 82, 0.2) !important; }
     .article-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(166, 124, 82, 0.15) !important; border-color: #a67c52 !important;}
     
-    .parasha-table th { border-bottom: 3px solid #a67c52; font-family: 'Assistant', sans-serif; font-weight: 800; }
-    .parasha-table td { padding: 0; vertical-align: middle; border-color: #f0f0f0; }
+    .parasha-table { border-collapse: separate; border-spacing: 0; }
+    .parasha-table th { 
+        border-bottom: 3px solid #a67c52 !important; 
+        font-family: 'Assistant', sans-serif; 
+        font-weight: 800; 
+        border-top: none !important;
+        border-left: none !important;
+        border-right: none !important;
+    }
+    .parasha-table td { 
+        padding: 0; 
+        vertical-align: middle; 
+        border-bottom: 1px solid rgba(0,0,0,0.04) !important; 
+        border-top: none !important;
+        border-left: none !important;
+        border-right: none !important;
+    }
+    .parasha-table tr:last-child td { border-bottom: none !important; }
     
     .parasha-link { 
         display: block; 
-        padding: 16px 10px; 
-        color: #4a4a4a; 
+        margin: 6px;
+        padding: 20px 10px; 
+        color: #333333; 
         text-decoration: none; 
         font-size: 1.15rem; 
-        font-weight: 500;
-        transition: all 0.2s ease;
+        font-weight: 600;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+    }
+    .source-range {
+        display: block; 
+        font-size: 0.85rem; 
+        font-weight: 400; 
+        color: #999999;
+        margin-top: 6px;
+        transition: all 0.3s ease;
     }
     .parasha-link:hover { 
         background-color: #fdfaf5; 
         color: #a67c52; 
-        font-weight: bold;
         text-decoration: none;
+        transform: translateY(-2px);
+    }
+    .parasha-link:hover .source-range {
+        color: #b5952f;
     }
     
     .parasha-link.active {
         background-color: #a67c52;
         color: white;
         font-weight: bold;
-        box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 15px rgba(166, 124, 82, 0.3);
+        border-radius: 12px;
+    }
+    .parasha-link.active .source-range {
+        color: rgba(255, 255, 255, 0.85);
     }
 
-    body.dark-mode .parasha-table thead th { background-color: #1e293b !important; border-bottom-color: #d4af37; }
+    body.dark-mode .parasha-table thead th { background-color: #1e293b !important; border-bottom-color: #d4af37 !important; }
     body.dark-mode .parasha-table tbody { background-color: #0f172a !important; }
-    body.dark-mode .parasha-table td { border-color: rgba(255,255,255,0.05); }
+    body.dark-mode .parasha-table td { border-bottom-color: rgba(255,255,255,0.03) !important; }
     body.dark-mode .parasha-link { color: #cbd5e1; }
-    body.dark-mode .parasha-link:hover { background-color: rgba(212, 175, 55, 0.1); color: #d4af37; }
+    body.dark-mode .source-range { color: #64748b; }
+    body.dark-mode .parasha-link:hover { background-color: rgba(212, 175, 55, 0.05); color: #d4af37; }
+    body.dark-mode .parasha-link:hover .source-range { color: #d4af37; }
     body.dark-mode .parasha-link.active { background-color: #d4af37; color: #0f172a; }
+    body.dark-mode .parasha-link.active .source-range { color: rgba(0, 0, 0, 0.7); }
     body.dark-mode .card, body.dark-mode .alert { background-color: #1e293b; border-color: rgba(255,255,255,0.1); color: #f8fafc; }
 </style>
 {% endblock %}
