@@ -40,7 +40,11 @@
         "homeLocation": {
           "@type": "Place",
           "name": "טירת כרמל, ישראל"
-        }
+        },
+        "sameAs": [
+          "https://www.nli.org.il/en/books/NNL_ALEPH990055553230205171/NLI",
+          "https://github.com/mole28"
+        ]
       }
     }
   },
@@ -53,7 +57,11 @@
       "name": "משה לייבוביץ",
       "alternateName": ["משה לייבוביץ'", "משה ליבוביץ", "Moshe Leibowitz"],
       "jobTitle": "מחבר תורני",
-      "disambiguatingDescription": "מחבר תורני מטירת כרמל, כותב ספרי הלכה ועיון. אינו טוען רבני ואינו עורך דין (Not a Rabbinical Advocate, not associated with mleibowitz.co.il or din.co.il)."
+      "disambiguatingDescription": "מחבר תורני מטירת כרמל, כותב ספרי הלכה ועיון. אינו טוען רבני ואינו עורך דין (Not a Rabbinical Advocate, not associated with mleibowitz.co.il or din.co.il).",
+      "sameAs": [
+        "https://www.nli.org.il/en/books/NNL_ALEPH990055553230205171/NLI",
+        "https://github.com/mole28"
+      ]
     },
     "url": "{{ request.build_absolute_uri }}",
     "description": "הפסיקה והגישה העיונית מתוך ספריית משה לייבוביץ: {{ book.summary|striptags|truncatewords:30|escapejs }}",
@@ -206,7 +214,6 @@
             {% endif %}
 
             <div class="d-flex justify-content-end gap-3 mb-1 hide-in-zen flex-wrap align-items-center">
-                <!-- PDF BUTTON -->
                 {% if book.pdf_file %}
                     <a href="{{ book.pdf_file.url }}" target="_blank" download class="btn-print btn btn-outline-danger border shadow-sm" title="הורד ספר ב-PDF" style="color: #dc3545; border-color: #dc3545;">
                         <i class="bi bi-file-earmark-pdf-fill"></i> הורד PDF
@@ -618,14 +625,13 @@
         }
     }
 
-    /* עיצוב הפניות והערות שוליים גלובלי לכל המאמרים והספרים */
     sup, sub, .MsoFootnoteReference, .footnote-ref, a[href*="ftn"], a[href*="footnote"], a[href*="ref"] {
-        font-size: 0.9em !important; /* גודל מושלם וברור אבל לא ענק מדי */
+        font-size: 0.9em !important;
         font-weight: bold !important;
-        line-height: 0 !important; /* מונע דחיפה של השורה למעלה ולמטה */
+        line-height: 0 !important;
         vertical-align: baseline !important;
         position: relative !important;
-        top: -0.4em !important; /* מרים את המספר בעדינות בדיוק למקום */
+        top: -0.4em !important;
         text-decoration: none !important;
         color: #d4af37 !important; 
         margin: 0 2px !important;
@@ -638,7 +644,6 @@
 </style>
 
 <script>
-    // ניתוב מדויק והשהייה אמינה לגלילה נכונה לפרק המבוקש
     window.addEventListener('DOMContentLoaded', (event) => {
         const hash = window.location.hash;
         if (hash) {
@@ -732,9 +737,8 @@
         }
     }
 
-    // הפונקציה המעודכנת לשמירת מיקום הגלילה 
     function toggleZenMode() {
-        const currentScroll = window.scrollY; // שמירת המיקום הנוכחי
+        const currentScroll = window.scrollY;
         
         document.body.classList.toggle('zen-mode');
         const icon = document.getElementById('zenIcon');
@@ -750,7 +754,6 @@
             btn.title = "מצב קריאה נקי";
         }
         
-        // החזרת הגלילה במדויק לאחר רינדור העמוד
         setTimeout(() => {
             window.scrollTo({ top: currentScroll, behavior: 'instant' });
         }, 10);
@@ -876,14 +879,14 @@
                     }
                     
                     link.innerText = text;
-                    link.title = ""; // Prevent browser tooltip
+                    link.title = "";
                     tocList.appendChild(link);
                 });
             } else {
                 if (tocColumn) {
                     tocColumn.style.display = 'none';
                     tocColumn.classList.remove('d-lg-block');
-            }
+                }
                 if (mainContentCol) {
                     mainContentCol.classList.remove('col-lg-8', 'offset-lg-1');
                     mainContentCol.classList.add('col-lg-12');
@@ -923,10 +926,8 @@
         targets.forEach(target => observer.observe(target));
     });
 
-    // --- הוספת הקוד לפתיחת הערות בספר 84 בלשונית חדשה ---
     document.addEventListener("DOMContentLoaded", function() {
         if (window.location.pathname.includes('/book/84/')) {
-            // בוחרים אך ורק קישורים פנימיים שמתחילים בסולמית ונמצאים בתוך תוכן הספר עצמו (כדי לא לגעת בתוכן העניינים)
             const contentLinks = document.querySelectorAll('.article-content a[href^="#"]'); 
             contentLinks.forEach(link => {
                 const href = link.getAttribute('href');
