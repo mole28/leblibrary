@@ -427,6 +427,7 @@
             </div>
         </div>
 
+        {% if user.is_superuser %}
         <!-- כרטיסיית חיפוש מתקדם מלבנית רחבה (מתחת לשתי העמודות) -->
         <div class="card shadow-lg border-0 mb-5" style="background: linear-gradient(145deg, #1e202c 0%, #2a2d3e 100%); border-radius: 16px; overflow: hidden; position: relative;">
             <div style="position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(212,175,55,0.15) 0%, rgba(212,175,55,0) 70%); border-radius: 50%;"></div>
@@ -453,6 +454,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
     {% endif %}
 </div>
