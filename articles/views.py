@@ -40,7 +40,6 @@ from django.dispatch import receiver
 from .vector_store import search_similar_articles
 
 def get_base_schema_json():
-    # --- שדרוג SEO עמוק: הטמעת השם שלך בכל וריאציה אפשרית במיוחד עבור הבוטים של גוגל ---
     return json.dumps({
         "@context": "https://schema.org",
         "@graph": [
@@ -107,7 +106,6 @@ def ratelimit(rate=30, timeout=60):
     return decorator
 
 def int_to_hebrew(num):
-    """ממיר מספרים לאותיות עבריות (יד, טו, כז וכו')"""
     if num <= 0: return str(num)
     hebrew_letters = {
         400: 'ת', 300: 'ש', 200: 'ר', 100: 'ק',
@@ -115,7 +113,6 @@ def int_to_hebrew(num):
         9: 'ט', 8: 'ח', 7: 'ז', 6: 'ו', 5: 'ה', 4: 'ד', 3: 'ג', 2: 'ב', 1: 'א'
     }
     result = ""
-    # טיפול במספרים 15 ו-16 כדי למנוע כתיבת שם שמים
     rem = num % 100
     if rem in (15, 16):
         result += 'טו' if rem == 15 else 'טז'
@@ -129,12 +126,9 @@ def int_to_hebrew(num):
 
 def translate_haftarah(text):
     if not text: return ""
-    
-    # 1. חיתוך כל מה שמופיע אחרי הקו האנכי (|)
     if '|' in text:
         text = text.split('|')[0].strip()
 
-    # 2. קודם כל לתרגם את שמות הספרים מאנגלית לעברית!
     books = {
         'Genesis': 'בראשית', 'Exodus': 'שמות', 'Leviticus': 'ויקרא', 'Numbers': 'במדבר', 'Deuteronomy': 'דברים',
         'Joshua': 'יהושע', 'Judges': 'שופטים', 'I Samuel': 'שמואל א', 'II Samuel': 'שמואל ב', 'Samuel': 'שמואל',
@@ -149,21 +143,14 @@ def translate_haftarah(text):
     for eng, heb in books.items():
         text = text.replace(eng, heb)
 
-    # 3. רק עכשיו למחוק שאריות של אותיות באנגלית (אם נשארו כאלו)
     text = re.sub(r'[a-zA-Z]', '', text).strip()
     text = text.replace('()', '').replace('( )', '').strip()
-        
-    # 4. המרת כל הספרות לאותיות עבריות (גימטריה)
     text = re.sub(r'\d+', lambda m: int_to_hebrew(int(m.group())), text)
-    
-    # 5. עיצוב הנקודתיים לפסיק רווח (יד, י)
     text = text.replace(':', ', ')
-    
     return text
 
 def get_jewish_calendar_info():
     today = datetime.date.today()
-    # שינינו כאן ל-v5 כדי לשבור את הקאש הישן ולהכריח את השרת לטעון את העברית!
     cache_key = f'jewish_cal_data_v5_{today.strftime("%Y_%m_%d")}'
     cached_data = cache.get(cache_key)
     
@@ -178,11 +165,9 @@ def get_jewish_calendar_info():
             days_ahead += 7
             
         next_saturday = today + datetime.timedelta(days=days_ahead)
-        
         start_date = today.strftime('%Y-%m-%d')
         end_date = next_saturday.strftime('%Y-%m-%d')
         
-        # New code for Hebrew date
         try:
             date_url = f'https://www.hebcal.com/converter?cfg=json&date={start_date}&g2h=1&strict=1'
             date_req = urllib.request.Request(date_url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -193,7 +178,6 @@ def get_jewish_calendar_info():
             cal_data['hebrew_date'] = ''
             
         url = f'https://www.hebcal.com/hebcal?v=1&cfg=json&geo=IL&lg=he&s=on&maj=on&min=on&start={start_date}&end={end_date}'
-        
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         response = urllib.request.urlopen(req, timeout=5)
         data = json.loads(response.read().decode('utf-8'))
@@ -1550,10 +1534,22 @@ def tanakh_advanced_search_api(request):
     results = []
     qs = TorahText.objects.all()
 
-    tanakh_names = ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב']
+    # נוספו השמות באנגלית כדי לאתר ספרים שהורדו מספריא ועדיין קרויים בלועזית
+    torah_books = ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy']
+    tanakh_names = torah_books + [
+        'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב',
+        'Joshua', 'Judges', 'I Samuel', 'II Samuel', 'I Kings', 'II Kings', 'Isaiah', 'Jeremiah', 'Ezekiel', 'Hosea', 'Joel', 'Amos', 'Obadiah', 'Jonah', 'Micah', 'Nahum', 'Habakkuk', 'Zephaniah', 'Haggai', 'Zechariah', 'Malachi', 'Psalms', 'Proverbs', 'Job', 'Song of Songs', 'Ruth', 'Lamentations', 'Ecclesiastes', 'Esther', 'Daniel', 'Ezra', 'Nehemiah', 'I Chronicles', 'II Chronicles'
+    ]
+
+    # חסימת חירום ובדיקה אם המאגר הורד בהצלחה 
+    try:
+        if not qs.exists():
+            return JsonResponse({'error': 'שגיאה: טבלת התנ"ך והמשנה ריקה לחלוטין. נראה שהורדת המאגר מספריא לא נשמרה בשרת!'})
+    except Exception:
+        pass
 
     if book_filter == 'torah':
-        qs = qs.filter(book__in=['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'])
+        qs = qs.filter(book__in=torah_books)
     elif book_filter == 'mishnah':
         qs = qs.exclude(book__in=tanakh_names)
     elif book_filter == 'tanakh':
@@ -1579,14 +1575,9 @@ def tanakh_advanced_search_api(request):
             if q_words:
                 num_q_words = len(q_words)
                 
-                # === התיקון שהוכנס לחיפוש רחב במאגר ===
-                text_query = Q()
-                for target_w in q_words:
-                    text_query &= (Q(clean_text__icontains=target_w) | Q(text_with_nikkud__icontains=target_w))
-                
-                qs = qs.filter(text_query)
+                # הסרנו את ה-qs.filter(text_query) שמכשיל את החיפוש בגלל ניקוד
+                # ונעביר את כל הבדיקה לקוד הפייתון המהיר שמנקה תוך כדי תנועה
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
-                # ==================================
                 
                 prefix_pattern = re.compile(r'^(?:[משהוכלב]|שה|מה|כשה|לכש|ומ|וה|וכ|ול|וב|וש)?(.*?)$')
                 
@@ -1597,7 +1588,14 @@ def tanakh_advanced_search_api(request):
                     if not raw_text and not clean_text_db:
                         continue
                     
+                    # ניקוי בזמן אמת עוקף את מגבלות ה-SQLite של ג'אנגו
                     t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', raw_text)
+                    
+                    # קיצור דרך: אם שום מילה לא נמצאת אפילו בערך, דלג!
+                    search_string = "".join(q_words)
+                    if search_string not in t_no_nikkud and search_string not in clean_text_db:
+                        continue
+
                     v_words_clean_only = re.findall(r'[א-ת]+', t_no_nikkud)
                     
                     if not v_words_clean_only:
