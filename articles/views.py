@@ -163,63 +163,6 @@ def translate_haftarah(text):
 
 def get_jewish_calendar_info():
     today = datetime.date.today()
-    # שיניתי ל-v6 כדי לשבור את הקאש ולהראות לך את התוצאה מיד
-    cache_key = f'jewish_cal_data_v6_{today.strftime("%Y_%m_%d")}'
-    cached_data = cache.get(cache_key)
-    
-    if cached_data:
-        return cached_data
-        
-    cal_data = {'parasha': '', 'haftarah': '', 'holidays': [], 'hebrew_date': ''}
-    
-    try:
-        days_ahead = 5 - today.weekday()
-        if days_ahead < 0:
-            days_ahead += 7
-            
-        next_saturday = today + datetime.timedelta(days=days_ahead)
-        
-        start_date = today.strftime('%Y-%m-%d')
-        end_date = next_saturday.strftime('%Y-%m-%d')
-        
-        # New code for Hebrew date
-        try:
-            date_url = f'https://www.hebcal.com/converter?cfg=json&date={start_date}&g2h=1&strict=1'
-            date_req = urllib.request.Request(date_url, headers={'User-Agent': 'Mozilla/5.0'})
-            date_resp = urllib.request.urlopen(date_req, timeout=5)
-            date_data = json.loads(date_resp.read().decode('utf-8'))
-            cal_data['hebrew_date'] = date_data.get('hebrew', '')
-        except Exception:
-            cal_data['hebrew_date'] = ''
-            
-        url = f'https://www.hebcal.com/hebcal?v=1&cfg=json&geo=IL&lg=he&s=on&maj=on&min=on&start={start_date}&end={end_date}'
-        
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        response = urllib.request.urlopen(req, timeout=5)
-        data = json.loads(response.read().decode('utf-8'))
-        
-        for item in data.get('items', []):
-            cat = item.get('category')
-            hebrew_text = item.get('hebrew', '')
-            
-            if cat == 'parashat':
-                cal_data['parasha'] = hebrew_text
-                leyning = item.get('leyning', {})
-                if 'haftarah' in leyning:
-                    cal_data['haftarah'] = translate_haftarah(leyning.get('haftarah', ''))
-            elif cat in ['holiday', 'roshchodesh', 'fast']:
-                if hebrew_text and hebrew_text not in cal_data['holidays']:
-                    if not re.search('[a-zA-Z]', hebrew_text) and 'מבקרים' not in hebrew_text and 'שבת' not in hebrew_text:
-                        cal_data['holidays'].append(hebrew_text)
-                        
-        cache.set(cache_key, cal_data, 60 * 60 * 24)
-    except Exception as e:
-        pass
-        
-    return cal_data
-
-def get_jewish_calendar_info():
-    today = datetime.date.today()
     # שינינו כאן ל-v5 כדי לשבור את הקאש הישן ולהכריח את השרת לטעון את העברית!
     cache_key = f'jewish_cal_data_v5_{today.strftime("%Y_%m_%d")}'
     cached_data = cache.get(cache_key)
@@ -592,7 +535,7 @@ def ai_chat_endpoint(request):
 
 חוקי יסוד שעליך לציית להם תמיד:
 1. עליך לספק תשובה עניינית וישירה לשאלת הגולש, אך ורק מתוך המקורות שהובאו בפניך.
-2. מכיוון שאתה מודל בינה מלאכותית, התשובות שאתה מנסח לא יכולות להוות תחליף לפסיקה הלכתית מלאה. הפנה את הגולש לקרוא את המאמר המקורי.
+​2. מכיוון שאתה מודל בינה מלאכותית, התשובות שאתה מנסח לא יכולות להוות תחליף לפסיקה הלכתית מלאה. הפנה את הגולש לקרוא את המאמר המקורי.
 3. חובה לציין במפורש את שמו של המקור שעליו הסתמכת.
 4. אל תציין שחסר לך רקע - פשוט ענה את התשובה המצויה במקורות.
 5. חוק ברזל: אסור לך בשום אופן להוסיף חתימה בסוף התשובה. לעולם אל תכתוב "בברכה", לעולם אל תחתום בשם כלשהו (כמו "רב מומחה", "משה לייבוביץ" או כל חתימה אחרת), ולעולם אל תוסיף משפטי סיום ופרידה. עליך לסיים את תשובתך העניינית בנקודה (.) ולעצור מיד.
@@ -1634,17 +1577,24 @@ def tanakh_advanced_search_api(request):
             q_words = q_no_nikkud.split()
             
             if q_words:
-                target_w = q_words[0]
                 num_q_words = len(q_words)
                 
-                qs = qs.filter(Q(clean_text__icontains=target_w) | Q(text_with_nikkud__icontains=target_w))
-                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud')
+                # === התיקון שהוכנס לחיפוש רחב במאגר ===
+                text_query = Q()
+                for target_w in q_words:
+                    text_query &= (Q(clean_text__icontains=target_w) | Q(text_with_nikkud__icontains=target_w))
+                
+                qs = qs.filter(text_query)
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
+                # ==================================
                 
                 prefix_pattern = re.compile(r'^(?:[משהוכלב]|שה|מה|כשה|לכש|ומ|וה|וכ|ול|וב|וש)?(.*?)$')
                 
                 for m in all_verses:
                     raw_text = m.get('text_with_nikkud') or ""
-                    if not raw_text:
+                    clean_text_db = m.get('clean_text') or ""
+                    
+                    if not raw_text and not clean_text_db:
                         continue
                     
                     t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', raw_text)
@@ -1661,15 +1611,15 @@ def tanakh_advanced_search_api(request):
                                 if vw_clean == target:
                                     is_match = True
                                     break
+                                else:
+                                    match_prefix = prefix_pattern.match(vw_clean)
+                                    if match_prefix and match_prefix.group(1) == target:
+                                        is_match = True
+                                        break
                             else:
-                                match_prefix = prefix_pattern.match(vw_clean)
-                                if match_prefix and match_prefix.group(1) == target:
+                                if target in vw_clean:
                                     is_match = True
                                     break
-                        else:
-                            if target in vw_clean:
-                                is_match = True
-                                break
                     else:
                         for i in range(len(v_words_clean_only) - num_q_words + 1):
                             matched_sequence = True
@@ -1690,7 +1640,7 @@ def tanakh_advanced_search_api(request):
                             if matched_sequence:
                                 is_match = True
                                 break
-                            
+                    
                     if is_match:
                         highlighted_text = highlight_matched_text(raw_text, q_words, is_exact)
                         is_mishnah_res = m['book'] not in tanakh_names
