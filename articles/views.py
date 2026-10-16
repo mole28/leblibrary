@@ -1534,24 +1534,16 @@ def tanakh_advanced_search_api(request):
     results = []
     qs = TorahText.objects.all()
 
-    # נוספו השמות באנגלית כדי לאתר ספרים שהורדו מספריא ועדיין קרויים בלועזית
-    torah_books = ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy']
-    tanakh_names = torah_books + [
-        'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב',
-        'Joshua', 'Judges', 'I Samuel', 'II Samuel', 'I Kings', 'II Kings', 'Isaiah', 'Jeremiah', 'Ezekiel', 'Hosea', 'Joel', 'Amos', 'Obadiah', 'Jonah', 'Micah', 'Nahum', 'Habakkuk', 'Zephaniah', 'Haggai', 'Zechariah', 'Malachi', 'Psalms', 'Proverbs', 'Job', 'Song of Songs', 'Ruth', 'Lamentations', 'Ecclesiastes', 'Esther', 'Daniel', 'Ezra', 'Nehemiah', 'I Chronicles', 'II Chronicles'
-    ]
-
-    # חסימת חירום ובדיקה אם המאגר הורד בהצלחה 
-    try:
-        if not qs.exists():
-            return JsonResponse({'error': 'שגיאה: טבלת התנ"ך והמשנה ריקה לחלוטין. נראה שהורדת המאגר מספריא לא נשמרה בשרת!'})
-    except Exception:
-        pass
+    tanakh_names = ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב']
 
     if book_filter == 'torah':
-        qs = qs.filter(book__in=torah_books)
+        qs = qs.filter(book__in=['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'])
+    elif book_filter == 'talmud':
+        # התיקון: שולף רק תלמוד בבלי (מזהה לפי המילה "דף" בפרק)
+        qs = qs.filter(chapter__startswith='דף')
     elif book_filter == 'mishnah':
-        qs = qs.exclude(book__in=tanakh_names)
+        # התיקון: מוציא תנ"ך ומוציא תלמוד - משאיר רק משנה נטו
+        qs = qs.exclude(book__in=tanakh_names).exclude(chapter__startswith='דף')
     elif book_filter == 'tanakh':
         tanakh_q = Q()
         for t_name in tanakh_names:
@@ -1567,6 +1559,14 @@ def tanakh_advanced_search_api(request):
         for ex in excluded:
             qs = qs.exclude(book__icontains=ex)
 
+    # פונקציית עזר להצגת התווית הנכונה בתוצאות (פסוק / משנה / שורה)
+    def get_verse_label(book_name, chapter_name):
+        if str(chapter_name).startswith('דף'):
+            return 'שורה'
+        elif book_name not in tanakh_names:
+            return 'משנה'
+        return 'פסוק'
+
     try:
         if query_type == 'text' and query_val:
             q_no_nikkud = re.sub(r'[^א-ת\s]', '', query_val).strip()
@@ -1575,8 +1575,11 @@ def tanakh_advanced_search_api(request):
             if q_words:
                 num_q_words = len(q_words)
                 
-                # הסרנו את ה-qs.filter(text_query) שמכשיל את החיפוש בגלל ניקוד
-                # ונעביר את כל הבדיקה לקוד הפייתון המהיר שמנקה תוך כדי תנועה
+                text_query = Q()
+                for target_w in q_words:
+                    text_query &= (Q(clean_text__icontains=target_w) | Q(text_with_nikkud__icontains=target_w))
+                
+                qs = qs.filter(text_query)
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
                 
                 prefix_pattern = re.compile(r'^(?:[משהוכלב]|שה|מה|כשה|לכש|ומ|וה|וכ|ול|וב|וש)?(.*?)$')
@@ -1588,14 +1591,7 @@ def tanakh_advanced_search_api(request):
                     if not raw_text and not clean_text_db:
                         continue
                     
-                    # ניקוי בזמן אמת עוקף את מגבלות ה-SQLite של ג'אנגו
                     t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', raw_text)
-                    
-                    # קיצור דרך: אם שום מילה לא נמצאת אפילו בערך, דלג!
-                    search_string = "".join(q_words)
-                    if search_string not in t_no_nikkud and search_string not in clean_text_db:
-                        continue
-
                     v_words_clean_only = re.findall(r'[א-ת]+', t_no_nikkud)
                     
                     if not v_words_clean_only:
@@ -1641,13 +1637,12 @@ def tanakh_advanced_search_api(request):
                     
                     if is_match:
                         highlighted_text = highlight_matched_text(raw_text, q_words, is_exact)
-                        is_mishnah_res = m['book'] not in tanakh_names
                         
                         results.append({
                             'book': m['book'],
                             'chapter': m['chapter'],
                             'verse': m['verse'],
-                            'verse_label': 'משנה' if is_mishnah_res else 'פסוק',
+                            'verse_label': get_verse_label(m['book'], m['chapter']),
                             'text': highlighted_text,
                             'match_type': 'מילה מדויקת' if is_exact else 'חיפוש רחב'
                         })
@@ -1660,14 +1655,13 @@ def tanakh_advanced_search_api(request):
                 t_clean = re.sub(r'[^א-ת\s]', ' ', t)
                 t_words = t_clean.split()
                 
-                is_mishnah_res = m['book'] not in tanakh_names
                 clean_t = "".join(t_words)
                 if calculate_gematria(clean_t) == target_val:
                     results.append({
                         'book': m['book'],
                         'chapter': m['chapter'],
                         'verse': m['verse'],
-                        'verse_label': 'משנה' if is_mishnah_res else 'פסוק',
+                        'verse_label': get_verse_label(m['book'], m['chapter']),
                         'text': m['text_with_nikkud'],
                         'match_type': 'גימטריה מלאה לפסוק'
                     })
@@ -1682,7 +1676,7 @@ def tanakh_advanced_search_api(request):
                             'book': m['book'],
                             'chapter': m['chapter'],
                             'verse': m['verse'],
-                            'verse_label': 'משנה' if is_mishnah_res else 'פסוק',
+                            'verse_label': get_verse_label(m['book'], m['chapter']),
                             'text': m['text_with_nikkud'],
                             'match_type': f'גימטריה למילה בפסוק (ערך {target_val})'
                         })
@@ -1696,7 +1690,6 @@ def tanakh_advanced_search_api(request):
                     t_clean = re.sub(r'[^א-ת\s]', ' ', t)
                     t_words = t_clean.split()
                     
-                    is_mishnah_res = m['book'] not in tanakh_names
                     if len(t_words) >= len(target_acr):
                         initials = "".join([w[0] for w in t_words if w])
                         if target_acr in initials:
@@ -1704,7 +1697,7 @@ def tanakh_advanced_search_api(request):
                                 'book': m['book'],
                                 'chapter': m['chapter'],
                                 'verse': m['verse'],
-                                'verse_label': 'משנה' if is_mishnah_res else 'פסוק',
+                                'verse_label': get_verse_label(m['book'], m['chapter']),
                                 'text': m['text_with_nikkud'],
                                 'match_type': 'ראשי תיבות בפסוק'
                             })
