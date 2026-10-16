@@ -28,7 +28,6 @@ from django.core.cache import cache
 from django.views.decorators.cache import cache_page
 from django.db.models import Q, Case, When, Value, IntegerField
 from django.urls import reverse
-# שיפור בטוח מס' 1: הוספת transaction לייבוא
 from django.db import models, transaction
 from django.utils.html import strip_tags
 
@@ -519,7 +518,7 @@ def ai_chat_endpoint(request):
 
 חוקי יסוד שעליך לציית להם תמיד:
 1. עליך לספק תשובה עניינית וישירה לשאלת הגולש, אך ורק מתוך המקורות שהובאו בפניך.
-​2. מכיוון שאתה מודל בינה מלאכותית, התשובות שאתה מנסח לא יכולות להוות תחליף לפסיקה הלכתית מלאה. הפנה את הגולש לקרוא את המאמר המקורי.
+2. מכיוון שאתה מודל בינה מלאכותית, התשובות שאתה מנסח לא יכולות להוות תחליף לפסיקה הלכתית מלאה. הפנה את הגולש לקרוא את המאמר המקורי.
 3. חובה לציין במפורש את שמו של המקור שעליו הסתמכת.
 4. אל תציין שחסר לך רקע - פשוט ענה את התשובה המצויה במקורות.
 5. חוק ברזל: אסור לך בשום אופן להוסיף חתימה בסוף התשובה. לעולם אל תכתוב "בברכה", לעולם אל תחתום בשם כלשהו (כמו "רב מומחה", "משה לייבוביץ" או כל חתימה אחרת), ולעולם אל תוסיף משפטי סיום ופרידה. עליך לסיים את תשובתך העניינית בנקודה (.) ולעצור מיד.
@@ -579,7 +578,7 @@ def ai_chat_endpoint(request):
                                     
                             except json.JSONDecodeError:
                                 continue
-                                
+                            
                     if mode != 'nav' and unique_relevant_items and "לא מצאתי לכך התייחסות מפורשת" not in full_generated_text:
                         sources_list_html = ""
                         sources_added = False
@@ -1199,7 +1198,7 @@ def load_tts_dictionary():
         'משל"מ': 'משנה למלך',
         'נ"י': 'נימוקי יוסף',
         'או"ז': 'אור זרוע',
-        'אר"ח': 'אורחות חיים',
+        'אר"ח': 'ארחות חיים',
         'ראב"ד': 'רבנו אברהם בן דוד',
         'רשב"א': 'רבינו שלמה בן אדרת',
         'רשב"ג': 'רבן שמעון בן גמליאל',
@@ -1536,6 +1535,7 @@ def tanakh_advanced_search_api(request):
 
     tanakh_names = ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב']
 
+    # --- סינון מדויק המונע הצגת משניות תחת תנ"ך שלם ---
     if book_filter == 'torah':
         qs = qs.filter(book__in=['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'])
     elif book_filter == 'talmud':
@@ -1543,10 +1543,7 @@ def tanakh_advanced_search_api(request):
     elif book_filter == 'mishnah':
         qs = qs.exclude(book__in=tanakh_names).exclude(chapter__startswith='דף')
     elif book_filter == 'tanakh':
-        tanakh_q = Q()
-        for t_name in tanakh_names:
-            tanakh_q |= Q(book__icontains=t_name)
-        qs = qs.filter(tanakh_q)
+        qs = qs.filter(book__in=tanakh_names)
     elif book_filter == 'all':
         pass 
     elif book_filter:
@@ -1563,6 +1560,8 @@ def tanakh_advanced_search_api(request):
         elif book_name not in tanakh_names:
             return 'משנה'
         return 'פסוק'
+
+    calculated_gematria_val = None
 
     try:
         if query_type == 'text' and query_val:
@@ -1645,7 +1644,6 @@ def tanakh_advanced_search_api(request):
                         })
                 
         elif query_type == 'gematria' and query_val:
-            # --- מילון הגימטריה ופונקציית עזר ---
             HEBREW_GEMATRIA_VALS = {
                 'א': 1, 'ב': 2, 'ג': 3, 'ד': 4, 'ה': 5, 'ו': 6, 'ז': 7, 'ח': 8, 'ט': 9,
                 'י': 10, 'כ': 20, 'ך': 20, 'ל': 30, 'מ': 40, 'ם': 40, 'נ': 50, 'ן': 50,
@@ -1655,18 +1653,16 @@ def tanakh_advanced_search_api(request):
             def calc_word_gem(w):
                 clean_w = re.sub(r'[^א-ת]', '', w)
                 return sum(HEBREW_GEMATRIA_VALS.get(c, 0) for c in clean_w)
-            # --------------------------------------------------------
 
-            # בדיקה האם הגולש הזין מספר ישירות, או מילה שצריך לחשב
             if query_val.isdigit():
                 target_val = int(query_val)
             else:
                 target_val = calc_word_gem(query_val)
             
-            # מבצעים חיפוש רק אם יש ערך גדול מ-0
+            calculated_gematria_val = target_val
+
             if target_val > 0:
                 search_str = f",{target_val},"
-                
                 matching_qs = qs.filter(Q(verse_gematria=target_val) | Q(words_gematria__contains=search_str))
                 all_verses = matching_qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'verse_gematria')
                 
@@ -1674,7 +1670,6 @@ def tanakh_advanced_search_api(request):
                     raw_text = m['text_with_nikkud']
                     
                     if m['verse_gematria'] == target_val:
-                        # מציג בתוצאות את הערך המספרי שחושב
                         m_type = f'גימטריה מלאה לפסוק (הערך: {target_val})'
                         final_text = f'<mark style="background-color: rgba(255, 235, 59, 0.4); padding: 0 4px; border-radius: 4px; color: inherit;">{raw_text}</mark>'
                     else:
@@ -1733,5 +1728,6 @@ def tanakh_advanced_search_api(request):
         'total': total_results,
         'page': page,
         'total_pages': total_pages,
-        'per_page': per_page
+        'per_page': per_page,
+        'calculated_gematria': calculated_gematria_val
     }, json_dumps_params={'ensure_ascii': False})
