@@ -1535,7 +1535,6 @@ def tanakh_advanced_search_api(request):
 
     tanakh_names = ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב']
 
-    # --- סינון מדויק המונע הצגת משניות תחת תנ"ך שלם ---
     if book_filter == 'torah':
         qs = qs.filter(book__in=['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'])
     elif book_filter == 'talmud':
@@ -1543,7 +1542,10 @@ def tanakh_advanced_search_api(request):
     elif book_filter == 'mishnah':
         qs = qs.exclude(book__in=tanakh_names).exclude(chapter__startswith='דף')
     elif book_filter == 'tanakh':
-        qs = qs.filter(book__in=tanakh_names)
+        tanakh_q = Q()
+        for t_name in tanakh_names:
+            tanakh_q |= Q(book__icontains=t_name)
+        qs = qs.filter(tanakh_q)
     elif book_filter == 'all':
         pass 
     elif book_filter:
@@ -1570,42 +1572,31 @@ def tanakh_advanced_search_api(request):
             
             if q_words:
                 num_q_words = len(q_words)
-                
                 text_query = Q()
                 for target_w in q_words:
                     text_query &= (Q(clean_text__icontains=target_w) | Q(text_with_nikkud__icontains=target_w))
                 
                 qs = qs.filter(text_query)
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
-                
                 prefix_pattern = re.compile(r'^(?:[משהוכלב]|שה|מה|כשה|לכש|ומ|וה|וכ|ול|וב|וש)?(.*?)$')
                 
                 for m in all_verses:
                     raw_text = m.get('text_with_nikkud') or ""
                     clean_text_db = m.get('clean_text') or ""
-                    
-                    if not raw_text and not clean_text_db:
-                        continue
+                    if not raw_text and not clean_text_db: continue
                     
                     t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', raw_text)
                     v_words_clean_only = re.findall(r'[א-ת]+', t_no_nikkud)
-                    
-                    if not v_words_clean_only:
-                        continue
+                    if not v_words_clean_only: continue
                         
                     is_match = False
                     if num_q_words == 1:
                         target = q_words[0]
                         for vw_clean in v_words_clean_only:
                             if is_exact:
-                                if vw_clean == target:
+                                if vw_clean == target or (prefix_pattern.match(vw_clean) and prefix_pattern.match(vw_clean).group(1) == target):
                                     is_match = True
                                     break
-                                else:
-                                    match_prefix = prefix_pattern.match(vw_clean)
-                                    if match_prefix and match_prefix.group(1) == target:
-                                        is_match = True
-                                        break
                             else:
                                 if target in vw_clean:
                                     is_match = True
@@ -1616,7 +1607,6 @@ def tanakh_advanced_search_api(request):
                             for j in range(num_q_words):
                                 target = q_words[j]
                                 current_vw = v_words_clean_only[i + j]
-                                
                                 if is_exact:
                                     match_prefix = prefix_pattern.match(current_vw)
                                     clean_current_base = match_prefix.group(1) if match_prefix else current_vw
@@ -1633,7 +1623,6 @@ def tanakh_advanced_search_api(request):
                     
                     if is_match:
                         highlighted_text = highlight_matched_text(raw_text, q_words, is_exact)
-                        
                         results.append({
                             'book': m['book'],
                             'chapter': m['chapter'],
@@ -1668,7 +1657,6 @@ def tanakh_advanced_search_api(request):
                 
                 for m in all_verses:
                     raw_text = m['text_with_nikkud']
-                    
                     if m['verse_gematria'] == target_val:
                         m_type = f'גימטריה מלאה לפסוק (הערך: {target_val})'
                         final_text = f'<mark style="background-color: rgba(255, 235, 59, 0.4); padding: 0 4px; border-radius: 4px; color: inherit;">{raw_text}</mark>'
@@ -1679,7 +1667,6 @@ def tanakh_advanced_search_api(request):
                             if calc_word_gem(word) == target_val:
                                 return f'<mark style="background-color: rgba(255, 235, 59, 0.4); padding: 0 4px; border-radius: 4px; color: inherit;">{word}</mark>'
                             return word
-                        
                         final_text = re.sub(r'[א-ת\u0591-\u05C7]+', highlight_word, raw_text)
                         
                     results.append({
@@ -1699,7 +1686,6 @@ def tanakh_advanced_search_api(request):
                     t = m.get('clean_text') or m.get('text_with_nikkud') or ""
                     t_clean = re.sub(r'[^א-ת\s]', ' ', t)
                     t_words = t_clean.split()
-                    
                     if len(t_words) >= len(target_acr):
                         initials = "".join([w[0] for w in t_words if w])
                         if target_acr in initials:
