@@ -1539,10 +1539,8 @@ def tanakh_advanced_search_api(request):
     if book_filter == 'torah':
         qs = qs.filter(book__in=['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'])
     elif book_filter == 'talmud':
-        # התיקון: שולף רק תלמוד בבלי (מזהה לפי המילה "דף" בפרק)
         qs = qs.filter(chapter__startswith='דף')
     elif book_filter == 'mishnah':
-        # התיקון: מוציא תנ"ך ומוציא תלמוד - משאיר רק משנה נטו
         qs = qs.exclude(book__in=tanakh_names).exclude(chapter__startswith='דף')
     elif book_filter == 'tanakh':
         tanakh_q = Q()
@@ -1559,7 +1557,6 @@ def tanakh_advanced_search_api(request):
         for ex in excluded:
             qs = qs.exclude(book__icontains=ex)
 
-    # פונקציית עזר להצגת התווית הנכונה בתוצאות (פסוק / משנה / שורה)
     def get_verse_label(book_name, chapter_name):
         if str(chapter_name).startswith('דף'):
             return 'שורה'
@@ -1649,37 +1646,49 @@ def tanakh_advanced_search_api(request):
                 
         elif query_type == 'gematria' and query_val.isdigit():
             target_val = int(query_val)
-            all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
+            search_str = f",{target_val},"
+            
+            # --- מילון הגימטריה ופונקציית עזר למציאת המילה המדויקת ---
+            HEBREW_GEMATRIA_VALS = {
+                'א': 1, 'ב': 2, 'ג': 3, 'ד': 4, 'ה': 5, 'ו': 6, 'ז': 7, 'ח': 8, 'ט': 9,
+                'י': 10, 'כ': 20, 'ך': 20, 'ל': 30, 'מ': 40, 'ם': 40, 'נ': 50, 'ן': 50,
+                'ס': 60, 'ע': 70, 'פ': 80, 'ף': 80, 'צ': 90, 'ץ': 90,
+                'ק': 100, 'ר': 200, 'ש': 300, 'ת': 400
+            }
+            def calc_word_gem(w):
+                clean_w = re.sub(r'[^א-ת]', '', w)
+                return sum(HEBREW_GEMATRIA_VALS.get(c, 0) for c in clean_w)
+            # --------------------------------------------------------
+
+            matching_qs = qs.filter(Q(verse_gematria=target_val) | Q(words_gematria__contains=search_str))
+            all_verses = matching_qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'verse_gematria')
+            
             for m in all_verses:
-                t = m.get('clean_text') or m.get('text_with_nikkud') or ""
-                t_clean = re.sub(r'[^א-ת\s]', ' ', t)
-                t_words = t_clean.split()
+                raw_text = m['text_with_nikkud']
                 
-                clean_t = "".join(t_words)
-                if calculate_gematria(clean_t) == target_val:
-                    results.append({
-                        'book': m['book'],
-                        'chapter': m['chapter'],
-                        'verse': m['verse'],
-                        'verse_label': get_verse_label(m['book'], m['chapter']),
-                        'text': m['text_with_nikkud'],
-                        'match_type': 'גימטריה מלאה לפסוק'
-                    })
+                if m['verse_gematria'] == target_val:
+                    m_type = 'גימטריה מלאה לפסוק'
+                    # הדגשה אלגנטית בצבע צהוב עדין לכל הפסוק
+                    final_text = f'<mark style="background-color: rgba(255, 235, 59, 0.4); padding: 0 4px; border-radius: 4px; color: inherit;">{raw_text}</mark>'
                 else:
-                    found_word = False
-                    for w in t_words:
-                        if calculate_gematria(w) == target_val:
-                            found_word = True
-                            break
-                    if found_word:
-                        results.append({
-                            'book': m['book'],
-                            'chapter': m['chapter'],
-                            'verse': m['verse'],
-                            'verse_label': get_verse_label(m['book'], m['chapter']),
-                            'text': m['text_with_nikkud'],
-                            'match_type': f'גימטריה למילה בפסוק (ערך {target_val})'
-                        })
+                    m_type = f'גימטריה למילה בפסוק (ערך {target_val})'
+                    # מעבר על המילים והדגשת המילה הספציפית שמתאימה
+                    def highlight_word(match):
+                        word = match.group(0)
+                        if calc_word_gem(word) == target_val:
+                            return f'<mark style="background-color: rgba(255, 235, 59, 0.4); padding: 0 4px; border-radius: 4px; color: inherit;">{word}</mark>'
+                        return word
+                    
+                    final_text = re.sub(r'[א-ת\u0591-\u05C7]+', highlight_word, raw_text)
+                    
+                results.append({
+                    'book': m['book'],
+                    'chapter': m['chapter'],
+                    'verse': m['verse'],
+                    'verse_label': get_verse_label(m['book'], m['chapter']),
+                    'text': final_text,
+                    'match_type': m_type
+                })
                     
         elif query_type == 'acronym' and query_val:
             target_acr = re.sub(r'[^א-ת]', '', query_val)
