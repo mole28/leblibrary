@@ -26,7 +26,7 @@ def process_mammoth_html(raw_html):
     if not raw_html: return ""
     soup = BeautifulSoup(raw_html, 'html.parser')
 
-    # 1. סידור ההפניות בתוך המאמר והוספת סוגריים [1]
+    #סידור ההפניות בתוך המאמר והוספת סוגריים [1]
     for ref in soup.find_all('a', id=re.compile(r'^footnote-ref-')):
         clean_num = ref.get_text(strip=True).replace('[', '').replace(']', '')
         ref.string = f"[{clean_num}]" # הוספת סוגריים מרובעים מסביב למספר
@@ -330,7 +330,7 @@ class Chapter(models.Model):
     title = models.CharField(max_length=200, verbose_name="כותרת (למשל: סימן א)")
     order = models.PositiveIntegerField(verbose_name="סדר")
 
-    def __str__(self): return f"{self.book.title} - {self.title}"
+    def __str__(self): return f"{self.book.title} | {self.title}"
 
 
 class Section(models.Model):
@@ -340,7 +340,7 @@ class Section(models.Model):
     content = CKEditor5Field(config_name='extends', verbose_name="תוכן", blank=True, null=True)
     order = models.PositiveIntegerField(verbose_name="סדר")
 
-    def __str__(self): return f"{self.chapter.title} - {self.title}"
+    def __str__(self): return f"{self.chapter.title} | {self.title}"
 
     def save(self, *args, **kwargs):
         if self.word_file and mammoth:
@@ -367,7 +367,7 @@ class Acronym(models.Model):
         verbose_name_plural = "מילון ראשי תיבות"
         ordering = ['short']
 
-    def __str__(self): return f"{self.short} - {self.meaning[:40]}..."
+    def __str__(self): return f"{self.short} | {self.meaning[:40]}..."
 
 class Cart(models.Model):
     session_id = models.CharField(max_length=255, blank=True, null=True, verbose_name="מזהה סשן")
@@ -402,7 +402,7 @@ class Order(models.Model):
     total_paid = models.DecimalField(max_digits=8, decimal_places=2, verbose_name="סך הכל לתשלום")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="סטטוס הזמנה")
     notes = models.TextField(blank=True, verbose_name="הערות להזמנה")
-    def __str__(self): return f"הזמנה #{self.id} - {self.first_name} {self.last_name}"
+    def __str__(self): return f"הזמנה #{self.id} | {self.first_name} {self.last_name}"
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
@@ -445,7 +445,7 @@ class VisitorLog(models.Model):
         verbose_name = "לוג ביקור"
         verbose_name_plural = "לוגים של מבקרים"
         ordering = ['-timestamp']
-    def __str__(self): return f"{self.ip_address} - {self.path} ({self.timestamp})"
+    def __str__(self): return f"{self.ip_address} | {self.path} ({self.timestamp})"
 
 class TorahText(models.Model):
     book = models.CharField(max_length=100, verbose_name="ספר")
@@ -453,6 +453,13 @@ class TorahText(models.Model):
     verse = models.CharField(max_length=10, verbose_name="פסוק")
     text_with_nikkud = models.TextField(verbose_name="טקסט מנוקד")
     clean_text = models.TextField(verbose_name="טקסט נקי (ללא ניקוד ורווחים)", blank=True)
+    
+    # -------------------------------------------------------------
+    # התוספת לחישוב גימטריה מהיר מראש ברמת הדאטה-בייס! (היוקרתי)
+    # -------------------------------------------------------------
+    verse_gematria = models.IntegerField(default=0, db_index=True)
+    words_gematria = models.TextField(blank=True, null=True)
+
     class Meta:
         verbose_name = "טקסט תורני"
         verbose_name_plural = "טקסטים תורניים"
