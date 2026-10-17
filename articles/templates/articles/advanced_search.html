@@ -1,24 +1,24 @@
 {% extends 'articles/base.html' %}
 {% load static %}
 
-{% block title %}מנוע חיפוש תורני מתקדם | ספריית לייבוביץ{% endblock %}
+{% block title %}מאגר החיפוש התורני | ספריית לייבוביץ{% endblock %}
 
 {% block hero %}
 <style>
     .custom-hero-bg {
-        height: 280px;
+        height: 270px;
         background-image: url('{% static "images/banner.png" %}');
         background-size: cover;
         background-position: center 10%;
     }
 </style>
 <div class="hero-section custom-hero-bg">
-    <div class="hero-overlay" style="background-color: rgba(0,0,0,0.5);"></div>
+    <div class="hero-overlay" style="background-color: rgba(15, 23, 42, 0.62);"></div>
     <div class="hero-content text-center w-100" style="transform: translateY(0);">
-        <i class="bi bi-gem mb-2 d-inline-block" style="font-size: 2.5rem; color: #d4af37;"></i>
-        <h1 class="text-white mb-0 fw-bold display-4" style="color: #d4af37 !important; text-shadow: 2px 2px 8px rgba(0,0,0,0.8);">חיפוש תורני מתקדם</h1>
-        <p class="text-white mt-3 fs-4 mb-1" style="text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">חיפוש מתקדם בתנ"ך, ובששה סדרי משנה.</p>
-        <p class="text-white fs-5" style="text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">כולל חיפוש ראשי תיבות, סופי תיבות, גימטריאות ועוד.</p>
+        <i class="bi bi-gem mb-2 d-inline-block" style="font-size: 2.4rem; color: #d4af37;"></i>
+        <h1 class="text-white mb-2 fw-bold display-4" style="color: #d4af37 !important; text-shadow: 2px 2px 8px rgba(0,0,0,0.85); letter-spacing: 0.5px;">מאגר החיפוש התורני</h1>
+        <p class="text-white mt-2 fs-4 mb-1 fw-semibold" style="text-shadow: 1px 1px 6px rgba(0,0,0,0.9);">איתור לשונות, פסוקים ומקורות בתנ"ך, במשנה, בתוספתא, בתלמודים ובפוסקים</p>
+        <p class="text-white fs-6 mb-0" style="color: #f3e5ab !important; text-shadow: 1px 1px 4px rgba(0,0,0,0.85);">חיפוש מילולי מדויק, חישובי גימטריאות, ראשי וסופי תיבות, היפוך אותיות ודילוגים</p>
     </div>
 </div>
 {% endblock %}
@@ -29,213 +29,460 @@
         <li class="breadcrumb-item">
             <a href="{% url 'articles:list' %}" class="text-decoration-none text-muted"><i class="bi bi-house-door-fill"></i> ספריית לייבוביץ</a>
         </li>
-        <li class="breadcrumb-item active fw-bold" aria-current="page">חיפוש מתקדם</li>
+        <li class="breadcrumb-item active fw-bold" aria-current="page">מאגר החיפוש התורני</li>
     </ol>
 </nav>
 {% endblock %}
 
 {% block content %}
+<style>
+    /* כפתורי בחירת מאגר יוקרתיים */
+    .corpus-luxury-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        direction: rtl;
+    }
+    .corpus-luxury-btn {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 9px 11px;
+        background: #ffffff;
+        border: 1.5px solid #e2d9c5;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #3b352a;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        user-select: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .corpus-luxury-btn:hover {
+        border-color: #d4af37;
+        background: #fdfaf2;
+        transform: translateY(-1px);
+    }
+    .corpus-luxury-btn.active {
+        background: linear-gradient(135deg, #fcf3cf 0%, #f5dc86 100%);
+        border-color: #b8860b;
+        color: #1f1a10;
+        font-weight: 700;
+        box-shadow: 0 3px 8px rgba(212, 175, 55, 0.25);
+    }
+    .corpus-luxury-btn.full-width {
+        grid-column: 1 / -1;
+        justify-content: center;
+        gap: 10px;
+    }
+    .corpus-check-indicator {
+        width: 19px;
+        height: 19px;
+        border-radius: 50%;
+        border: 1.5px solid #cbbba0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.72rem;
+        background: #fff;
+        color: transparent;
+        transition: all 0.18s ease;
+        flex-shrink: 0;
+    }
+    .corpus-luxury-btn.active .corpus-check-indicator {
+        background: #b8860b;
+        border-color: #b8860b;
+        color: #fff;
+    }
+
+    /* כרטיסיות בחירת סוג פעולה */
+    .action-luxury-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        direction: rtl;
+    }
+    .action-luxury-card {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 9px 11px;
+        background: #ffffff;
+        border: 1.5px solid #e2d9c5;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        user-select: none;
+        text-align: right;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    .action-luxury-card:hover {
+        border-color: #d4af37;
+        background: #fdfaf2;
+        transform: translateY(-1px);
+    }
+    .action-luxury-card.active {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        border-color: #d4af37;
+        color: #ffffff;
+        box-shadow: 0 4px 10px rgba(30, 41, 59, 0.22);
+    }
+    .action-card-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: #1e293b;
+        width: 100%;
+    }
+    .action-luxury-card.active .action-card-header {
+        color: #f7e199;
+    }
+    .action-card-sub {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-top: 2px;
+        line-height: 1.2;
+    }
+    .action-luxury-card.active .action-card-sub {
+        color: #e2e8f0;
+    }
+
+    /* תיבת חיפוש עם כפתור ניקוי */
+    .search-input-luxury-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+    .clear-search-btn {
+        position: absolute;
+        left: 12px;
+        background: #eee5ce;
+        border: none;
+        color: #5c4b23;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        font-size: 0.85rem;
+        font-weight: bold;
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+        z-index: 3;
+    }
+    .clear-search-btn:hover {
+        background: #d4af37;
+        color: #fff;
+    }
+
+    /* בורר דילוגים וכפתורי סינון דילוג */
+    .els-skip-selector-wrap {
+        display: none;
+        margin-top: 10px;
+        padding: 10px 12px;
+        background: #fdfaf2;
+        border: 1.5px solid #e2d1a0;
+        border-radius: 10px;
+        direction: rtl;
+    }
+    .els-skips-bar {
+        display: none;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-top: 12px;
+        padding: 11px;
+        background: #fdfbf5;
+        border: 1.5px solid #d4af37;
+        border-radius: 10px;
+        direction: rtl;
+        align-items: center;
+        justify-content: center;
+    }
+    .els-skips-title {
+        width: 100%;
+        text-align: center;
+        font-weight: bold;
+        color: #5c4b23;
+        font-size: 0.88rem;
+        margin-bottom: 4px;
+    }
+    .els-skip-pill {
+        padding: 5px 11px;
+        border-radius: 20px;
+        border: 1.5px solid #d4af37;
+        background: #fff;
+        color: #4a3c1a;
+        font-size: 0.84rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.18s ease;
+    }
+    .els-skip-pill:hover {
+        background: #fcf3cf;
+    }
+    .els-skip-pill.active {
+        background: #d4af37;
+        color: #fff;
+        border-color: #b8860b;
+    }
+
+    /* כפתורי פעולה על תוצאות (הצג פרק מלא / העתק) */
+    .result-action-btn {
+        background: #ffffff;
+        border: 1px solid #d4af37;
+        color: #4a3c1a;
+        border-radius: 8px;
+        padding: 5px 11px;
+        font-size: 0.84rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .result-action-btn:hover {
+        background: #d4af37;
+        color: #1e202c;
+        box-shadow: 0 2px 6px rgba(212, 175, 55, 0.3);
+    }
+    .export-toolbar-btn {
+        background: linear-gradient(135deg, #fcf3cf 0%, #f5dc86 100%);
+        border: 1.5px solid #b8860b;
+        color: #1f1a10;
+        border-radius: 8px;
+        padding: 6px 13px;
+        font-size: 0.88rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .export-toolbar-btn:hover {
+        background: #d4af37;
+        color: #fff;
+    }
+
+    /* עיצוב חלונית הפרק המלא (Modal) */
+    .chapter-context-verse {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f1ece1;
+        border-radius: 8px;
+        transition: background 0.2s;
+    }
+    .chapter-context-verse.target-highlight {
+        background-color: #fff8dc;
+        border: 2px solid #d4af37;
+        box-shadow: 0 3px 10px rgba(212, 175, 55, 0.2);
+    }
+    .verse-num-badge {
+        display: inline-block;
+        min-width: 34px;
+        padding: 2px 8px;
+        background: #f3ead3;
+        color: #5c4b23;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        text-align: center;
+        margin-left: 10px;
+    }
+    .chapter-context-verse.target-highlight .verse-num-badge {
+        background: #d4af37;
+        color: #fff;
+    }
+</style>
+
 <div class="container mb-5 pb-5">
-
-    <!-- הודעת מערכת בבנייה -->
-    <div class="alert text-center fw-bold fs-5 shadow-sm mb-5 rounded-4" role="alert" style="border: 2px dashed #d39e00; background-color: #fff8e1; color: #856404; padding: 1.5rem;">
-        <i class="bi bi-cone-striped ms-2 fs-3" style="vertical-align: middle;"></i>
-        שימו לב: מנוע החיפוש נמצא כרגע בשלבי בנייה ופיתוח (גרסת Beta). 
-        <div class="fs-6 fw-normal mt-2">ייתכנו חוסרים, עיכובים או אי-דיוקים בהצגת התוצאות המלאות. אנו עובדים על שדרוג מנגנון הסריקה. עמכם הסליחה.</div>
-    </div>
-
     <div class="row gx-lg-5">
         
-        <!-- חלונית ההגדרות -->
+        <!-- חלונית ההגדרות והפרמטרים -->
         <div class="col-lg-4 mb-4">
             <div class="card shadow-sm p-4 h-100" style="border: 2px solid #d4af37; border-radius: 16px; background-color: #fdfdf9;">
-                <h3 class="fw-bold mb-4 text-center" style="color: #2c3e50;"><i class="bi bi-sliders ms-2"></i> פרמטרים לחיפוש</h3>
+                <h4 class="fw-bold mb-3 text-center" style="color: #1e293b;">
+                    <i class="bi bi-sliders ms-2" style="color: #d4af37;"></i>הגדרות חיפוש
+                </h4>
                 
                 <form id="advancedSearchForm">
-                    <!-- בחירת מאגר -->
-                    <div class="mb-4">
-                        <label class="form-label fw-bold" style="color: #4a5568;">בחר מאגר חיפוש:</label>
-                        <select class="form-select" id="searchCorpus" style="border-radius: 8px; border-color: #cbd5e1;">
-                            <option value="all">כל המאגרים (תנ"ך + משנה)</option>
-                            <option value="tanakh">תנ"ך שלם</option>
-                            <option value="torah">חומשי תורה בלבד</option>
-                            <option value="mishnah" selected>משנה (ששה סדרי משנה)</option>
-                            <option value="talmud">תלמוד בבלי</option>
-                        </select>
+                    <!-- 1. בחירת מאגר בכפתורי יוקרה -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold mb-2" style="color: #334155; font-size: 0.95rem;">1. בחר מאגרי חיפוש (ניתן לשלב מספר מאגרים):</label>
+                        <div class="corpus-luxury-grid" id="corpusGrid">
+                            <div class="corpus-luxury-btn full-width" id="corpusAllBtn">
+                                <span class="corpus-check-indicator">✓</span>
+                                <span>כל המאגרים יחד</span>
+                            </div>
+                            <div class="corpus-luxury-btn active" data-corpus="torah">
+                                <span>📜 תורה</span>
+                                <span class="corpus-check-indicator">✓</span>
+                            </div>
+                            <div class="corpus-luxury-btn" data-corpus="tanakh">
+                                <span>📖 תנ"ך שלם</span>
+                                <span class="corpus-check-indicator">✓</span>
+                            </div>
+                            <div class="corpus-luxury-btn" data-corpus="mishnah">
+                                <span>⚖️ משנה</span>
+                                <span class="corpus-check-indicator">✓</span>
+                            </div>
+                            <div class="corpus-luxury-btn" data-corpus="tosefta">
+                                <span>🏺 תוספתא</span>
+                                <span class="corpus-check-indicator">✓</span>
+                            </div>
+                            <div class="corpus-luxury-btn" data-corpus="talmud">
+                                <span>🏛️ תלמוד בבלי</span>
+                                <span class="corpus-check-indicator">✓</span>
+                            </div>
+                            <div class="corpus-luxury-btn" data-corpus="yerushalmi">
+                                <span>🕍 תלמוד ירושלמי</span>
+                                <span class="corpus-check-indicator">✓</span>
+                            </div>
+                            <div class="corpus-luxury-btn" data-corpus="rambam">
+                                <span>👑 רמב"ם (משנה תורה)</span>
+                                <span class="corpus-check-indicator">✓</span>
+                            </div>
+                            <div class="corpus-luxury-btn" data-corpus="shulchan_aruch">
+                                <span>📚 שולחן ערוך</span>
+                                <span class="corpus-check-indicator">✓</span>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- החרגת ספרים -->
-                    <div class="mb-4">
-                        <label class="form-label fw-bold" style="color: #4a5568; font-size: 0.95rem;">החרג ספרים <span class="text-muted fw-normal">(החזק Ctrl לבחירה מרובה)</span>:</label>
-                        <select multiple class="form-select" id="excludeBooks" style="border-radius: 8px; border-color: #cbd5e1; height: 110px; font-size: 0.9rem;">
-                            <optgroup label="תורה">
-                                <option value="בראשית">בראשית</option>
-                                <option value="שמות">שמות</option>
-                                <option value="ויקרא">ויקרא</option>
-                                <option value="במדבר">במדבר</option>
-                                <option value="דברים">דברים</option>
-                            </optgroup>
-                            <optgroup label="נביאים">
-                                <option value="יהושע">יהושע</option>
-                                <option value="שופטים">שופטים</option>
-                                <option value="שמואל א">שמואל א</option>
-                                <option value="שמואל ב">שמואל ב</option>
-                                <option value="מלכים א">מלכים א</option>
-                                <option value="מלכים ב">מלכים ב</option>
-                                <option value="ישעיהו">ישעיהו</option>
-                                <option value="ירמיהו">ירמיהו</option>
-                                <option value="יחזקאל">יחזקאל</option>
-                                <option value="הושע">הושע</option>
-                                <option value="יואל">יואל</option>
-                                <option value="עמוס">עמוס</option>
-                                <option value="עובדיה">עובדיה</option>
-                                <option value="יונה">יונה</option>
-                                <option value="מיכה">מיכה</option>
-                                <option value="נחום">נחום</option>
-                                <option value="חבקוק">חבקוק</option>
-                                <option value="צפניה">צפניה</option>
-                                <option value="חגי">חגי</option>
-                                <option value="זכריה">זכריה</option>
-                                <option value="מלאכי">מלאכי</option>
-                            </optgroup>
-                            <optgroup label="כתובים">
-                                <option value="תהילים">תהילים</option>
-                                <option value="משלי">משלי</option>
-                                <option value="איוב">איוב</option>
-                                <option value="שיר השירים">שיר השירים</option>
-                                <option value="רות">רות</option>
-                                <option value="איכה">איכה</option>
-                                <option value="קהלת">קהלת</option>
-                                <option value="אסתר">אסתר</option>
-                                <option value="דניאל">דניאל</option>
-                                <option value="עזרא">עזרא</option>
-                                <option value="נחמיה">נחמיה</option>
-                                <option value="דברי הימים א">דברי הימים א</option>
-                                <option value="דברי הימים ב">דברי הימים ב</option>
-                            </optgroup>
-                            <optgroup label="משנה - זרעים">
-                                <option value="ברכות">ברכות</option>
-                                <option value="פאה">פאה</option>
-                                <option value="דמאי">דמאי</option>
-                                <option value="כלאים">כלאים</option>
-                                <option value="שביעית">שביעית</option>
-                                <option value="תרומות">תרומות</option>
-                                <option value="מעשרות">מעשרות</option>
-                                <option value="מעשר שני">מעשר שני</option>
-                                <option value="חלה">חלה</option>
-                                <option value="ערלה">ערלה</option>
-                                <option value="ביכורים">ביכורים</option>
-                            </optgroup>
-                            <optgroup label="משנה - מועד">
-                                <option value="שבת">שבת</option>
-                                <option value="עירובין">עירובין</option>
-                                <option value="פסחים">פסחים</option>
-                                <option value="שקלים">שקלים</option>
-                                <option value="יומא">יומא</option>
-                                <option value="סוכה">סוכה</option>
-                                <option value="ביצה">ביצה</option>
-                                <option value="ראש השנה">ראש השנה</option>
-                                <option value="תענית">תענית</option>
-                                <option value="מגילה">מגילה</option>
-                                <option value="מועד קטן">מועד קטן</option>
-                                <option value="חגיגה">חגיגה</option>
-                            </optgroup>
-                            <optgroup label="משנה - נשים">
-                                <option value="יבמות">יבמות</option>
-                                <option value="כתובות">כתובות</option>
-                                <option value="נדרים">נדרים</option>
-                                <option value="נזיר">נזיר</option>
-                                <option value="סוטה">סוטה</option>
-                                <option value="גיטין">גיטין</option>
-                                <option value="קידושין">קידושין</option>
-                            </optgroup>
-                            <optgroup label="משנה - נזיקין">
-                                <option value="בבא קמא">בבא קמא</option>
-                                <option value="בבא מציעא">בבא מציעא</option>
-                                <option value="בבא בתרא">בבא בתרא</option>
-                                <option value="סנהדרין">סנהדרין</option>
-                                <option value="מכות">מכות</option>
-                                <option value="שבועות">שבועות</option>
-                                <option value="עדיות">עדיות</option>
-                                <option value="עבודה זרה">עבודה זרה</option>
-                                <option value="אבות">אבות</option>
-                                <option value="הוריות">הוריות</option>
-                            </optgroup>
-                            <optgroup label="משנה - קדשים">
-                                <option value="זבחים">זבחים</option>
-                                <option value="מנחות">מנחות</option>
-                                <option value="חולין">חולין</option>
-                                <option value="בכורות">בכורות</option>
-                                <option value="ערכין">ערכין</option>
-                                <option value="תמורה">תמורה</option>
-                                <option value="כריתות">כריתות</option>
-                                <option value="מעילה">מעילה</option>
-                                <option value="תמיד">תמיד</option>
-                                <option value="מדות">מדות</option>
-                                <option value="קינים">קינים</option>
-                            </optgroup>
-                            <optgroup label="משנה - טהרות">
-                                <option value="כלים">כלים</option>
-                                <option value="אהלות">אהלות</option>
-                                <option value="נגעים">נגעים</option>
-                                <option value="פרה">פרה</option>
-                                <option value="טהרות">טהרות</option>
-                                <option value="מקואות">מקואות</option>
-                                <option value="נדה">נדה</option>
-                                <option value="מכשירין">מכשירין</option>
-                                <option value="זבים">זבים</option>
-                                <option value="טבול יום">טבול יום</option>
-                                <option value="ידים">ידים</option>
-                                <option value="עוקצין">עוקצין</option>
-                            </optgroup>
-                        </select>
+                    <!-- 2. החרגת ספרים דינמית לפי המאגר שנבחר -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label fw-bold mb-0" style="color: #334155; font-size: 0.9rem;">החרג ספרים / מסכתות:</label>
+                            <button type="button" id="clearExcludesBtn" class="btn btn-link p-0 text-decoration-none" style="font-size: 0.8rem; color: #b8860b; display: none;">נקה החרגות</button>
+                        </div>
+                        <select multiple class="form-select" id="excludeBooks" style="border-radius: 10px; border-color: #cbd5e1; height: 115px; font-size: 0.88rem;"></select>
+                        <div class="form-text" style="font-size: 0.76rem; color: #64748b;">החזק Ctrl (או Cmd) לבחירה מרובה מתוך המאגרים שסומנו.</div>
                     </div>
 
-                    <!-- בחירת סוג חיפוש -->
-                    <div class="mb-4">
-                        <label class="form-label fw-bold" style="color: #4a5568;">סוג פעולה:</label>
-                        <select class="form-select" id="searchAction" style="border-radius: 8px; border-color: #cbd5e1; background-color: #fff9f0;">
-                            <option value="text_exact">חיפוש מילה במאגר - במדויק</option>
-                            <option value="text_approx" selected>חיפוש מילה במאגר - לא מדויק</option>
-                            <option value="gematria">מצא שווים בגימטריה</option>
-                            <option value="els">דילוגי אותיות (ELS)</option>
-                            <option value="rashei_tevot">ראשי תיבות (ר"ת)</option>
-                            <option value="sofei_tevot">סופי תיבות (ס"ת)</option>
-                            <option value="reverse">מילים הפוכות (פלינדרום)</option>
-                        </select>
+                    <!-- 3. בחירת סוג פעולה בכרטיסיות נוחות -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold mb-2" style="color: #334155; font-size: 0.95rem;">2. בחר סוג פעולה:</label>
+                        <input type="hidden" id="searchAction" value="text_exact">
+                        <div class="action-luxury-grid" id="actionGrid">
+                            <div class="action-luxury-card active" data-action="text_exact" data-placeholder="הזן מילה או ביטוי מדויק (למשל: משה)...">
+                                <div class="action-card-header"><span>🎯</span><span>מילה מדויקת</span></div>
+                                <div class="action-card-sub">המילה השלמה בלבד</div>
+                            </div>
+                            <div class="action-luxury-card" data-action="text_broad" data-placeholder="הזן אותיות לחיפוש רחב (למשל: משה -> חמשה)...">
+                                <div class="action-card-header"><span>🔍</span><span>חיפוש חופשי</span></div>
+                                <div class="action-card-sub">כולל חלק ממילה</div>
+                            </div>
+                            <div class="action-luxury-card" data-action="gematria" data-placeholder="הזן מילה, משפט או מספר לחישוב גימטריה...">
+                                <div class="action-card-header"><span>🔢</span><span>גימטריה</span></div>
+                                <div class="action-card-sub">מילים או ערך מספרי</div>
+                            </div>
+                            <div class="action-luxury-card" data-action="acronym" data-placeholder="הזן ראשי תיבות ברצף (למשל: בבא)...">
+                                <div class="action-card-header"><span>🔠</span><span>ראשי תיבות</span></div>
+                                <div class="action-card-sub">אותיות פותחות (ר"ת)</div>
+                            </div>
+                            <div class="action-luxury-card" data-action="sofei_tevot" data-placeholder="הזן סופי תיבות ברצף (למשל: תא -> בראשית ברא)...">
+                                <div class="action-card-header"><span>🔡</span><span>סופי תיבות</span></div>
+                                <div class="action-card-sub">אותיות חותמות (ס"ת)</div>
+                            </div>
+                            <div class="action-luxury-card" data-action="reverse" data-placeholder="הזן מילה להיפוך אותיות (למשל: ארב -> ברא)...">
+                                <div class="action-card-header"><span>🔄</span><span>מילים הפוכות</span></div>
+                                <div class="action-card-sub">היפוך / פלינדרום</div>
+                            </div>
+                            <div class="action-luxury-card" data-action="els" data-placeholder="הזן מילה לדילוגים במילה בודדת (למשל: משה)...">
+                                <div class="action-card-header"><span>⚡</span><span>דילוגים במילה</span></div>
+                                <div class="action-card-sub">מרווח אותיות במילה</div>
+                            </div>
+                            <div class="action-luxury-card" data-action="els_verse" data-placeholder="הזן אותיות לדילוגים לאורך הפסוק (למשל: משה)...">
+                                <div class="action-card-header"><span>📜</span><span>דילוגים בפסוק</span></div>
+                                <div class="action-card-sub">דילוג חוצה מילים</div>
+                            </div>
+                        </div>
+
+                        <!-- בורר מרווח דילוג למצבי דילוגים -->
+                        <div class="els-skip-selector-wrap" id="skipSelectWrap">
+                            <label class="fw-bold mb-1" style="font-size: 0.85rem; color: #5c4b23;">בחר מרווח דילוג קבוע מראש (אופציונלי):</label>
+                            <select class="form-select form-select-sm" id="elsPreselectSkip" style="border-color: #d4af37; font-weight: 600;">
+                                <option value="">כל הדילוגים האפשריים (זיהוי אוטומטי)</option>
+                                <option value="0">דילוג 0 (אותיות סמוכות ברצף)</option>
+                                <option value="1">דילוג 1 (מרווח של אות אחת - מXשXה)</option>
+                                <option value="2">דילוג 2 (מרווח של 2 אותיות - מXXשXXה)</option>
+                                <option value="3">דילוג 3 (מרווח של 3 אותיות)</option>
+                                <option value="4">דילוג 4 (מרווח של 4 אותיות)</option>
+                                <option value="5">דילוג 5 (מרווח של 5 אותיות)</option>
+                                <option value="6">דילוג 6 (מרווח של 6 אותיות)</option>
+                                <option value="7">דילוג 7 (מרווח של 7 אותיות)</option>
+                                <option value="8">דילוג 8 (מרווח של 8 אותיות)</option>
+                                <option value="9">דילוג 9 (מרווח של 9 אותיות)</option>
+                                <option value="10">דילוג 10 (מרווח של 10 אותיות)</option>
+                                <option value="11">דילוג 11</option>
+                                <option value="12">דילוג 12</option>
+                                <option value="13">דילוג 13</option>
+                                <option value="14">דילוג 14</option>
+                                <option value="15">דילוג 15</option>
+                                <option value="16">דילוג 16</option>
+                                <option value="17">דילוג 17</option>
+                                <option value="18">דילוג 18</option>
+                                <option value="19">דילוג 19</option>
+                                <option value="20">דילוג 20</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <!-- מילת חיפוש -->
-                    <div class="mb-4">
-                        <label class="form-label fw-bold" style="color: #4a5568;">הזן מילה, ערך מספרי או משפט:</label>
-                        <input type="text" class="form-control form-control-lg" id="searchQuery" placeholder="לדוגמה: שמר..." required style="border-radius: 8px; border: 2px solid #d4af37; text-align: center;">
+                    <!-- 4. תיבת הקלדת המילה -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold mb-1" style="color: #334155; font-size: 0.95rem;">3. הזן מילה, ערך מספרי או משפט:</label>
+                        <div class="search-input-luxury-wrap">
+                            <input type="text" class="form-control form-control-lg" id="searchQuery" placeholder="הזן מילה או ביטוי מדויק (למשל: משה)..." required style="border-radius: 10px; border: 2px solid #d4af37; text-align: center; padding-left: 38px; font-weight: 600;">
+                            <button type="button" class="clear-search-btn" id="clearSearchBtn" title="נקה תיבה">✕</button>
+                        </div>
                     </div>
                     
-                    <button type="submit" class="btn w-100 py-3 mt-2" style="background-color: #d4af37; color: #1e202c; font-weight: bold; font-size: 1.2rem; border-radius: 12px; transition: all 0.2s; box-shadow: 0 4px 10px rgba(212, 175, 55, 0.4);">
-                        <i class="bi bi-cpu ms-2"></i> בצע חישוב מהיר
+                    <button type="submit" id="submitSearchBtn" class="btn w-100 py-3 mt-1" style="background: linear-gradient(135deg, #d4af37 0%, #c59b27 100%); color: #1e202c; font-weight: 800; font-size: 1.15rem; border-radius: 12px; transition: all 0.2s; box-shadow: 0 4px 12px rgba(212, 175, 55, 0.35);">
+                        <i class="bi bi-search ms-2"></i>בצע חיפוש מהיר
                     </button>
+
+                    <!-- חלונית חיווי אוטומטית מתחת לכפתור (גימטריה / מילה הפוכה / דילוגים) -->
+                    <div id="smartHelperBox" style="display: none; margin-top: 12px; padding: 10px 14px; background-color: #fcf8e8; border: 1.5px solid #d4af37; border-radius: 10px; text-align: center; font-weight: bold; color: #2b2313; font-size: 1.02rem;"></div>
+
+                    <!-- סרגל לחצני דילוגים אינטראקטיבי -->
+                    <div id="elsSkipsBar" class="els-skips-bar"></div>
                 </form>
             </div>
         </div>
 
-        <!-- אזור התוצאות -->
+        <!-- אזור תוצאות החיפוש -->
         <div class="col-lg-8">
-            <div class="card shadow-sm h-100" style="border: none; border-radius: 16px; background-color: #ffffff;">
-                <div class="card-header p-4" style="background-color: transparent; border-bottom: 2px solid #f8f9fa;">
-                    <h4 class="mb-0 fw-bold" style="color: #2c3e50;"><i class="bi bi-card-text ms-2"></i> תוצאות הסריקה</h4>
+            <div class="card shadow-sm h-100" style="border: 1px solid #ece6d8; border-radius: 16px; background-color: #ffffff;">
+                <div class="card-header p-4 d-flex justify-content-between align-items-center flex-wrap gap-2" style="background-color: #faf8f2; border-bottom: 2px solid #f1ece1; border-radius: 16px 16px 0 0;">
+                    <h4 class="mb-0 fw-bold" style="color: #1e293b;">
+                        <i class="bi bi-journal-richtext ms-2" style="color: #d4af37;"></i>תוצאות הסריקה במאגר
+                    </h4>
+                    <!-- סרגל כפתורי העתקה וייצוא של התוצאות למאמר -->
+                    <div id="exportToolbar" style="display: none; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" class="export-toolbar-btn" onclick="copyAllResultsToClipboard()">
+                            <i class="bi bi-clipboard-check"></i> העתק תוצאות למאמר
+                        </button>
+                        <button type="button" class="result-action-btn" onclick="downloadResultsAsText()">
+                            <i class="bi bi-download"></i> הורד כקובץ TXT
+                        </button>
+                    </div>
                 </div>
+
                 <div class="card-body p-4">
-                    
-                    <!-- הודעת ברירת מחדל -->
+                    <!-- הודעת המתנה התחלתית -->
                     <div id="resultsPlaceholder" class="text-center py-5">
-                        <i class="bi bi-box-seam" style="font-size: 5rem; color: #e2e8f0;"></i>
-                        <h4 class="mt-4 text-muted fw-bold">המנוע ממתין לפקודה</h4>
-                        <p class="text-muted fs-5">הזן נתונים בטופס והפעל את החישוב כדי לראות תוצאות בזמן אמת.</p>
+                        <i class="bi bi-book-half" style="font-size: 4.5rem; color: #d4af37; opacity: 0.55;"></i>
+                        <h4 class="mt-3 fw-bold" style="color: #334155;">מאגר החיפוש מוכן לפעולה</h4>
+                        <p class="text-muted fs-6 mb-0">בחר מאגר וסוג פעולה מימין, הקלד את מילת החיפוש ולחץ על "בצע חיפוש מהיר".</p>
                     </div>
 
-                    <!-- אזור לתוצאות טעינה/סיום (יופעל ב-JS) -->
+                    <!-- אזור הצגת התוצאות -->
                     <div id="resultsArea" style="display: none;"></div>
-
                 </div>
             </div>
         </div>
@@ -243,612 +490,38 @@
     </div>
 </div>
 
-<script>
-    let currentPage = 1;
-
-    document.getElementById('advancedSearchForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        currentPage = 1;
-        performSearch();
-    });
-
-    window.changePage = function(newPage) {
-        currentPage = newPage;
-        performSearch();
-        document.getElementById('resultsArea').scrollIntoView({behavior: 'smooth'});
-    };
-
-    function performSearch() {
-        const placeholder = document.getElementById('resultsPlaceholder');
-        const resultsArea = document.getElementById('resultsArea');
-        
-        const action = document.getElementById('searchAction').value;
-        const query = document.getElementById('searchQuery').value.trim();
-        const corpus = document.getElementById('searchCorpus').value;
-        
-        const excludeSelect = document.getElementById('excludeBooks');
-        const selectedExcludes = Array.from(excludeSelect.selectedOptions).map(o => o.value).join(',');
-        
-        placeholder.style.display = 'none';
-        resultsArea.style.display = 'block';
-        
-        if (currentPage === 1) {
-            resultsArea.innerHTML = `
-                <div class="text-center py-5">
-                    <div class="spinner-border text-warning" style="width: 3rem; height: 3rem; border-width: 0.3em;" role="status"></div>
-                    <h4 class="mt-4" style="color: #2c3e50;">מנוע החישוב סורק את המאגר...</h4>
-                    <p class="text-muted">אנא המתן מספר רגעים...</p>
+<!-- חלונית צפה (Modal) להצגת הפרק המלא בהקשר מלא -->
+<div class="modal fade" id="chapterContextModal" tabindex="-1" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="border: 2px solid #d4af37; border-radius: 16px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: #fff; border-bottom: 2px solid #d4af37;">
+                <h5 class="modal-title fw-bold" id="chapterModalTitle" style="color: #f7e199;">
+                    <i class="bi bi-book-fill ms-2"></i>הצגת פרק מלא
+                </h5>
+                <div class="d-flex align-items-center gap-2 me-auto">
+                    <button type="button" class="btn btn-sm btn-outline-warning fw-bold" onclick="copyModalChapterText()">
+                        <i class="bi bi-clipboard ms-1"></i>העתק פרק מלא
+                    </button>
+                    <button type="button" class="btn-close btn-close-white m-0" data-bs-dismiss="modal" aria-label="סגור"></button>
                 </div>
-            `;
-        }
-        
-        let apiType = 'text';
-        let isExact = 'false';
+            </div>
+            <div class="modal-body p-4" id="chapterModalBody" style="background-color: #fdfcf8; max-height: 72vh; overflow-y: auto;">
+            </div>
+        </div>
+    </div>
+</div>
 
-        if (action === 'gematria') {
-            apiType = 'gematria';
-        } else if (action === 'rashei_tevot') {
-            apiType = 'acronym';
-        } else if (action === 'text_exact') {
-            apiType = 'text';
-            isExact = 'true';
-        } else if (action === 'text_approx') {
-            apiType = 'text';
-            isExact = 'false';
-        }
-
-        fetch(`/api/tanakh-search/?type=${apiType}&q=${encodeURIComponent(query)}&exact=${isExact}&book=${encodeURIComponent(corpus)}&exclude_books=${encodeURIComponent(selectedExcludes)}&page=${currentPage}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    resultsArea.innerHTML = `<div class="alert alert-danger shadow-sm rounded-3"><i class="bi bi-x-circle-fill me-2"></i>שגיאה: ${data.error}</div>`;
-                    return;
-                }
-                
-                const results = data.results;
-                if (!results || data.total === 0) {
-                    resultsArea.innerHTML = '<div class="alert alert-info shadow-sm rounded-3 fs-5"><i class="bi bi-info-circle-fill me-2"></i>לא נמצאו תוצאות התואמות לחיפוש שלך במאגר.</div>';
-                    return;
-                }
-
-                // --- יצירת רשימת העמודים לתפריטים ---
-                let pageOptions = '';
-                for (let i = 1; i <= data.total_pages; i++) {
-                    let selected = (i === data.page) ? 'selected' : '';
-                    pageOptions += `<option value="${i}" ${selected}>עמוד ${i} מתוך ${data.total_pages}</option>`;
-                }
-
-                let topPagination = data.total_pages > 1 
-                    ? `<select class="form-select form-select-sm border-secondary fw-bold bg-light text-dark" style="width: auto; cursor: pointer; border-radius: 8px;" onchange="changePage(parseInt(this.value))">${pageOptions}</select>`
-                    : `<span class="badge bg-light text-dark border p-2">עמוד 1 מתוך 1</span>`;
-
-                let html = `<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-                                <h5 class="fw-bold text-secondary mb-0">נמצאו <span class="text-dark">${data.total}</span> תוצאות:</h5>
-                                ${topPagination}
-                            </div>
-                            <div class="list-group">`;
-                
-                results.forEach(res => {
-                    let matchBadge = res.match_type ? `<span class="badge bg-light text-dark border ms-3 shadow-sm px-3 py-2">${res.match_type}</span>` : '';
-                    let verseLabel = res.verse_label || 'פסוק';
-                    
-                    html += `
-                        <div class="list-group-item p-4 mb-3 border-0 rounded-4 shadow-sm" style="background-color: #fcfbf8; border-right: 5px solid #d4af37 !important;">
-                            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                                <strong class="fs-5" style="color: #2c3e50;">
-                                    <i class="bi bi-book ms-2" style="color: #d4af37;"></i>
-                                    ${res.book} | פרק ${res.chapter} | ${verseLabel} ${res.verse}
-                                </strong>
-                                ${matchBadge}
-                            </div>
-                            <div class="fs-3 lh-lg text-dark mt-2" style="font-family: 'Frank Ruhl Libre', serif;">
-                                ${res.text}
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                html += '</div>';
-
-                // --- סרגל ניווט תחתון משודרג ---
-                let paginationHtml = `<div class="d-flex justify-content-between align-items-center mt-4 p-3 bg-light rounded-4 border shadow-sm flex-wrap gap-2">`;
-                
-                if (data.page > 1) {
-                    paginationHtml += `<button class="btn btn-outline-dark fw-bold px-3 px-md-4 rounded-pill" onclick="changePage(${data.page - 1})"><i class="bi bi-arrow-right me-1"></i>הקודם</button>`;
-                } else {
-                    paginationHtml += `<div style="width: 100px;" class="d-none d-sm-block"></div>`;
-                }
-
-                if (data.total_pages > 1) {
-                    paginationHtml += `<select class="form-select form-select-sm border-dark fw-bold text-center rounded-pill mx-auto" style="width: auto; cursor: pointer; max-width: 180px;" onchange="changePage(parseInt(this.value))">${pageOptions}</select>`;
-                }
-
-                if (data.page < data.total_pages) {
-                    paginationHtml += `<button class="btn btn-outline-dark fw-bold px-3 px-md-4 rounded-pill" onclick="changePage(${data.page + 1})">הבא<i class="bi bi-arrow-left ms-1"></i></button>`;
-                } else {
-                    paginationHtml += `<div style="width: 100px;" class="d-none d-sm-block"></div>`;
-                }
-                
-                paginationHtml += `</div>`;
-
-                resultsArea.innerHTML = html + paginationHtml;
-            })
-            .catch(err => {
-                resultsArea.innerHTML = `<div class="alert alert-danger shadow-sm rounded-3"><i class="bi bi-x-circle-fill me-2"></i>אירעה שגיאת תקשורת מול השרת. אנא נסה שוב.</div>`;
-            });
-    }
-</script>
-
-<style>
-/* עיצוב יוקרתי לכפתורי בחירת המאגר */
-.corpus-luxury-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-bottom: 14px;
-    direction: rtl;
-}
-.corpus-luxury-btn {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 12px;
-    background: #ffffff;
-    border: 1.5px solid #e2d9c5;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 0.95rem;
-    color: #3b352a;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    user-select: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
-}
-.corpus-luxury-btn:hover {
-    border-color: #d4af37;
-    background: #fdfaf2;
-    transform: translateY(-1px);
-}
-.corpus-luxury-btn.active {
-    background: linear-gradient(135deg, #fcf3cf 0%, #f7e199 100%);
-    border-color: #c59b27;
-    color: #1f1a10;
-    font-weight: 700;
-    box-shadow: 0 3px 8px rgba(212, 175, 55, 0.25);
-}
-.corpus-luxury-btn.full-width {
-    grid-column: 1 / -1;
-    justify-content: center;
-    gap: 8px;
-}
-.corpus-check-indicator {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 1.5px solid #cbbba0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.78rem;
-    background: #fff;
-    color: transparent;
-    transition: all 0.2s ease;
-}
-.corpus-luxury-btn.active .corpus-check-indicator {
-    background: #b8860b;
-    border-color: #b8860b;
-    color: #fff;
-}
-
-/* עיצוב לחצני בחירת דילוגים (ELS) */
-.els-skips-bar {
-    display: none;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin: 12px 0 16px 0;
-    padding: 12px;
-    background: #fdfbf5;
-    border: 1px solid #e6d8ad;
-    border-radius: 10px;
-    direction: rtl;
-    align-items: center;
-}
-.els-skips-title {
-    font-weight: bold;
-    color: #5c4b23;
-    font-size: 0.92rem;
-    margin-left: 6px;
-}
-.els-skip-pill {
-    padding: 6px 12px;
-    border-radius: 20px;
-    border: 1.5px solid #d4af37;
-    background: #fff;
-    color: #4a3c1a;
-    font-size: 0.88rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.18s ease;
-}
-.els-skip-pill:hover {
-    background: #fcf3cf;
-}
-.els-skip-pill.active {
-    background: #d4af37;
-    color: #fff;
-    border-color: #b8860b;
-    box-shadow: 0 2px 6px rgba(184, 134, 11, 0.3);
-}
-</style>
-
-<style>
-.corpus-luxury-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-bottom: 14px;
-    direction: rtl;
-}
-.corpus-luxury-btn {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 12px;
-    background: #ffffff;
-    border: 1.5px solid #e2d9c5;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 0.95rem;
-    color: #3b352a;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    user-select: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
-}
-.corpus-luxury-btn:hover {
-    border-color: #d4af37;
-    background: #fdfaf2;
-    transform: translateY(-1px);
-}
-.corpus-luxury-btn.active {
-    background: linear-gradient(135deg, #fcf3cf 0%, #f7e199 100%);
-    border-color: #c59b27;
-    color: #1f1a10;
-    font-weight: 700;
-    box-shadow: 0 3px 8px rgba(212, 175, 55, 0.25);
-}
-.corpus-luxury-btn.full-width {
-    grid-column: 1 / -1;
-    justify-content: center;
-    gap: 8px;
-}
-.corpus-check-indicator {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 1.5px solid #cbbba0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.78rem;
-    background: #fff;
-    color: transparent;
-    transition: all 0.2s ease;
-}
-.corpus-luxury-btn.active .corpus-check-indicator {
-    background: #b8860b;
-    border-color: #b8860b;
-    color: #fff;
-}
-
-.els-skips-bar {
-    display: none;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin: 12px 0 6px 0;
-    padding: 12px;
-    background: #fdfbf5;
-    border: 1.5px solid #d4af37;
-    border-radius: 10px;
-    direction: rtl;
-    align-items: center;
-    justify-content: center;
-}
-.els-skips-title {
-    width: 100%;
-    text-align: center;
-    font-weight: bold;
-    color: #5c4b23;
-    font-size: 0.92rem;
-    margin-bottom: 4px;
-}
-.els-skip-pill {
-    padding: 6px 12px;
-    border-radius: 20px;
-    border: 1.5px solid #d4af37;
-    background: #fff;
-    color: #4a3c1a;
-    font-size: 0.88rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.18s ease;
-}
-.els-skip-pill:hover {
-    background: #fcf3cf;
-}
-.els-skip-pill.active {
-    background: #d4af37;
-    color: #fff;
-    border-color: #b8860b;
-    box-shadow: 0 2px 6px rgba(184, 134, 11, 0.3);
-}
-</style>
-
-<style>
-/* הסרה מוחלטת של הודעת ה-Beta */
-.beta-notice, .alert-warning[style*="dashed"] {
-    display: none !important;
-}
-
-/* כפתורי בחירת מאגר (תורה, תנ"ך, משנה, בבלי, ירושלמי) */
-.corpus-luxury-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-bottom: 14px;
-    direction: rtl;
-}
-.corpus-luxury-btn {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 12px;
-    background: #ffffff;
-    border: 1.5px solid #e2d9c5;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 0.94rem;
-    color: #3b352a;
-    cursor: pointer;
-    transition: all 0.18s ease;
-    user-select: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
-}
-.corpus-luxury-btn:hover {
-    border-color: #d4af37;
-    background: #fdfaf2;
-    transform: translateY(-1px);
-}
-.corpus-luxury-btn.active {
-    background: linear-gradient(135deg, #fcf3cf 0%, #f7e199 100%);
-    border-color: #c59b27;
-    color: #1f1a10;
-    font-weight: 700;
-    box-shadow: 0 3px 8px rgba(212, 175, 55, 0.25);
-}
-.corpus-luxury-btn.full-width {
-    grid-column: 1 / -1;
-    justify-content: center;
-    gap: 10px;
-}
-.corpus-check-indicator {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 1.5px solid #cbbba0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.78rem;
-    background: #fff;
-    color: transparent;
-    transition: all 0.18s ease;
-    flex-shrink: 0;
-}
-.corpus-luxury-btn.active .corpus-check-indicator {
-    background: #b8860b;
-    border-color: #b8860b;
-    color: #fff;
-}
-
-/* לוח כפתורים יוקרתי ל"סוג פעולה" */
-.action-luxury-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-bottom: 12px;
-    direction: rtl;
-}
-.action-luxury-card {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 9px 11px;
-    background: #ffffff;
-    border: 1.5px solid #e2d9c5;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.18s ease;
-    user-select: none;
-    text-align: right;
-    position: relative;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-}
-.action-luxury-card:hover {
-    border-color: #d4af37;
-    background: #fdfaf2;
-    transform: translateY(-1px);
-}
-.action-luxury-card.active {
-    background: linear-gradient(135deg, #2b2313 0%, #43361c 100%);
-    border-color: #d4af37;
-    color: #ffffff;
-    box-shadow: 0 4px 10px rgba(43, 35, 19, 0.22);
-}
-.action-card-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 700;
-    font-size: 0.91rem;
-    color: #2b2313;
-    width: 100%;
-}
-.action-luxury-card.active .action-card-header {
-    color: #f7e199;
-}
-.action-card-sub {
-    font-size: 0.76rem;
-    color: #7a6e5a;
-    margin-top: 2px;
-    line-height: 1.2;
-}
-.action-luxury-card.active .action-card-sub {
-    color: #e6d8ad;
-}
-
-/* עטיפת שדה החיפוש עם כפתור ניקוי מהיר */
-.search-input-luxury-wrap {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-.clear-search-btn {
-    position: absolute;
-    left: 10px;
-    background: #eee5ce;
-    border: none;
-    color: #5c4b23;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    font-size: 0.85rem;
-    font-weight: bold;
-    cursor: pointer;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.15s ease;
-}
-.clear-search-btn:hover {
-    background: #d4af37;
-    color: #fff;
-}
-
-/* בורר דילוגים */
-.els-skip-selector-wrap {
-    display: none;
-    margin: 8px 0 12px 0;
-    padding: 10px 12px;
-    background: #fdfaf2;
-    border: 1.5px solid #e2d1a0;
-    border-radius: 10px;
-    direction: rtl;
-}
-.els-skip-selector-wrap label {
-    display: block;
-    font-weight: 700;
-    font-size: 0.86rem;
-    color: #5c4b23;
-    margin-bottom: 6px;
-}
-.els-skip-selector-wrap select {
-    width: 100%;
-    padding: 7px 10px;
-    border-radius: 8px;
-    border: 1px solid #d4af37;
-    background: #fff;
-    font-weight: 600;
-    color: #2b2313;
-}
-
-.els-skips-bar {
-    display: none;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin: 12px 0 6px 0;
-    padding: 12px;
-    background: #fdfbf5;
-    border: 1.5px solid #d4af37;
-    border-radius: 10px;
-    direction: rtl;
-    align-items: center;
-    justify-content: center;
-}
-.els-skips-title {
-    width: 100%;
-    text-align: center;
-    font-weight: bold;
-    color: #5c4b23;
-    font-size: 0.9rem;
-    margin-bottom: 4px;
-}
-.els-skip-pill {
-    padding: 6px 12px;
-    border-radius: 20px;
-    border: 1.5px solid #d4af37;
-    background: #fff;
-    color: #4a3c1a;
-    font-size: 0.86rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.18s ease;
-}
-.els-skip-pill:hover {
-    background: #fcf3cf;
-}
-.els-skip-pill.active {
-    background: #d4af37;
-    color: #fff;
-    border-color: #b8860b;
-    box-shadow: 0 2px 6px rgba(184, 134, 11, 0.3);
-}
-
-/* כפתור העתקת פסוק/מקור בכרטיסי התוצאות */
-.copy-verse-btn {
-    background: #faf6eb;
-    border: 1px solid #dcc894;
-    color: #5c4b23;
-    border-radius: 6px;
-    padding: 3px 9px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    cursor: pointer;
-    margin-right: 8px;
-    transition: all 0.15s ease;
-}
-.copy-verse-btn:hover {
-    background: #d4af37;
-    color: #fff;
-    border-color: #b8860b;
-}
-</style>
+<!-- חיווי צף (Toast) להודעות העתקה -->
+<div id="copyToast" style="display: none; position: fixed; bottom: 28px; left: 28px; background: #1e293b; color: #f7e199; border: 1.5px solid #d4af37; padding: 12px 20px; border-radius: 12px; font-weight: 700; z-index: 9999; box-shadow: 0 6px 20px rgba(0,0,0,0.25);">
+    <i class="bi bi-check-circle-fill ms-2" style="color: #4ade80;"></i><span id="copyToastText">הועתק ללוח בהצלחה!</span>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // א. הסרת תיבת ה-Beta ועדכון הכותרת הראשית לניסוח תורני מוקפד
-    document.querySelectorAll('div, p, section').forEach(el => {
-        if (el.textContent && el.textContent.includes('מנוע החיפוש נמצא כרגע בשלבי בנייה ופיתוח') && el.children.length <= 4) {
-            el.style.display = 'none';
-        }
-    });
-
-    const heroTitle = Array.from(document.querySelectorAll('h1, h2')).find(h => h.textContent.includes('חיפוש תורני מתקדם'));
-    if (heroTitle) {
-        heroTitle.textContent = 'מאגר החיפוש התורני';
-        heroTitle.style.letterSpacing = '0.5px';
-        const heroContainer = heroTitle.parentElement;
-        if (heroContainer) {
-            const paragraphs = heroContainer.querySelectorAll('p');
-            if (paragraphs.length > 0) {
-                paragraphs[0].innerHTML = 'איתור לשונות, פסוקים ומקורות בתנ"ך, בששה סדרי משנה ובתלמוד הבבלי והירושלמי<br><span style="font-size: 0.92em; opacity: 0.9;">חיפוש מילולי מדויק, חישובי גימטריאות, ראשי וסופי תיבות ודילוגי אותיות</span>';
-                for (let i = 1; i < paragraphs.length; i++) {
-                    paragraphs[i].style.display = 'none';
-                }
-            }
-        }
-    }
+    let currentPage = 1;
+    let currentSkipFilter = '';
+    let lastFetchedResults = [];
+    let lastSearchMeta = { query: '', actionTitle: '', total: 0 };
 
     const gematriaMap = {
         'א':1, 'ב':2, 'ג':3, 'ד':4, 'ה':5, 'ו':6, 'ז':7, 'ח':8, 'ט':9,
@@ -859,6 +532,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const finalToReg = {'ך':'כ', 'ם':'מ', 'ן':'נ', 'ף':'פ', 'ץ':'צ'};
     const regToFinal = {'כ':'ך', 'מ':'ם', 'נ':'ן', 'פ':'ף', 'צ':'ץ'};
 
+    // קטלוג ספרים מלא ומסודר להחרגה דינמית לפי בחירת המשתמש
     const BOOKS_CATALOG = {
         torah: [
             { group: 'תורה (חמשה חומשי תורה)', prefix: 'torah', books: ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'] }
@@ -876,6 +550,14 @@ document.addEventListener('DOMContentLoaded', function() {
             { group: 'משנה - סדר קדשים', prefix: 'mishnah', books: ['זבחים', 'מנחות', 'חולין', 'בכורות', 'ערכין', 'תמורה', 'כריתות', 'מעילה', 'תמיד', 'מדות', 'קינים'] },
             { group: 'משנה - סדר טהרות', prefix: 'mishnah', books: ['כלים', 'אהלות', 'נגעים', 'פרה', 'טהרות', 'מקואות', 'נדה', 'מכשירין', 'זבים', 'טבול יום', 'ידים', 'עוקצין'] }
         ],
+        tosefta: [
+            { group: 'תוספתא - סדר זרעים', prefix: 'tosefta', books: ['תוספתא ברכות', 'תוספתא פאה', 'תוספתא דמאי', 'תוספתא כלאים', 'תוספתא שביעית', 'תוספתא תרומות', 'תוספתא מעשרות', 'תוספתא מעשר שני', 'תוספתא חלה', 'תוספתא ערלה', 'תוספתא ביכורים'] },
+            { group: 'תוספתא - סדר מועד', prefix: 'tosefta', books: ['תוספתא שבת', 'תוספתא עירובין', 'תוספתא פסחים', 'תוספתא שקלים', 'תוספתא כיפורים', 'תוספתא סוכה', 'תוספתא ביצה', 'תוספתא ראש השנה', 'תוספתא תענית', 'תוספתא מגילה', 'תוספתא מועד קטן', 'תוספתא חגיגה'] },
+            { group: 'תוספתא - סדר נשים', prefix: 'tosefta', books: ['תוספתא יבמות', 'תוספתא כתובות', 'תוספתא נדרים', 'תוספתא נזיר', 'תוספתא סוטה', 'תוספתא גיטין', 'תוספתא קידושין'] },
+            { group: 'תוספתא - סדר נזיקין', prefix: 'tosefta', books: ['תוספתא בבא קמא', 'תוספתא בבא מציעא', 'תוספתא בבא בתרא', 'תוספתא סנהדרין', 'תוספתא מכות', 'תוספתא שבועות', 'תוספתא עדיות', 'תוספתא עבודה זרה', 'תוספתא הוריות'] },
+            { group: 'תוספתא - סדר קדשים', prefix: 'tosefta', books: ['תוספתא זבחים', 'תוספתא מנחות', 'תוספתא חולין', 'תוספתא בכורות', 'תוספתא ערכין', 'תוספתא תמורה', 'תוספתא כריתות', 'תוספתא מעילה', 'תוספתא קינים'] },
+            { group: 'תוספתא - סדר טהרות', prefix: 'tosefta', books: ['תוספתא כלים קמא', 'תוספתא כלים מציעא', 'תוספתא כלים בתרא', 'תוספתא אהלות', 'תוספתא נגעים', 'תוספתא פרה', 'תוספתא טהרות', 'תוספתא מקואות', 'תוספתא נידה', 'תוספתא מכשירין', 'תוספתא זבים', 'תוספתא טבול יום', 'תוספתא ידיים', 'תוספתא עוקצין'] }
+        ],
         talmud: [
             { group: 'תלמוד בבלי - זרעים ומועד', prefix: 'talmud', books: ['ברכות', 'שבת', 'עירובין', 'פסחים', 'שקלים', 'יומא', 'סוכה', 'ביצה', 'ראש השנה', 'תענית', 'מגילה', 'מועד קטן', 'חגיגה'] },
             { group: 'תלמוד בבלי - סדר נשים', prefix: 'talmud', books: ['יבמות', 'כתובות', 'נדרים', 'נזיר', 'סוטה', 'גיטין', 'קידושין'] },
@@ -887,25 +569,36 @@ document.addEventListener('DOMContentLoaded', function() {
             { group: 'תלמוד ירושלמי - סדר מועד', prefix: 'yerushalmi', books: ['ירושלמי שבת', 'ירושלמי עירובין', 'ירושלמי פסחים', 'ירושלמי יומא', 'ירושלמי שקלים', 'ירושלמי סוכה', 'ירושלמי ראש השנה', 'ירושלמי ביצה', 'ירושלמי תענית', 'ירושלמי מגילה', 'ירושלמי חגיגה', 'ירושלמי מועד קטן'] },
             { group: 'תלמוד ירושלמי - סדר נשים', prefix: 'yerushalmi', books: ['ירושלמי יבמות', 'ירושלמי סוטה', 'ירושלמי כתובות', 'ירושלמי נדרים', 'ירושלמי נזיר', 'ירושלמי גיטין', 'ירושלמי קידושין'] },
             { group: 'תלמוד ירושלמי - נזיקין וטהרות', prefix: 'yerushalmi', books: ['ירושלמי בבא קמא', 'ירושלמי בבא מציעא', 'ירושלמי בבא בתרא', 'ירושלמי סנהדרין', 'ירושלמי שבועות', 'ירושלמי עבודה זרה', 'ירושלמי מכות', 'ירושלמי הוריות', 'ירושלמי נדה'] }
+        ],
+        rambam: [
+            { group: 'רמב"ם - מדע, אהבה וזמנים', prefix: 'rambam', books: ['רמב"ם הלכות יסודי התורה', 'רמב"ם הלכות דעות', 'רמב"ם הלכות תלמוד תורה', 'רמב"ם הלכות עבודה זרה וחוקות הגויים', 'רמב"ם הלכות תשובה', 'רמב"ם הלכות קריאת שמע', 'רמב"ם הלכות תפילה וברכת כהנים', 'רמב"ם הלכות תפילין ומזוזה וספר תורה', 'רמב"ם הלכות ציצית', 'רמב"ם הלכות ברכות', 'רמב"ם הלכות מילה', 'רמב"ם הלכות סדר תפילות', 'רמב"ם הלכות שבת', 'רמב"ם הלכות עירובין', 'רמב"ם הלכות שביתת עשור', 'רמב"ם הלכות שביתת יום טוב', 'רמב"ם הלכות חמץ ומצה', 'רמב"ם הלכות שופר וסוכה ולולב', 'רמב"ם הלכות שקלים', 'רמב"ם הלכות קידוש החודש', 'רמב"ם הלכות תעניות', 'רמב"ם הלכות מגילה וחנוכה'] },
+            { group: 'רמב"ם - נשים, קדושה והפלאה', prefix: 'rambam', books: ['רמב"ם הלכות אישות', 'רמב"ם הלכות גירושין', 'רמב"ם הלכות ייבום וחליצה', 'רמב"ם הלכות נערה בתולה', 'רמב"ם הלכות סוטה', 'רמב"ם הלכות איסורי ביאה', 'רמב"ם הלכות מאכלות אסורות', 'רמב"ם הלכות שחיטה', 'רמב"ם הלכות שבועות', 'רמב"ם הלכות נדרים', 'רמב"ם הלכות נזירות', 'רמב"ם הלכות ערכין וחרמין'] },
+            { group: 'רמב"ם - זרעים, עבודה, קורבנות וטהרה', prefix: 'rambam', books: ['רמב"ם הלכות כלאיים', 'רמב"ם הלכות מתנות עניים', 'רמב"ם הלכות תרומות', 'רמב"ם הלכות מעשרות', 'רמב"ם הלכות מעשר שני ונטע רבעי', 'רמב"ם הלכות ביכורים ושאר מתנות כהונה שבגבולין', 'רמב"ם הלכות שמיטה ויובל', 'רמב"ם הלכות בית הבחירה', 'רמב"ם הלכות כלי המקדש והעובדין בו', 'רמב"ם הלכות ביאת מקדש', 'רמב"ם הלכות איסורי המזבח', 'רמב"ם הלכות מעשה הקורבנות', 'רמב"ם הלכות תמידין ומוספין', 'רמב"ם הלכות פסולי המוקדשין', 'רמב"ם הלכות עבודת יום הכיפורים', 'רמב"ם הלכות מעילה', 'רמב"ם הלכות קורבן פסח', 'רמב"ם הלכות חגיגה', 'רמב"ם הלכות בכורות', 'רמב"ם הלכות שגגות', 'רמב"ם הלכות מחוסרי כפרה', 'רמב"ם הלכות תמורה', 'רמב"ם הלכות טומאת מת', 'רמב"ם הלכות פרה אדומה', 'רמב"ם הלכות טומאת צרעת', 'רמב"ם הלכות מטמאי משכב ומושב', 'רמב"ם הלכות שאר אבות הטומאות', 'רמב"ם הלכות טומאת אוכלין', 'רמב"ם הלכות כלים', 'רמב"ם הלכות מקוואות'] },
+            { group: 'רמב"ם - נזיקין, קניין, משפטים ושופטים', prefix: 'rambam', books: ['רמב"ם הלכות נזקי ממון', 'רמב"ם הלכות גניבה', 'רמב"ם הלכות גזילה ואבידה', 'רמב"ם הלכות חובל ומזיק', 'רמב"ם הלכות רוצח ושמירת נפש', 'רמב"ם הלכות מכירה', 'רמב"ם הלכות זכייה ומתנה', 'רמב"ם הלכות שכנים', 'רמב"ם הלכות שלוחין ושותפין', 'רמב"ם הלכות עבדים', 'רמב"ם הלכות שכירות', 'רמב"ם הלכות שאלה ופיקדון', 'רמב"ם הלכות מלווה ולווה', 'רמב"ם הלכות טוען ונטען', 'רמב"ם הלכות נחלות', 'רמב"ם הלכות סנהדרין והעונשין המסורין להם', 'רמב"ם הלכות עדות', 'רמב"ם הלכות ממרים', 'רמב"ם הלכות אבל', 'רמב"ם הלכות מלכים ומלחמות'] }
+        ],
+        shulchan_aruch: [
+            { group: 'שולחן ערוך (ארבעת הטורים)', prefix: 'shulchan_aruch', books: ['שולחן ערוך אורח חיים', 'שולחן ערוך יורה דעה', 'שולחן ערוך אבן העזר', 'שולחן ערוך חושן משפט'] }
         ]
     };
 
-    const buttons = Array.from(document.querySelectorAll('button'));
-    const calcBtn = buttons.find(b => b.textContent.includes('בצע חישוב מהיר'));
-    const rightPanel = calcBtn ? calcBtn.closest('.card, form, div[class*="col"]') : document;
-    const panelSelects = Array.from((rightPanel || document).querySelectorAll('select:not([multiple])'));
-
-    const bookSelect = panelSelects[0] || document.querySelector('select:not([multiple])');
-    const typeSelect = panelSelects[1] || document.querySelectorAll('select:not([multiple])')[1];
-    const excludeSelect = (rightPanel || document).querySelector('select[multiple]') || document.querySelector('select[multiple]');
-    const searchInput = (rightPanel || document).querySelector('input[type="text"], input:not([type])');
-
+    const ALL_CORPORA_KEYS = ['torah', 'tanakh', 'mishnah', 'tosefta', 'talmud', 'yerushalmi', 'rambam', 'shulchan_aruch'];
     let selectedCorpora = new Set(['torah']);
-    let currentSkipFilter = '';
+
+    const corpusBtns = Array.from(document.querySelectorAll('#corpusGrid .corpus-luxury-btn[data-corpus]'));
+    const corpusAllBtn = document.getElementById('corpusAllBtn');
+    const excludeSelect = document.getElementById('excludeBooks');
+    const clearExcludesBtn = document.getElementById('clearExcludesBtn');
+    const actionCards = Array.from(document.querySelectorAll('#actionGrid .action-luxury-card'));
+    const searchActionInput = document.getElementById('searchAction');
+    const searchQueryInput = document.getElementById('searchQuery');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const skipSelectWrap = document.getElementById('skipSelectWrap');
+    const elsPreselectSkip = document.getElementById('elsPreselectSkip');
+    const smartHelperBox = document.getElementById('smartHelperBox');
+    const elsSkipsBar = document.getElementById('elsSkipsBar');
 
     function updateExcludeBooksList() {
-        if (!excludeSelect) return;
-        const previouslySelected = new Set(Array.from(excludeSelect.selectedOptions).map(o => o.value));
+        const prevSelected = new Set(Array.from(excludeSelect.selectedOptions).map(o => o.value));
         excludeSelect.innerHTML = '';
 
         const groupsToRender = [];
@@ -914,15 +607,12 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (selectedCorpora.has('torah')) {
             groupsToRender.push(...BOOKS_CATALOG.torah);
         }
-        if (selectedCorpora.has('mishnah')) {
-            groupsToRender.push(...BOOKS_CATALOG.mishnah);
-        }
-        if (selectedCorpora.has('talmud')) {
-            groupsToRender.push(...BOOKS_CATALOG.talmud);
-        }
-        if (selectedCorpora.has('yerushalmi')) {
-            groupsToRender.push(...BOOKS_CATALOG.yerushalmi);
-        }
+        if (selectedCorpora.has('mishnah')) groupsToRender.push(...BOOKS_CATALOG.mishnah);
+        if (selectedCorpora.has('tosefta')) groupsToRender.push(...BOOKS_CATALOG.tosefta);
+        if (selectedCorpora.has('talmud')) groupsToRender.push(...BOOKS_CATALOG.talmud);
+        if (selectedCorpora.has('yerushalmi')) groupsToRender.push(...BOOKS_CATALOG.yerushalmi);
+        if (selectedCorpora.has('rambam')) groupsToRender.push(...BOOKS_CATALOG.rambam);
+        if (selectedCorpora.has('shulchan_aruch')) groupsToRender.push(...BOOKS_CATALOG.shulchan_aruch);
 
         groupsToRender.forEach(g => {
             const optgroup = document.createElement('optgroup');
@@ -930,344 +620,197 @@ document.addEventListener('DOMContentLoaded', function() {
             g.books.forEach(bookName => {
                 const opt = document.createElement('option');
                 opt.value = `${g.prefix}:${bookName}`;
-                opt.textContent = bookName.replace(/^ירושלמי /, 'ירושלמי - ');
-                if (previouslySelected.has(opt.value)) {
-                    opt.selected = true;
-                }
+                opt.textContent = bookName;
+                if (prevSelected.has(opt.value)) opt.selected = true;
                 optgroup.appendChild(opt);
             });
             excludeSelect.appendChild(optgroup);
         });
+        clearExcludesBtn.style.display = excludeSelect.selectedOptions.length > 0 ? 'inline-block' : 'none';
     }
 
-    // 1. כפתורי בחירת מאגר
-    if (bookSelect) {
-        bookSelect.style.display = 'none';
-        const corpusOptions = [
-            { id: 'torah', label: '📜 תורה', full: false },
-            { id: 'tanakh', label: '📖 תנ"ך', full: false },
-            { id: 'mishnah', label: '⚖️ משנה', full: false },
-            { id: 'talmud', label: '🏛️ תלמוד בבלי', full: false },
-            { id: 'yerushalmi', label: '🕍 תלמוד ירושלמי', full: true }
-        ];
+    excludeSelect.addEventListener('change', () => {
+        clearExcludesBtn.style.display = excludeSelect.selectedOptions.length > 0 ? 'inline-block' : 'none';
+    });
 
-        const grid = document.createElement('div');
-        grid.className = 'corpus-luxury-grid';
+    clearExcludesBtn.addEventListener('click', () => {
+        Array.from(excludeSelect.options).forEach(o => o.selected = false);
+        clearExcludesBtn.style.display = 'none';
+        if (searchQueryInput.value.trim()) performSearch(1);
+    });
 
-        const allBtn = document.createElement('div');
-        allBtn.className = 'corpus-luxury-btn full-width';
-        allBtn.innerHTML = `<span class="corpus-check-indicator">✓</span><span>כל המאגרים (תנ"ך + משנה + בבלי + ירושלמי)</span>`;
-
-        const itemBtns = {};
-        corpusOptions.forEach(opt => {
-            const btn = document.createElement('div');
-            btn.className = 'corpus-luxury-btn' + (opt.full ? ' full-width' : '') + (selectedCorpora.has(opt.id) ? ' active' : '');
-            btn.innerHTML = `<span>${opt.label}</span><span class="corpus-check-indicator">✓</span>`;
-            btn.addEventListener('click', () => {
-                if (selectedCorpora.has(opt.id)) {
-                    if (selectedCorpora.size > 1) selectedCorpora.delete(opt.id);
-                } else {
-                    selectedCorpora.add(opt.id);
-                }
-                currentSkipFilter = '';
-                syncCorpusUI();
-                if (searchInput && searchInput.value.trim() && calcBtn) calcBtn.click();
-            });
-            itemBtns[opt.id] = btn;
-            grid.appendChild(btn);
+    function syncCorpusButtonsUI() {
+        const isAll = selectedCorpora.size === ALL_CORPORA_KEYS.length;
+        corpusAllBtn.classList.toggle('active', isAll);
+        corpusBtns.forEach(btn => {
+            const key = btn.getAttribute('data-corpus');
+            btn.classList.toggle('active', selectedCorpora.has(key));
         });
+        updateExcludeBooksList();
+    }
 
-        allBtn.addEventListener('click', () => {
-            if (selectedCorpora.size === corpusOptions.length) {
-                selectedCorpora = new Set(['torah']);
+    corpusBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const key = btn.getAttribute('data-corpus');
+            if (selectedCorpora.has(key)) {
+                if (selectedCorpora.size > 1) selectedCorpora.delete(key);
             } else {
-                selectedCorpora = new Set(corpusOptions.map(o => o.id));
+                selectedCorpora.add(key);
             }
             currentSkipFilter = '';
-            syncCorpusUI();
-            if (searchInput && searchInput.value.trim() && calcBtn) calcBtn.click();
+            syncCorpusButtonsUI();
+            if (searchQueryInput.value.trim()) performSearch(1);
         });
-        grid.insertBefore(allBtn, grid.firstChild);
-        bookSelect.insertAdjacentElement('afterend', grid);
+    });
 
-        function syncCorpusUI() {
-            const isAll = selectedCorpora.size === corpusOptions.length;
-            allBtn.classList.toggle('active', isAll);
-            corpusOptions.forEach(opt => {
-                itemBtns[opt.id].classList.toggle('active', selectedCorpora.has(opt.id));
-            });
-
-            const valStr = isAll ? 'all' : Array.from(selectedCorpora).join(',');
-            let customOpt = bookSelect.querySelector(`option[value="${valStr}"]`);
-            if (!customOpt) {
-                customOpt = document.createElement('option');
-                customOpt.value = valStr;
-                bookSelect.appendChild(customOpt);
-            }
-            bookSelect.value = valStr;
-            updateExcludeBooksList();
+    corpusAllBtn.addEventListener('click', () => {
+        if (selectedCorpora.size === ALL_CORPORA_KEYS.length) {
+            selectedCorpora = new Set(['torah']);
+        } else {
+            selectedCorpora = new Set(ALL_CORPORA_KEYS);
         }
-        syncCorpusUI();
+        currentSkipFilter = '';
+        syncCorpusButtonsUI();
+        if (searchQueryInput.value.trim()) performSearch(1);
+    });
+
+    syncCorpusButtonsUI();
+
+    // ניהול בחירת סוג פעולה
+    actionCards.forEach(card => {
+        card.addEventListener('click', () => {
+            actionCards.forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            const act = card.getAttribute('data-action');
+            searchActionInput.value = act;
+            searchQueryInput.placeholder = card.getAttribute('data-placeholder') || '';
+            currentSkipFilter = '';
+            elsPreselectSkip.value = '';
+            updateHelperBox();
+            if (searchQueryInput.value.trim()) performSearch(1);
+        });
+    });
+
+    elsPreselectSkip.addEventListener('change', () => {
+        currentSkipFilter = elsPreselectSkip.value;
+        if (searchQueryInput.value.trim()) performSearch(1);
+    });
+
+    clearSearchBtn.addEventListener('click', () => {
+        searchQueryInput.value = '';
+        clearSearchBtn.style.display = 'none';
+        updateHelperBox();
+        searchQueryInput.focus();
+    });
+
+    function reverseHebrewWord(w) {
+        const rev = w.split('').reverse().join('');
+        if (rev.length <= 1) return rev;
+        const prefix = rev.slice(0, -1).replace(/[ךםןףץ]/g, c => finalToReg[c] || c);
+        const lastCharNorm = finalToReg[rev.slice(-1)] || rev.slice(-1);
+        const lastCharFinal = regToFinal[lastCharNorm] || lastCharNorm;
+        return prefix + lastCharFinal;
     }
 
-    // 2. לוח כפתורים יוקרתי ונוח ל"סוג פעולה" (במקום Select נפתח)
-    let skipSelectWrap = null;
-    let skipSelectEl = null;
+    function updateHelperBox() {
+        const mode = searchActionInput.value;
+        const text = searchQueryInput.value.trim();
+        const isEls = (mode === 'els' || mode === 'els_verse');
 
-    if (typeSelect) {
-        typeSelect.style.display = 'none';
-        const desiredActions = [
-            { value: 'text_exact', icon: '🎯', title: 'מילה מדויקת', sub: 'המילה השלמה בלבד', placeholder: 'הזן מילה או ביטוי מדויק (למשל: משה)...' },
-            { value: 'text_broad', icon: '🔍', title: 'חיפוש חופשי', sub: 'כולל חלק ממילה', placeholder: 'הזן אותיות לחיפוש רחב (למשל: משה -> חמשה)...' },
-            { value: 'gematria', icon: '🔢', title: 'גימטריה', sub: 'מילים או מספר', placeholder: 'הזן מילה, משפט או מספר לחישוב גימטריה...' },
-            { value: 'acronym', icon: '🔠', title: 'ראשי תיבות', sub: 'אותיות פותחות (ר"ת)', placeholder: 'הזן ראשי תיבות ברצף (למשל: בבא)...' },
-            { value: 'sofei_tevot', icon: '🔡', title: 'סופי תיבות', sub: 'אותיות חותמות (ס"ת)', placeholder: 'הזן סופי תיבות ברצף (למשל: תא -> בראשית ברא)...' },
-            { value: 'reverse', icon: '🔄', title: 'מילים הפוכות', sub: 'היפוך / פלינדרום', placeholder: 'הזן מילה להיפוך אותיות (למשל: ארב -> ברא)...' },
-            { value: 'els', icon: '⚡', title: 'דילוגים במילה', sub: 'מרווח אותיות במילה', placeholder: 'הזן מילה לדילוגים במילה בודדת (למשל: משה)...' },
-            { value: 'els_verse', icon: '📜', title: 'דילוגים בפסוק', sub: 'דילוג חוצה מילים', placeholder: 'הזן אותיות לדילוגים לאורך הפסוק (למשל: משה)...' }
-        ];
-
-        typeSelect.innerHTML = '';
-        const actionGrid = document.createElement('div');
-        actionGrid.className = 'action-luxury-grid';
-        const actionCardsMap = {};
-
-        desiredActions.forEach(act => {
-            const opt = document.createElement('option');
-            opt.value = act.value;
-            opt.textContent = act.title;
-            typeSelect.appendChild(opt);
-
-            const card = document.createElement('div');
-            card.className = 'action-luxury-card' + (act.value === 'text_exact' ? ' active' : '');
-            card.innerHTML = `
-                <div class="action-card-header"><span>${act.icon}</span><span>${act.title}</span></div>
-                <div class="action-card-sub">${act.sub}</div>
-            `;
-            card.addEventListener('click', () => {
-                typeSelect.value = act.value;
-                Object.values(actionCardsMap).forEach(c => c.classList.remove('active'));
-                card.classList.add('active');
-                if (searchInput) searchInput.placeholder = act.placeholder;
-                typeSelect.dispatchEvent(new Event('change'));
-                // אם כבר יש טקסט בתיבה, מריץ מיד חיפוש לחוויית שימוש מהירה!
-                if (searchInput && searchInput.value.trim() && calcBtn) {
-                    calcBtn.click();
-                }
-            });
-            actionCardsMap[act.value] = card;
-            actionGrid.appendChild(card);
-        });
-
-        typeSelect.value = 'text_exact';
-        typeSelect.insertAdjacentElement('afterend', actionGrid);
-
-        skipSelectWrap = document.createElement('div');
-        skipSelectWrap.className = 'els-skip-selector-wrap';
-        skipSelectWrap.innerHTML = `
-            <label>בחר מרווח דילוג קבוע מראש (אופציונלי):</label>
-            <select id="els-preselect-skip">
-                <option value="">כל הדילוגים האפשריים (זיהוי אוטומטי)</option>
-                <option value="0">דילוג 0 (אותיות סמוכות ברצף)</option>
-                ${Array.from({length: 20}, (_, i) => i + 1).map(d => `<option value="${d}">דילוג ${d} (מרווח של ${d} אותיות ביניהן)</option>`).join('')}
-            </select>
-        `;
-        actionGrid.insertAdjacentElement('afterend', skipSelectWrap);
-        skipSelectEl = skipSelectWrap.querySelector('#els-preselect-skip');
-        skipSelectEl.addEventListener('change', () => {
-            currentSkipFilter = skipSelectEl.value;
-            if (searchInput && searchInput.value.trim() && calcBtn) calcBtn.click();
-        });
-    }
-
-    // 3. כפתור ניקוי מהיר בשדה הטקסט + תיבת חיווי חכמה
-    let infoBox = null;
-    let skipsBar = null;
-
-    if (calcBtn && searchInput) {
-        const inputWrap = document.createElement('div');
-        inputWrap.className = 'search-input-luxury-wrap';
-        searchInput.parentNode.insertBefore(inputWrap, searchInput);
-        inputWrap.appendChild(searchInput);
-        searchInput.style.paddingLeft = '36px';
-
-        const clearBtn = document.createElement('button');
-        clearBtn.type = 'button';
-        clearBtn.className = 'clear-search-btn';
-        clearBtn.innerHTML = '✕';
-        clearBtn.title = 'נקה חיפוש';
-        inputWrap.appendChild(clearBtn);
-
-        clearBtn.addEventListener('click', () => {
-            searchInput.value = '';
-            clearBtn.style.display = 'none';
-            searchInput.focus();
-            searchInput.dispatchEvent(new Event('input'));
-        });
-
-        infoBox = document.createElement('div');
-        infoBox.id = 'smart-search-helper-box';
-        infoBox.style.cssText = 'display: none; margin-top: 12px; padding: 10px 14px; background-color: #fcf8e8; border: 1.5px solid #d4af37; border-radius: 8px; text-align: center; font-weight: bold; color: #333; font-size: 1.02rem; box-shadow: 0 2px 5px rgba(0,0,0,0.05);';
-        calcBtn.insertAdjacentElement('afterend', infoBox);
-
-        skipsBar = document.createElement('div');
-        skipsBar.className = 'els-skips-bar';
-        infoBox.insertAdjacentElement('afterend', skipsBar);
-
-        function reverseHebrewWord(w) {
-            const rev = w.split('').reverse().join('');
-            if (rev.length <= 1) return rev;
-            const prefix = rev.slice(0, -1).replace(/[ךםןףץ]/g, c => finalToReg[c] || c);
-            const lastCharNorm = finalToReg[rev.slice(-1)] || rev.slice(-1);
-            const lastCharFinal = regToFinal[lastCharNorm] || lastCharNorm;
-            return prefix + lastCharFinal;
+        clearSearchBtn.style.display = text.length > 0 ? 'inline-flex' : 'none';
+        skipSelectWrap.style.display = isEls ? 'block' : 'none';
+        if (!isEls) {
+            elsSkipsBar.style.display = 'none';
         }
 
-        function updateHelperDisplay() {
-            const mode = typeSelect ? typeSelect.value : 'text_exact';
-            const text = searchInput.value.trim();
-            const isElsMode = (mode === 'els' || mode === 'els_verse');
+        if (!text) {
+            smartHelperBox.style.display = 'none';
+            return;
+        }
 
-            clearBtn.style.display = text.length > 0 ? 'inline-flex' : 'none';
-
-            if (skipSelectWrap) {
-                skipSelectWrap.style.display = isElsMode ? 'block' : 'none';
-            }
-            if (!isElsMode) {
-                skipsBar.style.display = 'none';
-                currentSkipFilter = '';
-                if (skipSelectEl) skipSelectEl.value = '';
-            }
-
-            if (!text) {
-                infoBox.style.display = 'none';
-                return;
-            }
-
-            if (mode === 'gematria') {
-                if (/[א-ת]/.test(text)) {
-                    let sum = 0;
-                    for (let ch of text) {
-                        if (gematriaMap[ch]) sum += gematriaMap[ch];
-                    }
-                    infoBox.innerHTML = `המספר בגימטריה: <span style="color: #b8860b; font-size: 1.22rem;">${sum}</span>`;
-                    infoBox.style.display = 'block';
-                } else if (/^\d+$/.test(text)) {
-                    infoBox.innerHTML = `מחפש ערך גימטריה: <span style="color: #b8860b; font-size: 1.22rem;">${text}</span>`;
-                    infoBox.style.display = 'block';
-                } else {
-                    infoBox.style.display = 'none';
+        if (mode === 'gematria') {
+            if (/[א-ת]/.test(text)) {
+                let sum = 0;
+                for (let ch of text) {
+                    if (gematriaMap[ch]) sum += gematriaMap[ch];
                 }
-            } else if (mode === 'reverse') {
-                const hebWords = text.match(/[א-ת]+/g);
-                if (hebWords) {
-                    const reversedStr = hebWords.map(reverseHebrewWord).join(' ');
-                    infoBox.innerHTML = `מחפש מילה הפוכה: <span style="color: #b8860b; font-size: 1.18rem;">"${reversedStr}"</span>`;
-                    infoBox.style.display = 'block';
-                } else {
-                    infoBox.style.display = 'none';
-                }
-            } else if (mode === 'els') {
-                const cleanHeb = text.replace(/[^א-ת]/g, '');
-                if (cleanHeb.length >= 2) {
-                    const sampleSkip1 = cleanHeb.split('').join('X');
-                    infoBox.innerHTML = `דילוגים במילה בודדת (למשל דילוג 0: <b>${cleanHeb}</b>, דילוג 1: <b>${sampleSkip1}</b>)`;
-                    infoBox.style.display = 'block';
-                } else {
-                    infoBox.innerHTML = `<span style="color: #a94442;">יש להזין לפחות 2 אותיות לחיפוש דילוגים</span>`;
-                    infoBox.style.display = 'block';
-                }
-            } else if (mode === 'els_verse') {
-                const cleanHeb = text.replace(/[^א-ת]/g, '');
-                if (cleanHeb.length >= 2) {
-                    const c0 = cleanHeb[0];
-                    const c1 = cleanHeb[1];
-                    const cRest = cleanHeb.slice(2).split('').join('X');
-                    infoBox.innerHTML = `דילוגים בפסוק חוצה מילים (למשל: <b>"${c0}XX ${c1}X X${cRest}XX"</b>)`;
-                    infoBox.style.display = 'block';
-                } else {
-                    infoBox.innerHTML = `<span style="color: #a94442;">יש להזין לפחות 2 אותיות לחיפוש דילוגים בפסוק</span>`;
-                    infoBox.style.display = 'block';
-                }
+                smartHelperBox.innerHTML = `המספר בגימטריה: <span style="color: #b8860b; font-size: 1.25rem;">${sum}</span>`;
+                smartHelperBox.style.display = 'block';
+            } else if (/^\d+$/.test(text)) {
+                smartHelperBox.innerHTML = `מחפש ערך גימטריה: <span style="color: #b8860b; font-size: 1.25rem;">${text}</span>`;
+                smartHelperBox.style.display = 'block';
             } else {
-                infoBox.style.display = 'none';
+                smartHelperBox.style.display = 'none';
             }
+        } else if (mode === 'reverse') {
+            const hebWords = text.match(/[א-ת]+/g);
+            if (hebWords) {
+                const reversedStr = hebWords.map(reverseHebrewWord).join(' ');
+                smartHelperBox.innerHTML = `מחפש מילה הפוכה: <span style="color: #b8860b; font-size: 1.2rem;">"${reversedStr}"</span>`;
+                smartHelperBox.style.display = 'block';
+            } else {
+                smartHelperBox.style.display = 'none';
+            }
+        } else if (mode === 'els') {
+            const cleanHeb = text.replace(/[^א-ת]/g, '');
+            if (cleanHeb.length >= 2) {
+                const sampleSkip1 = cleanHeb.split('').join('X');
+                smartHelperBox.innerHTML = `דילוגים במילה בודדת (דילוג 0: <b>${cleanHeb}</b>, דילוג 1: <b>${sampleSkip1}</b>)`;
+                smartHelperBox.style.display = 'block';
+            } else {
+                smartHelperBox.innerHTML = `<span style="color: #a94442;">יש להזין לפחות 2 אותיות לחיפוש דילוגים</span>`;
+                smartHelperBox.style.display = 'block';
+            }
+        } else if (mode === 'els_verse') {
+            const cleanHeb = text.replace(/[^א-ת]/g, '');
+            if (cleanHeb.length >= 2) {
+                const c0 = cleanHeb[0];
+                const c1 = cleanHeb[1];
+                const cRest = cleanHeb.slice(2).split('').join('X');
+                smartHelperBox.innerHTML = `דילוגים בפסוק חוצה מילים (למשל: <b>"${c0}XX ${c1}X X${cRest}XX"</b>)`;
+                smartHelperBox.style.display = 'block';
+            } else {
+                smartHelperBox.innerHTML = `<span style="color: #a94442;">יש להזין לפחות 2 אותיות לחיפוש דילוגים בפסוק</span>`;
+                smartHelperBox.style.display = 'block';
+            }
+        } else {
+            smartHelperBox.style.display = 'none';
         }
-
-        searchInput.addEventListener('input', updateHelperDisplay);
-        if (typeSelect) {
-            typeSelect.addEventListener('change', () => {
-                currentSkipFilter = '';
-                if (skipSelectEl) skipSelectEl.value = '';
-                updateHelperDisplay();
-            });
-        }
-        updateHelperDisplay();
     }
 
-    // 4. הזרקת הפרמטרים לכל חיפוש + הוספת כפתורי "העתק ציטוט" לתוצאות
-    const originalFetch = window.fetch;
-    window.fetch = async function(input, init) {
-        let urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : '');
-        if (urlStr.includes('tanakh') || urlStr.includes('search') || urlStr.includes('q=')) {
-            try {
-                const urlObj = new URL(urlStr, window.location.origin);
-                const selectedMode = typeSelect ? typeSelect.value : 'text_exact';
+    searchQueryInput.addEventListener('input', () => {
+        currentSkipFilter = '';
+        elsPreselectSkip.value = '';
+        updateHelperBox();
+    });
 
-                if (selectedMode === 'text_exact') {
-                    urlObj.searchParams.set('type', 'text');
-                    urlObj.searchParams.set('exact', 'true');
-                } else if (selectedMode === 'text_broad') {
-                    urlObj.searchParams.set('type', 'text');
-                    urlObj.searchParams.set('exact', 'false');
-                } else {
-                    urlObj.searchParams.set('type', selectedMode);
-                    urlObj.searchParams.set('exact', 'false');
-                }
+    document.getElementById('advancedSearchForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        performSearch(1);
+    });
 
-                if (bookSelect && bookSelect.value) {
-                    urlObj.searchParams.set('book', bookSelect.value);
-                }
-
-                if (excludeSelect) {
-                    const excludedVals = Array.from(excludeSelect.selectedOptions).map(o => o.value).filter(Boolean);
-                    if (excludedVals.length > 0) {
-                        urlObj.searchParams.set('exclude_books', excludedVals.join(','));
-                    } else {
-                        urlObj.searchParams.delete('exclude_books');
-                    }
-                }
-
-                if ((selectedMode === 'els' || selectedMode === 'els_verse') && currentSkipFilter !== '') {
-                    urlObj.searchParams.set('skip', currentSkipFilter);
-                } else {
-                    urlObj.searchParams.delete('skip');
-                }
-
-                input = urlObj.toString();
-            } catch (e) {}
-        }
-
-        const response = await originalFetch.call(this, input, init);
-        try {
-            const clone = response.clone();
-            const data = await clone.json();
-            if (data && Array.isArray(data.available_skips) && skipsBar) {
-                renderSkipsButtons(data.available_skips, data.active_skip);
-            }
-        } catch (e) {}
-        return response;
+    window.changePage = function(newPage) {
+        performSearch(newPage);
+        document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth' });
     };
 
+    function formatChapterTitle(chapterStr) {
+        const c = String(chapterStr || '').trim();
+        if (c.startsWith('דף') || c.startsWith('פרק') || c.startsWith('סימן')) {
+            return c;
+        }
+        return `פרק ${c}`;
+    }
+
     function renderSkipsButtons(availableSkips, activeSkip) {
-        const mode = typeSelect ? typeSelect.value : '';
-        if (!skipsBar || (mode !== 'els' && mode !== 'els_verse') || availableSkips.length === 0) {
-            if (skipsBar) skipsBar.style.display = 'none';
+        const mode = searchActionInput.value;
+        if ((mode !== 'els' && mode !== 'els_verse') || !Array.isArray(availableSkips) || availableSkips.length === 0) {
+            elsSkipsBar.style.display = 'none';
             return;
         }
 
         const totalAll = availableSkips.reduce((acc, item) => acc + item.count, 0);
-        skipsBar.innerHTML = `<div class="els-skips-title">סנן תוצאות לפי מרווח הדילוג שנמצא:</div>`;
+        elsSkipsBar.innerHTML = `<div class="els-skips-title">סנן תוצאות לפי מרווח הדילוג שנמצא:</div>`;
 
         const allPill = document.createElement('button');
         allPill.type = 'button';
@@ -1275,10 +818,10 @@ document.addEventListener('DOMContentLoaded', function() {
         allPill.textContent = `כל הדילוגים (${totalAll})`;
         allPill.addEventListener('click', () => {
             currentSkipFilter = '';
-            if (skipSelectEl) skipSelectEl.value = '';
-            if (calcBtn) calcBtn.click();
+            elsPreselectSkip.value = '';
+            performSearch(1);
         });
-        skipsBar.appendChild(allPill);
+        elsSkipsBar.appendChild(allPill);
 
         availableSkips.forEach(item => {
             const pill = document.createElement('button');
@@ -1287,15 +830,293 @@ document.addEventListener('DOMContentLoaded', function() {
             pill.textContent = item.skip === 0 ? `דילוג 0 - רצוף (${item.count})` : `דילוג ${item.skip} (${item.count})`;
             pill.addEventListener('click', () => {
                 currentSkipFilter = String(item.skip);
-                if (skipSelectEl) skipSelectEl.value = String(item.skip);
-                if (calcBtn) calcBtn.click();
+                elsPreselectSkip.value = String(item.skip);
+                performSearch(1);
             });
-            skipsBar.appendChild(pill);
+            elsSkipsBar.appendChild(pill);
         });
 
-        skipsBar.style.display = 'flex';
+        elsSkipsBar.style.display = 'flex';
     }
+
+    function performSearch(pageNum) {
+        currentPage = pageNum || 1;
+        const placeholder = document.getElementById('resultsPlaceholder');
+        const resultsArea = document.getElementById('resultsArea');
+        const exportToolbar = document.getElementById('exportToolbar');
+
+        const mode = searchActionInput.value;
+        const query = searchQueryInput.value.trim();
+        if (!query) return;
+
+        const isAll = selectedCorpora.size === ALL_CORPORA_KEYS.length;
+        const corpusParam = isAll ? 'all' : Array.from(selectedCorpora).join(',');
+        const selectedExcludes = Array.from(excludeSelect.selectedOptions).map(o => o.value).join(',');
+
+        placeholder.style.display = 'none';
+        resultsArea.style.display = 'block';
+
+        if (currentPage === 1) {
+            resultsArea.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-warning" style="width: 3rem; height: 3rem; border-width: 0.3em;" role="status"></div>
+                    <h4 class="mt-4 fw-bold" style="color: #1e293b;">סורק את מאגרי הספרייה...</h4>
+                    <p class="text-muted">מאמת תוצאות ומחשב התאמות...</p>
+                </div>
+            `;
+        }
+
+        let apiType = mode;
+        let isExact = 'false';
+        if (mode === 'text_exact') {
+            apiType = 'text';
+            isExact = 'true';
+        } else if (mode === 'text_broad') {
+            apiType = 'text';
+            isExact = 'false';
+        }
+
+        let url = `/api/tanakh-search/?type=${encodeURIComponent(apiType)}&q=${encodeURIComponent(query)}&exact=${isExact}&book=${encodeURIComponent(corpusParam)}&exclude_books=${encodeURIComponent(selectedExcludes)}&page=${currentPage}`;
+        if ((mode === 'els' || mode === 'els_verse') && currentSkipFilter !== '') {
+            url += `&skip=${encodeURIComponent(currentSkipFilter)}`;
+        }
+
+        fetch(url)
+            .then(resp => resp.json())
+            .then(data => {
+                if (data.error) {
+                    exportToolbar.style.display = 'none';
+                    resultsArea.innerHTML = `<div class="alert alert-danger shadow-sm rounded-3"><i class="bi bi-x-circle-fill ms-2"></i>שגיאה: ${data.error}</div>`;
+                    return;
+                }
+
+                renderSkipsButtons(data.available_skips || [], data.active_skip);
+
+                const results = data.results || [];
+                lastFetchedResults = results;
+                const activeCard = document.querySelector('#actionGrid .action-luxury-card.active .action-card-header');
+                lastSearchMeta = {
+                    query: query,
+                    actionTitle: activeCard ? activeCard.textContent.trim() : '',
+                    total: data.total || 0
+                };
+
+                if (results.length === 0 || data.total === 0) {
+                    exportToolbar.style.display = 'none';
+                    resultsArea.innerHTML = `<div class="alert alert-info shadow-sm rounded-3 fs-5"><i class="bi bi-info-circle-fill ms-2"></i>לא נמצאו תוצאות התואמות לחיפוש במאגרים שסומנו.</div>`;
+                    return;
+                }
+
+                exportToolbar.style.display = 'flex';
+
+                let pageOptions = '';
+                for (let i = 1; i <= data.total_pages; i++) {
+                    const selected = (i === data.page) ? 'selected' : '';
+                    pageOptions += `<option value="${i}" ${selected}>עמוד ${i} מתוך ${data.total_pages}</option>`;
+                }
+
+                const topPagination = data.total_pages > 1
+                    ? `<select class="form-select form-select-sm border-secondary fw-bold bg-light text-dark" style="width: auto; cursor: pointer; border-radius: 8px;" onchange="changePage(parseInt(this.value))">${pageOptions}</select>`
+                    : `<span class="badge bg-light text-dark border p-2">עמוד 1 מתוך 1</span>`;
+
+                let html = `
+                    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                        <h5 class="fw-bold text-secondary mb-0">נמצאו <span class="text-dark">${data.total}</span> תוצאות:</h5>
+                        ${topPagination}
+                    </div>
+                    <div class="list-group">
+                `;
+
+                results.forEach((res, idx) => {
+                    const matchBadge = res.match_type ? `<span class="badge bg-light text-dark border shadow-sm px-3 py-2">${res.match_type}</span>` : '';
+                    const verseLabel = res.verse_label || 'פסוק';
+                    const chDisplay = formatChapterTitle(res.chapter);
+                    const safeBook = String(res.book).replace(/'/g, "\\'");
+                    const safeChapter = String(res.chapter).replace(/'/g, "\\'");
+                    const safeVerse = String(res.verse).replace(/'/g, "\\'");
+
+                    html += `
+                        <div class="list-group-item p-4 mb-3 border-0 rounded-4 shadow-sm" style="background-color: #fcfbf8; border-right: 5px solid #d4af37 !important;">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                                <strong class="fs-5" style="color: #1e293b;">
+                                    <i class="bi bi-book ms-2" style="color: #d4af37;"></i>
+                                    ${res.book} | ${chDisplay} | ${verseLabel} ${res.verse}
+                                </strong>
+                                <div class="d-flex align-items-center flex-wrap gap-2">
+                                    ${matchBadge}
+                                    <button type="button" class="result-action-btn" onclick="openFullChapterModal('${safeBook}', '${safeChapter}', '${safeVerse}', '${verseLabel}')">
+                                        <i class="bi bi-arrows-fullscreen"></i> הצג פרק מלא
+                                    </button>
+                                    <button type="button" class="result-action-btn" onclick="copySingleResult(${idx})">
+                                        <i class="bi bi-clipboard"></i> העתק מקור
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="fs-3 lh-lg text-dark mt-2" style="font-family: 'Frank Ruhl Libre', serif;">
+                                ${res.text}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `</div>`;
+
+                let paginationHtml = `<div class="d-flex justify-content-between align-items-center mt-4 p-3 bg-light rounded-4 border shadow-sm flex-wrap gap-2">`;
+                if (data.page > 1) {
+                    paginationHtml += `<button class="btn btn-outline-dark fw-bold px-3 px-md-4 rounded-pill" onclick="changePage(${data.page - 1})"><i class="bi bi-arrow-right ms-1"></i>הקודם</button>`;
+                } else {
+                    paginationHtml += `<div style="width: 100px;" class="d-none d-sm-block"></div>`;
+                }
+
+                if (data.total_pages > 1) {
+                    paginationHtml += `<select class="form-select form-select-sm border-dark fw-bold text-center rounded-pill mx-auto" style="width: auto; cursor: pointer; max-width: 180px;" onchange="changePage(parseInt(this.value))">${pageOptions}</select>`;
+                }
+
+                if (data.page < data.total_pages) {
+                    paginationHtml += `<button class="btn btn-outline-dark fw-bold px-3 px-md-4 rounded-pill" onclick="changePage(${data.page + 1})">הבא<i class="bi bi-arrow-left me-1"></i></button>`;
+                } else {
+                    paginationHtml += `<div style="width: 100px;" class="d-none d-sm-block"></div>`;
+                }
+                paginationHtml += `</div>`;
+
+                resultsArea.innerHTML = html + paginationHtml;
+            })
+            .catch(() => {
+                exportToolbar.style.display = 'none';
+                resultsArea.innerHTML = `<div class="alert alert-danger shadow-sm rounded-3"><i class="bi bi-x-circle-fill ms-2"></i>אירעה שגיאת תקשורת מול השרת. אנא נסה שוב.</div>`;
+            });
+    }
+
+    function stripHtmlTags(str) {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = str || '';
+        return (tmp.textContent || tmp.innerText || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById('copyToast');
+        document.getElementById('copyToastText').textContent = msg;
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 2800);
+    }
+
+    // העתקת מקור בודד למאמר
+    window.copySingleResult = function(idx) {
+        const res = lastFetchedResults[idx];
+        if (!res) return;
+        const chDisplay = formatChapterTitle(res.chapter);
+        const verseLabel = res.verse_label || 'פסוק';
+        const cleanTxt = stripHtmlTags(res.text);
+        const formatted = `"${cleanTxt}" (${res.book}, ${chDisplay}, ${verseLabel} ${res.verse})`;
+        navigator.clipboard.writeText(formatted).then(() => {
+            showToast(`המקור (${res.book} ${chDisplay}) הועתק ללוח!`);
+        });
+    };
+
+    // העתקת כל התוצאות למאמר ברשימה תורנית מסודרת
+    window.copyAllResultsToClipboard = function() {
+        if (!lastFetchedResults.length) return;
+        const lines = [];
+        lines.push(`מתוך מאגר החיפוש התורני - ספריית לייבוביץ`);
+        lines.push(`חיפוש: "${lastSearchMeta.query}" (${lastSearchMeta.actionTitle}) | נמצאו ${lastSearchMeta.total} תוצאות:`);
+        lines.push(`--------------------------------------------------`);
+        lastFetchedResults.forEach((res, i) => {
+            const chDisplay = formatChapterTitle(res.chapter);
+            const verseLabel = res.verse_label || 'פסוק';
+            const cleanTxt = stripHtmlTags(res.text);
+            const note = res.match_type ? ` [${res.match_type}]` : '';
+            lines.push(`${i + 1}. ${res.book}, ${chDisplay}, ${verseLabel} ${res.verse}${note}:`);
+            lines.push(`"${cleanTxt}"\n`);
+        });
+        navigator.clipboard.writeText(lines.join('\n')).then(() => {
+            showToast(`${lastFetchedResults.length} תוצאות הועתקו במסודר לשילוב במאמר!`);
+        });
+    };
+
+    // הורדת התוצאות כקובץ טקסט מסודר
+    window.downloadResultsAsText = function() {
+        if (!lastFetchedResults.length) return;
+        const lines = [];
+        lines.push(`מאגר החיפוש התורני - ספריית לייבוביץ (https://leblibrary.co.il)`);
+        lines.push(`חיפוש: "${lastSearchMeta.query}" (${lastSearchMeta.actionTitle})`);
+        lines.push(`==================================================\n`);
+        lastFetchedResults.forEach((res, i) => {
+            const chDisplay = formatChapterTitle(res.chapter);
+            const verseLabel = res.verse_label || 'פסוק';
+            const cleanTxt = stripHtmlTags(res.text);
+            lines.push(`${i + 1}. ${res.book} | ${chDisplay} | ${verseLabel} ${res.verse} (${res.match_type || ''}):`);
+            lines.push(`${cleanTxt}\n`);
+        });
+        const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `תוצאות_חיפוש_${lastSearchMeta.query}.txt`;
+        a.click();
+    };
+
+    // פתיחת חלונית צפה (Modal) עם כל הפסוקים/ההלכות של אותו פרק והדגשת הפסוק הנוכחי
+    window.openFullChapterModal = function(bookName, chapterName, targetVerse, verseLabel) {
+        const modalEl = document.getElementById('chapterContextModal');
+        const titleEl = document.getElementById('chapterModalTitle');
+        const bodyEl = document.getElementById('chapterModalBody');
+        const chDisplay = formatChapterTitle(chapterName);
+
+        titleEl.innerHTML = `<i class="bi bi-book-fill ms-2"></i>${bookName} — ${chDisplay}`;
+        bodyEl.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-warning" role="status"></div>
+                <p class="mt-3 fw-bold text-muted">טוען את הפרק המלא...</p>
+            </div>
+        `;
+
+        const modalObj = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modalObj.show();
+
+        const url = `/api/tanakh-search/?type=chapter_context&target_book=${encodeURIComponent(bookName)}&target_chapter=${encodeURIComponent(chapterName)}`;
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                const verses = data.verses || [];
+                if (!verses.length) {
+                    bodyEl.innerHTML = `<div class="alert alert-warning">לא נמצאו פסוקים נוספים לפרק זה.</div>`;
+                    return;
+                }
+
+                let html = '';
+                verses.forEach(v => {
+                    const isTarget = String(v.verse).trim() === String(targetVerse).trim();
+                    const rowId = isTarget ? 'id="modalTargetVerseRow"' : '';
+                    html += `
+                        <div ${rowId} class="chapter-context-verse ${isTarget ? 'target-highlight' : ''}">
+                            <span class="verse-num-badge">${verseLabel} ${v.verse}</span>
+                            <span class="fs-4 lh-lg text-dark" style="font-family: 'Frank Ruhl Libre', serif;">${v.text}</span>
+                        </div>
+                    `;
+                });
+                bodyEl.innerHTML = html;
+
+                setTimeout(() => {
+                    const targetRow = document.getElementById('modalTargetVerseRow');
+                    if (targetRow) {
+                        targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 220);
+            })
+            .catch(() => {
+                bodyEl.innerHTML = `<div class="alert alert-danger">שגיאה בטעינת הפרק המלא.</div>`;
+            });
+    };
+
+    window.copyModalChapterText = function() {
+        const title = document.getElementById('chapterModalTitle').textContent.trim();
+        const rows = Array.from(document.querySelectorAll('#chapterModalBody .chapter-context-verse'));
+        if (!rows.length) return;
+        const lines = [title, '-----------------------------------------'];
+        rows.forEach(r => lines.push(r.innerText.replace(/\s+/g, ' ').trim()));
+        navigator.clipboard.writeText(lines.join('\n')).then(() => {
+            showToast('הפרק המלא הועתק ללוח!');
+        });
+    };
 });
 </script>
-
 {% endblock %}

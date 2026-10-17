@@ -1452,29 +1452,42 @@ def get_book_order(book_name):
         'זבחים': 80, 'מנחות': 81, 'חולין': 82, 'בכורות': 83, 'ערכין': 84, 'תמורה': 85, 'כריתות': 86, 'מעילה': 87, 'תמיד': 88, 'מדות': 89, 'קינים': 90,
         'כלים': 91, 'אהלות': 92, 'נגעים': 93, 'פרה': 94, 'טהרות': 95, 'מקואות': 96, 'נדה': 97, 'מכשירין': 98, 'זבים': 99, 'טבול יום': 100, 'ידים': 101, 'עוקצין': 102
     }
+    if name.startswith('תוספתא '):
+        base = name.replace('תוספתא ', '', 1).strip()
+        return 120 + BOOK_ORDER.get(base, 90)
     if name.startswith('ירושלמי '):
-        base_tractate = name.replace('ירושלמי ', '', 1).strip()
-        return 200 + BOOK_ORDER.get(base_tractate, 150)
+        base = name.replace('ירושלמי ', '', 1).strip()
+        return 250 + BOOK_ORDER.get(base, 90)
+    if name.startswith('רמב"ם '):
+        return 400
+    if name.startswith('שולחן ערוך '):
+        sa_order = {'שולחן ערוך אורח חיים': 501, 'שולחן ערוך יורה דעה': 502, 'שולחן ערוך אבן העזר': 503, 'שולחן ערוך חושן משפט': 504}
+        return sa_order.get(name, 510)
     return BOOK_ORDER.get(name, 999)
 
 def safe_int(v):
-    try:
-        return int(v)
-    except:
-        return 0
+    s = str(v).strip()
+    if s.isdigit():
+        return int(s)
+    m = re.search(r'\d+', s)
+    if m:
+        return int(m.group(0))
+    s_clean = re.sub(r'^(פרק|סימן|דף|הלכה|משנה|סעיף)\s+', '', s)
+    parts = s_clean.split()
+    if parts:
+        heb_num = sum(HEBREW_GEMATRIA.get(c, 0) for c in parts[0])
+        amud = 2 if 'עמוד ב' in s else 1
+        return heb_num * 10 + amud
+    return 0
 
 def highlight_matched_text(text_with_nikkud, query_words, is_exact):
     highlighted = text_with_nikkud
-    
     NIKKUD_CORE = r'\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7'
     NIKKUD = f'[{NIKKUD_CORE}]'
     
     for w in query_words:
-        chars = []
-        for char in w:
-            chars.append(re.escape(char) + NIKKUD + '*')
+        chars = [re.escape(char) + NIKKUD + '*' for char in w]
         word_with_optional_nikkud = ''.join(chars)
-        
         if is_exact:
             pattern_str = rf'(^|[^א-ת{NIKKUD_CORE}])({word_with_optional_nikkud})(?=[^א-ת{NIKKUD_CORE}]|$)'
             try:
@@ -1489,7 +1502,6 @@ def highlight_matched_text(text_with_nikkud, query_words, is_exact):
                 highlighted = pattern.sub(r'<mark>\1</mark>', highlighted)
             except Exception:
                 pass
-                
     return highlighted
 
 @ratelimit(rate=30, timeout=60)
@@ -1501,16 +1513,6 @@ def tanakh_advanced_search_api(request):
     exclude_books_param = request.GET.get('exclude_books', '').strip()
     skip_param = request.GET.get('skip', '').strip()
     page = int(request.GET.get('page', 1))
-    
-    try:
-        per_page = int(request.GET.get('per_page', 10))
-        if per_page not in [10, 20, 50, 100]:
-            per_page = 10
-    except ValueError:
-        per_page = 10
-    
-    results = []
-    qs = TorahText.objects.all()
 
     tanakh_names = [
         'בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים',
@@ -1522,9 +1524,53 @@ def tanakh_advanced_search_api(request):
     ]
     torah_names = ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים']
 
-    # סינון מאגרים חכם (תורה, תנ"ך, משנה, תלמוד בבלי, תלמוד ירושלמי)
+    def get_verse_label(book_name, chapter_name):
+        b_str = str(book_name)
+        c_str = str(chapter_name)
+        if b_str.startswith('שולחן ערוך '):
+            return 'סעיף'
+        elif b_str.startswith('רמב"ם ') or b_str.startswith('ירושלמי ') or b_str.startswith('תוספתא '):
+            return 'הלכה'
+        elif c_str.startswith('דף'):
+            return 'שורה'
+        elif b_str not in tanakh_names:
+            return 'משנה'
+        return 'פסוק'
+
+    # שליפת פרק מלא לחלונית הצפה ("הצג פרק מלא")
+    if query_type == 'chapter_context':
+        target_book = request.GET.get('target_book', '').strip()
+        target_chapter = request.GET.get('target_chapter', '').strip()
+        if target_book and target_chapter:
+            ch_verses = list(
+                TorahText.objects.filter(book=target_book, chapter=target_chapter)
+                .values('verse', 'text_with_nikkud', 'clean_text')
+            )
+            ch_verses.sort(key=lambda x: safe_int(x['verse']))
+            return JsonResponse({
+                'book': target_book,
+                'chapter': target_chapter,
+                'verse_label': get_verse_label(target_book, target_chapter),
+                'verses': [
+                    {'verse': v['verse'], 'text': v['text_with_nikkud'] or v['clean_text'] or ''}
+                    for v in ch_verses
+                ]
+            }, json_dumps_params={'ensure_ascii': False})
+        return JsonResponse({'verses': []})
+    
+    try:
+        per_page = int(request.GET.get('per_page', 10))
+        if per_page not in [10, 20, 50, 100]:
+            per_page = 10
+    except ValueError:
+        per_page = 10
+    
+    results = []
+    qs = TorahText.objects.all()
+
+    # סינון מאגרים חכם לכל 8 המאגרים
     selected_corpora = [b.strip() for b in book_filter.split(',') if b.strip()]
-    known_corpora = {'torah', 'tanakh', 'mishnah', 'talmud', 'yerushalmi', 'all'}
+    known_corpora = {'torah', 'tanakh', 'mishnah', 'tosefta', 'talmud', 'yerushalmi', 'rambam', 'shulchan_aruch', 'all'}
 
     if not selected_corpora:
         selected_corpora = ['torah']
@@ -1534,47 +1580,46 @@ def tanakh_advanced_search_api(request):
     elif any(c in known_corpora for c in selected_corpora):
         corpus_q = Q()
         if 'torah' in selected_corpora:
-            corpus_q |= (Q(book__in=torah_names) & ~Q(chapter__startswith='דף') & ~Q(book__startswith='ירושלמי '))
+            corpus_q |= (Q(book__in=torah_names) & ~Q(chapter__startswith='דף'))
         if 'tanakh' in selected_corpora:
-            corpus_q |= (Q(book__in=tanakh_names) & ~Q(book__in=MISHNAH_BOOKS) & ~Q(chapter__startswith='דף') & ~Q(book__startswith='ירושלמי '))
+            corpus_q |= (Q(book__in=tanakh_names) & ~Q(book__in=MISHNAH_BOOKS) & ~Q(chapter__startswith='דף'))
         if 'mishnah' in selected_corpora:
-            corpus_q |= (~Q(book__in=tanakh_names) & ~Q(chapter__startswith='דף') & ~Q(book__startswith='ירושלמי '))
+            corpus_q |= (
+                ~Q(book__in=tanakh_names) &
+                ~Q(chapter__startswith='דף') &
+                ~Q(book__startswith='ירושלמי ') &
+                ~Q(book__startswith='תוספתא ') &
+                ~Q(book__startswith='רמב"ם ') &
+                ~Q(book__startswith='שולחן ערוך ')
+            )
+        if 'tosefta' in selected_corpora:
+            corpus_q |= Q(book__startswith='תוספתא ')
         if 'talmud' in selected_corpora:
             corpus_q |= (Q(chapter__startswith='דף') & ~Q(book__startswith='ירושלמי '))
         if 'yerushalmi' in selected_corpora:
             corpus_q |= Q(book__startswith='ירושלמי ')
+        if 'rambam' in selected_corpora:
+            corpus_q |= Q(book__startswith='רמב"ם ')
+        if 'shulchan_aruch' in selected_corpora:
+            corpus_q |= Q(book__startswith='שולחן ערוך ')
         qs = qs.filter(corpus_q)
     else:
         qs = qs.filter(book__icontains=book_filter)
         
-    # החרגת ספרים מדויקת לפי מאגר (מונע התנגשות בין משנה, בבלי וירושלמי או בין "רות" ל"מעשרות")
     if exclude_books_param:
         excluded = [b.strip() for b in exclude_books_param.split(',') if b.strip()]
         for ex in excluded:
             if ':' in ex:
                 cat, b_name = ex.split(':', 1)
                 b_name = b_name.strip()
-                if cat in ['torah', 'tanakh']:
+                if cat in ['torah', 'tanakh', 'tosefta', 'yerushalmi', 'rambam', 'shulchan_aruch']:
                     qs = qs.exclude(book=b_name)
                 elif cat == 'mishnah':
-                    qs = qs.exclude(Q(book=b_name) & ~Q(chapter__startswith='דף') & ~Q(book__startswith='ירושלמי '))
+                    qs = qs.exclude(Q(book=b_name) & ~Q(chapter__startswith='דף'))
                 elif cat == 'talmud':
                     qs = qs.exclude(Q(book=b_name) & Q(chapter__startswith='דף'))
-                elif cat == 'yerushalmi':
-                    qs = qs.exclude(book=b_name)
             else:
                 qs = qs.exclude(book=ex)
-
-    def get_verse_label(book_name, chapter_name):
-        b_str = str(book_name)
-        c_str = str(chapter_name)
-        if b_str.startswith('ירושלמי '):
-            return 'הלכה'
-        elif c_str.startswith('דף'):
-            return 'שורה'
-        elif b_str not in tanakh_names:
-            return 'משנה'
-        return 'פסוק'
 
     FINAL_TO_REGULAR = str.maketrans({'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ'})
     REGULAR_TO_FINAL = {'כ': 'ך', 'מ': 'ם', 'נ': 'ן', 'פ': 'ף', 'צ': 'ץ'}
@@ -1590,7 +1635,7 @@ def tanakh_advanced_search_api(request):
     active_skip = int(skip_param) if skip_param.isdigit() else None
 
     try:
-        # 1. חיפוש טקסט: מדויק (מילה שלמה בלבד) מול חופשי/לא מדויק (גם חלק ממילה)
+        # 1. חיפוש טקסט מדויק או חופשי
         if query_type in ['text', 'text_exact', 'text_broad'] and query_val:
             if query_type == 'text_exact':
                 is_exact = True
@@ -1724,7 +1769,7 @@ def tanakh_advanced_search_api(request):
                         'match_type': m_type
                     })
 
-        # 3. ראשי תיבות (ר"ת) וסופי תיבות (ס"ת) בנפרד
+        # 3. ראשי תיבות (ר"ת) וסופי תיבות (ס"ת)
         elif query_type in ['acronym', 'rashei_tevot', 'sofei_tevot', 'suffix'] and query_val:
             is_sofei = query_type in ['sofei_tevot', 'suffix']
             target_acr = norm_heb(re.sub(r'[^א-ת]', '', query_val))
@@ -1970,7 +2015,7 @@ def tanakh_advanced_search_api(request):
                     for s_d in sorted(skip_counts.keys())
                 ]
 
-        # 6. דילוגי אותיות בפסוק - חוצה מילים (els_verse), למשל "מXX שX XהXX"
+        # 6. דילוגי אותיות בפסוק - חוצה מילים (els_verse)
         elif query_type == 'els_verse' and query_val:
             target_els = norm_heb(re.sub(r'[^א-ת]', '', query_val))
             k = len(target_els)
@@ -1993,14 +2038,13 @@ def tanakh_advanced_search_api(request):
                     if n < k:
                         continue
                     
-                    # מיפוי מיקום כל אות לאינדקס המילה שלה כדי לזהות דילוגים חוצי-מילים
                     tokens = list(WORD_TOKEN_RE.finditer(raw_text))
                     letter_to_word_idx = []
                     for tok_i, tok in enumerate(tokens):
                         w_heb_len = len(NON_HEB_RE.sub('', tok.group(0)))
                         letter_to_word_idx.extend([tok_i] * w_heb_len)
                     
-                    verse_skip_matches = {}  # skip_d -> (set_of_global_letter_indices, set_of_word_indices, is_cross_word)
+                    verse_skip_matches = {}
                     pos0 = letters_str.find(t0)
                     while pos0 != -1:
                         max_step = min(max_skip_limit + 1, (n - 1 - pos0) // (k - 1))
@@ -2013,8 +2057,6 @@ def tanakh_advanced_search_api(request):
                                     positions = [pos0 + idx * step for idx in range(k)]
                                     word_idxs = {letter_to_word_idx[p] for p in positions if p < len(letter_to_word_idx)}
                                     is_cross = len(word_idxs) > 1
-                                    
-                                    # אם כבר נמצא דילוג באותו מרווח בפסוק, נעדיף להציג את זה שחוצה מילים
                                     if skip_d not in verse_skip_matches or (is_cross and not verse_skip_matches[skip_d][2]):
                                         verse_skip_matches[skip_d] = (set(positions), word_idxs, is_cross)
                                 pos1 = letters_str.find(t1, pos1 + 1, pos0 + max_step + 1)
@@ -2029,7 +2071,6 @@ def tanakh_advanced_search_api(request):
                                 continue
                             chosen_skip = active_skip
                         else:
-                            # מעדיף להציג תחילה דילוגים חוצי-מילים (כמו "מXX שX XהXX")
                             cross_skips = [s for s, val in verse_skip_matches.items() if val[2] and s > 0]
                             non_zero = [s for s in verse_skip_matches.keys() if s > 0]
                             if cross_skips:
@@ -2041,7 +2082,6 @@ def tanakh_advanced_search_api(request):
 
                         target_global_positions, participating_words, is_cross_word = verse_skip_matches[chosen_skip]
 
-                        # הדגשת המילים המשתתפות בצהוב עדין והאותיות עצמן של הדילוג בזהב מודגש
                         out_parts = []
                         last_idx = 0
                         global_letter_idx = [-1]
