@@ -448,8 +448,8 @@ class VisitorLog(models.Model):
     def __str__(self): return f"{self.ip_address} | {self.path} ({self.timestamp})"
 
 class TorahText(models.Model):
-    book = models.CharField(max_length=100, verbose_name="ספר")
-    chapter = models.CharField(max_length=10, verbose_name="פרק")
+    book = models.CharField(max_length=100, db_index=True, verbose_name="ספר")
+    chapter = models.CharField(max_length=50, db_index=True, verbose_name="פרק")
     verse = models.CharField(max_length=10, verbose_name="פסוק")
     text_with_nikkud = models.TextField(verbose_name="טקסט מנוקד")
     clean_text = models.TextField(verbose_name="טקסט נקי (ללא ניקוד ורווחים)", blank=True)
@@ -463,7 +463,10 @@ class TorahText(models.Model):
     class Meta:
         verbose_name = "טקסט תורני"
         verbose_name_plural = "טקסטים תורניים"
-        indexes = [models.Index(fields=['clean_text'])]
+        indexes = [
+            models.Index(fields=['clean_text']),
+            models.Index(fields=['book', 'chapter']),
+        ]
     def __str__(self): return f"{self.book} {self.chapter} {self.verse}"
 
 class TorahTextFTS(models.Model):
