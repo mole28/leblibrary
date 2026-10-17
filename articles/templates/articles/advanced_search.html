@@ -379,6 +379,108 @@
     }
 </script>
 
+<style>
+/* עיצוב יוקרתי לכפתורי בחירת המאגר */
+.corpus-luxury-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+    direction: rtl;
+}
+.corpus-luxury-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: #ffffff;
+    border: 1.5px solid #e2d9c5;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #3b352a;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+}
+.corpus-luxury-btn:hover {
+    border-color: #d4af37;
+    background: #fdfaf2;
+    transform: translateY(-1px);
+}
+.corpus-luxury-btn.active {
+    background: linear-gradient(135deg, #fcf3cf 0%, #f7e199 100%);
+    border-color: #c59b27;
+    color: #1f1a10;
+    font-weight: 700;
+    box-shadow: 0 3px 8px rgba(212, 175, 55, 0.25);
+}
+.corpus-luxury-btn.full-width {
+    grid-column: 1 / -1;
+    justify-content: center;
+    gap: 8px;
+}
+.corpus-check-indicator {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1.5px solid #cbbba0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    background: #fff;
+    color: transparent;
+    transition: all 0.2s ease;
+}
+.corpus-luxury-btn.active .corpus-check-indicator {
+    background: #b8860b;
+    border-color: #b8860b;
+    color: #fff;
+}
+
+/* עיצוב לחצני בחירת דילוגים (ELS) */
+.els-skips-bar {
+    display: none;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0 16px 0;
+    padding: 12px;
+    background: #fdfbf5;
+    border: 1px solid #e6d8ad;
+    border-radius: 10px;
+    direction: rtl;
+    align-items: center;
+}
+.els-skips-title {
+    font-weight: bold;
+    color: #5c4b23;
+    font-size: 0.92rem;
+    margin-left: 6px;
+}
+.els-skip-pill {
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1.5px solid #d4af37;
+    background: #fff;
+    color: #4a3c1a;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+.els-skip-pill:hover {
+    background: #fcf3cf;
+}
+.els-skip-pill.active {
+    background: #d4af37;
+    color: #fff;
+    border-color: #b8860b;
+    box-shadow: 0 2px 6px rgba(184, 134, 11, 0.3);
+}
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const gematriaMap = {
@@ -387,50 +489,256 @@ document.addEventListener('DOMContentLoaded', function() {
         'ס':60, 'ע':70, 'פ':80, 'ף':80, 'צ':90, 'ץ':90,
         'ק':100, 'ר':200, 'ש':300, 'ת':400
     };
+    const finalToReg = {'ך':'כ', 'ם':'מ', 'ן':'נ', 'ף':'פ', 'ץ':'צ'};
+    const regToFinal = {'כ':'ך', 'מ':'ם', 'נ':'ן', 'פ':'ף', 'צ':'ץ'};
 
-    // איתור אוטומטי של בורר הגימטריה, שדה הטקסט ולחצן החישוב
-    const gemOption = document.querySelector('select option[value="gematria"]');
-    const typeSelect = gemOption ? gemOption.parentElement : null;
+    // איתור האלמנטים הקיימים בטופס
+    const allSelects = Array.from(document.querySelectorAll('select:not([multiple])'));
+    const bookSelect = allSelects.find(s => Array.from(s.options).some(o => ['tanakh', 'torah', 'mishnah', 'all'].includes(o.value))) || allSelects[0];
+    const typeSelect = allSelects.find(s => s !== bookSelect && Array.from(s.options).some(o => ['text', 'gematria', 'acronym'].includes(o.value))) || allSelects[1];
     const buttons = Array.from(document.querySelectorAll('button'));
     const calcBtn = buttons.find(b => b.textContent.includes('בצע חישוב מהיר'));
     const searchInput = calcBtn ? calcBtn.closest('div, form').querySelector('input[type="text"], input:not([type])') : document.querySelector('input[type="text"]');
 
-    if (calcBtn && searchInput) {
-        // יצירת תיבת התצוגה מתחת ללחצן "בצע חישוב מהיר"
-        const gemBox = document.createElement('div');
-        gemBox.id = 'gematria-number-display';
-        gemBox.style.cssText = 'display: none; margin-top: 12px; padding: 10px 14px; background-color: #fcf8e8; border: 1.5px solid #d4af37; border-radius: 8px; text-align: center; font-weight: bold; color: #333; font-size: 1.05rem; box-shadow: 0 2px 5px rgba(0,0,0,0.05);';
-        calcBtn.insertAdjacentElement('afterend', gemBox);
+    let selectedCorpora = new Set(['tanakh']);
+    let currentSkipFilter = '';
 
-        function updateGematriaDisplay() {
-            const isGematriaMode = !typeSelect || typeSelect.value === 'gematria';
+    // 1. שדרוג בחירת המאגר לכפתורי יוקרה לחיצים (תורה, תנ"ך, משנה, תלמוד בבלי)
+    if (bookSelect) {
+        bookSelect.style.display = 'none';
+        const corpusOptions = [
+            { id: 'torah', label: '📜 תורה' },
+            { id: 'tanakh', label: '📖 תנ"ך' },
+            { id: 'mishnah', label: '⚖️ משנה' },
+            { id: 'talmud', label: '🏛️ תלמוד בבלי' }
+        ];
+
+        const grid = document.createElement('div');
+        grid.className = 'corpus-luxury-grid';
+
+        const allBtn = document.createElement('div');
+        allBtn.className = 'corpus-luxury-btn full-width';
+        allBtn.innerHTML = `<span class="corpus-check-indicator">✓</span><span>כל המאגרים (תנ"ך + משנה + תלמוד בבלי)</span>`;
+
+        const itemBtns = {};
+        corpusOptions.forEach(opt => {
+            const btn = document.createElement('div');
+            btn.className = 'corpus-luxury-btn' + (selectedCorpora.has(opt.id) ? ' active' : '');
+            btn.innerHTML = `<span>${opt.label}</span><span class="corpus-check-indicator">✓</span>`;
+            btn.addEventListener('click', () => {
+                if (selectedCorpora.has(opt.id)) {
+                    if (selectedCorpora.size > 1) selectedCorpora.delete(opt.id);
+                } else {
+                    selectedCorpora.add(opt.id);
+                }
+                syncCorpusUI();
+            });
+            itemBtns[opt.id] = btn;
+            grid.appendChild(btn);
+        });
+
+        allBtn.addEventListener('click', () => {
+            if (selectedCorpora.size === corpusOptions.length) {
+                selectedCorpora = new Set(['tanakh']);
+            } else {
+                selectedCorpora = new Set(corpusOptions.map(o => o.id));
+            }
+            syncCorpusUI();
+        });
+        grid.insertBefore(allBtn, grid.firstChild);
+        bookSelect.insertAdjacentElement('afterend', grid);
+
+        function syncCorpusUI() {
+            const isAll = selectedCorpora.size === corpusOptions.length;
+            allBtn.classList.toggle('active', isAll);
+            corpusOptions.forEach(opt => {
+                itemBtns[opt.id].classList.toggle('active', selectedCorpora.has(opt.id));
+            });
+
+            const valStr = isAll ? 'all' : Array.from(selectedCorpora).join(',');
+            let customOpt = bookSelect.querySelector(`option[value="${valStr}"]`);
+            if (!customOpt) {
+                customOpt = document.createElement('option');
+                customOpt.value = valStr;
+                bookSelect.appendChild(customOpt);
+            }
+            bookSelect.value = valStr;
+        }
+        syncCorpusUI();
+    }
+
+    // 2. וידוא שכל סוגי הפעולות החדשים קיימים בבורר "סוג פעולה"
+    if (typeSelect) {
+        const desiredActions = [
+            { value: 'text', text: 'חיפוש טקסט חופשי / מדויק' },
+            { value: 'gematria', text: 'מצא שווים בגימטריה' },
+            { value: 'acronym', text: 'ראשי תיבות (ר"ת)' },
+            { value: 'sofei_tevot', text: 'סופי תיבות (ס"ת)' },
+            { value: 'reverse', text: 'מילים הפוכות (פלינדרום)' },
+            { value: 'els', text: 'דילוגי אותיות (ELS)' }
+        ];
+        const currentVal = typeSelect.value;
+        typeSelect.innerHTML = '';
+        desiredActions.forEach(act => {
+            const opt = document.createElement('option');
+            opt.value = act.value;
+            opt.textContent = act.text;
+            typeSelect.appendChild(opt);
+        });
+        if (desiredActions.some(a => a.value === currentVal)) {
+            typeSelect.value = currentVal;
+        }
+    }
+
+    // 3. תיבת חיווי חכמה מתחת ללחצן "בצע חישוב מהיר" (גימטריה / מילה הפוכה / דילוגים)
+    let infoBox = null;
+    let skipsBar = null;
+
+    if (calcBtn && searchInput) {
+        infoBox = document.createElement('div');
+        infoBox.id = 'smart-search-helper-box';
+        infoBox.style.cssText = 'display: none; margin-top: 12px; padding: 10px 14px; background-color: #fcf8e8; border: 1.5px solid #d4af37; border-radius: 8px; text-align: center; font-weight: bold; color: #333; font-size: 1.02rem; box-shadow: 0 2px 5px rgba(0,0,0,0.05);';
+        calcBtn.insertAdjacentElement('afterend', infoBox);
+
+        skipsBar = document.createElement('div');
+        skipsBar.className = 'els-skips-bar';
+        infoBox.insertAdjacentElement('afterend', skipsBar);
+
+        function reverseHebrewWord(w) {
+            const rev = w.split('').reverse().join('');
+            if (rev.length <= 1) return rev;
+            const prefix = rev.slice(0, -1).replace(/[ךםןףץ]/g, c => finalToReg[c] || c);
+            const lastCharNorm = finalToReg[rev.slice(-1)] || rev.slice(-1);
+            const lastCharFinal = regToFinal[lastCharNorm] || lastCharNorm;
+            return prefix + lastCharFinal;
+        }
+
+        function updateHelperDisplay() {
+            const mode = typeSelect ? typeSelect.value : '';
             const text = searchInput.value.trim();
 
-            if (!isGematriaMode || !text) {
-                gemBox.style.display = 'none';
+            if (mode !== 'els') {
+                skipsBar.style.display = 'none';
+                currentSkipFilter = '';
+            }
+
+            if (!text) {
+                infoBox.style.display = 'none';
                 return;
             }
 
-            // אם הוקלדו אותיות בעברית - מחשבים ומציגים את המספר שלהן בגימטריה
-            if (/[א-ת]/.test(text)) {
-                let sum = 0;
-                for (let ch of text) {
-                    if (gematriaMap[ch]) sum += gematriaMap[ch];
+            if (mode === 'gematria') {
+                if (/[א-ת]/.test(text)) {
+                    let sum = 0;
+                    for (let ch of text) {
+                        if (gematriaMap[ch]) sum += gematriaMap[ch];
+                    }
+                    infoBox.innerHTML = `המספר בגימטריה: <span style="color: #b8860b; font-size: 1.22rem;">${sum}</span>`;
+                    infoBox.style.display = 'block';
+                } else if (/^\d+$/.test(text)) {
+                    infoBox.innerHTML = `מחפש ערך גימטריה: <span style="color: #b8860b; font-size: 1.22rem;">${text}</span>`;
+                    infoBox.style.display = 'block';
+                } else {
+                    infoBox.style.display = 'none';
                 }
-                gemBox.innerHTML = `המספר בגימטריה: <span style="color: #b8860b; font-size: 1.25rem;">${sum}</span>`;
-                gemBox.style.display = 'block';
-            } else if (/^\d+$/.test(text)) {
-                gemBox.innerHTML = `מחפש ערך גימטריה: <span style="color: #b8860b; font-size: 1.25rem;">${text}</span>`;
-                gemBox.style.display = 'block';
+            } else if (mode === 'reverse') {
+                const hebWords = text.match(/[א-ת]+/g);
+                if (hebWords) {
+                    const reversedStr = hebWords.map(reverseHebrewWord).join(' ');
+                    infoBox.innerHTML = `מחפש מילה הפוכה: <span style="color: #b8860b; font-size: 1.18rem;">"${reversedStr}"</span>`;
+                    infoBox.style.display = 'block';
+                } else {
+                    infoBox.style.display = 'none';
+                }
+            } else if (mode === 'els') {
+                const cleanHeb = text.replace(/[^א-ת]/g, '');
+                if (cleanHeb.length >= 2) {
+                    infoBox.innerHTML = `סורק דילוגי אותיות עבור: <span style="color: #b8860b; font-size: 1.15rem;">"${cleanHeb}"</span>`;
+                    infoBox.style.display = 'block';
+                } else {
+                    infoBox.innerHTML = `<span style="color: #a94442;">יש להזין לפחות 2 אותיות לחיפוש דילוגים</span>`;
+                    infoBox.style.display = 'block';
+                }
             } else {
-                gemBox.style.display = 'none';
+                infoBox.style.display = 'none';
             }
         }
 
-        searchInput.addEventListener('input', updateGematriaDisplay);
-        if (typeSelect) typeSelect.addEventListener('change', updateGematriaDisplay);
-        calcBtn.addEventListener('click', updateGematriaDisplay);
-        updateGematriaDisplay();
+        searchInput.addEventListener('input', () => {
+            currentSkipFilter = '';
+            updateHelperDisplay();
+        });
+        if (typeSelect) {
+            typeSelect.addEventListener('change', () => {
+                currentSkipFilter = '';
+                updateHelperDisplay();
+            });
+        }
+        updateHelperDisplay();
+    }
+
+    // 4. חיבור שקוף ל-fetch להזרקת המאגרים המסומנים ויצירת כפתורי סינון הדילוגים
+    const originalFetch = window.fetch;
+    window.fetch = async function(input, init) {
+        let urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+        if (urlStr.includes('tanakh_advanced_search_api') || urlStr.includes('advanced-search') || urlStr.includes('q=')) {
+            try {
+                const urlObj = new URL(urlStr, window.location.origin);
+                if (bookSelect && bookSelect.value) {
+                    urlObj.searchParams.set('book', bookSelect.value);
+                }
+                if (typeSelect && typeSelect.value === 'els' && currentSkipFilter !== '') {
+                    urlObj.searchParams.set('skip', currentSkipFilter);
+                } else {
+                    urlObj.searchParams.delete('skip');
+                }
+                input = urlObj.toString();
+            } catch (e) {}
+        }
+
+        const response = await originalFetch.call(this, input, init);
+        try {
+            const clone = response.clone();
+            const data = await clone.json();
+            if (data && Array.isArray(data.available_skips) && skipsBar) {
+                renderSkipsButtons(data.available_skips, data.active_skip);
+            }
+        } catch (e) {}
+        return response;
+    };
+
+    function renderSkipsButtons(availableSkips, activeSkip) {
+        if (!skipsBar || !typeSelect || typeSelect.value !== 'els' || availableSkips.length === 0) {
+            if (skipsBar) skipsBar.style.display = 'none';
+            return;
+        }
+
+        const totalAll = availableSkips.reduce((acc, item) => acc + item.count, 0);
+        skipsBar.innerHTML = `<span class="els-skips-title">בחר מרווח דילוג שנמצא:</span>`;
+
+        const allPill = document.createElement('button');
+        allPill.type = 'button';
+        allPill.className = 'els-skip-pill' + (activeSkip === null || activeSkip === undefined ? ' active' : '');
+        allPill.textContent = `כל הדילוגים (${totalAll})`;
+        allPill.addEventListener('click', () => {
+            currentSkipFilter = '';
+            if (calcBtn) calcBtn.click();
+        });
+        skipsBar.appendChild(allPill);
+
+        availableSkips.forEach(item => {
+            const pill = document.createElement('button');
+            pill.type = 'button';
+            pill.className = 'els-skip-pill' + (activeSkip === item.skip ? ' active' : '');
+            pill.textContent = item.skip === 0 ? `דילוג 0 - רצוף (${item.count})` : `דילוג ${item.skip} (${item.count})`;
+            pill.addEventListener('click', () => {
+                currentSkipFilter = String(item.skip);
+                if (calcBtn) calcBtn.click();
+            });
+            skipsBar.appendChild(pill);
+        });
+
+        skipsBar.style.display = 'flex';
     }
 });
 </script>

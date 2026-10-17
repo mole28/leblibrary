@@ -1490,11 +1490,12 @@ def highlight_matched_text(text_with_nikkud, query_words, is_exact):
 
 @ratelimit(rate=30, timeout=60)
 def tanakh_advanced_search_api(request):
-    query_type = request.GET.get('type', 'text')
+    query_type = request.GET.get('type', 'text').strip()
     query_val = request.GET.get('q', '').strip()
     book_filter = request.GET.get('book', '').strip()
     is_exact = request.GET.get('exact', 'false') == 'true'
     exclude_books_param = request.GET.get('exclude_books', '').strip()
+    skip_param = request.GET.get('skip', '').strip()
     page = int(request.GET.get('page', 1))
     
     try:
@@ -1507,20 +1508,34 @@ def tanakh_advanced_search_api(request):
     results = []
     qs = TorahText.objects.all()
 
-    tanakh_names = ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים', 'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו', 'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום', 'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב']
+    tanakh_names = [
+        'בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים',
+        'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו',
+        'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום',
+        'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב',
+        'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא',
+        'נחמיה', 'דברי הימים א', 'דברי הימים ב'
+    ]
+    torah_names = ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים']
 
-    if book_filter == 'torah':
-        qs = qs.filter(book__in=['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'])
-    elif book_filter == 'talmud':
-        qs = qs.filter(chapter__startswith='דף')
-    elif book_filter == 'mishnah':
-        qs = qs.exclude(book__in=tanakh_names).exclude(chapter__startswith='דף')
-    elif book_filter == 'tanakh':
-        # סינון מדויק לתנ"ך בלבד - מונע לחלוטין כניסה של מסכתות משנה (כמו מעשרות) או גמרא
-        qs = qs.filter(book__in=tanakh_names).exclude(book__in=MISHNAH_BOOKS).exclude(chapter__startswith='דף')
-    elif book_filter == 'all':
-        pass 
-    elif book_filter:
+    # --- סינון מאגרים חכם (תומך גם בבחירה בודדת וגם בשילוב מספר מאגרים) ---
+    selected_corpora = [b.strip() for b in book_filter.split(',') if b.strip()]
+    known_corpora = {'torah', 'tanakh', 'mishnah', 'talmud', 'all'}
+
+    if not selected_corpora or 'all' in selected_corpora:
+        pass
+    elif any(c in known_corpora for c in selected_corpora):
+        corpus_q = Q()
+        if 'torah' in selected_corpora:
+            corpus_q |= (Q(book__in=torah_names) & ~Q(chapter__startswith='דף'))
+        if 'tanakh' in selected_corpora:
+            corpus_q |= (Q(book__in=tanakh_names) & ~Q(book__in=MISHNAH_BOOKS) & ~Q(chapter__startswith='דף'))
+        if 'mishnah' in selected_corpora:
+            corpus_q |= (~Q(book__in=tanakh_names) & ~Q(chapter__startswith='דף'))
+        if 'talmud' in selected_corpora:
+            corpus_q |= Q(chapter__startswith='דף')
+        qs = qs.filter(corpus_q)
+    else:
         qs = qs.filter(book__icontains=book_filter)
         
     if exclude_books_param:
@@ -1535,35 +1550,43 @@ def tanakh_advanced_search_api(request):
             return 'משנה'
         return 'פסוק'
 
+    FINAL_TO_REGULAR = str.maketrans({'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ'})
+    REGULAR_TO_FINAL = {'כ': 'ך', 'מ': 'ם', 'נ': 'ן', 'פ': 'ף', 'צ': 'ץ'}
+    def norm_heb(s):
+        return s.translate(FINAL_TO_REGULAR)
+
+    WORD_TOKEN_RE = re.compile(r'[א-ת\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7]+')
+    HEB_LETTER_CLUSTER_RE = re.compile(r'[א-ת][\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7]*')
+
     calculated_gematria_val = None
+    reversed_query_val = None
+    available_skips = []
+    active_skip = int(skip_param) if (skip_param.isdigit()) else None
 
     try:
+        # 1. חיפוש טקסט רגיל
         if query_type == 'text' and query_val:
             q_no_nikkud = re.sub(r'[^א-ת\s]', '', query_val).strip()
             q_words = q_no_nikkud.split()
             
             if q_words:
                 num_q_words = len(q_words)
-                
                 text_query = Q()
                 for target_w in q_words:
                     text_query &= (Q(clean_text__icontains=target_w) | Q(text_with_nikkud__icontains=target_w))
                 
                 qs = qs.filter(text_query)
                 all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
-                
                 prefix_pattern = re.compile(r'^(?:[משהוכלב]|שה|מה|כשה|לכש|ומ|וה|וכ|ול|וב|וש)?(.*?)$')
                 
                 for m in all_verses:
                     raw_text = m.get('text_with_nikkud') or ""
                     clean_text_db = m.get('clean_text') or ""
-                    
                     if not raw_text and not clean_text_db:
                         continue
                     
                     t_no_nikkud = re.sub(r'[\u0591-\u05C7]', '', raw_text)
                     v_words_clean_only = re.findall(r'[א-ת]+', t_no_nikkud)
-                    
                     if not v_words_clean_only:
                         continue
                         
@@ -1590,7 +1613,6 @@ def tanakh_advanced_search_api(request):
                             for j in range(num_q_words):
                                 target = q_words[j]
                                 current_vw = v_words_clean_only[i + j]
-                                
                                 if is_exact:
                                     match_prefix = prefix_pattern.match(current_vw)
                                     clean_current_base = match_prefix.group(1) if match_prefix else current_vw
@@ -1607,7 +1629,6 @@ def tanakh_advanced_search_api(request):
                     
                     if is_match:
                         highlighted_text = highlight_matched_text(raw_text, q_words, is_exact)
-                        
                         results.append({
                             'book': m['book'],
                             'chapter': m['chapter'],
@@ -1616,7 +1637,7 @@ def tanakh_advanced_search_api(request):
                             'text': highlighted_text,
                             'match_type': 'מילה מדויקת' if is_exact else 'חיפוש רחב'
                         })
-                
+
         elif query_type == 'gematria' and query_val:
             HEBREW_GEMATRIA_VALS = {
                 'א': 1, 'ב': 2, 'ג': 3, 'ד': 4, 'ה': 5, 'ו': 6, 'ז': 7, 'ח': 8, 'ט': 9,
@@ -1637,13 +1658,11 @@ def tanakh_advanced_search_api(request):
 
             if target_val > 0:
                 search_str = f",{target_val},"
-                
                 matching_qs = qs.filter(Q(verse_gematria=target_val) | Q(words_gematria__contains=search_str))
                 all_verses = matching_qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'verse_gematria')
                 
                 for m in all_verses:
                     raw_text = m['text_with_nikkud']
-                    
                     if m['verse_gematria'] == target_val:
                         m_type = f'גימטריה מלאה לפסוק (הערך: {target_val})'
                         final_text = f'<mark style="background-color: rgba(255, 235, 59, 0.4); padding: 0 4px; border-radius: 4px; color: inherit;">{raw_text}</mark>'
@@ -1654,9 +1673,7 @@ def tanakh_advanced_search_api(request):
                             if calc_word_gem(word) == target_val:
                                 return f'<mark style="background-color: rgba(255, 235, 59, 0.4); padding: 0 4px; border-radius: 4px; color: inherit;">{word}</mark>'
                             return word
-                        
-                        # מזהה כל מילה בנפרד גם אם יש לפניה או אחריה מקף עברי (־)
-                        final_text = re.sub(r'[א-ת\u0591-\u05bd\u05bf-\u05c7]+', highlight_word, raw_text)
+                        final_text = WORD_TOKEN_RE.sub(highlight_word, raw_text)
                         
                     results.append({
                         'book': m['book'],
@@ -1666,27 +1683,246 @@ def tanakh_advanced_search_api(request):
                         'text': final_text,
                         'match_type': m_type
                     })
-                    
-        elif query_type == 'acronym' and query_val:
-            target_acr = re.sub(r'[^א-ת]', '', query_val)
+
+        # 3. ראשי תיבות (ר"ת) או סופי תיבות (ס"ת) - בנפרד עם הדגשת המילים
+        elif query_type in ['acronym', 'rashei_tevot', 'sofei_tevot', 'suffix'] and query_val:
+            is_sofei = query_type in ['sofei_tevot', 'suffix']
+            target_acr = norm_heb(re.sub(r'[^א-ת]', '', query_val))
+            
             if target_acr:
-                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')
+                acr_len = len(target_acr)
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud')
+                
                 for m in all_verses:
-                    t = m.get('clean_text') or m.get('text_with_nikkud') or ""
-                    t_clean = re.sub(r'[^א-ת\s]', ' ', t)
-                    t_words = t_clean.split()
+                    raw_text = m.get('text_with_nikkud') or ""
+                    if not raw_text:
+                        continue
                     
-                    if len(t_words) >= len(target_acr):
-                        initials = "".join([w[0] for w in t_words if w])
-                        if target_acr in initials:
-                            results.append({
-                                'book': m['book'],
-                                'chapter': m['chapter'],
-                                'verse': m['verse'],
-                                'verse_label': get_verse_label(m['book'], m['chapter']),
-                                'text': m['text_with_nikkud'],
-                                'match_type': 'ראשי תיבות בפסוק'
-                            })
+                    tokens = list(WORD_TOKEN_RE.finditer(raw_text))
+                    clean_words = []
+                    valid_token_spans = []
+                    
+                    for tok in tokens:
+                        w_heb = re.sub(r'[^א-ת]', '', tok.group(0))
+                        if w_heb:
+                            clean_words.append(norm_heb(w_heb))
+                            valid_token_spans.append(tok.span())
+                    
+                    if len(clean_words) < acr_len:
+                        continue
+                    
+                    if is_sofei:
+                        letters_seq = "".join([w[-1] for w in clean_words])
+                    else:
+                        letters_seq = "".join([w[0] for w in clean_words])
+                    
+                    match_pos = letters_seq.find(target_acr)
+                    if match_pos != -1:
+                        matched_word_indices = set()
+                        while match_pos != -1:
+                            for idx in range(match_pos, match_pos + acr_len):
+                                matched_word_indices.add(idx)
+                            match_pos = letters_seq.find(target_acr, match_pos + 1)
+                        
+                        # הדגשת המילים שמרכיבות את ראשי/סופי התיבות
+                        out_parts = []
+                        last_idx = 0
+                        for w_i, (s_idx, e_idx) in enumerate(valid_token_spans):
+                            out_parts.append(raw_text[last_idx:s_idx])
+                            word_str = raw_text[s_idx:e_idx]
+                            if w_i in matched_word_indices:
+                                out_parts.append(f'<mark style="background-color: rgba(255, 235, 59, 0.45); padding: 0 4px; border-radius: 4px; font-weight: bold;">{word_str}</mark>')
+                            else:
+                                out_parts.append(word_str)
+                            last_idx = e_idx
+                        out_parts.append(raw_text[last_idx:])
+                        final_text = "".join(out_parts)
+                        
+                        results.append({
+                            'book': m['book'],
+                            'chapter': m['chapter'],
+                            'verse': m['verse'],
+                            'verse_label': get_verse_label(m['book'], m['chapter']),
+                            'text': final_text,
+                            'match_type': f'סופי תיבות ({query_val})' if is_sofei else f'ראשי תיבות ({query_val})'
+                        })
+
+        # 4. מילים הפוכות (פלינדרום) - למשל "ארב" -> מוצא ומדגיש "ברא"
+        elif query_type in ['reverse', 'palindrome'] and query_val:
+            q_words_raw = re.findall(r'[א-ת]+', query_val)
+            if q_words_raw:
+                rev_words = []
+                for w in q_words_raw:
+                    rev_raw = w[::-1]
+                    if len(rev_raw) > 1:
+                        base_norm = norm_heb(rev_raw[:-1])
+                        last_c = norm_heb(rev_raw[-1])
+                        # אם האות האחרונה במילה ההפוכה היא כ,מ,נ,פ,צ נמיר לאות סופית תקנית
+                        last_c_final = REGULAR_TO_FINAL.get(last_c, last_c)
+                        rev_words.append(base_norm + last_c_final)
+                    else:
+                        rev_words.append(rev_raw)
+                
+                reversed_query_val = " ".join(rev_words)
+                rev_words_norm = [norm_heb(rw) for rw in rev_words]
+                num_q_words = len(rev_words_norm)
+
+                # סינון מהיר במסד הנתונים
+                text_query = Q()
+                for rw, rw_norm in zip(rev_words, rev_words_norm):
+                    text_query &= (
+                        Q(clean_text__icontains=rw) |
+                        Q(clean_text__icontains=rw_norm) |
+                        Q(text_with_nikkud__icontains=rw)
+                    )
+                qs = qs.filter(text_query)
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud')
+                prefix_pattern = re.compile(r'^(?:[משהוכלב]|שה|מה|כשה|לכש|ומ|וה|וכ|ול|וב|וש)?(.*?)$')
+
+                for m in all_verses:
+                    raw_text = m.get('text_with_nikkud') or ""
+                    if not raw_text:
+                        continue
+                    
+                    tokens = list(WORD_TOKEN_RE.finditer(raw_text))
+                    clean_words_norm = []
+                    valid_spans = []
+                    for tok in tokens:
+                        w_heb = re.sub(r'[^א-ת]', '', tok.group(0))
+                        if w_heb:
+                            clean_words_norm.append(norm_heb(w_heb))
+                            valid_spans.append(tok.span())
+                    
+                    if len(clean_words_norm) < num_q_words:
+                        continue
+                    
+                    matched_indices = set()
+                    for i in range(len(clean_words_norm) - num_q_words + 1):
+                        seq_ok = True
+                        for j in range(num_q_words):
+                            target_norm = rev_words_norm[j]
+                            curr_w = clean_words_norm[i + j]
+                            match_pref = prefix_pattern.match(curr_w)
+                            curr_base = match_pref.group(1) if match_pref else curr_w
+                            if curr_w != target_norm and curr_base != target_norm:
+                                seq_ok = False
+                                break
+                        if seq_ok:
+                            for j in range(num_q_words):
+                                matched_indices.add(i + j)
+                    
+                    if matched_indices:
+                        out_parts = []
+                        last_idx = 0
+                        for w_i, (s_idx, e_idx) in enumerate(valid_spans):
+                            out_parts.append(raw_text[last_idx:s_idx])
+                            word_str = raw_text[s_idx:e_idx]
+                            if w_i in matched_indices:
+                                out_parts.append(f'<mark style="background-color: rgba(255, 235, 59, 0.45); padding: 0 4px; border-radius: 4px; font-weight: bold;">{word_str}</mark>')
+                            else:
+                                out_parts.append(word_str)
+                            last_idx = e_idx
+                        out_parts.append(raw_text[last_idx:])
+                        final_text = "".join(out_parts)
+
+                        is_palindrome = (norm_heb("".join(q_words_raw)) == "".join(rev_words_norm))
+                        m_label = f'פלינדרום סימטרי ("{reversed_query_val}")' if is_palindrome else f'מילה הפוכה: "{reversed_query_val}"'
+
+                        results.append({
+                            'book': m['book'],
+                            'chapter': m['chapter'],
+                            'verse': m['verse'],
+                            'verse_label': get_verse_label(m['book'], m['chapter']),
+                            'text': final_text,
+                            'match_type': m_label
+                        })
+
+        # 5. דילוגי אותיות (ELS) עם חלוקה לפי גודל הדילוג והדגשת כל אות בדילוג
+        elif query_type in ['els', 'skip', 'dilugim'] and query_val:
+            target_els = norm_heb(re.sub(r'[^א-ת]', '', query_val))
+            if len(target_els) >= 2:
+                t0 = target_els[0]
+                t1 = target_els[1]
+                k = len(target_els)
+                max_skip_limit = 20  # בודק מדילוג 0 (רצף) ועד דילוג 20
+                
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud')
+                skip_counts = {}
+                NON_HEB_RE = re.compile(r'[^א-ת]+')
+
+                for m in all_verses:
+                    raw_text = m.get('text_with_nikkud') or ""
+                    if not raw_text:
+                        continue
+                    
+                    letters_str = NON_HEB_RE.sub('', raw_text).translate(FINAL_TO_REGULAR)
+                    n = len(letters_str)
+                    if n < k:
+                        continue
+                    
+                    matched_skips_in_verse = {}  # skip_d -> start_letter_index
+                    pos0 = letters_str.find(t0)
+                    while pos0 != -1:
+                        max_step = min(max_skip_limit + 1, (n - 1 - pos0) // (k - 1))
+                        if max_step >= 1:
+                            pos1 = letters_str.find(t1, pos0 + 1, pos0 + max_step + 1)
+                            while pos1 != -1:
+                                step = pos1 - pos0
+                                if k == 2 or letters_str[pos0 : pos0 + k * step : step] == target_els:
+                                    skip_d = step - 1
+                                    if skip_d not in matched_skips_in_verse:
+                                        matched_skips_in_verse[skip_d] = pos0
+                                pos1 = letters_str.find(t1, pos1 + 1, pos0 + max_step + 1)
+                        pos0 = letters_str.find(t0, pos0 + 1)
+                    
+                    if matched_skips_in_verse:
+                        for s_d in matched_skips_in_verse.keys():
+                            skip_counts[s_d] = skip_counts.get(s_d, 0) + 1
+                        
+                        if active_skip is not None:
+                            if active_skip not in matched_skips_in_verse:
+                                continue
+                            chosen_skip = active_skip
+                        else:
+                            chosen_skip = min(matched_skips_in_verse.keys())
+                        
+                        start_letter_idx = matched_skips_in_verse[chosen_skip]
+                        step = chosen_skip + 1
+                        target_letter_positions = {start_letter_idx + idx * step for idx in range(k)}
+                        
+                        # הדגשת האותיות הספציפיות שיוצרות את הדילוג בתוך הפסוק
+                        letter_counter = [-1]
+                        def highlight_els_cluster(match):
+                            letter_counter[0] += 1
+                            cluster = match.group(0)
+                            if letter_counter[0] in target_letter_positions:
+                                return f'<mark style="background-color: #ffd54f; color: #111; font-weight: bold; padding: 0 3px; border-radius: 4px; border-bottom: 2px solid #b8860b;">{cluster}</mark>'
+                            return cluster
+                        
+                        final_text = HEB_LETTER_CLUSTER_RE.sub(highlight_els_cluster, raw_text)
+                        
+                        other_skips = [str(s) for s in sorted(matched_skips_in_verse.keys()) if s != chosen_skip]
+                        extra_info = f' (קיים גם בדילוג {", ".join(other_skips)})' if other_skips else ''
+                        
+                        if chosen_skip == 0:
+                            m_type = f'דילוג 0 - מילה רצופה{extra_info}'
+                        else:
+                            m_type = f'דילוג {chosen_skip} (מרווח של {chosen_skip} אותיות){extra_info}'
+                        
+                        results.append({
+                            'book': m['book'],
+                            'chapter': m['chapter'],
+                            'verse': m['verse'],
+                            'verse_label': get_verse_label(m['book'], m['chapter']),
+                            'text': final_text,
+                            'match_type': m_type,
+                            'skip_distance': chosen_skip
+                        })
+                
+                available_skips = [
+                    {'skip': s_d, 'count': skip_counts[s_d]}
+                    for s_d in sorted(skip_counts.keys())
+                ]
 
         results.sort(key=lambda x: (get_book_order(x['book']), safe_int(x['chapter']), safe_int(x['verse'])))
 
@@ -1705,5 +1941,8 @@ def tanakh_advanced_search_api(request):
         'page': page,
         'total_pages': total_pages,
         'per_page': per_page,
-        'calculated_gematria': calculated_gematria_val
+        'calculated_gematria': calculated_gematria_val,
+        'reversed_query': reversed_query_val,
+        'available_skips': available_skips,
+        'active_skip': active_skip
     }, json_dumps_params={'ensure_ascii': False})
