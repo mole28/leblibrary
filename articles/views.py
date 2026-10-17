@@ -15,7 +15,6 @@ import threading
 import edge_tts
 from html import unescape
 from functools import wraps
-
 from django.http import JsonResponse, HttpResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, get_object_or_404, redirect
@@ -28,10 +27,8 @@ from django.core.cache import cache
 from django.views.decorators.cache import cache_page
 from django.db.models import Q, Case, When, Value, IntegerField
 from django.urls import reverse
-# שיפור בטוח מס' 1: הוספת transaction לייבוא
 from django.db import models, transaction
 from django.utils.html import strip_tags
-
 from .forms import ArticleForm
 from .models import Article, Book, Chapter, Section, Cart, CartItem, Order, OrderItem, TorahText, QA, Acronym
 from .emails import send_order_confirmation
@@ -499,7 +496,6 @@ def ai_chat_endpoint(request):
                                 add_to_context(title, url, snippet)
                     except Exception: pass
 
-                # --- הזרקת תוצאות השו"ת למוח של הבוט ---
                 for qa_item in db_qas:
                     try:
                         url = request.build_absolute_uri(reverse('articles:qa'))
@@ -690,16 +686,13 @@ from .models import Article
 def article_detail(request, slug):
     slug_str = str(slug).strip()
 
-    # 1. חיפוש ישיר לפי סלאג (טקסט בעברית)
     article = Article.objects.filter(slug=slug_str).first()
 
-    # 2. אם לא נמצא לפי סלאג ומדובר במספר — חפש לפי ID (למקרה של ניווט פנימי לפי מספר)
     if not article and slug_str.isdigit():
         article = Article.objects.filter(pk=int(slug_str)).first()
         if article and article.slug:
             return redirect('articles:detail', slug=article.slug, permanent=True)
 
-    # 3. הצגת המאמר (והפניה לסלאג התקין אם הכתובת אינה תואמת בדיוק)
     if article:
         if article.slug and article.slug != slug_str:
             return redirect('articles:detail', slug=article.slug, permanent=True)
@@ -858,10 +851,8 @@ def acronyms_view(request):
     
     acronyms = None
     if query:
-        # 1. מנקים את מילת החיפוש מכל סוגי הגרשיים
         query_clean = re.sub(r'["״”“\'׳`]', '', query)
         
-        # 2. מייצרים אוטומטית מילה עם גרשיים לפני האות האחרונה (כדי לתפוס למשל "רמבם" -> "רמב"ם")
         query_with_geresh = query_clean
         if len(query_clean) > 1 and '"' not in query:
             query_with_geresh = query_clean[:-1] + '"' + query_clean[-1]
@@ -869,7 +860,6 @@ def acronyms_view(request):
         if search_type == 'meaning':
             acronyms = Acronym.objects.filter(meaning__icontains=query).order_by('short')
         else:
-            # 3. מחפשים את כל הווריאציות ביחד במסד הנתונים!
             acronyms = Acronym.objects.filter(
                 Q(short__icontains=query) | 
                 Q(short__icontains=query_clean) |
@@ -916,13 +906,10 @@ def parasha_list(request):
 def book_detail(request, pk): 
     book = get_object_or_404(Book, pk=pk)
     
-    # --- תיקון מיוחד רק לספר 'זמני המילה וברכותיה' (id=84) כך שההפניות להערות יתאימו בדיוק לספר השני שעובד ---
     if book.id == 84:
         for ch in book.chapters.all():
             for sec in ch.sections.all():
                 if sec.content:
-                    # המרת הפניות ה-sup לפורמט המסורתי של _ftnref ו-_ftn המקוריים שבדפדפן שלך
-                    # למשל החלפת fnref-X ל-_ftnrefX ו-fn-X ל-_ftnX
                     def repl_ref(m):
                         num = m.group(1)
                         return f'<a class="sdfootnoteanc" name="_ftnref{num}" href="#_ftn{num}" title=""><u>[{num}]</u></a>'
@@ -937,7 +924,6 @@ def book_detail(request, pk):
                     if updated_content != sec.content:
                         sec.content = updated_content
                         sec.save()
-    # ----------------------------------------------------------------------------------------------------------
 
     return render(request, 'articles/book_detail.html', {'book': book, 'current_page': 'books'})
 
@@ -1069,7 +1055,6 @@ def checkout(request):
         zip_code = request.POST.get('zip_code', '')
         notes = request.POST.get('notes', '')
 
-        # שיפור בטוח מס' 2: הוספת הגנת מסד נתונים שלמה לתהליך ההזמנה
         with transaction.atomic():
             order = Order.objects.create(
                 first_name=first_name, last_name=last_name, email=email, phone=phone,
@@ -1216,10 +1201,8 @@ def apply_tts_dictionary(text):
     if not text:
         return ""
         
-    # --- התיקון: מחיקה מוחלטת של קטעי קוד CSS ו-JS כדי שהקריין לא יקריא אותם ---
     text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.IGNORECASE | re.DOTALL)
     text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.IGNORECASE | re.DOTALL)
-    # -------------------------------------------------------------------------
     
     text = text.replace('><', '> <').replace('</p>', '.\n').replace('</li>', '.\n')
     text = strip_tags(text)
@@ -1300,8 +1283,6 @@ def generate_article_audio_background(article_id):
 @receiver(post_save, sender=Article)
 def trigger_article_audio_pregeneration(sender, instance, created, **kwargs):
     if instance.is_published:
-        # פתרון אוטומטי: מוחק את קובץ השמע הישן בכל פעם ששומרים/עורכים מאמר 
-        # כדי להכריח את המערכת להקליט מחדש את התוכן המעודכן
         base_media = getattr(settings, 'MEDIA_ROOT', os.path.join(settings.BASE_DIR, 'media'))
         file_path = os.path.join(base_media, 'audio', f"article_{instance.id}.mp3")
         if os.path.exists(file_path):
@@ -1310,7 +1291,6 @@ def trigger_article_audio_pregeneration(sender, instance, created, **kwargs):
             except Exception:
                 pass
                 
-        # יצירת ההקלטה החדשה ברקע מיד לאחר המחיקה
         transaction.on_commit(lambda: threading.Thread(target=generate_article_audio_background, args=(instance.id,)).start())
 
 def get_article_audio(request, identifier):
@@ -1354,7 +1334,6 @@ def get_article_audio(request, identifier):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 
-    # הפתרון למטמון: מוסיפים את החותמת של זמן יצירת הקובץ כדי להכריח את הדפדפן לרענן!
     file_version = int(os.path.getmtime(file_path)) if os.path.exists(file_path) else 1
     audio_url = f"{media_url}audio/{file_name}?v={file_version}"
 
@@ -1396,7 +1375,6 @@ def get_book_audio(request, book_id):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 
-    # אותו פתרון למטמון גם בספרים
     file_version = int(os.path.getmtime(file_path)) if os.path.exists(file_path) else 1
     audio_url = f"{media_url}audio/{file_name}?v={file_version}"
 
@@ -1405,25 +1383,20 @@ def get_book_audio(request, book_id):
 def search_acronyms_api(request):
     query = request.GET.get('q', '').strip()
     
-    # מנקים רווחים מיותרים
     query = query.strip()
     search_type = request.GET.get('type', 'short')
     
     results = []
     if len(query) >= 1:
-        # יוצרים גרסה בלי שום גרשיים כדי לחפש את שתי האפשרויות
         query_clean = re.sub(r'["״”“\'׳`]', '', query)
         
-        # אם יש יותר משתי אותיות בחיפוש, נוסיף גרשיים לפני האות האחרונה כדי למצוא גם אם הגולש כתב בלי
         query_with_geresh = query_clean
         if len(query_clean) > 1 and '"' not in query:
             query_with_geresh = query_clean[:-1] + '"' + query_clean[-1]
 
         if search_type == 'meaning':
-            # חיפוש בפירוש - פשוט בודקים אם קיים
             matches = Acronym.objects.filter(meaning__icontains=query)[:20]
         else:
-            # מחפש גם את מה שהגולש כתב בדיוק (למשל רמב"ם), גם נקי (רמבם) וגם עם גרשיים מאולץ (רמב"ם)
             matches = Acronym.objects.filter(
                 Q(short__icontains=query) | 
                 Q(short__icontains=query_clean) |
@@ -1543,10 +1516,8 @@ def tanakh_advanced_search_api(request):
     elif book_filter == 'mishnah':
         qs = qs.exclude(book__in=tanakh_names).exclude(chapter__startswith='דף')
     elif book_filter == 'tanakh':
-        tanakh_q = Q()
-        for t_name in tanakh_names:
-            tanakh_q |= Q(book__icontains=t_name)
-        qs = qs.filter(tanakh_q)
+        # סינון מדויק לתנ"ך בלבד - מונע לחלוטין כניסה של מסכתות משנה (כמו מעשרות) או גמרא
+        qs = qs.filter(book__in=tanakh_names).exclude(book__in=MISHNAH_BOOKS).exclude(chapter__startswith='דף')
     elif book_filter == 'all':
         pass 
     elif book_filter:
@@ -1563,6 +1534,8 @@ def tanakh_advanced_search_api(request):
         elif book_name not in tanakh_names:
             return 'משנה'
         return 'פסוק'
+
+    calculated_gematria_val = None
 
     try:
         if query_type == 'text' and query_val:
@@ -1645,7 +1618,6 @@ def tanakh_advanced_search_api(request):
                         })
                 
         elif query_type == 'gematria' and query_val:
-            # --- מילון הגימטריה ופונקציית עזר ---
             HEBREW_GEMATRIA_VALS = {
                 'א': 1, 'ב': 2, 'ג': 3, 'ד': 4, 'ה': 5, 'ו': 6, 'ז': 7, 'ח': 8, 'ט': 9,
                 'י': 10, 'כ': 20, 'ך': 20, 'ל': 30, 'מ': 40, 'ם': 40, 'נ': 50, 'ן': 50,
@@ -1655,15 +1627,14 @@ def tanakh_advanced_search_api(request):
             def calc_word_gem(w):
                 clean_w = re.sub(r'[^א-ת]', '', w)
                 return sum(HEBREW_GEMATRIA_VALS.get(c, 0) for c in clean_w)
-            # --------------------------------------------------------
 
-            # בדיקה האם הגולש הזין מספר ישירות, או מילה שצריך לחשב
             if query_val.isdigit():
                 target_val = int(query_val)
             else:
                 target_val = calc_word_gem(query_val)
             
-            # מבצעים חיפוש רק אם יש ערך גדול מ-0
+            calculated_gematria_val = target_val
+
             if target_val > 0:
                 search_str = f",{target_val},"
                 
@@ -1674,7 +1645,6 @@ def tanakh_advanced_search_api(request):
                     raw_text = m['text_with_nikkud']
                     
                     if m['verse_gematria'] == target_val:
-                        # מציג בתוצאות את הערך המספרי שחושב
                         m_type = f'גימטריה מלאה לפסוק (הערך: {target_val})'
                         final_text = f'<mark style="background-color: rgba(255, 235, 59, 0.4); padding: 0 4px; border-radius: 4px; color: inherit;">{raw_text}</mark>'
                     else:
@@ -1685,7 +1655,8 @@ def tanakh_advanced_search_api(request):
                                 return f'<mark style="background-color: rgba(255, 235, 59, 0.4); padding: 0 4px; border-radius: 4px; color: inherit;">{word}</mark>'
                             return word
                         
-                        final_text = re.sub(r'[א-ת\u0591-\u05C7]+', highlight_word, raw_text)
+                        # מזהה כל מילה בנפרד גם אם יש לפניה או אחריה מקף עברי (־)
+                        final_text = re.sub(r'[א-ת\u0591-\u05bd\u05bf-\u05c7]+', highlight_word, raw_text)
                         
                     results.append({
                         'book': m['book'],
@@ -1733,5 +1704,6 @@ def tanakh_advanced_search_api(request):
         'total': total_results,
         'page': page,
         'total_pages': total_pages,
-        'per_page': per_page
+        'per_page': per_page,
+        'calculated_gematria': calculated_gematria_val
     }, json_dumps_params={'ensure_ascii': False})
