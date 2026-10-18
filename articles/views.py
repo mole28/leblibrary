@@ -2215,3 +2215,372 @@ def tanakh_advanced_search_api(request):
         'available_skips': available_skips,
         'active_skip': active_skip
     }, json_dumps_params={'ensure_ascii': False})
+
+TORAH_CORE_CONCEPTS = [
+    'תורה', 'מצוה', 'שבת', 'אמת', 'שלום', 'חיים', 'אור', 'קדש', 'ברכה', 'חסד',
+    'משה', 'אהרן', 'דוד', 'משיח', 'גאולה', 'תשובה', 'תפילה', 'צדקה', 'אמונה', 'בטחון',
+    'חכמה', 'בינה', 'דעת', 'יראה', 'אהבה', 'שמחה', 'נשמה', 'רוח', 'נפש', 'כהן',
+    'לוי', 'ישראל', 'ציון', 'מקדש', 'מזבח', 'קרבן', 'ברית', 'מילה', 'ציצית', 'תכלת',
+    'תפילין', 'מזוזה', 'שופר', 'סוכה', 'לולב', 'אתרוג', 'מצה', 'פסח', 'סיני', 'ארון'
+]
+
+@ratelimit(rate=20, timeout=60)
+def torah_ai_insights_api(request):
+    mode = request.GET.get('mode', 'code_finder').strip()
+    query = request.GET.get('q', '').strip()
+    book = request.GET.get('book', '').strip()
+    chapter = request.GET.get('chapter', '').strip()
+    verse = request.GET.get('verse', '').strip()
+
+    cache_key = f"torah_ai_v2_{mode}_{book}_{chapter}_{verse}_{query}"
+    cached_resp = cache.get(cache_key)
+    if cached_resp:
+        return JsonResponse(cached_resp, json_dumps_params={'ensure_ascii': False})
+
+    FINAL_TO_REGULAR = str.maketrans({'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ'})
+    NON_HEB_RE = re.compile(r'[^א-ת]+')
+    WORD_TOKEN_RE = re.compile(r'[א-ת\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7]+')
+
+    def norm_heb(s):
+        return s.translate(FINAL_TO_REGULAR)
+
+    def call_gemini_sync(prompt_text):
+        api_key = os.environ.get('GEMINI_API_KEY', '').strip()
+        if not api_key:
+            return ""
+        models_list = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest']
+        payload = {"contents": [{"parts": [{"text": prompt_text}]}]}
+        data_bytes = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+        for m_name in models_list:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{m_name}:generateContent?key={api_key}"
+            req = urllib.request.Request(url, data=data_bytes, headers={'Content-Type': 'application/json'})
+            try:
+                with urllib.request.urlopen(req, timeout=22) as resp:
+                    resp_data = json.loads(resp.read().decode('utf-8'))
+                    ans = resp_data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+                    if ans:
+                        return format_divine_name(ans.replace('*', '').strip())
+            except Exception:
+                continue
+        return ""
+
+    tanakh_names = [
+        'בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים',
+        'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו',
+        'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום',
+        'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב',
+        'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא',
+        'נחמיה', 'דברי הימים א', 'דברי הימים ב'
+    ]
+
+    try:
+        if mode == 'code_finder':
+            verse_obj = None
+            if book and chapter and verse:
+                verse_obj = TorahText.objects.filter(book=book, chapter=chapter, verse=verse).first()
+            elif query:
+                clean_q = re.sub(r'[^א-ת\s]', '', query).strip()
+                words_q = clean_q.split()
+                if len(words_q) > 1:
+                    verse_obj = TorahText.objects.filter(clean_text__icontains=words_q[0]).first()
+                else:
+                    verse_obj = TorahText.objects.filter(clean_text__icontains=clean_q).first()
+
+            if not verse_obj:
+                return JsonResponse({'error': 'לא נמצא פסוק או מקור לניתוח.'}, status=404)
+
+            raw_text = format_divine_name(verse_obj.text_with_nikkud or verse_obj.clean_text)
+            clean_words = [w for w in (verse_obj.clean_text or '').split() if len(w) >= 2]
+            v_gem = verse_obj.verse_gematria or calculate_gematria(verse_obj.clean_text or '')
+
+            equal_verses_qs = TorahText.objects.filter(verse_gematria=v_gem).exclude(id=verse_obj.id)[:4]
+            equal_verses = [
+                {
+                    'ref': f"{ev.book} {ev.chapter}:{ev.verse}",
+                    'text': format_divine_name(ev.text_with_nikkud or ev.clean_text)
+                }
+                for ev in equal_verses_qs
+            ]
+
+            word_gem_matches = []
+            seen_words = set()
+            for w in clean_words:
+                if len(w) >= 3 and w not in seen_words:
+                    seen_words.add(w)
+                    w_val = calculate_gematria(w)
+                    for concept in TORAH_CORE_CONCEPTS:
+                        if concept != w and calculate_gematria(concept) == w_val:
+                            word_gem_matches.append({'word': w, 'concept': concept, 'val': w_val})
+                    if len(word_gem_matches) >= 5:
+                        break
+
+            letters_seq = NON_HEB_RE.sub('', verse_obj.clean_text or '').translate(FINAL_TO_REGULAR)
+            els_findings = []
+            n_len = len(letters_seq)
+
+            search_terms_to_check = list(TORAH_CORE_CONCEPTS)
+            if query:
+                search_terms_to_check.insert(0, re.sub(r'[^א-ת]', '', query))
+
+            for concept in search_terms_to_check:
+                c_norm = norm_heb(concept)
+                k = len(c_norm)
+                if k < 2 or n_len < k:
+                    continue
+                found_for_concept = False
+                for pos0 in range(n_len):
+                    if letters_seq[pos0] != c_norm[0]:
+                        continue
+                    max_step = min(16, (n_len - 1 - pos0) // (k - 1))
+                    for step in range(1, max_step + 1):
+                        if step == 1 and letters_seq[pos0 : pos0 + k] == c_norm:
+                            els_findings.append({'word': concept, 'skip': 0})
+                            found_for_concept = True
+                            break
+                        elif step > 1 and letters_seq[pos0 : pos0 + k * step : step] == c_norm:
+                            els_findings.append({'word': concept, 'skip': step - 1})
+                            found_for_concept = True
+                            break
+                    if found_for_concept:
+                        break
+                if len(els_findings) >= 6:
+                    break
+
+            rashei_seq = "".join([norm_heb(w[0]) for w in clean_words])
+            sofei_seq = "".join([norm_heb(w[-1]) for w in clean_words])
+            acronym_findings = []
+
+            for concept in search_terms_to_check:
+                c_norm = norm_heb(concept)
+                if len(c_norm) >= 2:
+                    idx_r = rashei_seq.find(c_norm)
+                    if idx_r != -1:
+                        phrase = " ".join(clean_words[idx_r:idx_r+len(c_norm)])
+                        acronym_findings.append({'type': 'ראשי תיבות', 'word': concept, 'phrase': phrase})
+                    idx_s = sofei_seq.find(c_norm)
+                    if idx_s != -1:
+                        phrase = " ".join(clean_words[idx_s:idx_s+len(c_norm)])
+                        acronym_findings.append({'type': 'סופי תיבות', 'word': concept, 'phrase': phrase})
+
+            findings_summary = f"מקור: {verse_obj.book} פרק {verse_obj.chapter} פסוק/הלכה {verse_obj.verse}\nטקסט: {raw_text}\n"
+            findings_summary += f"ערך גימטרי של כל הפסוק: {v_gem}\n"
+            if equal_verses:
+                findings_summary += "פסוקים/מקורות נוספים בעלי אותו ערך גימטרי בדיוק:\n" + "\n".join([f"- {ev['ref']}: {ev['text']}" for ev in equal_verses]) + "\n"
+            if word_gem_matches:
+                findings_summary += "התאמות גימטריה של מילים בפסוק:\n" + "\n".join([f"- המילה '{m['word']}' שווה בגימטריה ({m['val']}) למושג '{m['concept']}'" for m in word_gem_matches]) + "\n"
+            if els_findings:
+                findings_summary += "דילוגי אותיות שנמצאו בפסוק:\n" + "\n".join([f"- המילה '{e['word']}' מופיעה בדילוג {e['skip']}" for e in els_findings]) + "\n"
+            if acronym_findings:
+                findings_summary += "ראשי וסופי תיבות שנמצאו בפסוק:\n" + "\n".join([f"- {a['type']} '{a['word']}' ברצף: '{a['phrase']}'" for a in acronym_findings]) + "\n"
+
+            ai_prompt = (
+                "אתה מנתח נתונים תורניים באתר 'ספריית לייבוביץ'.\n"
+                "להלן תוצאות סריקת הנתונים המתמטיים והלשוניים שנמצאו במסד הנתונים עבור הפסוק/מקור הנבחר:\n\n"
+                f"{findings_summary}\n\n"
+                "הנחיות קפדניות לניתוח:\n"
+                "1. אל תמציא פילוסופיות או פרשנויות שאינן מבוססות ישירות על הנתונים שלעיל.\n"
+                "2. הצג בקצרה ולעניין את ההקשר הישיר של הנתונים המתמטיים והלשוניים שנמצאו מתוך המאגר (ב-1 עד 2 פסקאות תכליתיות).\n"
+                "3. הקפד לכתוב את שם ה' אך ורק עם מקפים כך: י-ה-ו-ה. אל תוסיף חתימה בסוף."
+            )
+            ai_commentary = call_gemini_sync(ai_prompt)
+
+            resp_payload = {
+                'source_ref': f"{verse_obj.book} | {verse_obj.chapter} | {verse_obj.verse}",
+                'text': raw_text,
+                'verse_gematria': v_gem,
+                'equal_verses': equal_verses,
+                'word_gematria_matches': word_gem_matches,
+                'els_findings': els_findings,
+                'acronym_findings': acronym_findings,
+                'ai_commentary': ai_commentary
+            }
+            cache.set(cache_key, resp_payload, 3600 * 12)
+            return JsonResponse(resp_payload, json_dumps_params={'ensure_ascii': False})
+
+        elif mode == 'concept_map':
+            if not query:
+                return JsonResponse({'error': 'יש להזין מושג למיפוי.'}, status=400)
+
+            clean_q = re.sub(r'[^א-ת\s]', '', query).strip()
+            q_gem = calculate_gematria(clean_q)
+
+            nodes = [
+                {
+                    'id': 'root',
+                    'label': f"{query}\n(גימטריה: {q_gem})",
+                    'group': 'center',
+                    'snippet': f'מושג המפתח הנחקר: "{query}" (ערך גימטרי: {q_gem})',
+                    'url': ''
+                }
+            ]
+            edges = []
+
+            tanakh_hits = list(
+                TorahText.objects.filter(book__in=tanakh_names, clean_text__icontains=clean_q)
+                .exclude(chapter__startswith='דף')[:2]
+            )
+            for idx, th in enumerate(tanakh_hits):
+                nid = f"tanakh_{idx}"
+                nodes.append({
+                    'id': nid,
+                    'label': f"📖 תנ\"ך\n{th.book} {th.chapter}:{th.verse}",
+                    'group': 'tanakh',
+                    'snippet': format_divine_name(th.text_with_nikkud or th.clean_text),
+                    'url': ''
+                })
+                edges.append({'from': 'root', 'to': nid, 'label': 'מקור במקרא'})
+
+            chazal_hits = list(
+                TorahText.objects.filter(clean_text__icontains=clean_q)
+                .exclude(book__in=tanakh_names)
+                .exclude(book__startswith='רמב"ם ')
+                .exclude(book__startswith='שולחן ערוך ')[:2]
+            )
+            for idx, ch in enumerate(chazal_hits):
+                nid = f"chazal_{idx}"
+                nodes.append({
+                    'id': nid,
+                    'label': f"🏛️ חז\"ל\n{ch.book} ({ch.chapter})",
+                    'group': 'talmud',
+                    'snippet': format_divine_name(ch.text_with_nikkud or ch.clean_text),
+                    'url': ''
+                })
+                edges.append({'from': 'root', 'to': nid, 'label': 'סוגיה בחז"ל'})
+
+            halacha_hits = list(
+                TorahText.objects.filter(
+                    Q(book__startswith='רמב"ם ') | Q(book__startswith='שולחן ערוך '),
+                    clean_text__icontains=clean_q
+                )[:2]
+            )
+            for idx, hh in enumerate(halacha_hits):
+                nid = f"halacha_{idx}"
+                nodes.append({
+                    'id': nid,
+                    'label': f"👑 הלכה\n{hh.book} ({hh.chapter})",
+                    'group': 'halacha',
+                    'snippet': format_divine_name(hh.text_with_nikkud or hh.clean_text),
+                    'url': ''
+                })
+                edges.append({'from': 'root', 'to': nid, 'label': 'פסיקת הלכה'})
+
+            if q_gem > 0:
+                gem_hit = TorahText.objects.filter(verse_gematria=q_gem).first()
+                if gem_hit:
+                    nodes.append({
+                        'id': 'gem_node',
+                        'label': f"🔢 שווה בגימטריה ({q_gem})\n{gem_hit.book} {gem_hit.chapter}:{gem_hit.verse}",
+                        'group': 'gematria',
+                        'snippet': format_divine_name(gem_hit.text_with_nikkud or gem_hit.clean_text),
+                        'url': ''
+                    })
+                    edges.append({'from': 'root', 'to': 'gem_node', 'label': f'גימטריה {q_gem}'})
+
+            site_articles = list(
+                smart_hebrew_search(Article.objects.filter(is_published=True), clean_q, ['title', 'content'])[:2]
+            )
+            for idx, art in enumerate(site_articles):
+                nid = f"article_{idx}"
+                art_url = reverse('articles:detail', args=[art.slug])
+                clean_snip = re.sub(r'<[^>]+>', ' ', art.content or '')[:220].strip() + '...'
+                nodes.append({
+                    'id': nid,
+                    'label': f"✍️ מאמר באתר\n{art.title[:28]}",
+                    'group': 'site_content',
+                    'snippet': clean_snip,
+                    'url': art_url
+                })
+                edges.append({'from': 'root', 'to': nid, 'label': 'מאמר הרב משה לייבוביץ'})
+
+            resp_payload = {
+                'query': query,
+                'gematria': q_gem,
+                'nodes': nodes,
+                'edges': edges
+            }
+            cache.set(cache_key, resp_payload, 3600 * 12)
+            return JsonResponse(resp_payload, json_dumps_params={'ensure_ascii': False})
+
+        elif mode == 'sermon_generator':
+            if not query:
+                return JsonResponse({'error': 'יש להזין נושא או פרשה ליצירת דרשה.'}, status=400)
+
+            clean_q = re.sub(r'[^א-ת\s]', '', query).strip()
+            search_core = re.sub(r'^פרשת\s+', '', clean_q).strip() or clean_q
+            q_gem = calculate_gematria(search_core)
+
+            tanakh_verse = TorahText.objects.filter(
+                book__in=tanakh_names, clean_text__icontains=search_core
+            ).exclude(chapter__startswith='דף').first()
+
+            chazal_source = TorahText.objects.filter(
+                clean_text__icontains=search_core
+            ).exclude(book__in=tanakh_names).exclude(book__startswith='רמב"ם ').exclude(book__startswith='שולחן ערוך ').first()
+
+            halacha_source = TorahText.objects.filter(
+                Q(book__startswith='רמב"ם ') | Q(book__startswith='שולחן ערוך '),
+                clean_text__icontains=search_core
+            ).first()
+
+            gem_verse = TorahText.objects.filter(
+                Q(verse_gematria=q_gem) | Q(words_gematria__contains=f",{q_gem},")
+            ).first() if q_gem > 0 else None
+
+            site_article = smart_hebrew_search(
+                Article.objects.filter(is_published=True), search_core, ['title', 'content']
+            ).first()
+
+            building_blocks = []
+            building_blocks.append(f"נושא מרכזי: {query} (הערך הגימטרי של '{search_core}' הוא: {q_gem})")
+
+            if tanakh_verse:
+                building_blocks.append(
+                    f"מקור במקרא: {tanakh_verse.book} פרק {tanakh_verse.chapter} פסוק {tanakh_verse.verse}: \"{format_divine_name(tanakh_verse.text_with_nikkud)}\""
+                )
+            if gem_verse:
+                building_blocks.append(
+                    f"מקור עם התאמת גימטריה מדויקת ({q_gem}): {gem_verse.book} {gem_verse.chapter}:{gem_verse.verse}: \"{format_divine_name(gem_verse.text_with_nikkud)}\""
+                )
+            if chazal_source:
+                building_blocks.append(
+                    f"מקור בחז\"ל: {chazal_source.book} {chazal_source.chapter}: \"{format_divine_name(chazal_source.text_with_nikkud)}\""
+                )
+            if halacha_source:
+                building_blocks.append(
+                    f"מקור בהלכה: {halacha_source.book} {halacha_source.chapter}: \"{format_divine_name(halacha_source.text_with_nikkud)}\""
+                )
+            if site_article:
+                art_snip = re.sub(r'<[^>]+>', ' ', site_article.content or '')[:400].strip()
+                building_blocks.append(
+                    f"מתוך מאמר באתר 'ספריית לייבוביץ' מאת הרב משה לייבוביץ ('{site_article.title}'): {art_snip}"
+                )
+
+            blocks_text = "\n\n".join(building_blocks)
+            sermon_prompt = (
+                f"אתה עורך תוכן תורני באתר 'ספריית לייבוביץ'.\n"
+                f"המשתמש מבקש לארגן מערך תוכן ודרשה בנושא: '{query}'.\n"
+                f"להלן הנתונים המדויקים והמקורות שנשלפו ממסד הנתונים:\n\n"
+                f"{blocks_text}\n\n"
+                f"סדר ונסח את הנתונים באופן בהיר, מכובד ומסודר ב-4 חלקים:\n"
+                f"1. פתיחה ונתונים מרכזיים (נושא וגימטריה).\n"
+                f"2. מקורות במקרא ובחז\"ל.\n"
+                f"3. פסיקה והלכה למעשה.\n"
+                f"4. קישור למאמרי הספרייה.\n"
+                f"כללי ברזל: התבסס אך ורק על הנתונים שלעיל, כתוב את שם ה' אך ורק כ-י-ה-ו-ה, ואל תוסיף חתימה בסוף."
+            )
+
+            sermon_text = call_gemini_sync(sermon_prompt)
+            resp_payload = {
+                'topic': query,
+                'gematria': q_gem,
+                'sources_used': building_blocks,
+                'article_link': reverse('articles:detail', args=[site_article.slug]) if site_article else '',
+                'article_title': site_article.title if site_article else '',
+                'sermon': sermon_text
+            }
+            cache.set(cache_key, resp_payload, 3600 * 12)
+            return JsonResponse(resp_payload, json_dumps_params={'ensure_ascii': False})
+
+        return JsonResponse({'error': 'מצב פעולה לא חוקי.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)

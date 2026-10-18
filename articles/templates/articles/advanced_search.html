@@ -18,7 +18,7 @@
         <i class="bi bi-gem mb-2 d-inline-block" style="font-size: 2.4rem; color: #d4af37;"></i>
         <h1 class="text-white mb-2 fw-bold display-4" style="color: #d4af37 !important; text-shadow: 2px 2px 8px rgba(0,0,0,0.85); letter-spacing: 0.5px;">מאגר החיפוש התורני</h1>
         <p class="text-white mt-2 fs-4 mb-1 fw-semibold" style="text-shadow: 1px 1px 6px rgba(0,0,0,0.9);">איתור מילים ולשונות, פסוקים ומקורות בתנ"ך, במשנה, בתוספתא, בתלמודים ובפוסקים</p>
-        <p class="text-white fs-6 mb-0" style="color: #f3e5ab !important; text-shadow: 1px 1px 4px rgba(0,0,0,0.85);">חיפוש מילולי מדויק, חישובי גימטריאות, ראשי וסופי תיבות, היפוך אותיות ודילוגים</p>
+        <p class="text-white fs-6 mb-0" style="color: #f3e5ab !important; text-shadow: 1px 1px 4px rgba(0,0,0,0.85);">חיפוש מילולי מדויק, חישובי גימטריאות, ראשי וסופי תיבות, היפוך אותיות, דילוגים וניתוח תוצאות</p>
     </div>
 </div>
 {% endblock %}
@@ -35,6 +35,7 @@
 {% endblock %}
 
 {% block content %}
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 <style>
     .corpus-luxury-grid {
         display: grid;
@@ -246,6 +247,29 @@
         color: #1e202c;
         box-shadow: 0 2px 6px rgba(212, 175, 55, 0.3);
     }
+    /* כפתור מובדל ויוקרתי לניתוח התוצאה ע"י AI */
+    .result-ai-code-btn {
+        background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
+        border: 1.5px solid #f59e0b;
+        color: #fde68a;
+        border-radius: 8px;
+        padding: 5px 13px;
+        font-size: 0.84rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 2px 6px rgba(49, 46, 129, 0.25);
+    }
+    .result-ai-code-btn:hover {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: #ffffff;
+        border-color: #ffffff;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+    }
+
     .export-toolbar-btn {
         background: linear-gradient(135deg, #fcf3cf 0%, #f5dc86 100%);
         border: 1.5px solid #b8860b;
@@ -291,6 +315,47 @@
     .chapter-context-verse.target-highlight .verse-num-badge {
         background: #d4af37;
         color: #fff;
+    }
+
+    .ai-discovery-lab {
+        margin-top: 3rem;
+        background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 85%);
+        border: 2px solid #d4af37;
+        border-radius: 20px;
+        padding: 28px;
+        color: #f8fafc;
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+    }
+    .ai-lab-tab-btn {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1.5px solid rgba(212, 175, 55, 0.45);
+        color: #e2e8f0;
+        padding: 10px 20px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.96rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .ai-lab-tab-btn:hover {
+        background: rgba(212, 175, 55, 0.15);
+        color: #f7e199;
+    }
+    .ai-lab-tab-btn.active {
+        background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 100%);
+        color: #0f172a;
+        border-color: #ffffff;
+        box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+    }
+    #conceptMapNetwork {
+        width: 100%;
+        height: 420px;
+        background: #0b1120;
+        border: 1.5px solid rgba(212, 175, 55, 0.4);
+        border-radius: 14px;
     }
 
     .bottom-tools-section {
@@ -596,6 +661,59 @@
 
     </div>
 
+    <div class="ai-discovery-lab">
+        <div class="text-center mb-4">
+            <span class="badge px-3 py-1 mb-2" style="background: rgba(212, 175, 55, 0.2); color: #f7e199; border: 1px solid #d4af37; border-radius: 50px; font-size: 0.85rem;">חדש בספריית לייבוביץ</span>
+            <h3 class="fw-bold mb-1" style="color: #f7e199; font-family: 'Frank Ruhl Libre', serif;">
+                <i class="bi bi-stars ms-2" style="color: #d4af37;"></i>מעבדת הנתונים והקשרים (AI + צפנים)
+            </h3>
+            <p class="mb-0" style="color: #cbd5e1; font-size: 0.95rem;">
+                ריכוז נתונים אוטומטי המקשר בין המקרא, הש"ס, הפוסקים, גימטריאות ומאמרי הספרייה
+            </p>
+        </div>
+
+        <div class="d-flex justify-content-center flex-wrap gap-2 mb-4">
+            <button type="button" class="ai-lab-tab-btn active" onclick="switchAiLabTab('map', this)">
+                <i class="bi bi-diagram-3-fill"></i> 1. מפת דרכים רעיונית (רשת קשרים)
+            </button>
+            <button type="button" class="ai-lab-tab-btn" onclick="switchAiLabTab('sermon', this)">
+                <i class="bi bi-feather"></i> 2. מנסח הדרשות והחידושים לשבת
+            </button>
+        </div>
+
+        <div id="aiLabMapPanel">
+            <div class="row g-2 justify-content-center mb-3">
+                <div class="col-md-7">
+                    <input type="text" id="conceptMapInput" class="form-control form-control-lg text-center fw-bold" placeholder="הקלד מושג למיפוי קשרים (לדוגמה: ציצית, שבת, תשובה, שופר)..." style="border-radius: 12px; border: 1.5px solid #d4af37;">
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="btn w-100 h-100 fw-bold py-2" onclick="buildConceptMap()" style="background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 100%); color: #0f172a; border-radius: 12px; font-size: 1.05rem;">
+                        <i class="bi bi-share-fill ms-1"></i> שרטט מפת קשרים
+                    </button>
+                </div>
+            </div>
+            <div id="conceptMapStatus" class="text-center my-2" style="display: none;"></div>
+            <div id="conceptMapWrap" style="display: none;">
+                <div id="conceptMapNetwork"></div>
+                <div id="conceptNodeDetails" class="mt-3 p-3 rounded-3" style="background: rgba(255,255,255,0.07); border: 1px solid rgba(212,175,55,0.4); display: none;"></div>
+            </div>
+        </div>
+
+        <div id="aiLabSermonPanel" style="display: none;">
+            <div class="row g-2 justify-content-center mb-3">
+                <div class="col-md-7">
+                    <input type="text" id="sermonTopicInput" class="form-control form-control-lg text-center fw-bold" placeholder="הקלד נושא או פרשה לדרשה (לדוגמה: פרשת לך לך, ברית מילה, הכנסת אורחים)..." style="border-radius: 12px; border: 1.5px solid #d4af37;">
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="btn w-100 h-100 fw-bold py-2" onclick="generateTorahSermon()" style="background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 100%); color: #0f172a; border-radius: 12px; font-size: 1.05rem;">
+                        <i class="bi bi-magic ms-1"></i> בנה מערך דרשה וחידוש
+                    </button>
+                </div>
+            </div>
+            <div id="sermonOutputArea" class="mt-3"></div>
+        </div>
+    </div>
+
     <div class="bottom-tools-section">
         <div class="row g-4 justify-content-center align-items-stretch">
             
@@ -680,6 +798,21 @@
     </div>
 </div>
 
+<div class="modal fade" id="codeFinderModal" tabindex="-1" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="border: 2px solid #d4af37; border-radius: 16px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #fff; border-bottom: 2px solid #d4af37;">
+                <h5 class="modal-title fw-bold" id="codeFinderModalTitle" style="color: #f7e199;">
+                    <i class="bi bi-stars ms-2"></i>ניתוח נתונים וצפנים ממוקד (AI)
+                </h5>
+                <button type="button" class="btn-close btn-close-white ms-0 me-auto" data-bs-dismiss="modal" aria-label="סגור"></button>
+            </div>
+            <div class="modal-body p-4" id="codeFinderModalBody" style="background-color: #fdfcf8; max-height: 75vh; overflow-y: auto;">
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="copyToast" style="display: none; position: fixed; bottom: 28px; left: 28px; background: #1e293b; color: #f7e199; border: 1.5px solid #d4af37; padding: 12px 20px; border-radius: 12px; font-weight: 700; z-index: 9999; box-shadow: 0 6px 20px rgba(0,0,0,0.25);">
     <i class="bi bi-check-circle-fill ms-2" style="color: #4ade80;"></i><span id="copyToastText">הועתק ללוח בהצלחה!</span>
 </div>
@@ -738,7 +871,7 @@ document.addEventListener('DOMContentLoaded', function() {
             { group: 'תלמוד ירושלמי - נזיקין וטהרות', prefix: 'yerushalmi', books: ['ירושלמי בבא קמא', 'ירושלמי בבא מציעא', 'ירושלמי בבא בתרא', 'ירושלמי סנהדרין', 'ירושלמי שבועות', 'ירושלמי עבודה זרה', 'ירושלמי מכות', 'ירושלמי הוריות', 'ירושלמי נדה'] }
         ],
         rambam: [
-            { group: 'רמב"ם - מדע, אהבה וזמנים', prefix: 'rambam', books: ['רמב"ם הלכות יסודי התורה', 'רמב"ם הלכות דעות', 'רמב"ם הלכות תלמוד תורה', 'רמב"ם הלכות עבודה זרה וחוקות הגויים', 'רמב"ם הלכות תשובה', 'רמב"ם הלכות קריאת שמע', 'רמב"ם הלכות תפילה וברכת כהנים', 'רמב"ם הלכות תפילין ומזוזה וספר תורה', 'רמב"ם הלכות ציצית', 'רמב"ם הלכות ברכות', 'רמב"ם הלכות מילה', 'רמב"ם הלכות סדר תפילות', 'רמב"ם הלכות שבת', 'רמב"ם הלכות עירובין', 'רמב"ם הלכות שביתת עשור', 'רמב"ם הלכות שביתת יום טוב', 'רמב"ם הלכות חמץ ומצה', 'רמב"ם הלכות שופר וסוכה ולולב', 'רמב"ם הלכות שקלים', 'רמב"ם הלכות קידוש החודש', 'רמב"ם הלכות תעניות', 'רמב"ם הלכות מגילה וחנוכה'] },
+            { group: 'רמב"ם - מדע, אהבה וזמנים', prefix: 'rambam', books: ['רמב"ם הלכות יסודי התורה', 'רמב"ם הלכות דעות', 'רמב"ם הלכות תלמוד תורה', 'רמב"ם הלכות עבודה זרה וחוקות הגויים', 'רמב"ם הלכות תשובה', 'רמב"ם הלכות קריאת שמע', 'רמב"ם הלכות תפילה וברכת כהנים', 'רמב"ם הלכות תפילין ומזוזה וספר תורה', 'רמב"ם הלכות ציצית', 'רמב"ם הלכות ברכות', 'רמב"ם הלכות מילה', 'רמב"ם הלכות סדר תפילות', 'רמב"ם הלכות שבת', 'רמב"ם הלכות עירובין', 'rמב"ם הלכות שביתת עשור', 'רמב"ם הלכות שביתת יום טוב', 'רמב"ם הלכות חמץ ומצה', 'רמב"ם הלכות שופר וסוכה ולולב', 'רמב"ם הלכות שקלים', 'רמב"ם הלכות קידוש החודש', 'רמב"ם הלכות תעניות', 'רמב"ם הלכות מגילה וחנוכה'] },
             { group: 'רמב"ם - נשים, קדושה והפלאה', prefix: 'rambam', books: ['רמב"ם הלכות אישות', 'רמב"ם הלכות גירושין', 'רמב"ם הלכות ייבום וחליצה', 'רמב"ם הלכות נערה בתולה', 'רמב"ם הלכות סוטה', 'רמב"ם הלכות איסורי ביאה', 'רמב"ם הלכות מאכלות אסורות', 'רמב"ם הלכות שחיטה', 'רמב"ם הלכות שבועות', 'רמב"ם הלכות נדרים', 'רמב"ם הלכות נזירות', 'רמב"ם הלכות ערכין וחרמין'] },
             { group: 'רמב"ם - זרעים, עבודה, קורבנות וטהרה', prefix: 'rambam', books: ['רמב"ם הלכות כלאיים', 'רמב"ם הלכות מתנות עניים', 'רמב"ם הלכות תרומות', 'רמב"ם הלכות מעשרות', 'רמב"ם הלכות מעשר שני ונטע רבעי', 'רמב"ם הלכות ביכורים ושאר מתנות כהונה שבגבולין', 'רמב"ם הלכות שמיטה ויובל', 'רמב"ם הלכות בית הבחירה', 'רמב"ם הלכות כלי המקדש והעובדין בו', 'רמב"ם הלכות ביאת מקדש', 'רמב"ם הלכות איסורי המזבח', 'רמב"ם הלכות מעשה הקורבנות', 'רמב"ם הלכות תמידין ומוספין', 'רמב"ם הלכות פסולי המוקדשין', 'רמב"ם הלכות עבודת יום הכיפורים', 'רמב"ם הלכות מעילה', 'רמב"ם הלכות קורבן פסח', 'רמב"ם הלכות חגיגה', 'רמב"ם הלכות בכורות', 'רמב"ם הלכות שגגות', 'רמב"ם הלכות מחוסרי כפרה', 'רמב"ם הלכות תמורה', 'רמב"ם הלכות טומאת מת', 'רמב"ם הלכות פרה אדומה', 'רמב"ם הלכות טומאת צרעת', 'רמב"ם הלכות מטמאי משכב ומושב', 'רמב"ם הלכות שאר אבות הטומאות', 'רמב"ם הלכות טומאת אוכלין', 'רמב"ם הלכות כלים', 'רמב"ם הלכות מקוואות'] },
             { group: 'רמב"ם - נזיקין, קניין, משפטים ושופטים', prefix: 'rambam', books: ['רמב"ם הלכות נזקי ממון', 'רמב"ם הלכות גניבה', 'רמב"ם הלכות גזילה ואבידה', 'רמב"ם הלכות חובל ומזיק', 'רמב"ם הלכות רוצח ושמירת נפש', 'רמב"ם הלכות מכירה', 'רמב"ם הלכות זכייה ומתנה', 'רמב"ם הלכות שכנים', 'רמב"ם הלכות שלוחין ושותפין', 'רמב"ם הלכות עבדים', 'רמב"ם הלכות שכירות', 'רמב"ם הלכות שאלה ופיקדון', 'רמב"ם הלכות מלווה ולווה', 'רמב"ם הלכות טוען ונטען', 'רמב"ם הלכות נחלות', 'רמב"ם הלכות סנהדרין והעונשין המסורין להם', 'רמב"ם הלכות עדות', 'רמב"ם הלכות ממרים', 'רמב"ם הלכות אבל', 'רמב"ם הלכות מלכים ומלחמות'] }
@@ -1110,6 +1243,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </strong>
                                 <div class="d-flex align-items-center flex-wrap gap-2">
                                     ${matchBadge}
+                                    <button type="button" class="result-ai-code-btn" onclick="openAutomatedCodeFinder('${safeBook}', '${safeChapter}', '${safeVerse}')">
+                                        <i class="bi bi-stars"></i> ניתוח נתונים (AI)
+                                    </button>
                                     <button type="button" class="result-action-btn" onclick="openFullChapterModal('${safeBook}', '${safeChapter}', '${safeVerse}', '${verseLabel}')">
                                         <i class="bi bi-arrows-fullscreen"></i> הצג פרק מלא
                                     </button>
@@ -1278,6 +1414,219 @@ document.addEventListener('DOMContentLoaded', function() {
         navigator.clipboard.writeText(lines.join('\n')).then(() => {
             showToast('הפרק המלא הועתק ללוח!');
         });
+    };
+
+    window.openAutomatedCodeFinder = function(bookName, chapterName, verseNum) {
+        const modalEl = document.getElementById('codeFinderModal');
+        const bodyEl = document.getElementById('codeFinderModalBody');
+        const titleEl = document.getElementById('codeFinderModalTitle');
+
+        titleEl.innerHTML = `<i class="bi bi-stars ms-2"></i>ניתוח נתונים וצפנים: ${bookName} (${formatChapterTitle(chapterName)}, ${verseNum})`;
+        bodyEl.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-warning" role="status"></div>
+                <h5 class="mt-3 fw-bold" style="color: #1e293b;">מריץ סריקת דילוגים, גימטריאות ונתונים מבוססי מאגר...</h5>
+            </div>
+        `;
+
+        const modalObj = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modalObj.show();
+
+        const url = `/api/torah-ai-insights/?mode=code_finder&book=${encodeURIComponent(bookName)}&chapter=${encodeURIComponent(chapterName)}&verse=${encodeURIComponent(verseNum)}`;
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    bodyEl.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                    return;
+                }
+
+                let html = `
+                    <div class="p-3 mb-3 rounded-3" style="background: #fff8dc; border: 1.5px solid #d4af37;">
+                        <div class="fw-bold text-muted small mb-1">${data.source_ref} | גימטריה כוללת של המקור: <span class="text-dark fw-bold">${data.verse_gematria}</span></div>
+                        <div class="fs-4 lh-lg text-dark" style="font-family: 'Frank Ruhl Libre', serif;">${data.text}</div>
+                    </div>
+                `;
+
+                if (data.ai_commentary) {
+                    html += `
+                        <div class="p-3 mb-3 rounded-3 shadow-sm" style="background: #ffffff; border-right: 4px solid #312e81;">
+                            <h6 class="fw-bold mb-2" style="color: #312e81;"><i class="bi bi-shield-check-fill text-warning ms-1"></i>סיכום נתונים מאומת מהמאגר:</h6>
+                            <div style="white-space: pre-line; line-height: 1.75; font-size: 1.02rem; color: #2c3e50;">${data.ai_commentary}</div>
+                        </div>
+                    `;
+                }
+
+                html += `<div class="row g-3">`;
+
+                html += `<div class="col-md-6"><div class="p-3 rounded-3 h-100 border bg-white"><h6 class="fw-bold" style="color: #8c6239;">⚡ דילוגי אותיות וראשי תיבות בפсוק:</h6><ul class="mb-0 ps-3 small" style="line-height: 1.7;">`;
+                if (data.els_findings && data.els_findings.length) {
+                    data.els_findings.forEach(e => {
+                        html += `<li>המושג <b>"${e.word}"</b> מופיע בדילוג אותיות של <b>${e.skip}</b></li>`;
+                    });
+                }
+                if (data.acronym_findings && data.acronym_findings.length) {
+                    data.acronym_findings.forEach(a => {
+                        html += `<li>${a.type} <b>"${a.word}"</b> מתוך המילים: <i>"${a.phrase}"</i></li>`;
+                    });
+                }
+                if ((!data.els_findings || !data.els_findings.length) && (!data.acronym_findings || !data.acronym_findings.length)) {
+                    html += `<li class="text-muted">לא נמצאו דילוגי מושגי יסוד בפסוק זה.</li>`;
+                }
+                html += `</ul></div></div>`;
+
+                html += `<div class="col-md-6"><div class="p-3 rounded-3 h-100 border bg-white"><h6 class="fw-bold" style="color: #8c6239;">🔢 הקבלות גימטריה מדויקות:</h6><ul class="mb-0 ps-3 small" style="line-height: 1.7;">`;
+                if (data.word_gematria_matches && data.word_gematria_matches.length) {
+                    data.word_gematria_matches.forEach(m => {
+                        html += `<li>המילה <b>"${m.word}"</b> שווה בגימטריה (<b>${m.val}</b>) למושג <b>"${m.concept}"</b></li>`;
+                    });
+                }
+                if (data.equal_verses && data.equal_verses.length) {
+                    data.equal_verses.forEach(ev => {
+                        html += `<li>מקור שווה בגימטריה (${data.verse_gematria}): <b>${ev.ref}</b> — "${ev.text}"</li>`;
+                    });
+                }
+                html += `</ul></div></div></div>`;
+
+                bodyEl.innerHTML = html;
+            })
+            .catch(() => {
+                bodyEl.innerHTML = `<div class="alert alert-danger">שגיאה בניתוח הנתונים.</div>`;
+            });
+    };
+
+    window.switchAiLabTab = function(tabName, btnEl) {
+        document.querySelectorAll('.ai-lab-tab-btn').forEach(b => b.classList.remove('active'));
+        btnEl.classList.add('active');
+        document.getElementById('aiLabMapPanel').style.display = (tabName === 'map') ? 'block' : 'none';
+        document.getElementById('aiLabSermonPanel').style.display = (tabName === 'sermon') ? 'block' : 'none';
+    };
+
+    let visNetworkInstance = null;
+    window.buildConceptMap = function() {
+        const q = document.getElementById('conceptMapInput').value.trim() || searchQueryInput.value.trim();
+        if (!q) return;
+        document.getElementById('conceptMapInput').value = q;
+
+        const statusEl = document.getElementById('conceptMapStatus');
+        const wrapEl = document.getElementById('conceptMapWrap');
+        const detailsEl = document.getElementById('conceptNodeDetails');
+
+        statusEl.style.display = 'block';
+        statusEl.innerHTML = `<div class="spinner-border spinner-border-sm text-warning ms-2"></div>מיפוי קשרים בין תנ"ך, ש"ס, הלכה, גימטריה ומאמרי הספרייה...`;
+        wrapEl.style.display = 'none';
+        detailsEl.style.display = 'none';
+
+        fetch(`/api/torah-ai-insights/?mode=concept_map&q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(data => {
+                statusEl.style.display = 'none';
+                if (data.error || !data.nodes) return;
+
+                wrapEl.style.display = 'block';
+                const groupColors = {
+                    center: { background: '#d4af37', border: '#ffffff', font: { color: '#0f172a', size: 17, bold: true } },
+                    tanakh: { background: '#1e3a8a', border: '#60a5fa', font: { color: '#ffffff', size: 14 } },
+                    talmud: { background: '#065f46', border: '#34d399', font: { color: '#ffffff', size: 14 } },
+                    halacha: { background: '#581c87', border: '#c084fc', font: { color: '#ffffff', size: 14 } },
+                    gematria: { background: '#78350f', border: '#fbbf24', font: { color: '#fef3c7', size: 14 } },
+                    site_content: { background: '#991b1b', border: '#f87171', font: { color: '#ffffff', size: 14 } }
+                };
+
+                const formattedNodes = data.nodes.map(n => {
+                    const g = groupColors[n.group] || groupColors.tanakh;
+                    return {
+                        id: n.id,
+                        label: n.label,
+                        shape: 'box',
+                        margin: 12,
+                        color: { background: g.background, border: g.border, highlight: { background: '#d4af37', border: '#fff' } },
+                        font: g.font,
+                        borderWidth: 2,
+                        shadow: true,
+                        rawData: n
+                    };
+                });
+
+                const formattedEdges = data.edges.map(e => ({
+                    from: e.from,
+                    to: e.to,
+                    label: e.label,
+                    font: { color: '#cbd5e1', size: 11, strokeWidth: 0, align: 'top' },
+                    color: { color: '#d4af37', highlight: '#fde047' },
+                    width: 2,
+                    arrows: 'to'
+                }));
+
+                const container = document.getElementById('conceptMapNetwork');
+                const netData = {
+                    nodes: new vis.DataSet(formattedNodes),
+                    edges: new vis.DataSet(formattedEdges)
+                };
+                const options = {
+                    physics: { barnesHut: { gravitationalConstant: -3800, springLength: 150 } },
+                    interaction: { hover: true }
+                };
+
+                visNetworkInstance = new vis.Network(container, netData, options);
+                visNetworkInstance.on('click', function(params) {
+                    if (params.nodes.length > 0) {
+                        const nodeId = params.nodes[0];
+                        const nodeObj = data.nodes.find(item => item.id === nodeId);
+                        if (nodeObj) {
+                            let linkBtn = nodeObj.url ? `<a href="${nodeObj.url}" target="_blank" class="btn btn-sm btn-warning fw-bold mt-2">פתח מאמר/ספר מלא באתר</a>` : '';
+                            detailsEl.innerHTML = `
+                                <div class="fw-bold" style="color: #f7e199;">${nodeObj.label.replace('\n', ' — ')}</div>
+                                <div class="mt-1 text-light" style="font-family: 'Frank Ruhl Libre', serif; font-size: 1.15rem;">${nodeObj.snippet}</div>
+                                ${linkBtn}
+                            `;
+                            detailsEl.style.display = 'block';
+                        }
+                    }
+                });
+            });
+    };
+
+    window.generateTorahSermon = function() {
+        const topic = document.getElementById('sermonTopicInput').value.trim() || searchQueryInput.value.trim();
+        if (!topic) return;
+        document.getElementById('sermonTopicInput').value = topic;
+
+        const outEl = document.getElementById('sermonOutputArea');
+        outEl.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-warning" role="status"></div>
+                <p class="mt-2 mb-0 text-light fw-bold">מארגן את נתוני המאגר למערך דרשה וחידוש מסודר...</p>
+            </div>
+        `;
+
+        fetch(`/api/torah-ai-insights/?mode=sermon_generator&q=${encodeURIComponent(topic)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    outEl.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                    return;
+                }
+                let articleHtml = data.article_link
+                    ? `<div class="mt-3 pt-2 border-top border-secondary"><a href="${data.article_link}" target="_blank" class="text-warning fw-bold text-decoration-none"><i class="bi bi-box-arrow-up-left ms-1"></i>קרא עוד במאמר של הרב משה לייבוביץ באתר: "${data.article_title}"</a></div>`
+                    : '';
+
+                outEl.innerHTML = `
+                    <div class="p-4 rounded-4 text-dark" style="background: #fdfcf8; border: 2px solid #d4af37;">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-2 border-bottom">
+                            <h5 class="fw-bold mb-0" style="color: #1e293b;">מערך תוכן ודרשה: ${data.topic} (גימטריה: ${data.gematria})</h5>
+                            <button type="button" class="btn btn-sm btn-dark fw-bold" onclick="navigator.clipboard.writeText(document.getElementById('sermonBodyText').innerText); showToast('התוכן הועתק ללוח!');">
+                                <i class="bi bi-clipboard ms-1"></i>העתק תוכן
+                            </button>
+                        </div>
+                        <div id="sermonBodyText" style="white-space: pre-line; line-height: 1.85; font-size: 1.15rem; font-family: 'Frank Ruhl Libre', serif; color: #1e293b;">${data.sermon}</div>
+                        ${articleHtml}
+                    </div>
+                `;
+            })
+            .catch(() => {
+                outEl.innerHTML = `<div class="alert alert-danger">שגיאה ביצירת הדרשה.</div>`;
+            });
     };
 
     const acrInput = document.getElementById('bottomAcronymInput');
