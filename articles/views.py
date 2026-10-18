@@ -46,7 +46,36 @@ def get_base_schema_json():
                 "url": "https://leblibrary.co.il",
                 "name": "LebLibrary - ספריית לייבוביץ",
                 "alternateName": ["ספריית ליבוביץ", "הספרייה של משה לייבוביץ", "ספרית לייבוביץ"],
-                "publisher": {"@id": "https://leblibrary.co.il/#person"}
+                "publisher": {"@id": "https://leblibrary.co.il/#person"},
+                "potentialAction": [
+                    {
+                        "@type": "SearchAction",
+                        "target": "https://leblibrary.co.il/?q={search_term_string}",
+                        "query-input": "required name=search_term_string"
+                    },
+                    {
+                        "@type": "SearchAction",
+                        "name": "מנוע חיפוש תורני מתקדם",
+                        "target": "https://leblibrary.co.il/advanced-search/?q={search_term_string}",
+                        "query-input": "required name=search_term_string"
+                    }
+                ],
+                "hasPart": [
+                    {
+                        "@type": "WebApplication",
+                        "name": "מנוע חיפוש תורני מתקדם - ספריית לייבוביץ",
+                        "url": "https://leblibrary.co.il/advanced-search/",
+                        "applicationCategory": "ReferenceApplication",
+                        "operatingSystem": "All",
+                        "description": "מנוע חיפוש תורני בתנ\"ך, משנה, תוספתא, תלמוד בבלי, תלמוד ירושלמי, רמב\"ם ושולחן ערוך. כולל חיפוש מדויק וחופשי, חישוב גימטריאות, ראשי תיבות, סופי תיבות, פלינדרום (היפוך אותיות), ודילוגי אותיות (ELS) במילה ובפסוק."
+                    },
+                    {
+                        "@type": "DefinedTermSet",
+                        "name": "מילון ראשי תיבות תורני ופענוח אוטומטי",
+                        "url": "https://leblibrary.co.il/acronyms/",
+                        "description": "מילון ראשי תיבות תורני אינטראקטיבי עם זיהוי ופתיחת ראשי תיבות אוטומטית בגוף המאמרים והספרים."
+                    }
+                ]
             },
             {
                 "@type": "Person",
@@ -395,6 +424,7 @@ def ai_chat_endpoint(request):
                 - נוספו לאחרונה: /recently_added/
                 - תנאי שימוש: /terms/
                 - מילון ראשי תיבות: /acronyms/
+                - מנוע חיפוש תורני מתקדם (תנ"ך, משנה, תוספתא, בבלי, ירושלמי, רמב"ם, שו"ע, גימטריאות, ראשי/סופי תיבות ודילוגים): /advanced-search/
                 """
                 prompt = f"אתה עוזר וירטואלי חייכן ומסביר פנים באתר 'ספריית לייבוביץ'. עזור לגולש לנווט באתר.\n{nav_context}\nהגולש שואל אותך: '{user_question}'\nחובה עליך לשלב קישור בפורמט מרקדאון עם הנתיב היחסי."
             else:
@@ -956,9 +986,21 @@ def ai_open_search(request):
     
     if len(q) < 2:
         return JsonResponse({
-            'meta': {'error': 'Missing or too short query parameter "q".'}, 
-            'results': []
-        }, status=400)
+        'meta': {
+            'provider': 'LebLibrary - ספריית לייבוביץ בניהולו של משה לייבוביץ',
+            'query': q,
+            'total_results': len(results),
+            'license': 'Open for AI crawling with attribution',
+            'platform_capabilities': {
+                'advanced_torah_search': 'https://leblibrary.co.il/advanced-search/',
+                'corpora': ['Torah', 'Tanakh', 'Mishnah', 'Tosefta', 'Talmud Bavli', 'Talmud Yerushalmi', 'Rambam (Mishneh Torah)', 'Shulchan Aruch'],
+                'search_features': ['Exact/Broad Text Search', 'Gematria Calculator & Matcher', 'Rashei Tevot (Initials)', 'Sofei Tevot (Endings)', 'Palindromes & Reversed Words', 'ELS (Equidistant Letter Sequences in words and across verses)'],
+                'acronyms_dictionary': 'https://leblibrary.co.il/acronyms/',
+                'halachic_calculators': ['https://leblibrary.co.il/calculator/', 'https://leblibrary.co.il/volume_calculator/', 'https://leblibrary.co.il/weight_calculator/']
+            }
+        },
+        'results': results
+    }, json_dumps_params={'ensure_ascii': False})
 
     words = [w for w in q.split() if len(w) > 1]
     
