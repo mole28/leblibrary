@@ -22,12 +22,12 @@
     <meta name="DC.title" content="ספריית לייבוביץ">
     <meta name="DC.creator" content="משה לייבוביץ">
     <meta name="DC.language" content="he">
-    <meta name="DC.description" content="ספרייה תורנית מתקדמת המרכזת מאמרים, ספרים, וסוגיות הלכתיות ועיוניות מעמיקות.">
+    <meta name="DC.description" content="ספרייה תורנית מתקדמת המרכזת מאמרים, ספרים, מנוע חיפוש תורני וסוגיות הלכתיות ועיוניות מעמיקות.">
     
     <link rel="alternate" type="application/json" title="LebLibrary AI Data API" href="/api/ai-search/">
     
     <meta property="og:title" content="ספריית לייבוביץ | הספרייה התורנית">
-    <meta property="og:description" content="הפלטפורמה המקצועית והמתקדמת לתוכן וספרות. כל הספרים, המאמרים והשאלות במקום אחד.">
+    <meta property="og:description" content="ספרייה תורנית, ספרי הלכה, מאמרים, שו״ת ומנוע חיפוש תורני מתקדם בתנ״ך, במשנה, בתלמודים ובפוסקים.">
     <meta property="og:url" content="https://leblibrary.co.il/">
     <meta property="og:type" content="website">
     <meta property="og:image" content="https://leblibrary.co.il/static/images/icon-512x512.png">
@@ -49,7 +49,36 @@
       "alternateName": "LebLibrary",
       "url": "https://leblibrary.co.il/",
       "inLanguage": "he",
-      "description": "ספרייה תורנית מתקדמת המרכזת מאמרים, ספרים, וסוגיות הלכתיות ועיוניות.",
+      "description": "ספרייה תורנית מתקדמת המרכזת מאמרים, ספרים, מנוע חיפוש תורני (גימטריאות, ראשי וסופי תיבות ודילוגי אותיות), מילון ראשי תיבות ומחשבוני מידות חז\"ל.",
+      "potentialAction": [
+        {
+          "@type": "SearchAction",
+          "target": "https://leblibrary.co.il/?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        },
+        {
+          "@type": "SearchAction",
+          "name": "מנוע חיפוש תורני מתקדם",
+          "target": "https://leblibrary.co.il/advanced-search/?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      ],
+      "hasPart": [
+        {
+          "@type": "WebApplication",
+          "name": "מנוע חיפוש תורני מתקדם - ספריית לייבוביץ",
+          "url": "https://leblibrary.co.il/advanced-search/",
+          "applicationCategory": "ReferenceApplication",
+          "operatingSystem": "All",
+          "description": "מנוע חיפוש תורני בתנ\"ך, משנה, תוספתא, תלמוד בבלי, תלמוד ירושלמי, רמב\"ם ושולחן ערוך. כולל חיפוש מדויק וחופשי, גימטריאות, ראשי וסופי תיבות, פלינדרום ודילוגי אותיות (ELS)."
+        },
+        {
+          "@type": "DefinedTermSet",
+          "name": "מילון ראשי תיבות תורני",
+          "url": "https://leblibrary.co.il/acronyms/",
+          "description": "מילון ראשי תיבות תורני אינטראקטיבי עם פענוח אוטומטי בגוף המאמרים והספרים."
+        }
+      ],
       "publisher": {
         "@type": "Organization",
         "name": "ספריית משה לייבוביץ",
@@ -78,7 +107,7 @@
       "name": "LebLibrary",
       "alternateName": "ספריית לייבוביץ",
       "url": "https://leblibrary.co.il",
-      "description": "הפלטפורמה המתקדמת לספרים, מאמרים ותוכן איכותי. ספריית לייבוביץ מנגישה ידע וכלים מתקדמים לשאלות, תשובות וספרות מקצועית.",
+      "description": "הפלטפורמה המתקדמת לספרים, מאמרים, מנוע חיפוש תורני ותוכן איכותי. ספריית לייבוביץ מנגישה ידע וכלים מתקדמים לשאלות, תשובות וספרות מקצועית.",
       "inLanguage": "he-IL",
       "isAccessibleForFree": "true"
     }
@@ -308,10 +337,11 @@
             .article-text { font-size: 1rem; }
             .container-main { padding-left: 10px !important; padding-right: 10px !important; }
             
-            .global-ai-side-btn { width: 50px; height: 50px; top: auto; bottom: 100px; border-radius: 8px 0 0 8px; }
-            .ai-side-icon { width: 50px; height: 50px; }
-            .ai-side-icon svg { width: 22px; height: 22px; }
-            .global-ai-side-btn:hover { width: 50px; } 
+            /* הקטנת הכפתור הוורוד במובייל ל-70% מגודלו הקודם */
+            .global-ai-side-btn { width: 35px !important; height: 35px !important; top: auto; bottom: 95px; border-radius: 6px 0 0 6px; opacity: 0.92; }
+            .ai-side-icon { width: 35px !important; height: 35px !important; }
+            .ai-side-icon svg { width: 15px !important; height: 15px !important; }
+            .global-ai-side-btn:hover, .global-ai-side-btn:active, .global-ai-side-btn:focus { width: 35px !important; } 
             .ai-side-text { display: none !important; }
             
             .qa-floating-pill { left: 15px; top: auto; bottom: 170px; padding: 5px; border-radius: 50%; width: 50px; height: 50px; justify-content: center; }
@@ -466,9 +496,6 @@
         <div id="reading-progress-bar"></div>
     </div>
 
-    <!-- Inject Modals -->
-    {% include 'articles/includes/modals.html' %}
-
     <!-- Inject Navbar -->
     {% include 'articles/includes/navbar.html' %}
 
@@ -488,6 +515,11 @@
 
     <!-- Inject Footer -->
     {% include 'articles/includes/footer.html' %}
+
+    <!-- Inject Modals (בתחתית העמוד עם חסימת תקציר לגוגל) -->
+    <div data-nosnippet>
+        {% include 'articles/includes/modals.html' %}
+    </div>
 
     <!-- Inject Scripts -->
     {% include 'articles/includes/scripts.html' %}
