@@ -108,7 +108,58 @@
     body.dark-mode .acronym-widget-card li { border-bottom-color: #334155 !important; }
     body.dark-mode .acronym-widget-card span { color: #cbd5e1 !important; }
 
-    /* Pulse animation for the NEW badge */
+    /* עיצוב חלונית מנוע החיפוש התורני המתקדם בעמוד הבית */
+    .torah-search-showcase {
+        background: radial-gradient(circle at 50% 0%, #1e2638 0%, #111520 75%);
+        border: 1.5px solid rgba(212, 175, 55, 0.65) !important;
+        border-radius: 22px;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35), 0 0 25px rgba(212, 175, 55, 0.12);
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .torah-search-showcase:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 25px 55px rgba(0, 0, 0, 0.45), 0 0 35px rgba(212, 175, 55, 0.22);
+    }
+    .torah-search-pill {
+        background-color: rgba(212, 175, 55, 0.08);
+        color: #e6c55a;
+        border: 1px solid rgba(212, 175, 55, 0.55);
+        border-radius: 8px;
+        padding: 7px 16px;
+        font-size: 0.92rem;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        transition: all 0.2s ease;
+    }
+    .torah-search-pill:hover {
+        background-color: rgba(212, 175, 55, 0.2);
+        border-color: #d4af37;
+        color: #fff3c4;
+    }
+    .torah-search-cta-btn {
+        display: block;
+        width: 100%;
+        max-width: 780px;
+        margin: 0 auto;
+        padding: 15px 28px;
+        background: linear-gradient(90deg, #cfa532 0%, #e3be52 50%, #cfa532 100%);
+        color: #151821 !important;
+        font-weight: 800;
+        font-size: 1.2rem;
+        border-radius: 50px;
+        border: none;
+        text-decoration: none;
+        box-shadow: 0 6px 25px rgba(212, 175, 55, 0.4);
+        transition: all 0.25s ease;
+    }
+    .torah-search-cta-btn:hover {
+        background: linear-gradient(90deg, #deb53e 0%, #f0cf68 50%, #deb53e 100%);
+        box-shadow: 0 8px 32px rgba(212, 175, 55, 0.6);
+        transform: scale(1.01);
+    }
+
     @keyframes pulse {
         0% { transform: scale(1); opacity: 1; }
         50% { transform: scale(1.05); opacity: 0.7; }
@@ -427,34 +478,44 @@
             </div>
         </div>
 
-        {% if user.is_superuser %}
-        <!-- כרטיסיית חיפוש מתקדם מלבנית רחבה (מתחת לשתי העמודות) -->
-        <div class="card shadow-lg border-0 mb-5" style="background: linear-gradient(145deg, #1e202c 0%, #2a2d3e 100%); border-radius: 16px; overflow: hidden; position: relative;">
-            <div style="position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(212,175,55,0.15) 0%, rgba(212,175,55,0) 70%); border-radius: 50%;"></div>
-            <div style="position: absolute; bottom: -50px; left: -50px; width: 150px; height: 150px; background: radial-gradient(circle, rgba(212,175,55,0.1) 0%, rgba(212,175,55,0) 70%); border-radius: 50%;"></div>
-            
-            <div class="card-body p-4 p-md-5 position-relative z-2">
-                <div class="row align-items-center">
-                    <div class="col-md-8 text-center text-md-start mb-4 mb-md-0 d-flex flex-column flex-md-row align-items-center gap-4">
-                        <div style="width: 80px; height: 80px; background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(212,175,55,0.2); flex-shrink: 0;">
-                            <i class="bi bi-gem" style="font-size: 2.5rem; color: #d4af37;"></i>
-                        </div>
-                        <div>
-                            <h3 class="fw-bold mb-2" style="color: #d4af37; text-shadow: 1px 1px 3px rgba(0,0,0,0.5);">חיפוש תורני מתקדם</h3>
-                            <p class="mb-0 fs-5" style="color: #e2e8f0; opacity: 0.9;">
-                                גלה צפונות בתנ"ך! איתור גימטריות, ראשי תיבות ודילוגים.
-                            </p>
-                        </div>
-                    </div>
-                    <div class="col-md-4 text-center text-md-end">
-                        <a href="{% url 'articles:advanced_search' %}" class="btn fw-bold shadow-sm px-4 py-3" style="background-color: #d4af37; color: #1e202c; border-radius: 12px; font-size: 1.15rem; transition: all 0.3s ease;">
-                            למערכת החיפוש <i class="bi bi-arrow-left-short ms-1" style="font-size: 1.3rem; vertical-align: middle;"></i>
-                        </a>
-                    </div>
+        <!-- חלונית מנוע חיפוש תורני מתקדם (פתוחה לכלל הגולשים בעמוד הבית) -->
+        <div class="card torah-search-showcase mb-5 mt-3">
+            <div class="card-body p-4 p-md-5 text-center position-relative">
+                
+                <!-- אייקון היהלום המוזהב -->
+                <div class="mb-3">
+                    <i class="bi bi-gem" style="font-size: 3.2rem; color: #d4af37; filter: drop-shadow(0 0 14px rgba(212, 175, 55, 0.55));"></i>
                 </div>
+
+                <!-- כותרת -->
+                <h2 class="fw-bold mb-3" style="color: #d4af37 !important; font-size: 2.2rem; text-shadow: 0 2px 8px rgba(0,0,0,0.6);">
+                    מנוע חיפוש תורני מתקדם
+                </h2>
+
+                <!-- תיאור המאגרים המורחב -->
+                <p class="text-white fs-5 mb-4" style="max-width: 820px; margin: 0 auto; line-height: 1.65; color: #f1f5f9 !important;">
+                    איתור לשונות, פסוקים ומקורות בתנ"ך, במשנה, בתוספתא, בתלמוד הבבלי והירושלמי, ברמב"ם ובשולחן ערוך באמצעות כלים מיוחדים:
+                </p>
+
+                <!-- תגיות הכלים והאפשרויות -->
+                <div class="d-flex justify-content-center align-items-center flex-wrap gap-2 mb-4 pb-2">
+                    <span class="torah-search-pill">חיפוש מדויק וחופשי</span>
+                    <span class="torah-search-pill">גימטריאות</span>
+                    <span class="torah-search-pill">ראשי וסופי תיבות</span>
+                    <span class="torah-search-pill">דילוגי אותיות במילה ובפסוק (ELS)</span>
+                    <span class="torah-search-pill">פלינדרום והיפוך אותיות</span>
+                    <span class="torah-search-pill">תצוגת פרק מלא וייצוא למאמר</span>
+                </div>
+
+                <!-- כפתור ההפעלה הרחב -->
+                <div class="mt-2">
+                    <a href="{% url 'articles:advanced_search' %}" class="torah-search-cta-btn">
+                        <i class="bi bi-search ms-2"></i>הפעל את המנוע עכשיו
+                    </a>
+                </div>
+
             </div>
         </div>
-        {% endif %}
 
     {% endif %}
 </div>

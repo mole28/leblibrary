@@ -1504,6 +1504,19 @@ def highlight_matched_text(text_with_nikkud, query_words, is_exact):
                 pass
     return highlighted
 
+def format_divine_name(text):
+    """מוסיף מקפים לשם המפורש (י-ה-ו-ה) תוך שמירה על ניקוד, טעמי המקרא ותגיות הדגשה"""
+    if not text:
+        return ""
+    pattern = re.compile(
+        r'(י[\u0591-\u05C7]*(?:</?(?:strong|mark)[^>]*>)*)'
+        r'(ה[\u0591-\u05C7]*(?:</?(?:strong|mark)[^>]*>)*)'
+        r'(ו[\u0591-\u05C7]*(?:</?(?:strong|mark)[^>]*>)*)'
+        r'(ה[\u0591-\u05C7]*)',
+        re.UNICODE
+    )
+    return pattern.sub(r'\1-\2-\3-\4', text)
+
 @ratelimit(rate=30, timeout=60)
 def tanakh_advanced_search_api(request):
     query_type = request.GET.get('type', 'text').strip()
@@ -1537,7 +1550,7 @@ def tanakh_advanced_search_api(request):
             return 'משנה'
         return 'פסוק'
 
-    # שליפת פרק מלא לחלונית הצפה ("הצג פרק מלא")
+    # שליפת פרק מלא לחלונית הצפה ("הצג פרק מלא") כולל עיצוב י-ה-ו-ה
     if query_type == 'chapter_context':
         target_book = request.GET.get('target_book', '').strip()
         target_chapter = request.GET.get('target_chapter', '').strip()
@@ -1552,7 +1565,10 @@ def tanakh_advanced_search_api(request):
                 'chapter': target_chapter,
                 'verse_label': get_verse_label(target_book, target_chapter),
                 'verses': [
-                    {'verse': v['verse'], 'text': v['text_with_nikkud'] or v['clean_text'] or ''}
+                    {
+                        'verse': v['verse'],
+                        'text': format_divine_name(v['text_with_nikkud'] or v['clean_text'] or '')
+                    }
                     for v in ch_verses
                 ]
             }, json_dumps_params={'ensure_ascii': False})
@@ -1642,7 +1658,9 @@ def tanakh_advanced_search_api(request):
             elif query_type == 'text_broad':
                 is_exact = False
 
-            q_no_nikkud = re.sub(r'[^א-ת\s]', '', query_val).strip()
+            # מאפשר לחפש גם אם המשתמש הקליד י-ה-ו-ה עם מקפים
+            q_normalized = query_val.replace('י-ה-ו-ה', 'יהוה')
+            q_no_nikkud = re.sub(r'[^א-ת\s]', '', q_normalized).strip()
             q_words = q_no_nikkud.split()
             
             if q_words:
@@ -2136,6 +2154,10 @@ def tanakh_advanced_search_api(request):
         start_idx = (page - 1) * per_page
         end_idx = start_idx + per_page
         paginated_results = results[start_idx:end_idx]
+
+        # עיצוב השם המפורש (י-ה-ו-ה) בכל התוצאות המוצגות בעמוד
+        for item in paginated_results:
+            item['text'] = format_divine_name(item.get('text', ''))
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
