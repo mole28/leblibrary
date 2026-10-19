@@ -2,6 +2,8 @@
 {% load static %}
 
 {% block title %}מאגר החיפוש התורני | ספריית לייבוביץ{% endblock %}
+{% block og_title %}מאגר החיפוש התורני וניתוח AI | ספריית לייבוביץ{% endblock %}
+{% block og_description %}איתור מילים ולשונות, פסוקים ומקורות בתנ"ך, במשנה, בתוספתא, בתלמודים ובפוסקים, חישובי גימטריאות, ראשי וסופי תיבות, דילוגים וניתוח AI של הנתונים.{% endblock %}
 
 {% block hero %}
 <style>
@@ -508,6 +510,20 @@
         background-color: #0f172a;
         border-color: #334155;
         color: #f8fafc;
+    }
+    body.dark-mode #advancedSearchForm label,
+    body.dark-mode .card h4,
+    body.dark-mode .card h5,
+    body.dark-mode #sermonOutputArea h5,
+    body.dark-mode #sermonOutputArea h6,
+    body.dark-mode #codeFinderModalBody h6 {
+        color: #1e293b !important;
+    }
+    body.dark-mode .card .list-group-item strong {
+        color: #0f172a !important;
+    }
+    body.dark-mode .ai-discovery-lab h3 {
+        color: #f7e199 !important;
     }
 </style>
 
