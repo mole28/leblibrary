@@ -18,7 +18,7 @@
         <i class="bi bi-gem mb-2 d-inline-block" style="font-size: 2.4rem; color: #d4af37;"></i>
         <h1 class="text-white mb-2 fw-bold display-4" style="color: #d4af37 !important; text-shadow: 2px 2px 8px rgba(0,0,0,0.85); letter-spacing: 0.5px;">מאגר החיפוש התורני</h1>
         <p class="text-white mt-2 fs-4 mb-1 fw-semibold" style="text-shadow: 1px 1px 6px rgba(0,0,0,0.9);">איתור מילים ולשונות, פסוקים ומקורות בתנ"ך, במשנה, בתוספתא, בתלמודים ובפוסקים</p>
-        <p class="text-white fs-6 mb-0" style="color: #f3e5ab !important; text-shadow: 1px 1px 4px rgba(0,0,0,0.85);">חיפוש מילולי מדויק, חישובי גימטריאות, ראשי וסופי תיבות, היפוך אותיות, דילוגים וניתוח תוצאות</p>
+        <p class="text-white fs-6 mb-0" style="color: #f3e5ab !important; text-shadow: 1px 1px 4px rgba(0,0,0,0.85);">חיפוש מילולי מדויק, חישובי גימטריאות, ראשי וסופי תיבות, היפוך אותיות, דילוגים וניתוח AI של הנתונים</p>
     </div>
 </div>
 {% endblock %}
@@ -247,7 +247,6 @@
         color: #1e202c;
         box-shadow: 0 2px 6px rgba(212, 175, 55, 0.3);
     }
-    /* כפתור מובדל ויוקרתי לניתוח התוצאה ע"י AI */
     .result-ai-code-btn {
         background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
         border: 1.5px solid #f59e0b;
@@ -287,6 +286,25 @@
     .export-toolbar-btn:hover {
         background: #d4af37;
         color: #fff;
+    }
+
+    .share-luxury-btn {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        border: 1.5px solid #d4af37;
+        color: #f7e199 !important;
+        border-radius: 8px;
+        padding: 6px 14px;
+        font-size: 0.88rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .share-luxury-btn:hover {
+        background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 100%);
+        color: #0f172a !important;
     }
 
     .chapter-context-verse {
@@ -352,10 +370,19 @@
     }
     #conceptMapNetwork {
         width: 100%;
-        height: 420px;
+        height: 430px;
         background: #0b1120;
         border: 1.5px solid rgba(212, 175, 55, 0.4);
         border-radius: 14px;
+    }
+    .synthesis-stat-badge {
+        background: #f8f4e8;
+        border: 1px solid #d4af37;
+        color: #3b2f14;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 0.85rem;
+        font-weight: 700;
     }
 
     .bottom-tools-section {
@@ -639,7 +666,10 @@
                     </h4>
                     <div id="exportToolbar" style="display: none; gap: 8px; flex-wrap: wrap;">
                         <button type="button" class="export-toolbar-btn" onclick="copyAllResultsToClipboard()">
-                            <i class="bi bi-clipboard-check"></i> העתק תוצאות למאמר
+                            <i class="bi bi-clipboard-check"></i> העתק הכל
+                        </button>
+                        <button type="button" class="share-luxury-btn" onclick="shareSearchResults()">
+                            <i class="bi bi-share-fill"></i> שתף
                         </button>
                         <button type="button" class="result-action-btn" onclick="downloadResultsAsText()">
                             <i class="bi bi-download"></i> הורד כקובץ TXT
@@ -665,7 +695,7 @@
         <div class="text-center mb-4">
             <span class="badge px-3 py-1 mb-2" style="background: rgba(212, 175, 55, 0.2); color: #f7e199; border: 1px solid #d4af37; border-radius: 50px; font-size: 0.85rem;">חדש בספריית לייבוביץ</span>
             <h3 class="fw-bold mb-1" style="color: #f7e199; font-family: 'Frank Ruhl Libre', serif;">
-                <i class="bi bi-stars ms-2" style="color: #d4af37;"></i>מעבדת הנתונים והקשרים (AI + צפנים)
+                <i class="bi bi-stars ms-2" style="color: #d4af37;"></i>ניתוח AI של הנתונים
             </h3>
             <p class="mb-0" style="color: #cbd5e1; font-size: 0.95rem;">
                 ריכוז נתונים אוטומטי המקשר בין המקרא, הש"ס, הפוסקים, גימטריאות ומאמרי הספרייה
@@ -677,14 +707,14 @@
                 <i class="bi bi-diagram-3-fill"></i> 1. מפת דרכים רעיונית (רשת קשרים)
             </button>
             <button type="button" class="ai-lab-tab-btn" onclick="switchAiLabTab('sermon', this)">
-                <i class="bi bi-feather"></i> 2. מנסח הדרשות והחידושים לשבת
+                <i class="bi bi-layers-half"></i> 2. חיבור הנתונים לרעיון משותף
             </button>
         </div>
 
         <div id="aiLabMapPanel">
             <div class="row g-2 justify-content-center mb-3">
                 <div class="col-md-7">
-                    <input type="text" id="conceptMapInput" class="form-control form-control-lg text-center fw-bold" placeholder="הקלד מושג למיפוי קשרים (לדוגמה: ציצית, שבת, תשובה, שופר)..." style="border-radius: 12px; border: 1.5px solid #d4af37;">
+                    <input type="text" id="conceptMapInput" class="form-control form-control-lg text-center fw-bold" placeholder="הקלד מושג למיפוי מוקדי סוגיות ומגמות (לדוגמה: ציצית, שבת, תשובה, שופר)..." style="border-radius: 12px; border: 1.5px solid #d4af37;">
                 </div>
                 <div class="col-md-3">
                     <button type="button" class="btn w-100 h-100 fw-bold py-2" onclick="buildConceptMap()" style="background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 100%); color: #0f172a; border-radius: 12px; font-size: 1.05rem;">
@@ -695,18 +725,18 @@
             <div id="conceptMapStatus" class="text-center my-2" style="display: none;"></div>
             <div id="conceptMapWrap" style="display: none;">
                 <div id="conceptMapNetwork"></div>
-                <div id="conceptNodeDetails" class="mt-3 p-3 rounded-3" style="background: rgba(255,255,255,0.07); border: 1px solid rgba(212,175,55,0.4); display: none;"></div>
+                <div id="conceptNodeDetails" class="mt-3 p-3 rounded-3" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(212,175,55,0.45); display: none;"></div>
             </div>
         </div>
 
         <div id="aiLabSermonPanel" style="display: none;">
             <div class="row g-2 justify-content-center mb-3">
                 <div class="col-md-7">
-                    <input type="text" id="sermonTopicInput" class="form-control form-control-lg text-center fw-bold" placeholder="הקלד נושא או פרשה לדרשה (לדוגמה: פרשת לך לך, ברית מילה, הכנסת אורחים)..." style="border-radius: 12px; border: 1.5px solid #d4af37;">
+                    <input type="text" id="sermonTopicInput" class="form-control form-control-lg text-center fw-bold" placeholder="הקלד מושג או נושא לניתוח עומק וחיבור הנתונים (לדוגמה: ציצית, שבת, ברית מילה)..." style="border-radius: 12px; border: 1.5px solid #d4af37;">
                 </div>
                 <div class="col-md-3">
                     <button type="button" class="btn w-100 h-100 fw-bold py-2" onclick="generateTorahSermon()" style="background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 100%); color: #0f172a; border-radius: 12px; font-size: 1.05rem;">
-                        <i class="bi bi-magic ms-1"></i> בנה מערך דרשה וחידוש
+                        <i class="bi bi-cpu-fill ms-1"></i> בנה מערך של הנתונים
                     </button>
                 </div>
             </div>
@@ -803,11 +833,41 @@
         <div class="modal-content" style="border: 2px solid #d4af37; border-radius: 16px;">
             <div class="modal-header" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #fff; border-bottom: 2px solid #d4af37;">
                 <h5 class="modal-title fw-bold" id="codeFinderModalTitle" style="color: #f7e199;">
-                    <i class="bi bi-stars ms-2"></i>ניתוח נתונים וצפנים ממוקד (AI)
+                    <i class="bi bi-stars ms-2"></i>ניתוח AI של הנתונים
                 </h5>
-                <button type="button" class="btn-close btn-close-white ms-0 me-auto" data-bs-dismiss="modal" aria-label="סגור"></button>
+                <div class="d-flex align-items-center gap-2 me-auto">
+                    <button type="button" class="btn btn-sm btn-outline-warning fw-bold" onclick="shareModalInsights()">
+                        <i class="bi bi-share-fill ms-1"></i>שתף
+                    </button>
+                    <button type="button" class="btn-close btn-close-white m-0" data-bs-dismiss="modal" aria-label="סגור"></button>
+                </div>
             </div>
             <div class="modal-body p-4" id="codeFinderModalBody" style="background-color: #fdfcf8; max-height: 75vh; overflow-y: auto;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="shareResultModal" tabindex="-1" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: linear-gradient(145deg, #1e202c 0%, #0f172a 100%); border: 1.5px solid #d4af37; border-radius: 16px; color: #f8fafc;">
+            <div class="modal-header border-bottom border-secondary">
+                <h5 class="modal-title fw-bold" style="color: #f7e199;"><i class="bi bi-share-fill ms-2" style="color: #d4af37;"></i>שיתוף תוצאות הניתוח</h5>
+                <button type="button" class="btn-close btn-close-white ms-0 me-auto" data-bs-dismiss="modal" aria-label="סגור"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <p class="mb-3 text-light small">בחר כיצד לשתף את התוצאה עם חברים:</p>
+                <div class="d-flex justify-content-center gap-3 mb-4">
+                    <a id="shareWhatsappLink" href="#" target="_blank" class="btn fw-bold px-4 py-2 d-flex align-items-center gap-2" style="background-color: #25D366; color: #fff; border-radius: 50px;">
+                        <i class="bi bi-whatsapp fs-5"></i> ווטסאפ
+                    </a>
+                    <a id="shareEmailLink" href="#" class="btn fw-bold px-4 py-2 d-flex align-items-center gap-2" style="background-color: #3b82f6; color: #fff; border-radius: 50px;">
+                        <i class="bi bi-envelope-fill fs-5"></i> אימייל
+                    </a>
+                </div>
+                <button type="button" class="btn w-100 fw-bold py-2" onclick="copyPreparedShareText()" style="background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 100%); color: #0f172a; border-radius: 50px;">
+                    <i class="bi bi-clipboard-check ms-1"></i> העתק טקסט וקישור לשיתוף
+                </button>
             </div>
         </div>
     </div>
@@ -823,6 +883,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentSkipFilter = '';
     let lastFetchedResults = [];
     let lastSearchMeta = { query: '', actionTitle: '', total: 0 };
+    let preparedSharePayload = { title: '', text: '', url: window.location.href };
 
     const gematriaMap = {
         'א':1, 'ב':2, 'ג':3, 'ד':4, 'ה':5, 'ו':6, 'ז':7, 'ח':8, 'ט':9,
@@ -871,7 +932,7 @@ document.addEventListener('DOMContentLoaded', function() {
             { group: 'תלמוד ירושלמי - נזיקין וטהרות', prefix: 'yerushalmi', books: ['ירושלמי בבא קמא', 'ירושלמי בבא מציעא', 'ירושלמי בבא בתרא', 'ירושלמי סנהדרין', 'ירושלמי שבועות', 'ירושלמי עבודה זרה', 'ירושלמי מכות', 'ירושלמי הוריות', 'ירושלמי נדה'] }
         ],
         rambam: [
-            { group: 'רמב"ם - מדע, אהבה וזמנים', prefix: 'rambam', books: ['רמב"ם הלכות יסודי התורה', 'רמב"ם הלכות דעות', 'רמב"ם הלכות תלמוד תורה', 'רמב"ם הלכות עבודה זרה וחוקות הגויים', 'רמב"ם הלכות תשובה', 'רמב"ם הלכות קריאת שמע', 'רמב"ם הלכות תפילה וברכת כהנים', 'רמב"ם הלכות תפילין ומזוזה וספר תורה', 'רמב"ם הלכות ציצית', 'רמב"ם הלכות ברכות', 'רמב"ם הלכות מילה', 'רמב"ם הלכות סדר תפילות', 'רמב"ם הלכות שבת', 'רמב"ם הלכות עירובין', 'rמב"ם הלכות שביתת עשור', 'רמב"ם הלכות שביתת יום טוב', 'רמב"ם הלכות חמץ ומצה', 'רמב"ם הלכות שופר וסוכה ולולב', 'רמב"ם הלכות שקלים', 'רמב"ם הלכות קידוש החודש', 'רמב"ם הלכות תעניות', 'רמב"ם הלכות מגילה וחנוכה'] },
+            { group: 'רמב"ם - מדע, אהבה וזמנים', prefix: 'rambam', books: ['רמב"ם הלכות יסודי התורה', 'רמב"ם הלכות דעות', 'רמב"ם הלכות תלמוד תורה', 'רמב"ם הלכות עבודה זרה וחוקות הגויים', 'רמב"ם הלכות תשובה', 'רמב"ם הלכות קריאת שמע', 'רמב"ם הלכות תפילה וברכת כהנים', 'רמב"ם הלכות תפילין ומזוזה וספר תורה', 'רמב"ם הלכות ציצית', 'רמב"ם הלכות ברכות', 'רמב"ם הלכות מילה', 'רמב"ם הלכות סדר תפילות', 'רמב"ם הלכות שבת', 'רמב"ם הלכות עירובין', 'רמב"ם הלכות שביתת עשור', 'רמב"ם הלכות שביתת יום טוב', 'רמב"ם הלכות חמץ ומצה', 'רמב"ם הלכות שופר וסוכה ולולב', 'רמב"ם הלכות שקלים', 'רמב"ם הלכות קידוש החודש', 'רמב"ם הלכות תעניות', 'רמב"ם הלכות מגילה וחנוכה'] },
             { group: 'רמב"ם - נשים, קדושה והפלאה', prefix: 'rambam', books: ['רמב"ם הלכות אישות', 'רמב"ם הלכות גירושין', 'רמב"ם הלכות ייבום וחליצה', 'רמב"ם הלכות נערה בתולה', 'רמב"ם הלכות סוטה', 'רמב"ם הלכות איסורי ביאה', 'רמב"ם הלכות מאכלות אסורות', 'רמב"ם הלכות שחיטה', 'רמב"ם הלכות שבועות', 'רמב"ם הלכות נדרים', 'רמב"ם הלכות נזירות', 'רמב"ם הלכות ערכין וחרמין'] },
             { group: 'רמב"ם - זרעים, עבודה, קורבנות וטהרה', prefix: 'rambam', books: ['רמב"ם הלכות כלאיים', 'רמב"ם הלכות מתנות עניים', 'רמב"ם הלכות תרומות', 'רמב"ם הלכות מעשרות', 'רמב"ם הלכות מעשר שני ונטע רבעי', 'רמב"ם הלכות ביכורים ושאר מתנות כהונה שבגבולין', 'רמב"ם הלכות שמיטה ויובל', 'רמב"ם הלכות בית הבחירה', 'רמב"ם הלכות כלי המקדש והעובדין בו', 'רמב"ם הלכות ביאת מקדש', 'רמב"ם הלכות איסורי המזבח', 'רמב"ם הלכות מעשה הקורבנות', 'רמב"ם הלכות תמידין ומוספין', 'רמב"ם הלכות פסולי המוקדשין', 'רמב"ם הלכות עבודת יום הכיפורים', 'רמב"ם הלכות מעילה', 'רמב"ם הלכות קורבן פסח', 'רמב"ם הלכות חגיגה', 'רמב"ם הלכות בכורות', 'רמב"ם הלכות שגגות', 'רמב"ם הלכות מחוסרי כפרה', 'רמב"ם הלכות תמורה', 'רמב"ם הלכות טומאת מת', 'רמב"ם הלכות פרה אדומה', 'רמב"ם הלכות טומאת צרעת', 'רמב"ם הלכות מטמאי משכב ומושב', 'רמב"ם הלכות שאר אבות הטומאות', 'רמב"ם הלכות טומאת אוכלין', 'רמב"ם הלכות כלים', 'רמב"ם הלכות מקוואות'] },
             { group: 'רמב"ם - נזיקין, קניין, משפטים ושופטים', prefix: 'rambam', books: ['רמב"ם הלכות נזקי ממון', 'רמב"ם הלכות גניבה', 'רמב"ם הלכות גזילה ואבידה', 'רמב"ם הלכות חובל ומזיק', 'רמב"ם הלכות רוצח ושמירת נפש', 'רמב"ם הלכות מכירה', 'רמב"ם הלכות זכייה ומתנה', 'רמב"ם הלכות שכנים', 'רמב"ם הלכות שלוחין ושותפין', 'רמב"ם הלכות עבדים', 'רמב"ם הלכות שכירות', 'רמב"ם הלכות שאלה ופיקדון', 'רמב"ם הלכות מלווה ולווה', 'רמב"ם הלכות טוען ונטען', 'רמב"ם הלכות נחלות', 'רמב"ם הלכות סנהדרין והעונשין המסורין להם', 'רמב"ם הלכות עדות', 'רמב"ם הלכות ממרים', 'רמב"ם הלכות אבל', 'רמב"ם הלכות מלכים ומלחמות'] }
@@ -1244,13 +1305,16 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div class="d-flex align-items-center flex-wrap gap-2">
                                     ${matchBadge}
                                     <button type="button" class="result-ai-code-btn" onclick="openAutomatedCodeFinder('${safeBook}', '${safeChapter}', '${safeVerse}')">
-                                        <i class="bi bi-stars"></i> ניתוח נתונים (AI)
+                                        <i class="bi bi-stars"></i> ניתוח AI של הנתונים
                                     </button>
                                     <button type="button" class="result-action-btn" onclick="openFullChapterModal('${safeBook}', '${safeChapter}', '${safeVerse}', '${verseLabel}')">
                                         <i class="bi bi-arrows-fullscreen"></i> הצג פרק מלא
                                     </button>
                                     <button type="button" class="result-action-btn" onclick="copySingleResult(${idx})">
-                                        <i class="bi bi-clipboard"></i> העתק מקור
+                                        <i class="bi bi-clipboard"></i> העתק
+                                    </button>
+                                    <button type="button" class="result-action-btn" onclick="shareSingleResult(${idx})">
+                                        <i class="bi bi-share"></i> שתף
                                     </button>
                                 </div>
                             </div>
@@ -1302,6 +1366,34 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => { toast.style.display = 'none'; }, 2800);
     }
 
+    window.triggerUniversalShare = function(title, textBody, shareUrl) {
+        const fullShareString = `${title}\n\n${textBody}\n\nלחיפוש וניתוח בספריית לייבוביץ:\n${shareUrl}`;
+        preparedSharePayload = { title: title, text: fullShareString, url: shareUrl };
+
+        if (navigator.share) {
+            navigator.share({
+                title: title,
+                text: `${title}\n\n${textBody}`,
+                url: shareUrl
+            }).catch(() => {});
+            return;
+        }
+
+        document.getElementById('shareWhatsappLink').href = `https://api.whatsapp.com/send?text=${encodeURIComponent(fullShareString)}`;
+        document.getElementById('shareEmailLink').href = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(fullShareString)}`;
+        const modalObj = bootstrap.Modal.getOrCreateInstance(document.getElementById('shareResultModal'));
+        modalObj.show();
+    };
+
+    window.copyPreparedShareText = function() {
+        navigator.clipboard.writeText(preparedSharePayload.text).then(() => {
+            const modalEl = document.getElementById('shareResultModal');
+            const modalObj = bootstrap.Modal.getInstance(modalEl);
+            if (modalObj) modalObj.hide();
+            showToast('הטקסט והקישור הועתקו לשיתוף!');
+        });
+    };
+
     window.copySingleResult = function(idx) {
         const res = lastFetchedResults[idx];
         if (!res) return;
@@ -1312,6 +1404,20 @@ document.addEventListener('DOMContentLoaded', function() {
         navigator.clipboard.writeText(formatted).then(() => {
             showToast(`המקור (${res.book} ${chDisplay}) הועתק ללוח!`);
         });
+    };
+
+    window.shareSingleResult = function(idx) {
+        const res = lastFetchedResults[idx];
+        if (!res) return;
+        const chDisplay = formatChapterTitle(res.chapter);
+        const verseLabel = res.verse_label || 'פסוק';
+        const cleanTxt = stripHtmlTags(res.text);
+        const shareUrl = `${window.location.origin}${window.location.pathname}?q=${encodeURIComponent(lastSearchMeta.query)}`;
+        triggerUniversalShare(
+            `${res.book} | ${chDisplay} | ${verseLabel} ${res.verse}`,
+            `"${cleanTxt}"`,
+            shareUrl
+        );
     };
 
     window.copyAllResultsToClipboard = function() {
@@ -1329,8 +1435,25 @@ document.addEventListener('DOMContentLoaded', function() {
             lines.push(`"${cleanTxt}"\n`);
         });
         navigator.clipboard.writeText(lines.join('\n')).then(() => {
-            showToast(`${lastFetchedResults.length} תוצאות הועתקו במסודר לשילוב במאמר!`);
+            showToast(`${lastFetchedResults.length} תוצאות הועתקו במסודר!`);
         });
+    };
+
+    window.shareSearchResults = function() {
+        if (!lastFetchedResults.length) return;
+        const previewLines = [];
+        lastFetchedResults.slice(0, 5).forEach((res, i) => {
+            const chDisplay = formatChapterTitle(res.chapter);
+            const verseLabel = res.verse_label || 'פסוק';
+            const cleanTxt = stripHtmlTags(res.text);
+            previewLines.push(`${i + 1}. ${res.book} (${chDisplay}, ${verseLabel} ${res.verse}): "${cleanTxt}"`);
+        });
+        const shareUrl = `${window.location.origin}${window.location.pathname}?q=${encodeURIComponent(lastSearchMeta.query)}`;
+        triggerUniversalShare(
+            `תוצאות חיפוש במאגר התורני עבור "${lastSearchMeta.query}" (${lastSearchMeta.total} תוצאות)`,
+            previewLines.join('\n\n'),
+            shareUrl
+        );
     };
 
     window.downloadResultsAsText = function() {
@@ -1416,12 +1539,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
 
+    window.shareModalInsights = function() {
+        const title = document.getElementById('codeFinderModalTitle').innerText.trim();
+        const bodyTxt = document.getElementById('codeFinderModalBody').innerText.trim();
+        triggerUniversalShare(title, bodyTxt, window.location.href);
+    };
+
     window.openAutomatedCodeFinder = function(bookName, chapterName, verseNum) {
         const modalEl = document.getElementById('codeFinderModal');
         const bodyEl = document.getElementById('codeFinderModalBody');
         const titleEl = document.getElementById('codeFinderModalTitle');
 
-        titleEl.innerHTML = `<i class="bi bi-stars ms-2"></i>ניתוח נתונים וצפנים: ${bookName} (${formatChapterTitle(chapterName)}, ${verseNum})`;
+        titleEl.innerHTML = `<i class="bi bi-stars ms-2"></i>ניתוח AI של הנתונים: ${bookName} (${formatChapterTitle(chapterName)}, ${verseNum})`;
         bodyEl.innerHTML = `
             <div class="text-center py-5">
                 <div class="spinner-border text-warning" role="status"></div>
@@ -1459,7 +1588,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 html += `<div class="row g-3">`;
 
-                html += `<div class="col-md-6"><div class="p-3 rounded-3 h-100 border bg-white"><h6 class="fw-bold" style="color: #8c6239;">⚡ דילוגי אותיות וראשי תיבות בפсוק:</h6><ul class="mb-0 ps-3 small" style="line-height: 1.7;">`;
+                html += `<div class="col-md-6"><div class="p-3 rounded-3 h-100 border bg-white"><h6 class="fw-bold" style="color: #8c6239;">⚡ דילוגי אותיות וראשי תיבות במקור:</h6><ul class="mb-0 ps-3 small" style="line-height: 1.7;">`;
                 if (data.els_findings && data.els_findings.length) {
                     data.els_findings.forEach(e => {
                         html += `<li>המושג <b>"${e.word}"</b> מופיע בדילוג אותיות של <b>${e.skip}</b></li>`;
@@ -1471,7 +1600,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 }
                 if ((!data.els_findings || !data.els_findings.length) && (!data.acronym_findings || !data.acronym_findings.length)) {
-                    html += `<li class="text-muted">לא נמצאו דילוגי מושגי יסוד בפסוק זה.</li>`;
+                    html += `<li class="text-muted">לא נמצאו דילוגי מושגי יסוד במקור זה.</li>`;
                 }
                 html += `</ul></div></div>`;
 
@@ -1483,7 +1612,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 if (data.equal_verses && data.equal_verses.length) {
                     data.equal_verses.forEach(ev => {
-                        html += `<li>מקור שווה בגימטריה (${data.verse_gematria}): <b>${ev.ref}</b> — "${ev.text}"</li>`;
+                        html += `<li>פסוק מקביל בגימטריה (${data.verse_gematria}): <b>${ev.ref}</b> — "${ev.text}"</li>`;
                     });
                 }
                 html += `</ul></div></div></div>`;
@@ -1513,7 +1642,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const detailsEl = document.getElementById('conceptNodeDetails');
 
         statusEl.style.display = 'block';
-        statusEl.innerHTML = `<div class="spinner-border spinner-border-sm text-warning ms-2"></div>מיפוי קשרים בין תנ"ך, ש"ס, הלכה, גימטריה ומאמרי הספרייה...`;
+        statusEl.innerHTML = `<div class="spinner-border spinner-border-sm text-warning ms-2"></div>מנתח מוקדי סוגיות, מגמות תפוצה, גימטריאות וצפנים במאגר...`;
         wrapEl.style.display = 'none';
         detailsEl.style.display = 'none';
 
@@ -1526,6 +1655,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 wrapEl.style.display = 'block';
                 const groupColors = {
                     center: { background: '#d4af37', border: '#ffffff', font: { color: '#0f172a', size: 17, bold: true } },
+                    trends: { background: '#0f766e', border: '#5eead4', font: { color: '#ffffff', size: 14 } },
                     tanakh: { background: '#1e3a8a', border: '#60a5fa', font: { color: '#ffffff', size: 14 } },
                     talmud: { background: '#065f46', border: '#34d399', font: { color: '#ffffff', size: 14 } },
                     halacha: { background: '#581c87', border: '#c084fc', font: { color: '#ffffff', size: 14 } },
@@ -1564,7 +1694,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     edges: new vis.DataSet(formattedEdges)
                 };
                 const options = {
-                    physics: { barnesHut: { gravitationalConstant: -3800, springLength: 150 } },
+                    physics: { barnesHut: { gravitationalConstant: -4200, springLength: 155 } },
                     interaction: { hover: true }
                 };
 
@@ -1574,7 +1704,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const nodeId = params.nodes[0];
                         const nodeObj = data.nodes.find(item => item.id === nodeId);
                         if (nodeObj) {
-                            let linkBtn = nodeObj.url ? `<a href="${nodeObj.url}" target="_blank" class="btn btn-sm btn-warning fw-bold mt-2">פתח מאמר/ספר מלא באתר</a>` : '';
+                            let linkBtn = nodeObj.url ? `<a href="${nodeObj.url}" target="_blank" class="btn btn-sm btn-warning fw-bold mt-2">פתח מאמר מלא באתר</a>` : '';
                             detailsEl.innerHTML = `
                                 <div class="fw-bold" style="color: #f7e199;">${nodeObj.label.replace('\n', ' — ')}</div>
                                 <div class="mt-1 text-light" style="font-family: 'Frank Ruhl Libre', serif; font-size: 1.15rem;">${nodeObj.snippet}</div>
@@ -1596,7 +1726,7 @@ document.addEventListener('DOMContentLoaded', function() {
         outEl.innerHTML = `
             <div class="text-center py-4">
                 <div class="spinner-border text-warning" role="status"></div>
-                <p class="mt-2 mb-0 text-light fw-bold">מארגן את נתוני המאגר למערך דרשה וחידוש מסודר...</p>
+                <p class="mt-2 mb-0 text-light fw-bold">סורק מגמות במאגרים, מוקדי סוגיות, גימטריאות, ראשי תיבות ודילוגים ומחבר מערך נתונים מסכם...</p>
             </div>
         `;
 
@@ -1607,27 +1737,66 @@ document.addEventListener('DOMContentLoaded', function() {
                     outEl.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
                     return;
                 }
+
+                const cc = data.corpus_counts || {};
+                const domBooks = (data.dominant_books || []).slice(0, 4).map(b => `${b.book} (${b.score})`).join(' • ') || 'פיזור רחב';
+
+                let statsHtml = `
+                    <div class="d-flex flex-wrap gap-2 mb-3 pb-3 border-bottom">
+                        <span class="synthesis-stat-badge">סה"כ מקורות מרכזיים: ${data.total_matches || 0}</span>
+                        <span class="synthesis-stat-badge">תורה ונ"ך: ${(cc.torah || 0) + (cc.nach || 0)}</span>
+                        <span class="synthesis-stat-badge">משנה ותלמודים: ${(cc.mishnah_tosefta || 0) + (cc.talmud || 0)}</span>
+                        <span class="synthesis-stat-badge">רמב"ם ושו"ע: ${cc.halacha || 0}</span>
+                        <span class="synthesis-stat-badge">מוקדי הדיון: ${domBooks}</span>
+                    </div>
+                `;
+
                 let articleHtml = data.article_link
-                    ? `<div class="mt-3 pt-2 border-top border-secondary"><a href="${data.article_link}" target="_blank" class="text-warning fw-bold text-decoration-none"><i class="bi bi-box-arrow-up-left ms-1"></i>קרא עוד במאמר של הרב משה לייבוביץ באתר: "${data.article_title}"</a></div>`
+                    ? `<div class="mt-3 pt-3 border-top"><a href="${data.article_link}" target="_blank" class="fw-bold text-decoration-none" style="color: #8c6239;"><i class="bi bi-box-arrow-up-left ms-1"></i>קרא עוד במאמר המקיף באתר ספריית לייבוביץ: "${data.article_title}"</a></div>`
                     : '';
 
                 outEl.innerHTML = `
                     <div class="p-4 rounded-4 text-dark" style="background: #fdfcf8; border: 2px solid #d4af37;">
                         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-2 border-bottom">
-                            <h5 class="fw-bold mb-0" style="color: #1e293b;">מערך תוכן ודרשה: ${data.topic} (גימטריה: ${data.gematria})</h5>
-                            <button type="button" class="btn btn-sm btn-dark fw-bold" onclick="navigator.clipboard.writeText(document.getElementById('sermonBodyText').innerText); showToast('התוכן הועתק ללוח!');">
-                                <i class="bi bi-clipboard ms-1"></i>העתק תוכן
-                            </button>
+                            <h5 class="fw-bold mb-0" style="color: #1e293b;">מערך נתונים מסכם: ${data.topic} (גימטריה: ${data.gematria})</h5>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-dark fw-bold px-3" onclick="navigator.clipboard.writeText(document.getElementById('sermonBodyText').innerText); showToast('מערך הנתונים הועתק ללוח!');">
+                                    <i class="bi bi-clipboard-check ms-1"></i>העתק הכל
+                                </button>
+                                <button type="button" class="btn btn-sm fw-bold px-3" style="background: #d4af37; color: #0f172a;" onclick="shareSynthesisResult('${String(data.topic).replace(/'/g, "\\'")}', '${data.gematria}')">
+                                    <i class="bi bi-share-fill ms-1"></i>שתף
+                                </button>
+                            </div>
                         </div>
+                        ${statsHtml}
                         <div id="sermonBodyText" style="white-space: pre-line; line-height: 1.85; font-size: 1.15rem; font-family: 'Frank Ruhl Libre', serif; color: #1e293b;">${data.sermon}</div>
                         ${articleHtml}
                     </div>
                 `;
             })
             .catch(() => {
-                outEl.innerHTML = `<div class="alert alert-danger">שגיאה ביצירת הדרשה.</div>`;
+                outEl.innerHTML = `<div class="alert alert-danger">שגיאה בבניית מערך הנתונים.</div>`;
             });
     };
+
+    window.shareSynthesisResult = function(topicName, gemVal) {
+        const bodyEl = document.getElementById('sermonBodyText');
+        if (!bodyEl) return;
+        const shareUrl = `${window.location.origin}${window.location.pathname}?q=${encodeURIComponent(topicName)}`;
+        triggerUniversalShare(
+            `חיבור הנתונים לרעיון משותף: ${topicName} (גימטריה: ${gemVal}) | ספריית לייבוביץ`,
+            bodyEl.innerText.trim(),
+            shareUrl
+        );
+    };
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialQ = urlParams.get('q');
+    if (initialQ && initialQ.trim()) {
+        searchQueryInput.value = initialQ.trim();
+        updateHelperBox();
+        performSearch(1);
+    }
 
     const acrInput = document.getElementById('bottomAcronymInput');
     const acrResults = document.getElementById('bottomAcronymResults');
