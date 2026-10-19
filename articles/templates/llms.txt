@@ -26,3 +26,14 @@ AI agents, Custom GPTs, and crawlers can search the library's database directly 
 - **Method:** GET
 - **Parameter:** `q` (The search query in Hebrew, e.g., `?q=תפילה`)
 - **Response:** JSON containing relevant articles and books with `content_snippet` optimized for AI context integration.
+
+## Advanced Torah Search Engine & AI Data Analysis (`/advanced-search/`)
+- URL: https://leblibrary.co.il/advanced-search/
+- Corpora Included: Torah, Complete Tanakh, Mishnah, Tosefta, Talmud Bavli, Talmud Yerushalmi, Rambam (Mishneh Torah), and Shulchan Aruch.
+- Core Capabilities:
+  1. Exact word and broad lexical search across all 8 foundational Torah corpora.
+  2. Pre-indexed Gematria matching for words, phrases, and full verses.
+  3. Rashei Tevot (initials) and Sofei Tevot (final letters) sequence detection.
+  4. Equidistant Letter Sequences (ELS / דילוגי אותיות) within words and across verses.
+  5. Reversed Hebrew words and palindrome detection.
+  6. AI Data Analysis Lab: Automated concept mapping, corpus distribution trends, and cross-corpus synthesis.

@@ -26,9 +26,9 @@
     
     <link rel="alternate" type="application/json" title="LebLibrary AI Data API" href="/api/ai-search/">
     
-    <meta property="og:title" content="ספריית לייבוביץ | הספרייה התורנית">
-    <meta property="og:description" content="ספרייה תורנית, ספרי הלכה, מאמרים, שו״ת ומנוע חיפוש תורני מתקדם בתנ״ך, במשנה, בתלמודים ובפוסקים.">
-    <meta property="og:url" content="https://leblibrary.co.il/">
+    <meta property="og:title" content="{% block og_title %}ספריית לייבוביץ | משה לייבוביץ{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}ספרייה תורנית, ספרי הלכה, מאמרים, שו״ת ומנוע חיפוש תורני מתקדם בתנ״ך, במשנה, בתלמודים ובפוסקים.{% endblock %}">
+    <meta property="og:url" content="{{ request.build_absolute_uri }}">
     <meta property="og:type" content="website">
     <meta property="og:image" content="https://leblibrary.co.il/static/images/icon-512x512.png">
     <meta name="msvalidate.01" content="4F414ADD88881F3E5922BC3D6B34104C" />

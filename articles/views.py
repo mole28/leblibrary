@@ -1740,7 +1740,7 @@ def tanakh_advanced_search_api(request):
                     text_query &= (Q(clean_text__icontains=target_w) | Q(text_with_nikkud__icontains=target_w))
 
                 qs = qs.filter(text_query)
-                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud')
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2000)
 
                 for m in all_verses:
                     raw_text = m.get('text_with_nikkud') or ""
@@ -1865,7 +1865,7 @@ def tanakh_advanced_search_api(request):
 
             if target_acr:
                 acr_len = len(target_acr)
-                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud')
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2000)
 
                 for m in all_verses:
                     raw_text = m.get('text_with_nikkud') or ""
@@ -1946,7 +1946,7 @@ def tanakh_advanced_search_api(request):
                         Q(text_with_nikkud__icontains=rw)
                     )
                 qs = qs.filter(text_query)
-                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud')
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2000)
 
                 for m in all_verses:
                     raw_text = m.get('text_with_nikkud') or ""
@@ -2006,7 +2006,7 @@ def tanakh_advanced_search_api(request):
             target_els = norm_heb(re.sub(r'[^א-ת]', '', query_val))
             k = len(target_els)
             if k >= 2:
-                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud')
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2000)    
                 skip_counts = {}
 
                 for m in all_verses:
@@ -2113,7 +2113,7 @@ def tanakh_advanced_search_api(request):
                 max_skip_limit = 25
                 NON_HEB_RE = re.compile(r'[^א-ת]+')
 
-                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud')
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2000)
                 skip_counts = {}
 
                 for m in all_verses:
