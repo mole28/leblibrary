@@ -2221,11 +2221,12 @@ TORAH_CORE_CONCEPTS = [
     'משה', 'אהרן', 'דוד', 'משיח', 'גאולה', 'תשובה', 'תפילה', 'צדקה', 'אמונה', 'בטחון',
     'חכמה', 'בינה', 'דעת', 'יראה', 'אהבה', 'שמחה', 'נשמה', 'רוח', 'נפש', 'כהן',
     'לוי', 'ישראל', 'ציון', 'מקדש', 'מזבח', 'קרבן', 'ברית', 'מילה', 'ציצית', 'תכלת',
-    'תפילין', 'מזוזה', 'שופר', 'סוכה', 'לולב', 'אתרוג', 'מצה', 'פסח', 'סיני', 'ארון'
+    'תפילין', 'מזוזה', 'שופר', 'סוכה', 'לולב', 'אתרוג', 'מצה', 'פסח', 'סיני', 'ארון',
+    'מזל', 'נס', 'פדיון', 'שכינה', 'נבואה', 'ענוה', 'יראת', 'אהבת', 'קדusha', 'טהרה'
 ]
 
 
-@ratelimit(rate=25, timeout=60)
+@ratelimit(rate=30, timeout=60)
 def torah_ai_insights_api(request):
     mode = request.GET.get('mode', 'code_finder').strip()
     query = request.GET.get('q', '').strip()
@@ -2233,7 +2234,7 @@ def torah_ai_insights_api(request):
     chapter = request.GET.get('chapter', '').strip()
     verse = request.GET.get('verse', '').strip()
 
-    cache_key = f"torah_ai_v4_{mode}_{book}_{chapter}_{verse}_{query}"
+    cache_key = f"torah_ai_v5_{mode}_{book}_{chapter}_{verse}_{query}"
     cached_resp = cache.get(cache_key)
     if cached_resp:
         return JsonResponse(cached_resp, json_dumps_params={'ensure_ascii': False})
@@ -2241,6 +2242,8 @@ def torah_ai_insights_api(request):
     FINAL_TO_REGULAR = str.maketrans({'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ'})
     REGULAR_TO_FINAL = {'כ': 'ך', 'מ': 'ם', 'נ': 'ן', 'פ': 'ף', 'צ': 'ץ'}
     NON_HEB_RE = re.compile(r'[^א-ת]+')
+    WORD_TOKEN_RE = re.compile(r'[א-ת\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7]+')
+    HEB_LETTER_CLUSTER_RE = re.compile(r'[א-ת][\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7]*')
 
     def norm_heb(s):
         return s.translate(FINAL_TO_REGULAR)
@@ -2253,25 +2256,20 @@ def torah_ai_insights_api(request):
         last_c = norm_heb(rev[-1])
         return base + REGULAR_TO_FINAL.get(last_c, last_c)
 
-    def call_gemini_sync(prompt_text):
+    def call_gemini_fast(prompt_text):
         api_key = os.environ.get('GEMINI_API_KEY', '').strip()
         if not api_key:
+            api_key = getattr(settings, 'GEMINI_API_KEY', '').strip()
+        if not api_key:
             return ""
-        models_list = [
-            'gemini-2.5-flash',
-            'gemini-2.5-flash-lite',
-            'gemini-2.0-flash',
-            'gemini-1.5-flash-latest',
-            'gemini-flash-latest',
-            'gemini-pro-latest'
-        ]
+        models_list = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-latest']
         payload = {"contents": [{"parts": [{"text": prompt_text}]}]}
         data_bytes = json.dumps(payload, ensure_ascii=False).encode('utf-8')
         for m_name in models_list:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{m_name}:generateContent?key={api_key}"
             req = urllib.request.Request(url, data=data_bytes, headers={'Content-Type': 'application/json'})
             try:
-                with urllib.request.urlopen(req, timeout=20) as resp:
+                with urllib.request.urlopen(req, timeout=5) as resp:
                     resp_data = json.loads(resp.read().decode('utf-8'))
                     ans = resp_data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
                     if ans and len(ans.strip()) > 20:
@@ -2280,6 +2278,44 @@ def torah_ai_insights_api(request):
             except Exception:
                 continue
         return ""
+
+    def extract_highlighted_snippet(raw_text, matched_spans, max_len=340):
+        if not raw_text:
+            return ""
+        if not matched_spans:
+            trimmed = raw_text[:max_len] + ("..." if len(raw_text) > max_len else "")
+            return format_divine_name(trimmed)
+
+        first_s, first_e = matched_spans[0]
+        if len(raw_text) > max_len:
+            half = max_len // 2
+            win_start = max(0, first_s - half)
+            win_end = min(len(raw_text), first_e + half)
+            if win_start > 0:
+                sp = raw_text.find(' ', win_start)
+                if sp != -1 and sp < first_s:
+                    win_start = sp + 1
+            if win_end < len(raw_text):
+                sp = raw_text.rfind(' ', first_e, win_end)
+                if sp != -1:
+                    win_end = sp
+        else:
+            win_start, win_end = 0, len(raw_text)
+
+        out = []
+        if win_start > 0:
+            out.append("... ")
+        last_pos = win_start
+        for s_idx, e_idx in matched_spans:
+            if s_idx < win_start or e_idx > win_end:
+                continue
+            out.append(raw_text[last_pos:s_idx])
+            out.append(f'<mark style="background-color: #fde047; color: #000; padding: 0 4px; border-radius: 4px; font-weight: bold;">{raw_text[s_idx:e_idx]}</mark>')
+            last_pos = e_idx
+        out.append(raw_text[last_pos:win_end])
+        if win_end < len(raw_text):
+            out.append(" ...")
+        return format_divine_name("".join(out))
 
     tanakh_names = [
         'בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים',
@@ -2293,47 +2329,88 @@ def torah_ai_insights_api(request):
     tanakh_set = set(tanakh_names)
 
     def analyze_concept_deeply(raw_query):
-        clean_q = re.sub(r'[^א-ת\s]', '', raw_query).strip()
+        clean_q = re.sub(r'[^א-ת\s]', '', raw_query.replace('י-ה-ו-ה', 'יהוה')).strip()
         search_core = re.sub(r'^(פרשת|הלכות|מסכת|מצוות|מצות|עניין|דיני)\s+', '', clean_q).strip() or clean_q
-        q_words = [w for w in search_core.split() if len(w) >= 2]
+        q_words = [w for w in search_core.split() if len(w) >= 1]
         q_gem = calculate_gematria(search_core)
         q_letters_only = NON_HEB_RE.sub('', search_core)
         q_norm = norm_heb(q_letters_only)
 
-        if len(q_words) == 1:
-            target_w = q_words[0]
-            word_re = re.compile(rf'(?:^|\s)(?:[משהוכלב]?{re.escape(target_w)})(?=\s|$)')
-            exact_re = re.compile(rf'(?:^|\s){re.escape(target_w)}(?=\s|$)')
-        else:
-            phrase_pat = r'\s+'.join([rf'[משהוכלב]?{re.escape(w)}' for w in q_words])
-            word_re = re.compile(rf'(?:^|\s){phrase_pat}(?=\s|$)')
-            exact_re = re.compile(rf'(?:^|\s){re.escape(search_core)}(?=\s|$)')
-
         base_qs = TorahText.objects.all()
         for w in q_words:
-            base_qs = base_qs.filter(clean_text__icontains=w)
+            base_qs = base_qs.filter(Q(clean_text__icontains=w) | Q(text_with_nikkud__icontains=w))
 
-        candidates = list(base_qs.values('id', 'book', 'chapter', 'verse', 'clean_text', 'text_with_nikkud', 'verse_gematria')[:2500])
+        tanakh_matches_raw = list(
+            base_qs.filter(book__in=tanakh_names).exclude(chapter__startswith='דף')
+            .values('id', 'book', 'chapter', 'verse', 'clean_text', 'text_with_nikkud', 'verse_gematria')[:800]
+        )
+        other_matches_raw = list(
+            base_qs.exclude(book__in=tanakh_names)
+            .values('id', 'book', 'chapter', 'verse', 'clean_text', 'text_with_nikkud', 'verse_gematria')[:1200]
+        )
+        bavli_tanakh_named = list(
+            base_qs.filter(book__in=tanakh_names, chapter__startswith='דף')
+            .values('id', 'book', 'chapter', 'verse', 'clean_text', 'text_with_nikkud', 'verse_gematria')[:400]
+        )
+        candidates = tanakh_matches_raw + other_matches_raw + bavli_tanakh_named
 
         corpus_counts = {'torah': 0, 'nach': 0, 'mishnah_tosefta': 0, 'talmud': 0, 'halacha': 0}
         book_freq = {}
         chapter_freq = {}
         valid_records = []
+        num_q_words = len(q_words)
 
         for row in candidates:
-            ct = row['clean_text'] or ''
-            exact_hits = len(exact_re.findall(ct))
-            prefix_hits = len(word_re.findall(ct))
-            if exact_hits == 0 and prefix_hits == 0:
+            raw_txt = row.get('text_with_nikkud') or row.get('clean_text') or ''
+            if not raw_txt:
                 continue
 
-            weight = exact_hits * 3 + prefix_hits
+            tokens = list(WORD_TOKEN_RE.finditer(raw_txt))
+            tok_words = []
+            tok_spans = []
+            for tok in tokens:
+                w_heb = NON_HEB_RE.sub('', tok.group(0))
+                if w_heb:
+                    tok_words.append(w_heb)
+                    tok_spans.append(tok.span())
+
+            if len(tok_words) < num_q_words:
+                continue
+
+            exact_spans = []
+            prefix_spans = []
+
+            if num_q_words == 1:
+                tw = q_words[0]
+                for idx_t, vw in enumerate(tok_words):
+                    if vw == tw:
+                        exact_spans.append(tok_spans[idx_t])
+                    elif len(vw) == len(tw) + 1 and vw[0] in 'משהוכלב' and vw[1:] == tw:
+                        prefix_spans.append(tok_spans[idx_t])
+            else:
+                for i in range(len(tok_words) - num_q_words + 1):
+                    is_ex = True
+                    is_pr = True
+                    for j in range(num_q_words):
+                        tw = q_words[j]
+                        vw = tok_words[i + j]
+                        if vw != tw:
+                            is_ex = False
+                            if not (len(vw) == len(tw) + 1 and vw[0] in 'משהוכלב' and vw[1:] == tw):
+                                is_pr = False
+                                break
+                    if is_ex:
+                        for j in range(num_q_words):
+                            exact_spans.append(tok_spans[i + j])
+                    elif is_pr:
+                        for j in range(num_q_words):
+                            prefix_spans.append(tok_spans[i + j])
+
+            if not exact_spans and not prefix_spans:
+                continue
+
             b_name = row['book']
             c_name = row['chapter']
-
-            book_freq[b_name] = book_freq.get(b_name, 0) + weight
-            chapter_freq[(b_name, c_name)] = chapter_freq.get((b_name, c_name), 0) + weight
-
             if b_name in torah_names and not str(c_name).startswith('דף'):
                 cat = 'torah'
             elif b_name in tanakh_set and not str(c_name).startswith('דף'):
@@ -2345,25 +2422,34 @@ def torah_ai_insights_api(request):
             else:
                 cat = 'mishnah_tosefta'
 
+            weight = len(exact_spans) * 5 + len(prefix_spans)
             corpus_counts[cat] += 1
+            book_freq[b_name] = book_freq.get(b_name, 0) + 1
+            chapter_freq[(b_name, c_name)] = chapter_freq.get((b_name, c_name), 0) + 1
+
             row['_cat'] = cat
-            row['_exact_hits'] = exact_hits
+            row['_exact_count'] = len(exact_spans)
             row['_weight'] = weight
+            row['_spans'] = exact_spans if exact_spans else prefix_spans
+            row['_raw_txt'] = raw_txt
             valid_records.append(row)
 
         for row in valid_records:
             b_name = row['book']
             c_name = row['chapter']
-            score = row['_weight'] * 25
-            score += chapter_freq.get((b_name, c_name), 0) * 18
-            score += min(book_freq.get(b_name, 0), 40) * 6
-            if search_core in b_name or any(w in b_name for w in q_words if len(w) >= 3):
-                score += 600
+            score = (1000 if row['_exact_count'] > 0 else 100)
+            score += row['_weight'] * 20
+            score += chapter_freq.get((b_name, c_name), 0) * 15
+            score += min(book_freq.get(b_name, 0), 30) * 5
+            if search_core in b_name:
+                score += 800
+            if not b_name.startswith('ירושלמי '):
+                score += 50
             row['_score'] = score
 
         valid_records.sort(key=lambda x: x['_score'], reverse=True)
 
-        def pick_top_unique_chapters(records_subset, limit=2):
+        def pick_top_sources(records_subset, limit=3):
             picked = []
             seen_ch = set()
             for r in records_subset:
@@ -2375,7 +2461,8 @@ def torah_ai_insights_api(request):
                         'chapter': r['chapter'],
                         'verse': r['verse'],
                         'ref': f"{r['book']} {r['chapter']}:{r['verse']}",
-                        'text': format_divine_name(r['text_with_nikkud'] or r['clean_text']),
+                        'text': extract_highlighted_snippet(r['_raw_txt'], r['_spans']),
+                        'is_exact': r['_exact_count'] > 0,
                         'chapter_hits': chapter_freq.get(key, 1),
                         'book_hits': book_freq.get(r['book'], 1)
                     })
@@ -2383,102 +2470,173 @@ def torah_ai_insights_api(request):
                         break
             return picked
 
-        top_tanakh = pick_top_unique_chapters([r for r in valid_records if r['_cat'] in ('torah', 'nach')], limit=2)
-        top_chazal = pick_top_unique_chapters([r for r in valid_records if r['_cat'] in ('talmud', 'mishnah_tosefta')], limit=2)
-        top_halacha = pick_top_unique_chapters([r for r in valid_records if r['_cat'] == 'halacha'], limit=2)
+        top_tanakh = pick_top_sources([r for r in valid_records if r['_cat'] in ('torah', 'nach')], limit=3)
+        top_chazal = pick_top_sources([r for r in valid_records if r['_cat'] in ('talmud', 'mishnah_tosefta')], limit=3)
+        top_halacha = pick_top_sources([r for r in valid_records if r['_cat'] == 'halacha'], limit=2)
 
         top_books_sorted = sorted(book_freq.items(), key=lambda x: x[1], reverse=True)[:5]
-        dominant_books = [{'book': b, 'score': max(1, s // 3)} for b, s in top_books_sorted]
+        dominant_books = [{'book': b, 'score': s} for b, s in top_books_sorted]
 
         gem_concepts = [c for c in TORAH_CORE_CONCEPTS if c != search_core and calculate_gematria(c) == q_gem]
         gem_tanakh_verses = []
+        gem_word_verses = []
+
         if q_gem > 0:
-            gem_qs = list(
+            gem_v_qs = list(
                 TorahText.objects.filter(book__in=tanakh_names, verse_gematria=q_gem)
                 .exclude(chapter__startswith='דף')
-                .values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:3]
+                .values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:2]
             )
-            for gv in gem_qs:
+            for gv in gem_v_qs:
                 gem_tanakh_verses.append({
                     'ref': f"{gv['book']} {gv['chapter']}:{gv['verse']}",
                     'text': format_divine_name(gv['text_with_nikkud'] or gv['clean_text'])
                 })
+
+            gem_w_qs = list(
+                TorahText.objects.filter(book__in=list(torah_names), words_gematria__contains=f",{q_gem},")
+                .exclude(chapter__startswith='דף')
+                .values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:25]
+            )
+            seen_gem_words = set()
+            for gw in gem_w_qs:
+                raw_t = gw.get('text_with_nikkud') or gw.get('clean_text') or ''
+                toks = list(WORD_TOKEN_RE.finditer(raw_t))
+                for tok in toks:
+                    w_clean = NON_HEB_RE.sub('', tok.group(0))
+                    if len(w_clean) >= 2 and w_clean != search_core and calculate_gematria(w_clean) == q_gem:
+                        if w_clean not in gem_concepts and len(gem_concepts) < 6:
+                            gem_concepts.append(w_clean)
+                        if w_clean not in seen_gem_words and len(gem_word_verses) < 2:
+                            seen_gem_words.add(w_clean)
+                            gem_word_verses.append({
+                                'word': w_clean,
+                                'ref': f"{gw['book']} {gw['chapter']}:{gw['verse']}",
+                                'text': extract_highlighted_snippet(raw_t, [tok.span()])
+                            })
+
+        rev_str = " ".join([reverse_heb_word(w) for w in q_words])
+        rev_matches = []
+        if rev_str and rev_str != search_core and len(q_words) == 1 and len(q_words[0]) >= 2:
+            rev_qs = list(
+                TorahText.objects.filter(book__in=tanakh_names, clean_text__icontains=rev_str)
+                .exclude(chapter__startswith='דף')
+                .values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:50]
+            )
+            for rm in rev_qs:
+                raw_t = rm.get('text_with_nikkud') or rm.get('clean_text') or ''
+                toks = list(WORD_TOKEN_RE.finditer(raw_t))
+                hit_spans = [t.span() for t in toks if NON_HEB_RE.sub('', t.group(0)) == rev_str]
+                if hit_spans:
+                    rev_matches.append({
+                        'word': rev_str,
+                        'ref': f"{rm['book']} {rm['chapter']}:{rm['verse']}",
+                        'text': extract_highlighted_snippet(raw_t, hit_spans)
+                    })
+                    if len(rev_matches) >= 2:
+                        break
 
         rashei_matches = []
         sofei_matches = []
         els_matches = []
 
         if 2 <= len(q_norm) <= 6:
-            scan_pool = [r for r in valid_records if r['_cat'] in ('torah', 'nach')][:150]
-            if len(scan_pool) < 80:
-                extra_torah = list(
-                    TorahText.objects.filter(book__in= list(torah_names))
-                    .exclude(chapter__startswith='דף')
-                    .values('book', 'chapter', 'verse', 'clean_text', 'text_with_nikkud')[:400]
-                )
-                scan_pool.extend(extra_torah)
-
+            torah_scan_pool = list(
+                TorahText.objects.filter(book__in=list(torah_names))
+                .exclude(chapter__startswith='דף')
+                .values('book', 'chapter', 'verse', 'clean_text', 'text_with_nikkud')[:600]
+            )
             k_len = len(q_norm)
-            for item in scan_pool:
-                c_words = [w for w in (item.get('clean_text') or '').split() if w]
-                if len(c_words) >= k_len:
-                    r_seq = "".join([norm_heb(w[0]) for w in c_words])
-                    s_seq = "".join([norm_heb(w[-1]) for w in c_words])
-                    pos_r = r_seq.find(q_norm)
-                    if pos_r != -1 and len(rashei_matches) < 2:
-                        phrase = " ".join(c_words[pos_r:pos_r + k_len])
-                        ref_str = f"{item['book']} {item['chapter']}:{item['verse']}"
-                        if not any(m['ref'] == ref_str for m in rashei_matches):
-                            rashei_matches.append({'ref': ref_str, 'phrase': phrase})
-                    pos_s = s_seq.find(q_norm)
-                    if pos_s != -1 and len(sofei_matches) < 2:
-                        phrase = " ".join(c_words[pos_s:pos_s + k_len])
-                        ref_str = f"{item['book']} {item['chapter']}:{item['verse']}"
-                        if not any(m['ref'] == ref_str for m in sofei_matches):
-                            sofei_matches.append({'ref': ref_str, 'phrase': phrase})
+            for item in torah_scan_pool:
+                raw_t = item.get('text_with_nikkud') or item.get('clean_text') or ''
+                toks = list(WORD_TOKEN_RE.finditer(raw_t))
+                t_words = []
+                t_spans = []
+                for t in toks:
+                    wh = NON_HEB_RE.sub('', t.group(0))
+                    if wh:
+                        t_words.append(norm_heb(wh))
+                        t_spans.append(t.span())
 
-                letters_only = NON_HEB_RE.sub('', item.get('clean_text') or '').translate(FINAL_TO_REGULAR)
-                n_l = len(letters_only)
-                if n_l >= k_len and len(els_matches) < 2:
-                    for p0 in range(n_l):
-                        if letters_only[p0] != q_norm[0]:
-                            continue
-                        max_st = min(12, (n_l - 1 - p0) // (k_len - 1))
-                        found_els = False
-                        for st in range(2, max_st + 1):
-                            if letters_only[p0 : p0 + k_len * st : st] == q_norm:
-                                ref_str = f"{item['book']} {item['chapter']}:{item['verse']}"
-                                if not any(e['ref'] == ref_str for e in els_matches):
-                                    els_matches.append({'ref': ref_str, 'skip': st - 1})
+                if len(t_words) >= k_len:
+                    if len(rashei_matches) < 2:
+                        r_seq = "".join([w[0] for w in t_words])
+                        pos_r = r_seq.find(q_norm)
+                        if pos_r != -1:
+                            spans_r = t_spans[pos_r:pos_r + k_len]
+                            phrase_r = " ".join([NON_HEB_RE.sub('', raw_t[s:e]) for s, e in spans_r])
+                            rashei_matches.append({
+                                'ref': f"{item['book']} {item['chapter']}:{item['verse']}",
+                                'phrase': phrase_r,
+                                'text': extract_highlighted_snippet(raw_t, spans_r)
+                            })
+                    if len(sofei_matches) < 2:
+                        s_seq = "".join([w[-1] for w in t_words])
+                        pos_s = s_seq.find(q_norm)
+                        if pos_s != -1:
+                            spans_s = t_spans[pos_s:pos_s + k_len]
+                            phrase_s = " ".join([NON_HEB_RE.sub('', raw_t[s:e]) for s, e in spans_s])
+                            sofei_matches.append({
+                                'ref': f"{item['book']} {item['chapter']}:{item['verse']}",
+                                'phrase': phrase_s,
+                                'text': extract_highlighted_snippet(raw_t, spans_s)
+                            })
+
+                if len(els_matches) < 2:
+                    letters_only = NON_HEB_RE.sub('', item.get('clean_text') or '').translate(FINAL_TO_REGULAR)
+                    n_l = len(letters_only)
+                    if n_l >= k_len:
+                        for p0 in range(n_l):
+                            if letters_only[p0] != q_norm[0]:
+                                continue
+                            max_st = min(12, (n_l - 1 - p0) // (k_len - 1))
+                            found_els = False
+                            for st in range(2, max_st + 1):
+                                if letters_only[p0 : p0 + k_len * st : st] == q_norm:
+                                    target_positions = {p0 + idx * st for idx in range(k_len)}
+                                    g_idx = [-1]
+                                    def mark_els_char(c_m):
+                                        g_idx[0] += 1
+                                        cl = c_m.group(0)
+                                        if g_idx[0] in target_positions:
+                                            return f'<mark style="background-color: #fde047; color: #000; padding: 0 3px; border-radius: 3px; font-weight: bold; border-bottom: 2px solid #b8860b;">{cl}</mark>'
+                                        return cl
+                                    marked_verse = format_divine_name(HEB_LETTER_CLUSTER_RE.sub(mark_els_char, raw_t))
+                                    els_matches.append({
+                                        'ref': f"{item['book']} {item['chapter']}:{item['verse']}",
+                                        'skip': st - 1,
+                                        'text': marked_verse
+                                    })
                                     found_els = True
                                     break
-                        if found_els:
-                            break
-
-        rev_str = " ".join([reverse_heb_word(w) for w in q_words])
-        rev_count = 0
-        if rev_str and rev_str != search_core and len(q_words) == 1 and len(q_words[0]) >= 3:
-            rev_re = re.compile(rf'(?:^|\s){re.escape(rev_str)}(?=\s|$)')
-            rev_qs = TorahText.objects.filter(book__in=tanakh_names, clean_text__icontains=rev_str).exclude(chapter__startswith='דף').values_list('clean_text', flat=True)[:100]
-            rev_count = sum(1 for t in rev_qs if rev_re.search(t or ''))
+                            if found_els:
+                                break
+                if len(rashei_matches) >= 2 and len(sofei_matches) >= 2 and len(els_matches) >= 2:
+                    break
 
         verified_articles = []
-        for art in Article.objects.filter(is_published=True):
-            t_str = art.title or ''
-            c_str = re.sub(r'<[^>]+>', ' ', art.content or '')
-            in_title = bool(exact_re.search(t_str) or search_core in t_str)
-            body_occurrences = len(exact_re.findall(c_str)) + len(word_re.findall(c_str))
-            if in_title or body_occurrences >= 5:
-                score_art = (100 if in_title else 0) + body_occurrences
-                verified_articles.append({
-                    'title': t_str.strip(),
-                    'url': reverse('articles:detail', args=[art.slug]),
-                    'snippet': get_smart_content(c_str, q_words, max_chars=240),
-                    'score': score_art,
-                    'occurrences': body_occurrences
-                })
-        verified_articles.sort(key=lambda x: x['score'], reverse=True)
-        verified_articles = verified_articles[:2]
+        try:
+            for art in Article.objects.filter(is_published=True):
+                if not getattr(art, 'slug', None):
+                    continue
+                t_str = art.title or ''
+                c_str = re.sub(r'<[^>]+>', ' ', art.content or '')
+                toks_t = [NON_HEB_RE.sub('', m.group(0)) for m in WORD_TOKEN_RE.finditer(t_str)]
+                in_title = any(w in toks_t for w in q_words if len(w) >= 2)
+                toks_c = [m for m in WORD_TOKEN_RE.finditer(c_str) if NON_HEB_RE.sub('', m.group(0)) in q_words]
+                if in_title or len(toks_c) >= 5:
+                    spans_c = [m.span() for m in toks_c]
+                    verified_articles.append({
+                        'title': t_str.strip(),
+                        'url': reverse('articles:detail', args=[art.slug]),
+                        'snippet': extract_highlighted_snippet(c_str, spans_c, max_len=240),
+                        'score': (100 if in_title else 0) + len(toks_c),
+                        'occurrences': len(toks_c)
+                    })
+            verified_articles.sort(key=lambda x: x['score'], reverse=True)
+            verified_articles = verified_articles[:2]
+        except Exception:
+            verified_articles = []
 
         return {
             'query': raw_query,
@@ -2492,11 +2650,12 @@ def torah_ai_insights_api(request):
             'top_halacha': top_halacha,
             'gem_concepts': gem_concepts,
             'gem_tanakh_verses': gem_tanakh_verses,
+            'gem_word_verses': gem_word_verses,
             'rashei_matches': rashei_matches,
             'sofei_matches': sofei_matches,
             'els_matches': els_matches,
-            'reversed_word': rev_str if rev_count > 0 else '',
-            'reversed_count': rev_count,
+            'reversed_word': rev_str if rev_str != search_core else '',
+            'rev_matches': rev_matches,
             'verified_articles': verified_articles
         }
 
@@ -2513,7 +2672,8 @@ def torah_ai_insights_api(request):
                 return JsonResponse({'error': 'לא נמצא פסוק או מקור לניתוח.'}, status=404)
 
             raw_text = format_divine_name(verse_obj.text_with_nikkud or verse_obj.clean_text)
-            clean_words = [w for w in (verse_obj.clean_text or '').split() if len(w) >= 2]
+            toks_v = [NON_HEB_RE.sub('', m.group(0)) for m in WORD_TOKEN_RE.finditer(raw_text)]
+            clean_words = [w for w in toks_v if len(w) >= 2]
             v_gem = verse_obj.verse_gematria or calculate_gematria(verse_obj.clean_text or '')
 
             equal_verses_qs = TorahText.objects.filter(book__in=tanakh_names, verse_gematria=v_gem).exclude(id=verse_obj.id).exclude(chapter__startswith='דף')[:4]
@@ -2528,7 +2688,7 @@ def torah_ai_insights_api(request):
             word_gem_matches = []
             seen_words = set()
             for w in clean_words:
-                if len(w) >= 3 and w not in seen_words:
+                if len(w) >= 2 and w not in seen_words:
                     seen_words.add(w)
                     w_val = calculate_gematria(w)
                     for concept in TORAH_CORE_CONCEPTS:
@@ -2537,7 +2697,7 @@ def torah_ai_insights_api(request):
                     if len(word_gem_matches) >= 6:
                         break
 
-            letters_seq = NON_HEB_RE.sub('', verse_obj.clean_text or '').translate(FINAL_TO_REGULAR)
+            letters_seq = NON_HEB_RE.sub('', raw_text).translate(FINAL_TO_REGULAR)
             els_findings = []
             n_len = len(letters_seq)
 
@@ -2577,38 +2737,18 @@ def torah_ai_insights_api(request):
                         phrase = " ".join(clean_words[idx_s:idx_s+len(c_norm)])
                         acronym_findings.append({'type': 'סופי תיבות', 'word': concept, 'phrase': phrase})
 
-            findings_summary = (
-                f"מקור: {verse_obj.book} פרק {verse_obj.chapter} פסוק/הלכה {verse_obj.verse}\n"
-                f"טקסט: {raw_text}\n"
-                f"ערך גימטרי כולל: {v_gem}\n"
-            )
+            summary_parts = [f"המקור ב{verse_obj.book} ({verse_obj.chapter}, {verse_obj.verse}) מחזיק {len(clean_words)} תיבות וערכו הגימטרי הכולל הוא {v_gem}."]
             if equal_verses:
-                findings_summary += "פסוקים במקרא בעלי ערך גימטרי זהה:\n" + "\n".join([f"- {ev['ref']}: {ev['text']}" for ev in equal_verses]) + "\n"
+                summary_parts.append(f"במאגר התנ\"ך נמצאה הקבלה גימטרית מדויקת ({v_gem}) לפסוק ב{equal_verses[0]['ref']}: \"{equal_verses[0]['text']}\".")
             if word_gem_matches:
-                findings_summary += "הקבלות גימטריה של מילים במקור:\n" + "\n".join([f"- '{m['word']}' = {m['val']} ('{m['concept']}')" for m in word_gem_matches]) + "\n"
+                wm_str = ", ".join([f"התיבה \"{m['word']}\" שווה בגימטריה ({m['val']}) למושג \"{m['concept']}\"" for m in word_gem_matches[:3]])
+                summary_parts.append(f"הקבלות גימטריה במילות המקור: {wm_str}.")
             if els_findings:
-                findings_summary += "דילוגי אותיות שנמצאו במקור:\n" + "\n".join([f"- '{e['word']}' בדילוג {e['skip']}" for e in els_findings]) + "\n"
+                el_str = ", ".join([f"\"{e['word']}\" (דילוג {e['skip']})" for e in els_findings[:3]])
+                summary_parts.append(f"בסריקת מרווחי אותיות (ELS) לאורך המקור אותרו המושגים: {el_str}.")
             if acronym_findings:
-                findings_summary += "ראשי/סופי תיבות שנמצאו במקור:\n" + "\n".join([f"- {a['type']} '{a['word']}' מתוך '{a['phrase']}'" for a in acronym_findings]) + "\n"
-
-            ai_prompt = (
-                "אתה מנתח נתונים תורניים באתר 'ספריית לייבוביץ'.\n"
-                f"להלן הנתונים המתמטיים והלשוניים שנמצאו במקור הנבחר:\n\n{findings_summary}\n\n"
-                "סכם ב-2 פסקאות קצרות, ענייניות ומדויקות את הקשר בין תוכן המקור לבין הממצאים שעלו (הגימטריאות, הפסוקים המקבילים, ראשי התיבות או הדילוגים). "
-                "התבסס אך ורק על הנתונים המוצגים לעיל ללא השערות מומצאות. הקפד לכתוב את שם ה' אך ורק כ-י-ה-ו-ה, וללא חתימה בסוף."
-            )
-            ai_commentary = call_gemini_sync(ai_prompt)
-            if not ai_commentary:
-                parts_fb = [f"המקור ב{verse_obj.book} ({verse_obj.chapter}, {verse_obj.verse}) עולה בגימטריה למניין {v_gem}."]
-                if equal_verses:
-                    parts_fb.append(f"במאגר המקרא נמצאה הקבלה גימטרית מדויקת ({v_gem}) לפסוק ב{equal_verses[0]['ref']}: \"{equal_verses[0]['text']}\".")
-                if word_gem_matches:
-                    m0 = word_gem_matches[0]
-                    parts_fb.append(f"בניתוח מילות המקור, התיבה \"{m0['word']}\" שווה בערכה הגימטרי ({m0['val']}) למושג \"{m0['concept']}\".")
-                if els_findings:
-                    e0 = els_findings[0]
-                    parts_fb.append(f"בסריקת מרווחי אותיות התגלה המושג \"{e0['word']}\" בדילוג של {e0['skip']} אותיות.")
-                ai_commentary = " ".join(parts_fb)
+                ac_str = ", ".join([f"{a['type']} \"{a['word']}\" בתיבות \"{a['phrase']}\"" for a in acronym_findings[:2]])
+                summary_parts.append(f"ממצאי ראשי וסופי תיבות: {ac_str}.")
 
             resp_payload = {
                 'source_ref': f"{verse_obj.book} | {verse_obj.chapter} | {verse_obj.verse}",
@@ -2618,7 +2758,7 @@ def torah_ai_insights_api(request):
                 'word_gematria_matches': word_gem_matches,
                 'els_findings': els_findings,
                 'acronym_findings': acronym_findings,
-                'ai_commentary': ai_commentary
+                'ai_commentary': " ".join(summary_parts)
             }
             cache.set(cache_key, resp_payload, 3600 * 12)
             return JsonResponse(resp_payload, json_dumps_params={'ensure_ascii': False})
@@ -2630,91 +2770,110 @@ def torah_ai_insights_api(request):
             analysis = analyze_concept_deeply(query)
             q_gem = analysis['gematria']
             cc = analysis['corpus_counts']
+            core = analysis['search_core']
 
             nodes = [
                 {
                     'id': 'root',
-                    'label': f"{analysis['search_core']}\n(גימטריה: {q_gem})",
+                    'label': f"{core}\n(גימטריה: {q_gem})",
                     'group': 'center',
-                    'snippet': f"מושג המפתח: \"{analysis['search_core']}\" | גימטריה: {q_gem} | סך מקורות מרכזיים שנמצאו במאגר: {analysis['total_matches']}",
+                    'snippet': (
+                        f"<b>מושג המפתח: \"{core}\"</b> (גימטריה: <b>{q_gem}</b>) | "
+                        f"נמצאו <b>{analysis['total_matches']}</b> מקורות במאגרי האתר "
+                        f"(תורה: {cc['torah']}, נ\"ך: {cc['nach']}, משנה ותוספתא: {cc['mishnah_tosefta']}, תלמודים: {cc['talmud']}, הלכה: {cc['halacha']}). "
+                        f"לחץ על כל אחת מהתיבות במפה לצפייה במקור המודגש."
+                    ),
                     'url': ''
                 }
             ]
             edges = []
 
-            dom_books_str = ", ".join([f"{b['book']} ({b['score']})" for b in analysis['dominant_books'][:3]]) or "פיזור רחב"
-            nodes.append({
-                'id': 'trends_node',
-                'label': f"📊 מגמת תפוצה במאגר\nסה\"כ: {analysis['total_matches']} מקורות",
-                'group': 'trends',
-                'snippet': (
-                    f"ניתוח תפוצה ומוקדים עבור \"{analysis['search_core']}\": "
-                    f"תורה: {cc['torah']} | נביאים וכתובים: {cc['nach']} | משנה ותוספתא: {cc['mishnah_tosefta']} | "
-                    f"תלמוד בבלי וירושלמי: {cc['talmud']} | רמב\"ם ושו\"ע: {cc['halacha']}. "
-                    f"מוקדי הדיון העיקריים: {dom_books_str}."
-                ),
-                'url': ''
-            })
-            edges.append({'from': 'root', 'to': 'trends_node', 'label': 'ניתוח מגמות'})
-
             for idx, th in enumerate(analysis['top_tanakh']):
                 nid = f"tanakh_{idx}"
                 nodes.append({
                     'id': nid,
-                    'label': f"📖 מוקד במקרא\n{th['ref']}",
+                    'label': f"📖 תנ\"ך\n{th['ref']}",
                     'group': 'tanakh',
-                    'snippet': f"{th['text']} (ריכוז בפרק: {th['chapter_hits']} אזכורים)",
+                    'snippet': f"<b>מקור במקרא ({th['ref']}):</b><br>{th['text']}",
                     'url': ''
                 })
-                edges.append({'from': 'root', 'to': nid, 'label': 'מוקד מקראי'})
+                edges.append({'from': 'root', 'to': nid, 'label': 'הופעה במקרא'})
 
-            for idx, ch in enumerate(analysis['top_chazal']):
+            for idx, ch in enumerate(analysis['top_chazal'][:2]):
                 nid = f"chazal_{idx}"
                 nodes.append({
                     'id': nid,
-                    'label': f"🏛️ מוקד הסוגיה בחז\"ל\n{ch['book']} ({ch['chapter']})",
+                    'label': f"🏛️ חז\"ל\n{ch['book']} ({ch['chapter']})",
                     'group': 'talmud',
-                    'snippet': f"{ch['text']} (מוקד במסכת: {ch['book_hits']} אזכורים)",
+                    'snippet': f"<b>מקור בדברי חז\"ל ({ch['book']} {ch['chapter']}, {ch['verse']}):</b><br>{ch['text']}",
                     'url': ''
                 })
-                edges.append({'from': 'root', 'to': nid, 'label': 'מוקד הסוגיה'})
+                edges.append({'from': 'root', 'to': nid, 'label': 'הופעה בחז"ל'})
 
-            for idx, hh in enumerate(analysis['top_halacha']):
+            for idx, hh in enumerate(analysis['top_halacha'][:2]):
                 nid = f"halacha_{idx}"
                 nodes.append({
                     'id': nid,
-                    'label': f"👑 מוקד ההלכה\n{hh['book']} ({hh['chapter']})",
+                    'label': f"👑 הלכה\n{hh['book']} ({hh['chapter']})",
                     'group': 'halacha',
-                    'snippet': hh['text'],
+                    'snippet': f"<b>פסיקת הלכה ({hh['book']} {hh['chapter']}, {hh['verse']}):</b><br>{hh['text']}",
                     'url': ''
                 })
                 edges.append({'from': 'root', 'to': nid, 'label': 'פסיקת הלכה'})
 
-            codes_snippets = []
-            if analysis['gem_concepts']:
-                codes_snippets.append(f"מושגי יסוד שווים בגימטריה ({q_gem}): {', '.join(analysis['gem_concepts'])}")
-            if analysis['gem_tanakh_verses']:
-                gv0 = analysis['gem_tanakh_verses'][0]
-                codes_snippets.append(f"פסוק במקרא שווה בגימטריה ({q_gem}): {gv0['ref']} — \"{gv0['text']}\"")
-            if analysis['rashei_matches']:
-                rm0 = analysis['rashei_matches'][0]
-                codes_snippets.append(f"ראשי תיבות במקרא ({rm0['ref']}): \"{rm0['phrase']}\"")
-            if analysis['sofei_matches']:
-                sm0 = analysis['sofei_matches'][0]
-                codes_snippets.append(f"סופי תיבות במקרא ({sm0['ref']}): \"{sm0['phrase']}\"")
-            if analysis['els_matches']:
-                el0 = analysis['els_matches'][0]
-                codes_snippets.append(f"דילוג אותיות ({el0['skip']}) ב{el0['ref']}")
-
-            if codes_snippets:
+            if analysis['gem_concepts'] or analysis['gem_word_verses'] or analysis['gem_tanakh_verses']:
+                gem_parts = []
+                if analysis['gem_concepts']:
+                    gem_parts.append(f"<b>מילים ומושגים בתנ\"ך בעלי גימטריה זהה ({q_gem}):</b> {', '.join(analysis['gem_concepts'])}")
+                for gwv in analysis['gem_word_verses']:
+                    gem_parts.append(f"<b>מקור בתורה למילה שווה בגימטריה (\"{gwv['word']}\" = {q_gem}) — {gwv['ref']}:</b> {gwv['text']}")
+                for gtv in analysis['gem_tanakh_verses']:
+                    gem_parts.append(f"<b>פסוק שלם שערכו הגימטרי {q_gem} — {gtv['ref']}:</b> {gtv['text']}")
                 nodes.append({
-                    'id': 'codes_node',
-                    'label': f"🔢 גימטריה וצפנים\nערך: {q_gem}",
+                    'id': 'gem_node',
+                    'label': f"🔢 הקבלות גימטריה ({q_gem})\n{', '.join(analysis['gem_concepts'][:3]) or 'פסוקים מקבילים'}",
                     'group': 'gematria',
-                    'snippet': " | ".join(codes_snippets),
+                    'snippet': "<br><br>".join(gem_parts),
                     'url': ''
                 })
-                edges.append({'from': 'root', 'to': 'codes_node', 'label': 'גימטריה ורמזים'})
+                edges.append({'from': 'root', 'to': 'gem_node', 'label': f'שווה בגימטריה ({q_gem})'})
+
+            if analysis['rev_matches']:
+                rv0 = analysis['rev_matches'][0]
+                nodes.append({
+                    'id': 'rev_node',
+                    'label': f"🔄 היפוך אותיות: \"{rv0['word']}\"\n{rv0['ref']}",
+                    'group': 'trends',
+                    'snippet': f"<b>היפוך האותיות של \"{core}\" הוא \"{rv0['word']}\" (גימטריה: {q_gem}) — מופיע ב{rv0['ref']}:</b><br>{rv0['text']}",
+                    'url': ''
+                })
+                edges.append({'from': 'root', 'to': 'rev_node', 'label': 'היפוך אותיות'})
+
+            if analysis['rashei_matches'] or analysis['sofei_matches']:
+                acr_parts = []
+                for rm in analysis['rashei_matches']:
+                    acr_parts.append(f"<b>ראשי תיבות (ר\"ת) של \"{core}\" ב{rm['ref']}:</b><br>{rm['text']}")
+                for sm in analysis['sofei_matches']:
+                    acr_parts.append(f"<b>סופי תיבות (ס\"ת) של \"{core}\" ב{sm['ref']}:</b><br>{sm['text']}")
+                nodes.append({
+                    'id': 'acr_node',
+                    'label': f"🔠 ראשי וסופי תיבות\nבפסוקי התורה",
+                    'group': 'trends',
+                    'snippet': "<br><br>".join(acr_parts),
+                    'url': ''
+                })
+                edges.append({'from': 'root', 'to': 'acr_node', 'label': 'ר"ת / ס"ת בתורה'})
+
+            if analysis['els_matches']:
+                el0 = analysis['els_matches'][0]
+                nodes.append({
+                    'id': 'els_node',
+                    'label': f"⚡ דילוג אותיות ({el0['skip']})\n{el0['ref']}",
+                    'group': 'gematria',
+                    'snippet': f"<b>דילוג אותיות שווה במרווח {el0['skip']} של האותיות \"{core}\" ב{el0['ref']}:</b><br>{el0['text']}",
+                    'url': ''
+                })
+                edges.append({'from': 'root', 'to': 'els_node', 'label': f"דילוג אותיות ({el0['skip']})"})
 
             for idx, art in enumerate(analysis['verified_articles']):
                 nid = f"article_{idx}"
@@ -2722,7 +2881,7 @@ def torah_ai_insights_api(request):
                     'id': nid,
                     'label': f"✍️ מאמר בספרייה\n{art['title'][:28]}",
                     'group': 'site_content',
-                    'snippet': art['snippet'],
+                    'snippet': f"<b>מאמר באתר ספריית לייבוביץ ({art['title']}):</b><br>{art['snippet']}",
                     'url': art['url']
                 })
                 edges.append({'from': 'root', 'to': nid, 'label': 'מאמר רלוונטי באתר'})
@@ -2745,112 +2904,102 @@ def torah_ai_insights_api(request):
             cc = analysis['corpus_counts']
             core = analysis['search_core']
 
-            data_points = []
-            data_points.append(
-                f"1. התפלגות ומגמות שכיחות במאגרים עבור '{core}' (סה\"כ {analysis['total_matches']} הופעות מרכזיות): "
-                f"תורה: {cc['torah']}, נביאים וכתובים: {cc['nach']}, משנה ותוספתא: {cc['mishnah_tosefta']}, "
-                f"תלמוד בבלי וירושלמי: {cc['talmud']}, רמב\"ם ושולחן ערוך: {cc['halacha']}."
-            )
-            if analysis['dominant_books']:
-                dom_str = ", ".join([f"{b['book']} ({b['score']} אזכורים)" for b in analysis['dominant_books']])
-                data_points.append(f"2. מוקדי הסוגיה המרכזיים ביותר (הספרים שבהם מתרכז עיקר הדיון): {dom_str}.")
+            html_sections = []
 
+            dom_b = ", ".join([f"<b>{b['book']}</b> ({b['score']} מופעים)" for b in analysis['dominant_books'][:5]]) or "ללא מוקד בודד"
+            html_sections.append(
+                f"<div class='mb-4'>"
+                f"<h6 class='fw-bold mb-2' style='color: #8c6239; border-bottom: 1px solid #e2d9c5; padding-bottom: 6px;'>א. ניתוח תפוצה ומוקדי הסוגיה במאגרי התורה</h6>"
+                f"<div>בסריקת כלל מאגרי האתר עבור <b>\"{core}\"</b> אותרו <b>{analysis['total_matches']}</b> מקורות: "
+                f"בתורה: <b>{cc['torah']}</b> | בנביאים וכתובים: <b>{cc['nach']}</b> | במשנה ובתוספתא: <b>{cc['mishnah_tosefta']}</b> | "
+                f"בתלמוד הבבלי והירושלמי: <b>{cc['talmud']}</b> | ברמב\"ם ובשולחן ערוך: <b>{cc['halacha']}</b>.<br>"
+                f"הספרים והמסכתות שבהם מתרכז עיקר הדיון במאגר: {dom_b}.</div>"
+                f"</div>"
+            )
+
+            sources_html_list = []
             if analysis['top_tanakh']:
-                t_list = "\n".join([f"   - {x['ref']} (ריכוז בפרק: {x['chapter_hits']}): \"{x['text']}\"" for x in analysis['top_tanakh']])
-                data_points.append(f"3. מקורות היסוד במקרא:\n{t_list}")
+                for x in analysis['top_tanakh']:
+                    sources_html_list.append(f"<li class='mb-2'><b>מקרא ({x['ref']}):</b> {x['text']}</li>")
+            else:
+                sources_html_list.append(f"<li class='mb-2 text-muted'>התיבה המדויקת \"{core}\" אינה מופיעה כתיבה עצמאית במקרא (ראה להלן הופעותיה בראשי/סופי תיבות, בדילוגים ובהיפוך אותיות).</li>")
 
-            if analysis['top_chazal']:
-                c_list = "\n".join([f"   - {x['book']} {x['chapter']} ({x['verse']}): \"{x['text']}\"" for x in analysis['top_chazal']])
-                data_points.append(f"4. מוקדי הסוגיה בדברי חז\"ל:\n{c_list}")
+            for x in analysis['top_chazal'][:2]:
+                sources_html_list.append(f"<li class='mb-2'><b>חז\"ל ({x['book']} {x['chapter']}, {x['verse']}):</b> {x['text']}</li>")
+            for x in analysis['top_halacha'][:2]:
+                sources_html_list.append(f"<li class='mb-2'><b>הלכה ({x['book']} {x['chapter']}, {x['verse']}):</b> {x['text']}</li>")
 
-            if analysis['top_halacha']:
-                h_list = "\n".join([f"   - {x['book']} {x['chapter']} ({x['verse']}): \"{x['text']}\"" for x in analysis['top_halacha']])
-                data_points.append(f"5. מוקדי ההלכה ברמב\"ם ובשולחן ערוך:\n{h_list}")
-
-            crypto_lines = [f"   - ערך גימטרי של '{core}': {q_gem}"]
-            if analysis['gem_concepts']:
-                crypto_lines.append(f"   - מושגי יסוד בעלי גימטריה זהה ({q_gem}): {', '.join(analysis['gem_concepts'])}")
-            if analysis['gem_tanakh_verses']:
-                for gv in analysis['gem_tanakh_verses'][:2]:
-                    crypto_lines.append(f"   - פסוק במקרא שערכו הגימטרי {q_gem} בדיוק: {gv['ref']} (\"{gv['text']}\")")
-            if analysis['rashei_matches']:
-                for rm in analysis['rashei_matches']:
-                    crypto_lines.append(f"   - ראשי תיבות (ר\"ת) של '{core}' במקרא: {rm['ref']} במילים \"{rm['phrase']}\"")
-            if analysis['sofei_matches']:
-                for sm in analysis['sofei_matches']:
-                    crypto_lines.append(f"   - סופי תיבות (ס\"ת) של '{core}' במקרא: {sm['ref']} במילים \"{sm['phrase']}\"")
-            if analysis['els_matches']:
-                for el in analysis['els_matches']:
-                    crypto_lines.append(f"   - דילוג אותיות (ELS) במרווח {el['skip']} במקור {el['ref']}")
-            if analysis['reversed_word']:
-                crypto_lines.append(f"   - היפוך אותיות ('{analysis['reversed_word']}') מופיע {analysis['reversed_count']} פעמים במקרא")
-            data_points.append("6. ממצאי עומק בחישובי גימטריה, ראשי/סופי תיבות ודילוגים:\n" + "\n".join(crypto_lines))
-
-            if analysis['verified_articles']:
-                art0 = analysis['verified_articles'][0]
-                data_points.append(f"7. מאמר מקיף בספריית לייבוביץ העוסק בנושא כנושא מרכזי: '{art0['title']}' ({art0['occurrences']} אזכורים במאמר): {art0['snippet']}")
-
-            full_report_text = "\n\n".join(data_points)
-
-            synthesis_prompt = (
-                f"אתה חוקר תורני בכיר ומנתח מערכות מידע באתר 'ספריית לייבוביץ'.\n"
-                f"המשתמש ביצע סריקת עומק רב-ממדית על המושג: '{query}'.\n"
-                f"להלן הנתונים המדויקים, מגמות השכיחות, מוקדי הסוגיות וממצאי הגימטריה/ראשי התיבות/הדילוגים שעלו מתוך מסד הנתונים:\n\n"
-                f"{full_report_text}\n\n"
-                f"כתוב מאמר מסכם מקצועי, מעמיק ובהיר המחבר את כלל נתוני העומק שעלו לרעיון משותף, מחולק ל-4 פרקים מובנים:\n"
-                f"א. ניתוח מגמות ומוקדי הסוגיה במאגרי התורה (הסבר היכן מתרכז המושג במקרא, בש\"ס ובהלכה ומה מלמדת מגמת התפוצה שלו).\n"
-                f"ב. ההתפתחות הרעיונית וההלכתית (חיבור עיוני מדויק בין פסוקי היסוד במקרא, סוגיות חז\"ל ופסיקת הרמב\"ם והשולחן ערוך שהובאו בנתונים).\n"
-                f"ג. משמעות ממצאי הגימטריה, ראשי/סופי התיבות והדילוגים (חיבור ממצאי הגימטריה והרמזים הלשוניים שבנתונים אל מהות המושג, ללא המצאת חישובים שלא מופיעים בנתונים).\n"
-                f"ד. הרעיון המשותף והמסקנה המסכמת (הנקודה המרכזית המאחדת את הפשט, ההלכה והרמזים שעלו בסריקה).\n\n"
-                f"כללי ברזל: התבסס אך ורק על המקורות והמספרים שבנתונים לעיל, אל תמציא שום גימטריה מעצמך, כתוב את שם ה' אך ורק כ-י-ה-ו-ה, ואל תוסיף חתימה בסוף."
+            html_sections.append(
+                f"<div class='mb-4'>"
+                f"<h6 class='fw-bold mb-2' style='color: #8c6239; border-bottom: 1px solid #e2d9c5; padding-bottom: 6px;'>ב. מקורות היסוד במקרא, בחז\"ל ובהלכה (עם סימון ההופעה המדויקת)</h6>"
+                f"<ul class='mb-0 ps-3'>{''.join(sources_html_list)}</ul>"
+                f"</div>"
             )
 
-            synthesis_article = call_gemini_sync(synthesis_prompt)
+            crypto_items = []
+            crypto_items.append(f"<li class='mb-2'><b>ערך גימטרי מדויק:</b> המילה <b>\"{core}\"</b> עולה בגימטריה <b>{q_gem}</b>.")
+            if analysis['gem_concepts']:
+                crypto_items[-1] += f" מילים ומושגים בתנ\"ך בעלי ערך גימטרי זהה (<b>{q_gem}</b>): <b>{', '.join(analysis['gem_concepts'])}</b>."
+            crypto_items[-1] += "</li>"
 
-            if not synthesis_article:
-                fallback_sections = []
-                dom_b = ", ".join([f"{b['book']} ({b['score']} אזכורים)" for b in analysis['dominant_books'][:4]]) or "מאגרי היסוד"
-                fallback_sections.append(
-                    f"א. ניתוח מגמות ומוקדי הסוגיה במאגרי התורה:\n"
-                    f"בסריקת עומק של המושג \"{core}\" במאגרי הספרייה אותרו {analysis['total_matches']} מקורות מרכזיים "
-                    f"(מתוכם {cc['torah']} בתורה, {cc['nach']} בנביאים וכתובים, {cc['mishnah_tosefta']} במשנה ובתוספתא, {cc['talmud']} בתלמוד הבבלי והירושלמי, ו-{cc['halacha']} ברמב\"ם ובשולחן ערוך). "
-                    f"ניתוח הצפיפות מלמד כי מוקדי הדיון העיקריים שבהם מתרכז הנושא הם: {dom_b}."
-                )
+            for gwv in analysis['gem_word_verses']:
+                crypto_items.append(f"<li class='mb-2'><b>הקבלה גימטרית בתורה (\"{gwv['word']}\" = {q_gem}) ב{gwv['ref']}:</b> {gwv['text']}</li>")
+            for gtv in analysis['gem_tanakh_verses']:
+                crypto_items.append(f"<li class='mb-2'><b>פסוק שלם במקרא שערכו הגימטרי {q_gem} ({gtv['ref']}):</b> {gtv['text']}</li>")
+            for rv in analysis['rev_matches']:
+                crypto_items.append(f"<li class='mb-2'><b>היפוך אותיות מדויק (\"{core}\" ⬅ \"{rv['word']}\", גימטריה {q_gem}) ב{rv['ref']}:</b> {rv['text']}</li>")
+            for rm in analysis['rashei_matches']:
+                crypto_items.append(f"<li class='mb-2'><b>ראשי תיבות (ר\"ת) של \"{core}\" בתורה ({rm['ref']}):</b> {rm['text']}</li>")
+            for sm in analysis['sofei_matches']:
+                crypto_items.append(f"<li class='mb-2'><b>סופי תיבות (ס\"ת) של \"{core}\" בתורה ({sm['ref']}):</b> {sm['text']}</li>")
+            for el in analysis['els_matches']:
+                crypto_items.append(f"<li class='mb-2'><b>דילוג אותיות שווה (ELS במרווח {el['skip']}) בתורה ({el['ref']}):</b> {el['text']}</li>")
 
-                src_lines = ["ב. ציר המקורות – מהמקרא אל דברי חז\"ל וההלכה:"]
+            html_sections.append(
+                f"<div class='mb-4'>"
+                f"<h6 class='fw-bold mb-2' style='color: #8c6239; border-bottom: 1px solid #e2d9c5; padding-bottom: 6px;'>ג. הצלבת גימטריאות, היפוך אותיות, ראשי/סופי תיבות ודילוגים (נתוני אמת)</h6>"
+                f"<ul class='mb-0 ps-3'>{''.join(crypto_items)}</ul>"
+                f"</div>"
+            )
+
+            plain_summary_for_ai = (
+                f"מושג: {core} (גימטריה: {q_gem}). "
+                f"תפוצה: תורה {cc['torah']}, נ\"ך {cc['nach']}, חז\"ל {cc['mishnah_tosefta'] + cc['talmud']}, הלכה {cc['halacha']}. "
+                f"מקורות תנ\"ך: {', '.join([x['ref'] for x in analysis['top_tanakh']]) or 'ללא'}. "
+                f"מקורות חז\"ל והלכה: {', '.join([x['book'] + ' ' + str(x['chapter']) for x in (analysis['top_chazal'] + analysis['top_halacha'])[:3]])}. "
+                f"מילים שוות בגימטריה ({q_gem}): {', '.join(analysis['gem_concepts'])}. "
+                f"היפוך אותיות במקרא: {analysis['rev_matches'][0]['word'] + ' (' + analysis['rev_matches'][0]['ref'] + ')' if analysis['rev_matches'] else 'ללא'}. "
+                f"ראשי תיבות בתורה: {analysis['rashei_matches'][0]['phrase'] + ' (' + analysis['rashei_matches'][0]['ref'] + ')' if analysis['rashei_matches'] else 'ללא'}."
+            )
+
+            ai_synthesis = call_gemini_fast(
+                f"אתה חוקר תורני באתר 'ספריית לייבוביץ'. להלן נתוני אמת שנשלפו ממסד הנתונים על המושג '{core}':\n"
+                f"{plain_summary_for_ai}\n"
+                f"כתוב פסקה מסכמת אחת או שתיים (ללא כותרות וללא כוכביות) המחברת באופן ענייני ומדויק בין המקורות וההקבלות הגימטריות/לשוניות שעלו בנתונים אלו לרעיון תורני משותף. "
+                f"אל תמציא שום נתון שלא מופיע כאן, וכתוב את שם ה' אך ורק כ-י-ה-ו-ה."
+            )
+
+            if not ai_synthesis:
+                synth_parts = [f"בחינה משולבת של כלל הממצאים עבור \"{core}\" (גימטריה: {q_gem}) מצביעה על חוט שני המחבר בין הרבדים השונים במאגר:"]
                 if analysis['top_tanakh']:
-                    t0 = analysis['top_tanakh'][0]
-                    src_lines.append(f"• במקרא מתבלט המוקד ב{t0['ref']}: \"{t0['text']}\".")
-                if analysis['top_chazal']:
-                    c0 = analysis['top_chazal'][0]
-                    src_lines.append(f"• בדברי חז\"ל מתבאר הנושא בהרחבה ב{c0['book']} ({c0['chapter']}, {c0['verse']}): \"{c0['text']}\".")
-                if analysis['top_halacha']:
-                    h0 = analysis['top_halacha'][0]
-                    src_lines.append(f"• בפסיקת ההלכה נקבעו גדרי הדין ב{h0['book']} ({h0['chapter']}, {h0['verse']}): \"{h0['text']}\".")
-                fallback_sections.append("\n".join(src_lines))
-
-                code_lines = [f"ג. ממצאי הגימטריה, ראשי התיבות והדילוגים:\nערכו הגימטרי של המושג \"{core}\" עולה למניין {q_gem}."]
+                    t_refs = ", ".join([x['ref'] for x in analysis['top_tanakh']])
+                    synth_parts.append(f"במקרא מופיעה התיבה במפורש ב{t_refs}.")
+                if analysis['top_chazal'] or analysis['top_halacha']:
+                    c_refs = ", ".join([f"{x['book']} ({x['chapter']})" for x in (analysis['top_chazal'][:2] + analysis['top_halacha'][:1])])
+                    synth_parts.append(f"בדברי חז\"ל ובהלכה מתבררים ההקשרים המעשיים והלשוניים ב{c_refs}.")
                 if analysis['gem_concepts']:
-                    code_lines.append(f"במילון מושגי היסוד נמצאה הקבלה גימטרית מדויקת ({q_gem}) למושגים: {', '.join(analysis['gem_concepts'])}.")
-                if analysis['gem_tanakh_verses']:
-                    gv0 = analysis['gem_tanakh_verses'][0]
-                    code_lines.append(f"במקרא נמצא פסוק שלם שערכו הגימטרי זהה ({q_gem}) ב{gv0['ref']}: \"{gv0['text']}\".")
-                if analysis['rashei_matches']:
-                    rm0 = analysis['rashei_matches'][0]
-                    code_lines.append(f"בסריקת ראשי תיבות אותר הצירוף ב{rm0['ref']} בתיבות: \"{rm0['phrase']}\".")
-                if analysis['sofei_matches']:
-                    sm0 = analysis['sofei_matches'][0]
-                    code_lines.append(f"בסריקת סופי תיבות אותר הצירוף ב{sm0['ref']} בתיבות: \"{sm0['phrase']}\".")
-                if analysis['els_matches']:
-                    el0 = analysis['els_matches'][0]
-                    code_lines.append(f"בסריקת דילוגי אותיות (ELS) נמצא המושג בדילוג {el0['skip']} ב{el0['ref']}.")
-                fallback_sections.append(" ".join(code_lines))
+                    synth_parts.append(f"במישור הגימטרי ({q_gem}), המושג מתקשר בערכו המדויק לתיבות המקראיות {', '.join(analysis['gem_concepts'][:4])}.")
+                if analysis['rev_matches']:
+                    rv0 = analysis['rev_matches'][0]
+                    synth_parts.append(f"בנוסף, היפוך אותיות התיבה חושף את המילה המקראית \"{rv0['word']}\" ({rv0['ref']}), והצירוף מופיע ברמזי ראשי/סופי תיבות ודילוגי אותיות בפסוקי התורה המוצגים לעיל.")
+                ai_synthesis = " ".join(synth_parts)
 
-                fallback_sections.append(
-                    f"ד. חיבור הנתונים לרעיון משותף:\n"
-                    f"שילוב מוקדי המקרא, סוגיות הש\"ס ופסיקת ההלכה יחד עם ההקבלות המדויקות בגימטריה ({q_gem}) מציג תמונה שלמה של המושג \"{core}\" – החל משורשו במקרא, דרך בירור גדריו בדברי חז\"ל ועד להופעתו המעשית בהלכה הפסוקה."
-                )
-                synthesis_article = "\n\n".join(fallback_sections)
+            html_sections.append(
+                f"<div class='p-3 rounded-3' style='background-color: #fff8dc; border-right: 4px solid #d4af37;'>"
+                f"<h6 class='fw-bold mb-2' style='color: #1e293b;'><i class='bi bi-layers-half ms-1' style='color: #b8860b;'></i>ד. חיבור הנתונים לרעיון משותף</h6>"
+                f"<div style='line-height: 1.8;'>{ai_synthesis}</div>"
+                f"</div>"
+            )
 
             top_art = analysis['verified_articles'][0] if analysis['verified_articles'] else None
 
@@ -2860,13 +3009,9 @@ def torah_ai_insights_api(request):
                 'total_matches': analysis['total_matches'],
                 'corpus_counts': cc,
                 'dominant_books': analysis['dominant_books'],
-                'gem_concepts': analysis['gem_concepts'],
-                'rashei_matches': analysis['rashei_matches'],
-                'sofei_matches': analysis['sofei_matches'],
-                'els_matches': analysis['els_matches'],
                 'article_link': top_art['url'] if top_art else '',
                 'article_title': top_art['title'] if top_art else '',
-                'sermon': synthesis_article
+                'sermon_html': "".join(html_sections)
             }
             cache.set(cache_key, resp_payload, 3600 * 12)
             return JsonResponse(resp_payload, json_dumps_params={'ensure_ascii': False})
