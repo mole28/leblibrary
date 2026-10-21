@@ -57,6 +57,60 @@ def _load_local_env():
 _load_local_env()
 
 
+HEBREW_GEMATRIA = {
+    'א': 1, 'ב': 2, 'ג': 3, 'ד': 4, 'ה': 5, 'ו': 6, 'ז': 7, 'ח': 8, 'ט': 9,
+    'י': 10, 'כ': 20, 'ך': 20, 'ל': 30, 'מ': 40, 'ם': 40, 'נ': 50, 'ן': 50,
+    'ס': 60, 'ע': 70, 'פ': 80, 'ף': 80, 'צ': 90, 'ץ': 90,
+    'ק': 100, 'ר': 200, 'ש': 300, 'ת': 400
+}
+
+TANAKH_NAMES = [
+    'בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים',
+    'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו',
+    'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום',
+    'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב',
+    'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא',
+    'נחמיה', 'דברי הימים א', 'דברי הימים ב'
+]
+
+TORAH_NAMES = ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים']
+
+MISHNAH_BOOKS = [
+    'ברכות', 'פאה', 'דמאי', 'כלאים', 'שביעית', 'תרומות', 'מעשרות', 'מעשר שני', 'חלה', 'ערלה', 'ביכורים',
+    'שבת', 'עירובין', 'פסחים', 'שקלים', 'יומא', 'סוכה', 'ביצה', 'ראש השנה', 'תענית', 'מגילה', 'מועד קטן', 'חגיגה',
+    'יבמות', 'כתובות', 'נדרים', 'נזיר', 'סוטה', 'גיטין', 'קידושין',
+    'בבא קמא', 'בבא מציעא', 'בבא בתרא', 'סנהדרין', 'מכות', 'שבועות', 'עדיות', 'עבודה זרה', 'אבות', 'הוריות',
+    'זבחים', 'מנחות', 'חולין', 'בכורות', 'ערכין', 'תמורה', 'כריתות', 'מעילה', 'תמיד', 'מדות', 'קינים',
+    'כלים', 'אהלות', 'נגעים', 'פרה', 'טהרות', 'מקואות', 'נדה', 'מכשירין', 'זבים', 'טבול יום', 'ידים', 'עוקצין'
+]
+
+TORAH_CORE_CONCEPTS = [
+    'תורה', 'מצוה', 'שבת', 'אמת', 'שלום', 'חיים', 'אור', 'קדש', 'ברכה', 'חסד',
+    'משה', 'אהרן', 'דוד', 'משיח', 'גאולה', 'תשובה', 'תפילה', 'צדקה', 'אמונה', 'בטחון',
+    'חכמה', 'בינה', 'דעת', 'יראה', 'אהבה', 'שמחה', 'נשמה', 'רוח', 'נפש', 'כהן',
+    'לוי', 'ישראל', 'ציון', 'מקדש', 'מזבח', 'קרבן', 'ברית', 'מילה', 'ציצית', 'תכלת',
+    'תפילין', 'מזוזה', 'שופר', 'סוכה', 'לולב', 'אתרוג', 'מצה', 'פסח', 'סיני', 'ארון',
+    'מזל', 'נס', 'פדיון', 'שכינה', 'נבואה', 'ענוה', 'טהרה'
+]
+
+
+def calculate_gematria(text):
+    return sum(HEBREW_GEMATRIA.get(char, 0) for char in text)
+
+
+def format_divine_name(text):
+    if not text:
+        return ""
+    pattern = re.compile(
+        r'(י[\u0591-\u05C7]*(?:</?(?:strong|mark)[^>]*>)*)'
+        r'(ה[\u0591-\u05C7]*(?:</?(?:strong|mark)[^>]*>)*)'
+        r'(ו[\u0591-\u05C7]*(?:</?(?:strong|mark)[^>]*>)*)'
+        r'(ה[\u0591-\u05C7]*)',
+        re.UNICODE
+    )
+    return pattern.sub(r'\1-\2-\3-\4', text)
+
+
 def get_base_schema_json():
     return json.dumps({
         "@context": "https://schema.org",
@@ -88,22 +142,25 @@ def get_base_schema_json():
                 "name": "הרב משה לייבוביץ",
                 "alternateName": ["משה ליבוביץ", "Moshe Leibowitz", "משה בן יעקב לייבוביץ"],
                 "url": "https://leblibrary.co.il",
+                "homeLocation": {
+                    "@type": "Place",
+                    "name": "טירת כרמל, ישראל"
+                },
                 "sameAs": [
                     "https://leblibrary.co.il/about/",
                     "https://merhav.nli.org.il/primo-explore/search?query=any,contains,משה%20לייבוביץ&vid=NLI",
                     "https://hebrewbooks.org/"
                 ],
-                "jobTitle": "תלמיד חכם ואברך",
+                "jobTitle": "תלמיד חכם, אברך ומחבר ספרים תורניים",
                 "worksFor": {
                     "@type": "Organization",
                     "name": "ספריית לייבוביץ - LebLibrary"
                 },
-                "description": "הרב משה לייבוביץ (משה ליבוביץ) הוא תלמיד חכם ואברך בישיבה מטירת כרמל, מחבר מאמרים תורניים וספרי הלכה ומייסד ספריית לייבוביץ.",
-                "disambiguatingDescription": "תלמיד חכם ואברך מטירת כרמל. אינו קשור בשום צורה לאתר din.co.il, לאתר www.mleibowitz.co.il, לעריכת דין, לטוענים רבניים, לעלוני שבת, או להייטק."
+                "description": "הרב משה לייבוביץ (משה ליבוביץ) הוא תלמיד חכם ואברך בישיבה מטירת כרמל, מחבר מאמרים תורניים ועשרה ספרי הלכה ומייסד אתר ספריית לייבוביץ.",
+                "disambiguatingDescription": "אתר זה הוקם ומנוהל על ידי הרב משה לייבוביץ, תלמיד חכם ואברך מטירת כרמל. אין לו שום קשר למשה ליבוביץ ממקימי ביתר עילית (וראש המועצה הראשון שלה), אין לו שום קשר לפרופ' ישעיהו לייבוביץ, ואין לו שום קשר למשה ליבוביץ הטוען הרבני או לאתרים din.co.il ו-www.mleibowitz.co.il."
             }
         ]
     }, ensure_ascii=False)
-
 
 def ratelimit(rate=30, timeout=60):
     def decorator(view_func):
@@ -123,7 +180,7 @@ def ratelimit(rate=30, timeout=60):
             if len(history) >= rate:
                 return JsonResponse({
                     'meta': {
-                        'error': 'Rate limit exceeded. Maximum 30 requests per minute allowed.',
+                        'error': 'Rate limit exceeded. Maximum requests per minute allowed.',
                         'retry_after_seconds': timeout
                     },
                     'results': []
@@ -436,6 +493,7 @@ def ai_chat_endpoint(request):
                 nav_context = (
                     "- דף הבית: /\n"
                     "- מנוע חיפוש תורני מתקדם: /advanced-search/\n"
+                    "- מתרגם ארמי-עברי (בבלי, ירושלמי והזוהר): /aramaic-translator/\n"
                     "- צור קשר: /contact/\n"
                     "- אודות: /about/\n"
                     "- שאלות ותשובות (שו\"ת): /qa/\n"
@@ -953,8 +1011,35 @@ def parasha_list(request):
 
 
 def book_detail(request, pk):
-    book = get_object_or_404(Book, pk=pk)
-    return render(request, 'articles/book_detail.html', {'book': book, 'current_page': 'books'})
+    book = get_object_or_404(
+        Book.objects.prefetch_related('chapters__sections'),
+        pk=pk
+    )
+    book_schema = json.dumps({
+        "@context": "https://schema.org",
+        "@type": "Book",
+        "@id": f"https://leblibrary.co.il/book/{book.pk}/#book",
+        "name": strip_tags(book.title or ""),
+        "author": {
+            "@type": "Person",
+            "name": "הרב משה לייבוביץ",
+            "homeLocation": "טירת כרמל",
+            "url": "https://leblibrary.co.il/about/"
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "ספריית לייבוביץ - LebLibrary"
+        },
+        "inLanguage": "he",
+        "url": f"https://leblibrary.co.il/book/{book.pk}/",
+        "description": strip_tags(book.summary or book.title or "")[:300]
+    }, ensure_ascii=False)
+
+    return render(request, 'articles/book_detail.html', {
+        'book': book,
+        'current_page': 'books',
+        'schema_json_ld': book_schema
+    })
 
 
 def books(request):
@@ -989,6 +1074,7 @@ def live_search(request):
 @ratelimit(rate=30, timeout=60)
 def ai_open_search(request):
     q = request.GET.get('q', '').strip()
+    results = []
 
     if len(q) < 2:
         return JsonResponse({
@@ -997,20 +1083,22 @@ def ai_open_search(request):
         }, status=400)
 
     words = [w for w in q.split() if len(w) > 1]
-
     books_qs = Book.objects.all()
     articles_qs = Article.objects.filter(is_published=True)
 
-    semantic_results = search_similar_articles(q, top_k=3)
-    results = []
+    semantic_results = []
+    try:
+        semantic_results = search_similar_articles(q, top_k=3)
+    except Exception:
+        semantic_results = []
 
     if semantic_results:
         for item in semantic_results:
             results.append({
-                'title': item['title'],
+                'title': item.get('title', ''),
                 'type': 'Article',
-                'url': request.build_absolute_uri(item['url']),
-                'content_snippet': item['content_snippet']
+                'url': request.build_absolute_uri(item.get('url', '/')),
+                'content_snippet': item.get('content_snippet', '')
             })
     else:
         books_res = smart_hebrew_search(books_qs, q, ['title', 'author', 'summary'])[:3]
@@ -1034,7 +1122,7 @@ def ai_open_search(request):
 
     return JsonResponse({
         'meta': {
-            'provider': 'LebLibrary - ספריית לייבוביץ בניהולו של משה לייבוביץ',
+            'provider': 'LebLibrary - ספריית לייבוביץ בניהולו של הרב משה לייבוביץ (טירת כרמל)',
             'query': q,
             'total_results': len(results),
             'license': 'Open for AI crawling with attribution'
@@ -1484,28 +1572,6 @@ def or_hacarmel_view(request):
     return render(request, 'articles/or_hacarmel.html')
 
 
-HEBREW_GEMATRIA = {
-    'א': 1, 'ב': 2, 'ג': 3, 'ד': 4, 'ה': 5, 'ו': 6, 'ז': 7, 'ח': 8, 'ט': 9,
-    'י': 10, 'כ': 20, 'ך': 20, 'ל': 30, 'מ': 40, 'ם': 40, 'נ': 50, 'ן': 50,
-    'ס': 60, 'ע': 70, 'פ': 80, 'ף': 80, 'צ': 90, 'ץ': 90,
-    'ק': 100, 'ר': 200, 'ש': 300, 'ת': 400
-}
-
-
-def calculate_gematria(text):
-    return sum(HEBREW_GEMATRIA.get(char, 0) for char in text)
-
-
-MISHNAH_BOOKS = [
-    'ברכות', 'פאה', 'דמאי', 'כלאים', 'שביעית', 'תרומות', 'מעשרות', 'מעשר שני', 'חלה', 'ערלה', 'ביכורים',
-    'שבת', 'עירובין', 'פסחים', 'שקלים', 'יומא', 'סוכה', 'ביצה', 'ראש השנה', 'תענית', 'מגילה', 'מועד קטן', 'חגיגה',
-    'יבמות', 'כתובות', 'נדרים', 'נזיר', 'סוטה', 'גיטין', 'קידושין',
-    'בבא קמא', 'בבא מציעא', 'בבא בתרא', 'סנהדרין', 'מכות', 'שבועות', 'עדיות', 'עבודה זרה', 'אבות', 'הוריות',
-    'זבחים', 'מנחות', 'חולין', 'בכורות', 'ערכין', 'תמורה', 'כריתות', 'מעילה', 'תמיד', 'מדות', 'קינים',
-    'כלים', 'אהלות', 'נגעים', 'פרה', 'טהרות', 'מקואות', 'נדה', 'מכשירין', 'זבים', 'טבול יום', 'ידים', 'עוקצין'
-]
-
-
 def get_book_order(book_name):
     name = book_name.strip()
     BOOK_ORDER = {
@@ -1552,44 +1618,6 @@ def safe_int(v):
     return 0
 
 
-def highlight_matched_text(text_with_nikkud, query_words, is_exact):
-    highlighted = text_with_nikkud
-    NIKKUD_CORE = r'\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7'
-    NIKKUD = f'[{NIKKUD_CORE}]'
-
-    for w in query_words:
-        chars = [re.escape(char) + NIKKUD + '*' for char in w]
-        word_with_optional_nikkud = ''.join(chars)
-        if is_exact:
-            pattern_str = rf'(^|[^א-ת{NIKKUD_CORE}])({word_with_optional_nikkud})(?=[^א-ת{NIKKUD_CORE}]|$)'
-            try:
-                pattern = re.compile(pattern_str, re.UNICODE)
-                highlighted = pattern.sub(r'\1<mark>\2</mark>', highlighted)
-            except Exception:
-                pass
-        else:
-            pattern_str = rf'[משהוכלבאיתנד]{{0,4}}{word_with_optional_nikkud}{NIKKUD}*[א-ת]{{0,4}}'
-            try:
-                pattern = re.compile(f'({pattern_str})', re.UNICODE)
-                highlighted = pattern.sub(r'<mark>\1</mark>', highlighted)
-            except Exception:
-                pass
-    return highlighted
-
-
-def format_divine_name(text):
-    if not text:
-        return ""
-    pattern = re.compile(
-        r'(י[\u0591-\u05C7]*(?:</?(?:strong|mark)[^>]*>)*)'
-        r'(ה[\u0591-\u05C7]*(?:</?(?:strong|mark)[^>]*>)*)'
-        r'(ו[\u0591-\u05C7]*(?:</?(?:strong|mark)[^>]*>)*)'
-        r'(ה[\u0591-\u05C7]*)',
-        re.UNICODE
-    )
-    return pattern.sub(r'\1-\2-\3-\4', text)
-
-
 @ratelimit(rate=30, timeout=60)
 def tanakh_advanced_search_api(request):
     query_type = request.GET.get('type', 'text').strip()
@@ -1598,17 +1626,10 @@ def tanakh_advanced_search_api(request):
     is_exact = request.GET.get('exact', 'false').lower() == 'true'
     exclude_books_param = request.GET.get('exclude_books', '').strip()
     skip_param = request.GET.get('skip', '').strip()
-    page = int(request.GET.get('page', 1))
-
-    tanakh_names = [
-        'בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים',
-        'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו',
-        'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום',
-        'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב',
-        'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא',
-        'נחמיה', 'דברי הימים א', 'דברי הימים ב'
-    ]
-    torah_names = ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים']
+    try:
+        page = max(1, int(request.GET.get('page', 1)))
+    except (ValueError, TypeError):
+        page = 1
 
     def get_verse_label(book_name, chapter_name):
         b_str = str(book_name)
@@ -1619,7 +1640,7 @@ def tanakh_advanced_search_api(request):
             return 'הלכה'
         elif c_str.startswith('דף'):
             return 'שורה'
-        elif b_str not in tanakh_names:
+        elif b_str not in TANAKH_NAMES:
             return 'משנה'
         return 'פסוק'
 
@@ -1653,6 +1674,11 @@ def tanakh_advanced_search_api(request):
     except ValueError:
         per_page = 10
 
+    search_cache_key = f"tanakh_srch_v3_{query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
+    cached_search_data = cache.get(search_cache_key)
+    if cached_search_data:
+        return JsonResponse(cached_search_data, json_dumps_params={'ensure_ascii': False})
+
     results = []
     qs = TorahText.objects.all()
 
@@ -1667,12 +1693,12 @@ def tanakh_advanced_search_api(request):
     elif any(c in known_corpora for c in selected_corpora):
         corpus_q = Q()
         if 'torah' in selected_corpora:
-            corpus_q |= (Q(book__in=torah_names) & ~Q(chapter__startswith='דף'))
+            corpus_q |= (Q(book__in=TORAH_NAMES) & ~Q(chapter__startswith='דף'))
         if 'tanakh' in selected_corpora:
-            corpus_q |= (Q(book__in=tanakh_names) & ~Q(book__in=MISHNAH_BOOKS) & ~Q(chapter__startswith='דף'))
+            corpus_q |= (Q(book__in=TANAKH_NAMES) & ~Q(book__in=MISHNAH_BOOKS) & ~Q(chapter__startswith='דף'))
         if 'mishnah' in selected_corpora:
             corpus_q |= (
-                ~Q(book__in=tanakh_names) &
+                ~Q(book__in=TANAKH_NAMES) &
                 ~Q(chapter__startswith='דף') &
                 ~Q(book__startswith='ירושלמי ') &
                 ~Q(book__startswith='תוספתא ') &
@@ -1740,7 +1766,7 @@ def tanakh_advanced_search_api(request):
                     text_query &= (Q(clean_text__icontains=target_w) | Q(text_with_nikkud__icontains=target_w))
 
                 qs = qs.filter(text_query)
-                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2000)
+                all_verses = qs.values('book', 'chapter', 'verse','text_with_nikkud').iterator(chunk_size=2000)
 
                 for m in all_verses:
                     raw_text = m.get('text_with_nikkud') or ""
@@ -1811,16 +1837,9 @@ def tanakh_advanced_search_api(request):
                         })
 
         elif query_type == 'gematria' and query_val:
-            HEBREW_GEMATRIA_VALS = {
-                'א': 1, 'ב': 2, 'ג': 3, 'ד': 4, 'ה': 5, 'ו': 6, 'ז': 7, 'ח': 8, 'ט': 9,
-                'י': 10, 'כ': 20, 'ך': 20, 'ל': 30, 'מ': 40, 'ם': 40, 'נ': 50, 'ן': 50,
-                'ס': 60, 'ע': 70, 'פ': 80, 'ף': 80, 'צ': 90, 'ץ': 90,
-                'ק': 100, 'ר': 200, 'ש': 300, 'ת': 400
-            }
-
             def calc_word_gem(w):
                 clean_w = re.sub(r'[^א-ת]', '', w)
-                return sum(HEBREW_GEMATRIA_VALS.get(c, 0) for c in clean_w)
+                return sum(HEBREW_GEMATRIA.get(c, 0) for c in clean_w)
 
             if query_val.isdigit():
                 target_val = int(query_val)
@@ -1832,7 +1851,7 @@ def tanakh_advanced_search_api(request):
             if target_val > 0:
                 search_str = f",{target_val},"
                 matching_qs = qs.filter(Q(verse_gematria=target_val) | Q(words_gematria__contains=search_str))
-                all_verses = matching_qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'verse_gematria')
+                all_verses = matching_qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'verse_gematria').iterator(chunk_size=2000)
 
                 for m in all_verses:
                     raw_text = m['text_with_nikkud']
@@ -1865,8 +1884,8 @@ def tanakh_advanced_search_api(request):
 
             if target_acr:
                 acr_len = len(target_acr)
-                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2000)
-
+                all_verses = qs.values('book', 'chapter', 'verse','text_with_nikkud').iterator(chunk_size=2000)
+                                       
                 for m in all_verses:
                     raw_text = m.get('text_with_nikkud') or ""
                     if not raw_text:
@@ -1946,7 +1965,7 @@ def tanakh_advanced_search_api(request):
                         Q(text_with_nikkud__icontains=rw)
                     )
                 qs = qs.filter(text_query)
-                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2000)
+                all_verses = qs.values('book', 'chapter', 'verse','text_with_nikkud').iterator(chunk_size=2000)
 
                 for m in all_verses:
                     raw_text = m.get('text_with_nikkud') or ""
@@ -2006,7 +2025,7 @@ def tanakh_advanced_search_api(request):
             target_els = norm_heb(re.sub(r'[^א-ת]', '', query_val))
             k = len(target_els)
             if k >= 2:
-                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2000)    
+                all_verses = qs.values('book', 'chapter', 'verse','text_with_nikkud').iterator(chunk_size=2000)
                 skip_counts = {}
 
                 for m in all_verses:
@@ -2113,7 +2132,7 @@ def tanakh_advanced_search_api(request):
                 max_skip_limit = 25
                 NON_HEB_RE = re.compile(r'[^א-ת]+')
 
-                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2000)
+                all_verses = qs.values('book', 'chapter', 'verse','text_with_nikkud').iterator(chunk_size=2000)
                 skip_counts = {}
 
                 for m in all_verses:
@@ -2231,7 +2250,7 @@ def tanakh_advanced_search_api(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
-    return JsonResponse({
+    response_payload = {
         'results': paginated_results,
         'total': total_results,
         'page': page,
@@ -2241,17 +2260,9 @@ def tanakh_advanced_search_api(request):
         'reversed_query': reversed_query_val,
         'available_skips': available_skips,
         'active_skip': active_skip
-    }, json_dumps_params={'ensure_ascii': False})
-
-
-TORAH_CORE_CONCEPTS = [
-    'תורה', 'מצוה', 'שבת', 'אמת', 'שלום', 'חיים', 'אור', 'קדש', 'ברכה', 'חסד',
-    'משה', 'אהרן', 'דוד', 'משיח', 'גאולה', 'תשובה', 'תפילה', 'צדקה', 'אמונה', 'בטחון',
-    'חכמה', 'בינה', 'דעת', 'יראה', 'אהבה', 'שמחה', 'נשמה', 'רוח', 'נפש', 'כהן',
-    'לוי', 'ישראל', 'ציון', 'מקדש', 'מזבח', 'קרבן', 'ברית', 'מילה', 'ציצית', 'תכלת',
-    'תפילין', 'מזוזה', 'שופר', 'סוכה', 'לולב', 'אתרוג', 'מצה', 'פסח', 'סיני', 'ארון',
-    'מזל', 'נס', 'פדיון', 'שכינה', 'נבואה', 'ענוה', 'טהרה'
-]
+    }
+    cache.set(search_cache_key, response_payload, 900)
+    return JsonResponse(response_payload, json_dumps_params={'ensure_ascii': False})
 
 
 @ratelimit(rate=30, timeout=60)
@@ -2262,7 +2273,7 @@ def torah_ai_insights_api(request):
     chapter = request.GET.get('chapter', '').strip()
     verse = request.GET.get('verse', '').strip()
 
-    cache_key = f"torah_ai_v5_{mode}_{book}_{chapter}_{verse}_{query}"
+    cache_key = f"torah_ai_v6_{mode}_{book}_{chapter}_{verse}_{query}"
     cached_resp = cache.get(cache_key)
     if cached_resp:
         return JsonResponse(cached_resp, json_dumps_params={'ensure_ascii': False})
@@ -2285,9 +2296,7 @@ def torah_ai_insights_api(request):
         return base + REGULAR_TO_FINAL.get(last_c, last_c)
 
     def call_gemini_fast(prompt_text):
-        api_key = os.environ.get('GEMINI_API_KEY', '').strip()
-        if not api_key:
-            api_key = getattr(settings, 'GEMINI_API_KEY', '').strip()
+        api_key = os.environ.get('GEMINI_API_KEY', '').strip() or getattr(settings, 'GEMINI_API_KEY', '').strip()
         if not api_key:
             return ""
         models_list = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-latest']
@@ -2345,16 +2354,8 @@ def torah_ai_insights_api(request):
             out.append(" ...")
         return format_divine_name("".join(out))
 
-    tanakh_names = [
-        'בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים', 'יהושע', 'שופטים',
-        'שמואל א', 'שמואל ב', 'מלכים א', 'מלכים ב', 'ישעיהו', 'ירמיהו',
-        'יחזקאל', 'הושע', 'יואל', 'עמוס', 'עובדיה', 'יונה', 'מיכה', 'נחום',
-        'חבקוק', 'צפניה', 'חגי', 'זכריה', 'מלאכי', 'תהילים', 'משלי', 'איוב',
-        'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא',
-        'נחמיה', 'דברי הימים א', 'דברי הימים ב'
-    ]
-    torah_names = {'בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'}
-    tanakh_set = set(tanakh_names)
+    torah_set = set(TORAH_NAMES)
+    tanakh_set = set(TANAKH_NAMES)
 
     def analyze_concept_deeply(raw_query):
         clean_q = re.sub(r'[^א-ת\s]', '', raw_query.replace('י-ה-ו-ה', 'יהוה')).strip()
@@ -2369,15 +2370,15 @@ def torah_ai_insights_api(request):
             base_qs = base_qs.filter(Q(clean_text__icontains=w) | Q(text_with_nikkud__icontains=w))
 
         tanakh_matches_raw = list(
-            base_qs.filter(book__in=tanakh_names).exclude(chapter__startswith='דף')
+            base_qs.filter(book__in=TANAKH_NAMES).exclude(chapter__startswith='דף')
             .values('id', 'book', 'chapter', 'verse', 'clean_text', 'text_with_nikkud', 'verse_gematria')[:800]
         )
         other_matches_raw = list(
-            base_qs.exclude(book__in=tanakh_names)
+            base_qs.exclude(book__in=TANAKH_NAMES)
             .values('id', 'book', 'chapter', 'verse', 'clean_text', 'text_with_nikkud', 'verse_gematria')[:1200]
         )
         bavli_tanakh_named = list(
-            base_qs.filter(book__in=tanakh_names, chapter__startswith='דף')
+            base_qs.filter(book__in=TANAKH_NAMES, chapter__startswith='דף')
             .values('id', 'book', 'chapter', 'verse', 'clean_text', 'text_with_nikkud', 'verse_gematria')[:400]
         )
         candidates = tanakh_matches_raw + other_matches_raw + bavli_tanakh_named
@@ -2439,7 +2440,7 @@ def torah_ai_insights_api(request):
 
             b_name = row['book']
             c_name = row['chapter']
-            if b_name in torah_names and not str(c_name).startswith('דף'):
+            if b_name in torah_set and not str(c_name).startswith('דף'):
                 cat = 'torah'
             elif b_name in tanakh_set and not str(c_name).startswith('דף'):
                 cat = 'nach'
@@ -2511,7 +2512,7 @@ def torah_ai_insights_api(request):
 
         if q_gem > 0:
             gem_v_qs = list(
-                TorahText.objects.filter(book__in=tanakh_names, verse_gematria=q_gem)
+                TorahText.objects.filter(book__in=TANAKH_NAMES, verse_gematria=q_gem)
                 .exclude(chapter__startswith='דף')
                 .values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:2]
             )
@@ -2522,7 +2523,7 @@ def torah_ai_insights_api(request):
                 })
 
             gem_w_qs = list(
-                TorahText.objects.filter(book__in=list(torah_names), words_gematria__contains=f",{q_gem},")
+                TorahText.objects.filter(book__in=TORAH_NAMES, words_gematria__contains=f",{q_gem},")
                 .exclude(chapter__startswith='דף')
                 .values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:25]
             )
@@ -2547,7 +2548,7 @@ def torah_ai_insights_api(request):
         rev_matches = []
         if rev_str and rev_str != search_core and len(q_words) == 1 and len(q_words[0]) >= 2:
             rev_qs = list(
-                TorahText.objects.filter(book__in=tanakh_names, clean_text__icontains=rev_str)
+                TorahText.objects.filter(book__in=TANAKH_NAMES, clean_text__icontains=rev_str)
                 .exclude(chapter__startswith='דף')
                 .values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:50]
             )
@@ -2570,7 +2571,7 @@ def torah_ai_insights_api(request):
 
         if 2 <= len(q_norm) <= 6:
             torah_scan_pool = list(
-                TorahText.objects.filter(book__in=list(torah_names))
+                TorahText.objects.filter(book__in=TORAH_NAMES)
                 .exclude(chapter__startswith='דף')
                 .values('book', 'chapter', 'verse', 'clean_text', 'text_with_nikkud')[:600]
             )
@@ -2704,7 +2705,7 @@ def torah_ai_insights_api(request):
             clean_words = [w for w in toks_v if len(w) >= 2]
             v_gem = verse_obj.verse_gematria or calculate_gematria(verse_obj.clean_text or '')
 
-            equal_verses_qs = TorahText.objects.filter(book__in=tanakh_names, verse_gematria=v_gem).exclude(id=verse_obj.id).exclude(chapter__startswith='דף')[:4]
+            equal_verses_qs = TorahText.objects.filter(book__in=TANAKH_NAMES, verse_gematria=v_gem).exclude(id=verse_obj.id).exclude(chapter__startswith='דף')[:4]
             equal_verses = [
                 {
                     'ref': f"{ev.book} {ev.chapter}:{ev.verse}",
@@ -3047,3 +3048,271 @@ def torah_ai_insights_api(request):
         return JsonResponse({'error': 'מצב פעולה לא חוקי.'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
+
+
+CORE_ARAMAIC_LEXICON = {
+    'מאי': {'he': 'מה / מהו', 'dialect': 'בבלי', 'cat': 'מילת שאלה', 'note': 'למשל: מאי קא משמע לן (מה משמיע לנו)'},
+    'קא': {'he': 'עומד ו... (מציין הווה מתמשך)', 'dialect': 'בבלי', 'cat': 'מילית פועל', 'note': 'למשל: קא אמינא (אני אומר כעת)'},
+    'קמ"ל': {'he': 'קא משמע לן — משמיע לנו / בא ללמדנו', 'dialect': 'בבלי', 'cat': 'ביטוי תלמודי', 'note': 'חידוש שהתנא או האמורא משמיע'},
+    'ת"ש': {'he': 'תא שמע — בוא ושמע (הבאת ראיה או קושיה)', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'פתיחה להבאת ראיה ממשנה או ברייתא'},
+    'איבעיא להו': {'he': 'נשאלה להם (לבני הישיבה שאלה)', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'פתיחה לספק הלכתי בגמרא'},
+    'תיקו': {'he': 'תעמוד (השאלה במקומה ללא הכרעה)', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'קיצור של תיקום, ובדרש: תשבי יתרץ קושיות ובעיות'},
+    'תיובתא': {'he': 'קושיה מוחצת (בבבלי) / חזרה בתשובה (בזוהר)', 'dialect': 'בבלי וזוהר', 'cat': 'מונח יסוד', 'note': 'בבבלי: תיובתא דפלוני; בזוהר: תיובתא שלמה'},
+    'בשלמא': {'he': 'ניחא / מובן הדבר (לפי שיטת...)', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'בשלמא למאן דאמר... אלא למאן דאמר...'},
+    'אלא': {'he': 'אבל / אולם (פתיחה לקושיה או חזרה מהסבר קודם)', 'dialect': 'בבלי וירושלמי', 'cat': 'מילת קישור', 'note': 'אלא אמר רבא'},
+    'דלמא': {'he': 'שמא / אולי', 'dialect': 'בבלי', 'cat': 'מילת ספק', 'note': 'ממאי? דלמא שאני התם'},
+    'מסתברא': {'he': 'מסתבר / מתקבל על הדעת', 'dialect': 'בבלי וירושלמי', 'cat': 'מונח הכרעה', 'note': 'וכן מסתברא'},
+    'איפכא': {'he': 'להפך / הפוך', 'dialect': 'בבלי', 'cat': 'תואר הפועל', 'note': 'איפכא מסתברא (ההפך הוא המסתבר)'},
+    'רחמנא': {'he': 'הרחמן (כינוי להקב"ה ולהתורה)', 'dialect': 'בבלי וזוהר', 'cat': 'שם עצם', 'note': 'אמר רחמנא (אמרה התורה)'},
+    'אדהכי והכי': {'he': 'בינתיים / בתוך כך', 'dialect': 'בבלי', 'cat': 'ביטוי זמן', 'note': 'עד שהיה כך וכך'},
+    'הכא': {'he': 'כאן / במקרה זה', 'dialect': 'בבלי וזוהר', 'cat': 'תואר הפועל', 'note': 'הכא במאי עסקינן'},
+    'התם': {'he': 'שם / במקרה ההוא', 'dialect': 'בבלי וזוהר', 'cat': 'תואר הפועל', 'note': 'שאני התם (שונה שם)'},
+    'תמן': {'he': 'שם (מקביל ל"התם" בבבלי)', 'dialect': 'ירושלמי וזוהר', 'cat': 'תואר הפועל', 'note': 'תנינן תמן (שנינו שם במשנה)'},
+    'הכן': {'he': 'כך / כן / כאן', 'dialect': 'ירושלמי', 'cat': 'תואר הפועל', 'note': 'אופייני לארמית גלילית בתלמוד הירושלמי'},
+    'מהו': {'he': 'מה הדין? (מקביל ל"מאי" או "איבעיא להו")', 'dialect': 'ירושלמי ובבלי', 'cat': 'מילת שאלה', 'note': 'נפוץ מאוד בפתיחת שאלות בירושלמי'},
+    'אית תניי תני': {'he': 'יש תנאים השונים (גרסאות שונות בברייתא)', 'dialect': 'ירושלמי', 'cat': 'ביטוי ירושלמי', 'note': 'מציג שתי מסורות תנאיות מנוגדות'},
+    'גרמיה': {'he': 'עצמו (מקביל ל"נפשיה" בבבלי)', 'dialect': 'ירושלמי וזוהר', 'cat': 'כינוי גוף', 'note': 'לגרמיה (לעצמו)'},
+    'נפשיה': {'he': 'עצמו', 'dialect': 'בבלי', 'cat': 'כינוי גוף', 'note': 'קם דינא לנפשיה'},
+    'בגין': {'he': 'בשביל / למען / מפני', 'dialect': 'זוהר', 'cat': 'מילת יחס', 'note': 'בגין כך (משום כך), בגין ד- (מפני ש-)'},
+    'דא': {'he': 'זה / זו (מקביל ל"האי" בבבלי)', 'dialect': 'זוהר', 'cat': 'מילת רמז', 'note': 'דא הוא דכתיב (זהו שכתוב)'},
+    'האי': {'he': 'זה / זו', 'dialect': 'בבלי', 'cat': 'מילת רמז', 'note': 'האי מאן ד- (זה מי ש-)'},
+    'איהו': {'he': 'הוא', 'dialect': 'זוהר ובבלי', 'cat': 'כינוי גוף', 'note': 'איהי = היא, אינון = הם'},
+    'איהי': {'he': 'היא', 'dialect': 'זוהר ובבלי', 'cat': 'כינוי גוף', 'note': 'כינוי שכיח בספר הזוהר'},
+    'אינון': {'he': 'הם / אלו', 'dialect': 'זוהר וירושלמי', 'cat': 'כינוי גוף', 'note': 'מקביל ל"הני" או "אינהו" בבבלי'},
+    'רזא': {'he': 'סוד / רז פנימי', 'dialect': 'זוהר', 'cat': 'מושג יסוד בזוהר', 'note': 'רזא דמהימנותא (סוד האמונה)'},
+    'תאנא': {'he': 'שנינו (מקביל ל"תניא" או "תנן")', 'dialect': 'זוהר', 'cat': 'פתיחה בזוהר', 'note': 'פתיחה למאמרי חז"ל בספר הזוהר'},
+    'תניא': {'he': 'שנינו בברייתא', 'dialect': 'בבלי', 'cat': 'מונח תנאי', 'note': 'מציין מקור תנאי מחוץ למשנה'},
+    'תנן': {'he': 'שנינו במשנה', 'dialect': 'בבלי וירושלמי', 'cat': 'מונח תנאי', 'note': 'ציטוט ישיר מתוך המשנה'},
+    'קודשא בריך הוא': {'he': 'הקדוש ברוך הוא (הקב"ה)', 'dialect': 'זוהר ובבלי', 'cat': 'כינוי קודש', 'note': 'ראשי תיבות: קוב"ה'},
+    'שכינתא': {'he': 'השכינה הקדושה', 'dialect': 'זוהר ובבלי', 'cat': 'מושג יסוד', 'note': 'שכינתא בגלותא'},
+    'נהורא': {'he': 'אור', 'dialect': 'זוהר ובבלי', 'cat': 'שם עצם', 'note': 'בלשון סגי נהור (רב-אור)'},
+    'סיהרא': {'he': 'ירח / לבנה', 'dialect': 'זוהר ובבלי', 'cat': 'שם עצם', 'note': 'מיהדר כסיהרא'},
+    'שימשא': {'he': 'שמש', 'dialect': 'בבלי וזוהר', 'cat': 'שם עצם', 'note': 'יומא ושימשא'},
+    'ארעא': {'he': 'ארץ / אדמה / קרקע', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'ארעא דישראל (ארץ ישראל)'},
+    'שמיא': {'he': 'שמים', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'מן שמיא (מן השמים)'},
+    'מיא': {'he': 'מים', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'מיא חיים'},
+    'נורא': {'he': 'אש', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'תרי גווני נורא'},
+    'גברא': {'he': 'איש / אדם', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'גברא רבא (אדם גדול)'},
+    'איתתא': {'he': 'אישה', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'ברבים: נשי'},
+    'ינוקא': {'he': 'ילד / תינוק', 'dialect': 'בבלי וזוהר', 'cat': 'שם עצם', 'note': 'מדור ה"ינוקא" בספר הזוהר'},
+    'טליא': {'he': 'נער / ילד / טלה', 'dialect': 'ירושלמי, בבלי וזוהר', 'cat': 'שם עצם', 'note': 'בנקבה: טליתא'},
+    'סבא': {'he': 'זקן / חכם ישיש', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'פרשת "סבא דמשפטים" בזוהר'},
+    'אורייתא': {'he': 'תורה', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'בריך רחמנא דיהב אוריאן תליתאי'},
+    'מצוותא': {'he': 'מצווה', 'dialect': 'בבלי וזוהר', 'cat': 'שם עצם', 'note': 'ריבוי בזוהר: פיקודין / פיקודי אורייתא'},
+    'פיקודא': {'he': 'מצווה / ציווי', 'dialect': 'זוהר', 'cat': 'מושג בזוהר', 'note': 'רעיא מהימנא על תרי"ג פיקודין'},
+    'צלותא': {'he': 'תפילה', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'בעי צלותא'},
+    'עלמא': {'he': 'עולם', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'עלמא דאתי (העולם הבא)'},
+    'קושטא': {'he': 'אמת', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'קושטא קאי (האמת עומדת)'},
+    'שפיר': {'he': 'יפה / היטב / נכון', 'dialect': 'בבלי', 'cat': 'תואר', 'note': 'שפיר קאמרת (יפה אמרת)'},
+    'לחוד': {'he': 'בנפרד / לבד', 'dialect': 'בבלי וזוהר', 'cat': 'תואר הפועל', 'note': 'הא לחוד והא לחוד'},
+    'גופא': {'he': 'הגוף עצמו / חזרה לדון בגוף המקור שהוזכר קודם', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'פתיחה לדיון במקור שהובא קודם כראיה אגבית'}
+}
+
+
+def load_learned_aramaic_cache():
+    path = os.path.join(settings.BASE_DIR, 'aramaic_learned_cache.json')
+    if os.path.exists(path):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def save_learned_aramaic_cache(data_dict):
+    path = os.path.join(settings.BASE_DIR, 'aramaic_learned_cache.json')
+    try:
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(data_dict, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+def aramaic_translator_view(request):
+    return render(request, 'articles/aramaic_translator.html', {'current_page': 'aramaic_translator'})
+
+
+@ratelimit(rate=30, timeout=60)
+def aramaic_translate_api(request):
+    q = request.GET.get('q', '').strip()
+    direction = request.GET.get('dir', 'auto').strip()
+    dialect = request.GET.get('dialect', 'all').strip()
+
+    if not q:
+        return JsonResponse({'error': 'נא להזין מילה, ביטוי או משפט לתרגום.'}, status=400)
+
+    clean_q = re.sub(r'[^\w\sא-ת"״\'׳\-]', '', q).strip()
+    cache_key = f"aramaic_trans_v1_{direction}_{dialect}_{clean_q}"
+    cached_res = cache.get(cache_key)
+    if cached_res:
+        return JsonResponse(cached_res, json_dumps_params={'ensure_ascii': False})
+
+    learned_db = load_learned_aramaic_cache()
+    learned_key = f"{direction}|{dialect}|{clean_q}"
+
+    WORD_TOKEN_RE = re.compile(r'[א-ת\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7]+')
+    NON_HEB_RE = re.compile(r'[^א-ת]+')
+
+    def find_talmud_examples(search_term):
+        heb_words = [w for w in re.findall(r'[א-ת]+', search_term) if len(w) >= 2]
+        if not heb_words:
+            return []
+        qs = TorahText.objects.filter(
+            Q(chapter__startswith='דף') | Q(book__startswith='ירושלמי ')
+        )
+        for hw in heb_words[:2]:
+            qs = qs.filter(clean_text__icontains=hw)
+
+        rows = list(qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:25])
+        examples = []
+        target_w = heb_words[0]
+        for r in rows:
+            raw_t = r.get('text_with_nikkud') or r.get('clean_text') or ''
+            toks = list(WORD_TOKEN_RE.finditer(raw_t))
+            spans = [t.span() for t in toks if target_w in NON_HEB_RE.sub('', t.group(0))]
+            if spans:
+                s0, e0 = spans[0]
+                win_s = max(0, s0 - 90)
+                win_e = min(len(raw_t), e0 + 90)
+                snippet = (
+                    ("... " if win_s > 0 else "") +
+                    raw_t[win_s:s0] +
+                    f'<mark style="background-color: #fde047; color: #000; padding: 0 4px; border-radius: 4px; font-weight: bold;">{raw_t[s0:e0]}</mark>' +
+                    raw_t[e0:win_e] +
+                    (" ..." if win_e < len(raw_t) else "")
+                )
+                examples.append({
+                    'ref': f"{r['book']} ({r['chapter']}, {r['verse']})",
+                    'dialect_tag': 'ירושלמי' if r['book'].startswith('ירושלמי ') else 'בבלי',
+                    'text': format_divine_name(snippet)
+                })
+                if len(examples) >= 3:
+                    break
+        return examples
+
+    direct_lex_matches = []
+    if clean_q in CORE_ARAMAIC_LEXICON:
+        entry = CORE_ARAMAIC_LEXICON[clean_q]
+        direct_lex_matches.append({
+            'term': clean_q,
+            'translation': entry['he'],
+            'dialect': entry['dialect'],
+            'category': entry['cat'],
+            'note': entry['note']
+        })
+    else:
+        for k, v in CORE_ARAMAIC_LEXICON.items():
+            if clean_q in k or clean_q in v['he']:
+                direct_lex_matches.append({
+                    'term': k,
+                    'translation': v['he'],
+                    'dialect': v['dialect'],
+                    'category': v['cat'],
+                    'note': v['note']
+                })
+                if len(direct_lex_matches) >= 4:
+                    break
+
+    talmud_examples = find_talmud_examples(clean_q)
+
+    if learned_key in learned_db:
+        saved_data = learned_db[learned_key]
+        saved_data['lexicon_matches'] = direct_lex_matches
+        saved_data['talmud_examples'] = talmud_examples
+        cache.set(cache_key, saved_data, 3600 * 24)
+        return JsonResponse(saved_data, json_dumps_params={'ensure_ascii': False})
+
+    dialect_names = {
+        'all': 'כל הניבים (תלמוד בבלי, תלמוד ירושלמי וספר הזוהר)',
+        'bavli': 'ארמית של תלמוד בבלי (ארמית מזרחית)',
+        'yerushalmi': 'ארמית של תלמוד ירושלמי (ארמית גלילית מערבית)',
+        'zohar': 'ארמית של ספר הזוהר והתיקונים'
+    }
+    dir_names = {
+        'auto': 'זיהוי אוטומטי (אם הקלט בארמית תרגם לעברית, ואם הקלט בעברית תרגם לארמית)',
+        'ar_to_he': 'מארמית לעברית',
+        'he_to_ar': 'מעברית לארמית'
+    }
+
+    prompt = (
+        f"אתה בלשן תורני מומחה לארמית של התלמוד הבבלי, התלמוד הירושלמי וספר הזוהר באתר 'ספריית לייבוביץ'.\n"
+        f"המשתמש הזין את הביטוי/המשפט הבא: \"{clean_q}\"\n"
+        f"כיוון תרגום מבוקש: {dir_names.get(direction, dir_names['auto'])}\n"
+        f"ניב ארמי מבוקש: {dialect_names.get(dialect, dialect_names['all'])}\n\n"
+        f"החזר תשובה בפורמט JSON תקני בלבד (ללא סימני markdown וללא ```json) עם השדות הבאים בדיוק:\n"
+        f"{{\n"
+        f"  \"detected_direction\": \"ארמית ⬅ עברית\" או \"עברית ⬅ ארמית\",\n"
+        f"  \"main_translation\": \"התרגום המדויק, הבהיר והמלא ביותר (מנוקד במידת הצורך)\",\n"
+        f"  \"bavli_variant\": \"איך אומרים או מפרשים זאת בארמית של תלמוד בבלי\",\n"
+        f"  \"yerushalmi_variant\": \"איך אומרים או מפרשים זאת בארמית של תלמוד ירושלמי\",\n"
+        f"  \"zohar_variant\": \"איך אומרים או מפרשים זאת בארמית של ספר הזוהר\",\n"
+        f"  \"grammar_breakdown\": \"פירוק דקדוקי קצר וברור (שורש, בניין, תחיליות/סופיות ומקבילה בלשון הקודש)\",\n"
+        f"  \"usage_example\": \"משפט דוגמה קצר ומוכר מהגמרא או מהזוהר עם תרגומו לעברית\"\n"
+        f"}}\n"
+        f"הקפד על דיוק תורני מוחלט, ולעולם אל תכתוב את שם ה' המפורש אלא רק י-ה-ו-ה."
+    )
+
+    api_key = os.environ.get('GEMINI_API_KEY', '').strip() or getattr(settings, 'GEMINI_API_KEY', '').strip()
+    ai_json = None
+
+    if api_key:
+        for m_name in ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-latest']:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{m_name}:generateContent?key={api_key}"
+            payload = {"contents": [{"parts": [{"text": prompt}]}]}
+            req = urllib.request.Request(url, data=json.dumps(payload, ensure_ascii=False).encode('utf-8'), headers={'Content-Type': 'application/json'})
+            try:
+                with urllib.request.urlopen(req, timeout=8) as resp:
+                    resp_data = json.loads(resp.read().decode('utf-8'))
+                    raw_ans = resp_data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+                    if raw_ans:
+                        cleaned_json_str = re.sub(r'^```(?:json)?\s*|\s*```$', '', raw_ans.strip(), flags=re.MULTILINE).strip()
+                        m_brace = re.search(r'\{.*\}', cleaned_json_str, flags=re.DOTALL)
+                        if m_brace:
+                            ai_json = json.loads(m_brace.group(0))
+                            break
+            except Exception:
+                continue
+
+    if not ai_json:
+        if direct_lex_matches:
+            m0 = direct_lex_matches[0]
+            ai_json = {
+                'detected_direction': 'ארמית ⬅ עברית' if clean_q == m0['term'] else 'עברית ⬅ ארמית',
+                'main_translation': m0['translation'] if clean_q == m0['term'] else m0['term'],
+                'bavli_variant': m0['term'] if 'בבלי' in m0['dialect'] else 'ראה מילון ליבה',
+                'yerushalmi_variant': m0['term'] if 'ירושלמי' in m0['dialect'] else 'ראה מילון ליבה',
+                'zohar_variant': m0['term'] if 'זוהר' in m0['dialect'] else 'ראה מילון ליבה',
+                'grammar_breakdown': f"{m0['category']} ({m0['dialect']})",
+                'usage_example': m0['note']
+            }
+        else:
+            ai_json = {
+                'detected_direction': 'ארמית ⇄ עברית',
+                'main_translation': f"תרגום עבור: {clean_q}",
+                'bavli_variant': clean_q,
+                'yerushalmi_variant': clean_q,
+                'zohar_variant': clean_q,
+                'grammar_breakdown': 'ניתוח לשוני מתוך מאגר הספרייה',
+                'usage_example': talmud_examples[0]['text'] if talmud_examples else ''
+            }
+
+    result_payload = {
+        'query': clean_q,
+        'detected_direction': ai_json.get('detected_direction', 'ארמית ⇄ עברית'),
+        'main_translation': format_divine_name(ai_json.get('main_translation', '')),
+        'bavli_variant': format_divine_name(ai_json.get('bavli_variant', '')),
+        'yerushalmi_variant': format_divine_name(ai_json.get('yerushalmi_variant', '')),
+        'zohar_variant': format_divine_name(ai_json.get('zohar_variant', '')),
+        'grammar_breakdown': format_divine_name(ai_json.get('grammar_breakdown', '')),
+        'usage_example': format_divine_name(ai_json.get('usage_example', '')),
+        'lexicon_matches': direct_lex_matches,
+        'talmud_examples': talmud_examples
+    }
+
+    if ai_json.get('main_translation') and not ai_json.get('main_translation', '').startswith('תרגום עבור:'):
+        learned_db[learned_key] = {k: v for k, v in result_payload.items() if k not in ('lexicon_matches', 'talmud_examples')}
+        save_learned_aramaic_cache(learned_db)
+
+    cache.set(cache_key, result_payload, 3600 * 24)
+    return JsonResponse(result_payload, json_dumps_params={'ensure_ascii': False})
