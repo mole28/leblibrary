@@ -10,30 +10,31 @@ from pathlib import Path
 from dotenv import load_dotenv
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
+from django.core.exceptions import DisallowedHost
 
-# טוען את הסודות מקובץ ה-.env (אם קיים)
-load_dotenv()
-
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
+load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR / 'articles' / '.env')
+
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-5^ip_@z$(vgsa#06rkrt$$i712i6#+8*$la%oc=$$0*b(t@v5h')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False # שונה ל-False כדי להציג את עמודי השגיאה המעוצבים
+DEBUG = False  
 
-# רשימת המארחים המורשים מעודכנת עם הדומיין, ה-IP ומארח ה-Sentry
 ALLOWED_HOSTS = [
     'leblibrary.co.il',
     'www.leblibrary.co.il',
     '5.75.224.152',
-    'static.152.224.75.5.clients.your-server.de',  # נוסף בעקבות דיווח Sentry
+    'static.152.224.75.5.clients.your-server.de',
     '127.0.0.1',
-    'localhost'
+    'localhost',
 ]
 
-# Application definition
+CSRF_TRUSTED_ORIGINS = [
+    'https://leblibrary.co.il',
+    'https://www.leblibrary.co.il',
+]
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -43,27 +44,23 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',     # חובה עבור מפות אתר
     'django.contrib.sitemaps',  # התוספת למפת האתר
-    'sslserver',  # נוסף עבור הרצת שרת HTTPS מקומי לבדיקות
-    
-    # ------------------
-    # עורך התוכן:
-    # ------------------
+    'sslserver',                # נוסף עבור הרצת שרת HTTPS מקומי לבדיקות
+
     'django_ckeditor_5',
-    
+
     'articles',
 ]
 
-# חובה להגדיר מספר מזהה לאתר כאשר משתמשים ב-django.contrib.sites
 SITE_ID = 1
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware', # ניהול קבצים סטטיים בייצור
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # ניהול קבצים סטטיים בייצור
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'articles.middleware.VisitorTrackingMiddleware',  # מוקם אחרי אימות המשתמש (כולל פסיק תקין)
+    'articles.middleware.VisitorTrackingMiddleware',  # מוקם אחרי אימות המשתמש
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -95,16 +92,14 @@ DATABASES = {
     }
 }
 
-# עדכון שמאפשר למערכת להתחבר למסד הנתונים בענן אם קיים קישור
 if os.environ.get('DATABASE_URL'):
     DATABASES['default'] = dj_database_url.parse(os.environ.get('DATABASE_URL'))
 
-
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',},
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
 LANGUAGE_CODE = 'en-us'
@@ -119,22 +114,16 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/admin/'
 
-# ==========================================
-# Email SMTP Settings (Gmail)
-# ==========================================
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-EMAIL_HOST_USER = 'moshe111moshe111@gmail.com' 
-EMAIL_HOST_PASSWORD = 'wuhphlqfagffzoue' 
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'moshe111moshe111@gmail.com')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'wuhphlqfagffzoue')
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-# ==========================================
-# Production Security & HTTPS Settings
-# ==========================================
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
@@ -145,25 +134,17 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    SECURE_HSTS_SECONDS = 31536000 
+    SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 
-# ==========================================
-# Media & Upload Settings
-# ==========================================
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# מאפשר קבלת טפסים וטקסטים גדולים מ-Django Admin (100MB)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600
 
-# מאפשר העלאת קבצים גדולים לזיכרון (100MB)
 FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600
 
-# ==========================================
-# Caching Configuration
-# ==========================================
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
@@ -175,18 +156,18 @@ SENTRY_DSN = os.environ.get('SENTRY_DSN', '').strip()
 if SENTRY_DSN:
     sentry_sdk.init(
         dsn=SENTRY_DSN,
+        ignore_errors=[DisallowedHost],
+        traces_sample_rate=0.2,
+        send_default_pii=True,
         integrations=[DjangoIntegration()],
-        traces_sample_rate=1.0,
-        send_default_pii=True
     )
 
-# ==========================================
-# CKEditor 5 Configuration
-# ==========================================
 CKEDITOR_5_CONFIGS = {
     'default': {
-        'toolbar': ['heading', '|', 'bold', 'italic', 'link',
-                    'bulletedList', 'numberedList', 'blockQuote', 'imageUpload', ],
+        'toolbar': [
+            'heading', '|', 'bold', 'italic', 'link',
+            'bulletedList', 'numberedList', 'blockQuote', 'imageUpload',
+        ],
     },
     'extends': {
         'blockToolbar': [
@@ -196,21 +177,27 @@ CKEDITOR_5_CONFIGS = {
             '|',
             'blockQuote',
         ],
-        'toolbar': ['heading', '|', 'alignment', '|', 'bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript',
-        '|', 'code', 'codeBlock', 'sourceEditing', 'insertImage',
-        'bulletedList', 'numberedList', 'todoList', '|',  'blockQuote', 'imageUpload', '|',
-        'fontSize', 'fontFamily', 'fontColor', 'fontBackgroundColor', 'mediaEmbed', 'removeFormat',
-        'insertTable', 'link'],
+        'toolbar': [
+            'heading', '|', 'alignment', '|', 'bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript',
+            '|', 'code', 'codeBlock', 'sourceEditing', 'insertImage',
+            'bulletedList', 'numberedList', 'todoList', '|', 'blockQuote', 'imageUpload', '|',
+            'fontSize', 'fontFamily', 'fontColor', 'fontBackgroundColor', 'mediaEmbed', 'removeFormat',
+            'insertTable', 'link',
+        ],
         'image': {
-            'toolbar': ['imageTextAlternative', '|', 'imageStyle:alignLeft',
-                        'imageStyle:alignRight', 'imageStyle:alignCenter', 'imageStyle:side',  '|'],
+            'toolbar': [
+                'imageTextAlternative', '|', 'imageStyle:alignLeft',
+                'imageStyle:alignRight', 'imageStyle:alignCenter', 'imageStyle:side', '|',
+            ],
             'styles': [
                 'full', 'side', 'alignLeft', 'alignRight', 'alignCenter',
             ]
         },
         'table': {
-            'contentToolbar': [ 'tableColumn', 'tableRow', 'mergeTableCells',
-            'tableProperties', 'tableCellProperties' ],
+            'contentToolbar': [
+                'tableColumn', 'tableRow', 'mergeTableCells',
+                'tableProperties', 'tableCellProperties',
+            ],
             'formatOnInsert': True,
         },
         'list': {
@@ -220,7 +207,6 @@ CKEDITOR_5_CONFIGS = {
                 'reversed': True,
             }
         },
-        # הגנה מלאה על הערות שוליים ומבנים של וורד בהדבקה:
         'htmlSupport': {
             'allow': [
                 {'name': '/.*/', 'attributes': True, 'classes': True, 'styles': True},
