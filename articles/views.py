@@ -855,6 +855,28 @@ def contact(request):
         if not message:
             message = "[הגולש לא כתב תוכן]"
 
+        recaptcha_response = request.POST.get('g-recaptcha-response')
+
+        if not recaptcha_response:
+            messages.error(request, 'שגיאת אבטחה: לא התקבל אימות reCAPTCHA. אנא ודא שהדפדפן שלך אינו חוסם סקריפטים ונסה שוב.')
+            return redirect('articles:contact')
+
+        secret_key = os.environ.get('RECAPTCHA_SECRET_KEY', '').strip()
+        data = urllib.parse.urlencode({'secret': secret_key, 'response': recaptcha_response}).encode('utf-8')
+
+        try:
+            req = urllib.request.Request('https://www.google.com/recaptcha/api/siteverify', data=data)
+            response = urllib.request.urlopen(req, timeout=10)
+            result = json.loads(response.read().decode('utf-8'))
+
+            if not result.get('success'):
+                error_codes = result.get('error-codes', ['unknown_error'])
+                messages.error(request, f'שגיאת אימות מול שרתי גוגל. קוד השגיאה: {error_codes}. נא לוודא שהמפתחות תקינים במסוף של גוגל.')
+                return redirect('articles:contact')
+        except Exception as e:
+            messages.error(request, f'שגיאת תקשורת עם שרתי האבטחה: {str(e)}')
+            return redirect('articles:contact')
+
         full_message = f"התקבלה פנייה חדשה מאתר הספרייה:\n\nשם: {name}\nטלפון: {phone}\nאימייל: {email}\nנושא הפנייה: {subject}\n\nהודעה:\n{message}"
 
         try:
