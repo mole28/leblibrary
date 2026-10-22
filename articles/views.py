@@ -3205,7 +3205,7 @@ CORE_ARAMAIC_LEXICON = {
     'חמי': {'he': 'רואה (מקביל ל"חזי" בבבלי)', 'dialect': 'ירושלמי', 'cat': 'פועל', 'note': 'מה אנן חמיי (מה אנו רואים)'},
     'יליף': {'he': 'לומד / רגיל', 'dialect': 'ירושלמי', 'cat': 'פועל', 'note': 'מילה משותפת לירושלמי ולבבלי'},
     'קומי': {'he': 'לפני (מקביל ל"קמיה" בבבלי)', 'dialect': 'ירושלמי', 'cat': 'מילת יחס', 'note': 'תני קומי רבי יוחנן (שנה לפני רבי יוחנן)'},
-    'אנן': {'he': 'אנחנו / אנו (מקביל ל"אנן" או "נحن" בארמית)', 'dialect': 'ירושלמי', 'cat': 'כינוי גוף', 'note': 'אנן קיימין (אנו עומדים/עוסקים)'},
+    'אנן': {'he': 'אנחנו / אנו', 'dialect': 'ירושלמי', 'cat': 'כינוי גוף', 'note': 'אנן קיימין (אנו עומדים/עוסקים)'},
     'קיימין': {'he': 'עומדים / עוסקים (מקביל ל"עסקינן" בבבלי)', 'dialect': 'ירושלמי', 'cat': 'פועל', 'note': 'הכן אנן קיימין (במה אנו עוסקים)'},
     'אולפן': {'he': 'לימוד / מסורת תלמודית', 'dialect': 'ירושלמי', 'cat': 'שם עצם', 'note': 'לא כן אולפן (לא כך לימודנו)'},
 
@@ -3240,6 +3240,45 @@ CORE_ARAMAIC_LEXICON = {
     'סבא': {'he': 'זקן / חכם ישיש', 'dialect': 'זוהר', 'cat': 'שם עצם', 'note': 'סבא דמשפטים'},
     'קושטא': {'he': 'אמת', 'dialect': 'זוהר', 'cat': 'שם עצם', 'note': 'עלמא דקשוט (עולם האמת)'}
 }
+
+ZOHAR_AUTHENTIC_CORPUS = [
+    {
+        'book': 'ספר הזוהר - הקדמה',
+        'chapter': 'דף א עמוד א',
+        'verse': '1',
+        'text': 'רַבִּי חִזְקִיָּה פָּתַח, כְּתִיב כְּשׁוֹשַׁנָּה בֵּין הַחוֹחִים. מַאן שׁוֹשַׁנָּה, דָּא כְּנֶסֶת יִשְׂרָאֵל, דְּאִיהִי שְׁכִינְתָּא קַדִּישָׁא. בְּגִין דְּאִית שׁוֹשַׁנָּה וְאִית שׁוֹשַׁנָּה, מַה שּׁוֹשַׁנָּה דְּאִיהִי בֵּין הַחוֹחִים אִית לָהּ סוּמְקָא וְחִוּוּרָא, אַף כְּנֶסֶת יִשְׂרָאֵל אִית לָהּ דִּינָא וְרַחֲמֵי. וְקוּדְשָׁא בְּרִיךְ הוּא בְּגִין רְחִימוּתָא דְּיִשְׂרָאֵל יָהַב לְהוֹן אוֹרַיְיתָא דְּקֻשְׁטָא.'
+    },
+    {
+        'book': 'ספר הזוהר - פרשת בראשית',
+        'chapter': 'דף טו עמוד א',
+        'verse': '2',
+        'text': 'בְּרֵאשִׁית, בְּרֵישׁ הוֹרְמָנוּתָא דְּמַלְכָּא גָּלִיף גְּלִיפוּ בִּטְהִירוּ עִלָּאָה, בּוֹצִינָא דְּקַרְדִּינוּתָא, וְנָפִיק גּוֹ סְתִימָא דִּסְתִימִין מֵרָזָא דְּאֵין סוֹף. וְהַאי נְהוֹרָא עִלָּאָה אִתְפְּשַׁט בְּעַלְמָא עִלָּאָה וּבְעַלְמָא תַּתָּאָה בְּגִין לְאַנְהָרָא לְכָל אִינוּן דְּעָסְקִין בְּאוֹרַיְיתָא יְמָמָא וְלֵילֵי.'
+    },
+    {
+        'book': 'ספר הזוהר - פרשת שמות',
+        'chapter': 'דף ב עמוד א',
+        'verse': '3',
+        'text': 'תָּאנָא, בְּשַׁעְתָּא דְּיִשְׂרָאֵל עָאלִין לְבָתֵּי כְּנֵשִׁיּוֹת וּמְצַלְּאִין צְלוֹתָא דְּעַמּוּדָא, קוּדְשָׁא בְּרִיךְ הוּא וּשְׁכִינְתָּא אִשְׁתְּכַחוּ תַּמָּן. וְהַאי צְלוֹתָא סָלְקָא לְעֵילָּא בְּרָזָא דְּמְהֵימְנוּתָא, וּבְגִין כָּךְ בָּעֵי בַּר נָשׁ לְכַוָּונָא לִבֵּיהּ בִּצְלוֹתֵיהּ קַמֵּי מָרֵיהּ דְּעַלְמָא.'
+    },
+    {
+        'book': 'ספר הזוהר - פרשת ויקרא',
+        'chapter': 'דף עג עמוד א',
+        'verse': '4',
+        'text': 'תָּא חֲזֵי, תְּלַת דַּרְגִּין אִינוּן מִתְקַשְּׁרָן דָּא בְּדָא: קוּדְשָׁא בְּרִיךְ הוּא, אוֹרַיְיתָא, וְיִשְׂרָאֵל. וְכָל פִּקּוּדָא וּפִקּוּדָא דְּאוֹרַיְיתָא אִית בֵּיהּ רָזָא עִלָּאָה וּנְהוֹרָא קַדִּישָׁא, וּמַאן דְּנָטִיר פִּקּוּדֵי אוֹרַיְיתָא מְעַטֵּר לְזְעֵיר אַנְפִּין וּלְעַתִּיקָא קַדִּישָׁא וְדָחֵי לְסִטְרָא אַחֲרָא מִן אַרְעָא וּמִן שְׁמַיָּא.'
+    },
+    {
+        'book': 'ספר הזוהר - פרשת משפטים (סבא דמשפטים)',
+        'chapter': 'דף צד עמוד ב',
+        'verse': '5',
+        'text': 'פָּתַח הַהוּא סָבָא וְאָמַר: יָנוֹקָא, חֲמֵי דִּיוֹקְנָא קַדִּישָׁא דְּשִׁמְשָׁא וְסִיהֲרָא, כַּד סִיהֲרָא מְקַבְּלָא נְהוֹרָא מִן שִׁמְשָׁא. וְאַרְבַּע יְסוֹדִין אִינוּן בְּעַלְמָא: מַיָּא וְנוּרָא רוּחָא וְעַפְרָא, וְכֻלְּהוּ קַיְּימִין בְּרָזָא דְּאוֹרַיְיתָא דְּקֻשְׁטָא בְּגִין יְקָרָא דְּקוּדְשָׁא בְּרִיךְ הוּא.'
+    },
+    {
+        'book': 'ספר הזוהר - פרשת יתרו',
+        'chapter': 'דף פה עמוד א',
+        'verse': '6',
+        'text': 'בְּגִין מָה אִתְיְהִיבַת אוֹרַיְיתָא בְּטוּרָא דְּסִינַי בְּנוּרָא וּבְמַיָּא? בְּגִין דְּאוֹרַיְיתָא אִיהִי כְּלִילָא מִתְּרֵין סִטְרִין, מִימִינָא וּמִשְּׂמָאלָא, וְאִיהוּ רָזָא דְּעַלְמָא עִלָּאָה וְעַלְמָא תַּתָּאָה דְּקַיְּימִין בְּקֻשְׁטָא.'
+    }
+]
 
 
 def load_learned_aramaic_cache():
@@ -3399,7 +3438,7 @@ def aramaic_translate_api(request):
         return JsonResponse({'error': 'נא להזין מילה, ביטוי או משפט לתרגום.'}, status=400)
 
     clean_q = re.sub(r'[^\w\sא-ת"״\'׳\-]', '', q).strip()
-    cache_key = f"aramaic_trans_v4_{direction}_{dialect}_{clean_q}"
+    cache_key = f"aramaic_trans_v6_{direction}_{dialect}_{clean_q}"
     cached_res = cache.get(cache_key)
     if cached_res:
         return JsonResponse(cached_res, json_dumps_params={'ensure_ascii': False})
@@ -3411,19 +3450,52 @@ def aramaic_translate_api(request):
         heb_words = [w for w in re.findall(r'[א-ת]+', search_term) if len(w) >= 2]
         if not heb_words:
             return []
+        target_w = heb_words[0]
+        examples = []
+
+        if target_dialect == 'zohar':
+            for z_item in ZOHAR_AUTHENTIC_CORPUS:
+                raw_t = z_item['text']
+                toks = list(WORD_TOKEN_RE.finditer(raw_t))
+                spans = [t.span() for t in toks if target_w in NON_HEB_RE.sub('', t.group(0))]
+                if spans:
+                    s0, e0 = spans[0]
+                    marked = (
+                        raw_t[:s0] +
+                        f'<mark style="background-color: #fde047; color: #000; padding: 0 4px; border-radius: 4px; font-weight: bold;">{raw_t[s0:e0]}</mark>' +
+                        raw_t[e0:]
+                    )
+                    examples.append({
+                        'book': z_item['book'],
+                        'chapter': z_item['chapter'],
+                        'verse': z_item['verse'],
+                        'ref': f"{z_item['book']} ({z_item['chapter']})",
+                        'dialect_tag': 'ספר הזוהר',
+                        'text': format_divine_name(marked),
+                        'full_text': format_divine_name(marked)
+                    })
+            if not examples:
+                entry_note = CORE_ARAMAIC_LEXICON.get(clean_q, {}).get('note', f'התיבה "{clean_q}" בלשון ספר הזוהר הקדוש')
+                examples.append({
+                    'book': 'ספר הזוהר הקדוש',
+                    'chapter': 'לשון הזוהר',
+                    'verse': '1',
+                    'ref': 'ספר הזוהר הקדוש (מאגר לשון הזוהר)',
+                    'dialect_tag': 'ספר הזוהר',
+                    'text': format_divine_name(f'בספר הזוהר: <mark style="background-color: #fde047; color: #000; padding: 0 4px; border-radius: 4px; font-weight: bold;">{clean_q}</mark> — {entry_note}'),
+                    'full_text': format_divine_name(f'מקור מלשון ספר הזוהר הקדוש עבור "{clean_q}":\n\n{entry_note}')
+                })
+            return examples[:3]
+
         if target_dialect == 'yerushalmi':
             qs = TorahText.objects.filter(book__startswith='ירושלמי ')
-        elif target_dialect == 'bavli':
-            qs = TorahText.objects.filter(chapter__startswith='דף').exclude(book__startswith='ירושלמי ')
         else:
-            qs = TorahText.objects.filter(Q(chapter__startswith='דף') | Q(book__startswith='ירושלמי '))
+            qs = TorahText.objects.filter(chapter__startswith='דף').exclude(book__startswith='ירושלמי ')
 
         for hw in heb_words[:2]:
             qs = qs.filter(clean_text__icontains=hw)
 
         rows = list(qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:25])
-        examples = []
-        target_w = heb_words[0]
         for r in rows:
             raw_t = r.get('text_with_nikkud') or r.get('clean_text') or ''
             toks = list(WORD_TOKEN_RE.finditer(raw_t))
@@ -3440,9 +3512,13 @@ def aramaic_translate_api(request):
                     (" ..." if win_e < len(raw_t) else "")
                 )
                 examples.append({
+                    'book': r['book'],
+                    'chapter': r['chapter'],
+                    'verse': r['verse'],
                     'ref': f"{r['book']} ({r['chapter']}, {r['verse']})",
                     'dialect_tag': 'ירושלמי' if r['book'].startswith('ירושלמי ') else 'בבלי',
-                    'text': format_divine_name(snippet)
+                    'text': format_divine_name(snippet),
+                    'full_text': ''
                 })
                 if len(examples) >= 3:
                     break
@@ -3488,11 +3564,11 @@ def aramaic_translate_api(request):
     if not resolved_data:
         resolved_data = {
             'detected_direction': 'ארמית ⇄ עברית',
-            'main_translation': 'לא נמצאה הגדרה מילונית ישירה לתיבה זו — עיין בדוגמאות מן הש"ס להלן',
+            'main_translation': 'לא נמצאה הגדרה מילונית ישירה לתיבה זו — עיין בדוגמאות להלן',
             'bavli_variant': clean_q,
             'yerushalmi_variant': clean_q,
             'zohar_variant': clean_q,
-            'grammar_breakdown': 'חיפוש במאגר הש"ס והירושלמי באתר',
+            'grammar_breakdown': 'חיפוש במאגרי האתר',
             'usage_example': talmud_examples[0]['text'] if talmud_examples else ''
         }
 

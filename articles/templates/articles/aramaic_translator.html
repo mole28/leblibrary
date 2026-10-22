@@ -17,7 +17,7 @@
     <div class="hero-content text-center w-100" style="transform: translateY(0);">
         <i class="bi bi-translate mb-2 d-inline-block" style="font-size: 2.5rem; color: #d4af37;"></i>
         <h1 class="text-white mb-2 fw-bold display-5" style="color: #d4af37 !important; text-shadow: 2px 2px 8px rgba(0,0,0,0.85);">מתרגם ומילון ארמי ⇄ עברי</h1>
-        <p class="text-white mt-2 fs-5 mb-0 fw-semibold" style="text-shadow: 1px 1px 6px rgba(0,0,0,0.9);">מילון ומתרגם דו-כיווני מופרד לפי חטיבות: תלמוד בבלי • תלמוד ירושלמי • ספר הזוהר</p>
+        <p class="text-white mt-2 fs-5 mb-0 fw-semibold" style="text-shadow: 1px 1px 6px rgba(0,0,0,0.9);">מילון עברי-ארמי ארמי-עברי לספרים: תלמוד בבלי * תלמוד ירושלמי * ספר הזוהר</p>
     </div>
 </div>
 {% endblock %}
@@ -45,11 +45,14 @@
         background: #ffffff;
         border: 2px solid #e2d9c5;
         border-radius: 16px;
-        padding: 18px 16px;
+        padding: 16px 14px;
         text-align: center;
         cursor: pointer;
         transition: all 0.22s ease;
         box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     .corpus-division-card:hover {
         border-color: #d4af37;
@@ -63,20 +66,12 @@
     }
     .corpus-division-title {
         font-weight: 800;
-        font-size: 1.25rem;
+        font-size: 1.3rem;
         color: #1e293b;
         font-family: 'Frank Ruhl Libre', serif;
     }
     .corpus-division-card.active .corpus-division-title {
         color: #f7e199;
-    }
-    .corpus-division-sub {
-        font-size: 0.85rem;
-        color: #64748b;
-        margin-top: 4px;
-    }
-    .corpus-division-card.active .corpus-division-sub {
-        color: #cbd5e1;
     }
     @media (max-width: 768px) {
         .corpus-division-tabs {
@@ -134,6 +129,26 @@
         background: #fffdf5;
         box-shadow: 0 4px 14px rgba(212, 175, 55, 0.18);
     }
+    .example-clickable-item {
+        background: #f8f5ec;
+        border-right: 4px solid #d4af37 !important;
+        cursor: pointer;
+        transition: all 0.18s ease;
+    }
+    .example-clickable-item:hover {
+        background: #fff8dc;
+        transform: translateX(-3px);
+    }
+    .daf-context-verse {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f1ece1;
+        border-radius: 8px;
+    }
+    .daf-context-verse.target-highlight {
+        background-color: #fff8dc;
+        border: 2px solid #d4af37;
+        box-shadow: 0 3px 10px rgba(212, 175, 55, 0.2);
+    }
 </style>
 
 <div class="container mb-5 pb-4">
@@ -141,23 +156,20 @@
     <div class="mb-2 fw-bold text-secondary">בחר את חטיבת הארמית המבוקשת:</div>
     <div class="corpus-division-tabs" id="dialectDivisionTabs">
         <div class="corpus-division-card active" data-dialect="bavli" onclick="selectDivision('bavli', this)">
-            <div class="corpus-division-title">🏛️ 1. ארמית של תלמוד בבלי</div>
-            <div class="corpus-division-sub">לשון הש"ס הבבלי, שקלא וטריא ומונחי הסוגיות</div>
+            <div class="corpus-division-title">📜 1. ארמית של תלמוד בבלי</div>
         </div>
         <div class="corpus-division-card" data-dialect="yerushalmi" onclick="selectDivision('yerushalmi', this)">
-            <div class="corpus-division-title">🕍 2. ארמית של תלמוד ירושלמי</div>
-            <div class="corpus-division-sub">ארמית גלילית מערבית, ביטויי הירושלמי ומדרשי א"י</div>
+            <div class="corpus-division-title">🏛️ 2. ארמית של תלמוד ירושלמי</div>
         </div>
         <div class="corpus-division-card" data-dialect="zohar" onclick="selectDivision('zohar', this)">
-            <div class="corpus-division-title">🔥 3. ארמית של ספר הזוהר</div>
-            <div class="corpus-division-sub">לשון הזוהר הקדוש, תיקוני הזוהר ומונחי הקבלה</div>
+            <div class="corpus-division-title">📖 3. ארמית של ספר הזוהר</div>
         </div>
     </div>
 
     <div class="translator-shell mb-5 p-4 p-md-5">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 pb-3 border-bottom">
             <h4 class="fw-bold mb-0" id="activeDivisionHeader" style="color: #1e293b; font-family: 'Frank Ruhl Libre', serif;">
-                🏛️ מתרגם תלמוד בבלי (ארמית ⇄ עברית)
+                📜 מתרגם תלמוד בבלי (ארמית ⇄ עברית)
             </h4>
             <div class="d-flex flex-wrap gap-2" id="directionGroup">
                 <button type="button" class="dir-pill-btn active" data-dir="auto">🔄 זיהוי אוטומטי</button>
@@ -262,24 +274,39 @@
     </div>
 </div>
 
+<div class="modal fade" id="aramaicSourceModal" tabindex="-1" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="border: 2px solid #d4af37; border-radius: 16px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #fff; border-bottom: 2px solid #d4af37;">
+                <h5 class="modal-title fw-bold" id="aramaicSourceModalTitle" style="color: #f7e199;">
+                    <i class="bi bi-book-fill ms-2"></i>צפייה במקור המלא
+                </h5>
+                <button type="button" class="btn-close btn-close-white me-auto ms-0" data-bs-dismiss="modal" aria-label="סגור"></button>
+            </div>
+            <div class="modal-body p-4" id="aramaicSourceModalBody" style="background-color: #fdfcf8; max-height: 75vh; overflow-y: auto;"></div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     let selectedDir = 'auto';
     let selectedDialect = 'bavli';
+    let lastExamplesList = [];
 
     const divisionMeta = {
         bavli: {
-            header: '🏛️ מתרגם תלמוד בבלי (ארמית בבלית ⇄ עברית)',
+            header: '📜 מתרגם תלמוד בבלי (ארמית ⇄ עברית)',
             dictTitle: 'מילון מונחי יסוד — תלמוד בבלי',
-            chips: ['איבעיא להו', 'קא משמע לן', 'אדהכי והכי', 'הוה אמינא', 'איפכא מסתברא', 'נפקא מינה']
+            chips: ['אמאי', 'איבעיא להו', 'קא משמע לן', 'אדהכי והכי', 'הוה אמינא', 'איפכא מסתברא', 'נפקא מינה']
         },
         yerushalmi: {
-            header: '🕍 מתרגם תלמוד ירושלמי (ארמית גלילית ⇄ עברית)',
+            header: '🏛️ מתרגם תלמוד ירושלמי (ארמית ⇄ עברית)',
             dictTitle: 'מילון מונחי יסוד — תלמוד ירושלמי',
             chips: ['תמן', 'אית תניי תני', 'הדא אמרה', 'גרמיה', 'צורכה', 'תנינן', 'קומי']
         },
         zohar: {
-            header: '🔥 מתרגם ספר הזוהר (ארמית הזוהר ⇄ עברית)',
+            header: '📖 מתרגם ספר הזוהר (ארמית הזוהר ⇄ עברית)',
             dictTitle: 'מילון מונחי יסוד — ספר הזוהר הקדוש',
             chips: ['בגין', 'רזא', 'קודשא בריך הוא', 'איהו', 'תאנא', 'נהורא', 'זעיר אנפין']
         }
@@ -340,6 +367,58 @@ document.addEventListener('DOMContentLoaded', function() {
         executeTranslation();
     });
 
+    window.openAramaicSourceModal = function(idx) {
+        const ex = lastExamplesList[idx];
+        if (!ex) return;
+
+        const modalEl = document.getElementById('aramaicSourceModal');
+        const titleEl = document.getElementById('aramaicSourceModalTitle');
+        const bodyEl = document.getElementById('aramaicSourceModalBody');
+
+        titleEl.innerHTML = `<i class="bi bi-book-fill ms-2"></i>${ex.ref}`;
+        bodyEl.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-warning"></div><p class="mt-2 text-muted fw-bold">פותח את המקור המלא...</p></div>`;
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+        if (ex.full_text) {
+            bodyEl.innerHTML = `
+                <div class="p-4 rounded-3" style="background: #fff8dc; border: 2px solid #d4af37;">
+                    <div class="fw-bold mb-2" style="color: #8c6239;">${ex.ref}</div>
+                    <div class="fs-3 lh-lg text-dark" style="font-family: 'Frank Ruhl Libre', serif;">${ex.full_text}</div>
+                </div>
+            `;
+            return;
+        }
+
+        const url = `/api/tanakh-search/?type=chapter_context&target_book=${encodeURIComponent(ex.book)}&target_chapter=${encodeURIComponent(ex.chapter)}`;
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                const verses = data.verses || [];
+                if (!verses.length) {
+                    bodyEl.innerHTML = `<div class="p-3 fs-4" style="font-family: 'Frank Ruhl Libre', serif;">${ex.text}</div>`;
+                    return;
+                }
+                const label = data.verse_label || 'שורה';
+                bodyEl.innerHTML = verses.map(v => {
+                    const isTarget = String(v.verse).trim() === String(ex.verse).trim();
+                    return `
+                        <div ${isTarget ? 'id="modalAramaicTargetRow"' : ''} class="daf-context-verse ${isTarget ? 'target-highlight' : ''}">
+                            <span class="badge bg-secondary ms-2">${label} ${v.verse}</span>
+                            <span class="fs-4 lh-lg text-dark" style="font-family: 'Frank Ruhl Libre', serif;">${v.text}</span>
+                        </div>
+                    `;
+                }).join('');
+
+                setTimeout(() => {
+                    const tr = document.getElementById('modalAramaicTargetRow');
+                    if (tr) tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 200);
+            })
+            .catch(() => {
+                bodyEl.innerHTML = `<div class="p-3 fs-4" style="font-family: 'Frank Ruhl Libre', serif;">${ex.text}</div>`;
+            });
+    };
+
     function executeTranslation() {
         const q = document.getElementById('aramaicInput').value.trim();
         if (!q) return;
@@ -362,15 +441,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
 
+                lastExamplesList = data.talmud_examples || [];
                 let examplesHtml = '';
-                if (data.talmud_examples && data.talmud_examples.length) {
+                if (lastExamplesList.length) {
                     examplesHtml = `
                         <div class="mt-4 pt-3 border-top">
-                            <h6 class="fw-bold mb-3" style="color: #1e293b;"><i class="bi bi-journal-bookmark-fill ms-2" style="color: #d4af37;"></i>הופעות חיות במאגר האתר:</h6>
+                            <h6 class="fw-bold mb-3" style="color: #1e293b;"><i class="bi bi-journal-bookmark-fill ms-2" style="color: #d4af37;"></i>הופעות חיות במאגר האתר (לחץ על כל מקור לפתיחת הדף המלא):</h6>
                             <div class="list-group">
-                                ${data.talmud_examples.map(ex => `
-                                    <div class="list-group-item border-0 rounded-3 mb-2 p-3" style="background: #f8f5ec; border-right: 4px solid #d4af37 !important;">
-                                        <div class="fw-bold small mb-1" style="color: #8c6239;">${ex.ref} <span class="badge bg-dark text-warning ms-2">${ex.dialect_tag}</span></div>
+                                ${lastExamplesList.map((ex, i) => `
+                                    <div class="list-group-item border-0 rounded-3 mb-2 p-3 example-clickable-item" onclick="openAramaicSourceModal(${i})">
+                                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
+                                            <div class="fw-bold small" style="color: #8c6239;">
+                                                ${ex.ref} <span class="badge bg-dark text-warning ms-2">${ex.dialect_tag}</span>
+                                            </div>
+                                            <button type="button" class="btn btn-sm fw-bold py-0 px-2" style="background: #d4af37; color: #0f172a; font-size: 0.78rem; border-radius: 6px;">
+                                                📖 פתח דף / מקור מלא
+                                            </button>
+                                        </div>
                                         <div class="fs-5" style="font-family: 'Frank Ruhl Libre', serif;">${ex.text}</div>
                                     </div>
                                 `).join('')}
@@ -400,19 +487,19 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="row g-3 mb-4">
                                 <div class="col-md-4">
                                     <div class="dialect-card ${selectedDialect === 'bavli' ? 'highlighted-dialect' : ''}">
-                                        <span class="badge mb-2" style="background: #dbeafe; color: #1e3a8a;">🏛️ תלמוד בבלי</span>
+                                        <span class="badge mb-2" style="background: #dbeafe; color: #1e3a8a;">📜 תלמוד בבלי</span>
                                         <div class="fs-5 fw-semibold" style="font-family: 'Frank Ruhl Libre', serif;">${data.bavli_variant || '—'}</div>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="dialect-card ${selectedDialect === 'yerushalmi' ? 'highlighted-dialect' : ''}">
-                                        <span class="badge mb-2" style="background: #d1fae5; color: #065f46;">🕍 תלמוד ירושלמי</span>
+                                        <span class="badge mb-2" style="background: #d1fae5; color: #065f46;">🏛️ תלמוד ירושלמי</span>
                                         <div class="fs-5 fw-semibold" style="font-family: 'Frank Ruhl Libre', serif;">${data.yerushalmi_variant || '—'}</div>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="dialect-card ${selectedDialect === 'zohar' ? 'highlighted-dialect' : ''}">
-                                        <span class="badge mb-2" style="background: #fef3c7; color: #92400e;">🔥 ספר הזוהר</span>
+                                        <span class="badge mb-2" style="background: #fef3c7; color: #92400e;">📖 ספר הזוהר</span>
                                         <div class="fs-5 fw-semibold" style="font-family: 'Frank Ruhl Libre', serif;">${data.zohar_variant || '—'}</div>
                                     </div>
                                 </div>
