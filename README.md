@@ -1,7 +1,7 @@
 # LebLibrary
 ### ספריית לייבוביץ
 
-A personal digital library and article management platform, built to share knowledge, articles, and resources in a clean, accessible format.
+A digital library, research platform, and article management system built to provide accessible Torah scholarship, halachic literature, and computational text-analysis tools.
 
 **Live Site:** [https://leblibrary.co.il](https://leblibrary.co.il)
 
@@ -14,32 +14,35 @@ A personal digital library and article management platform, built to share knowl
 ---
 
 ## 📖 Overview
-This project is a custom Django-based web application serving as a centralized repository for articles, tutorials, and books. It features a responsive reading interface, a dedicated book catalog, and integrated SEO tracking. The platform is designed with simplicity and a distraction-free user experience in mind, empowered by custom AI agents.
+LebLibrary is a Django-based web application serving as a centralized repository for Torah articles, halachic books, and responsa (Q&A). Alongside its reading interface and book catalog, the platform integrates custom computational search tools, a multi-dialect Aramaic-Hebrew lexicon, and AI-assisted research modules.
 
 ---
 
 ## ✨ Key Features
-* **Article & Content Management:** Browse and read structured articles with a built-in reading progress indicator.
-* **Responsive UI:** Mobile-friendly layouts, clean navigation, and smooth modal interactions.
-* **SEO Optimized:** Verified and integrated with Google Search Console for organic search visibility.
-* **Static Asset Management:** Structured handling of static files, CSS, and custom branding (Favicon).
-* **Talmudic Acronyms:** A fast, interactive database for Jewish acronyms featuring live search.
+- **Article & Book Management:** Structured reading interface for articles and multi-chapter books with a built-in reading progress indicator and digital bookstore.
+- **Multi-Corpus Torah Search Engine:** Fast text and computational search across Tanakh, Mishnah, Tosefta, Babylonian Talmud, Jerusalem Talmud, Rambam, and Shulchan Aruch. Supports exact/broad matching, Gematria calculations, acronyms (*Rashei/Sofei Tevot*), word reversals, and Equidistant Letter Sequences (ELS).
+- **Aramaic ⇄ Hebrew Lexicon & Translator:** Bidirectional dictionary and morphological analyzer partitioned into Babylonian Talmud, Jerusalem Talmud, and Zohar dialects, featuring root/affix breakdown and live corpus citations.
+- **Halachic Measurement Calculators:** Interactive conversion tools for biblical and talmudic units of length, volume, and weight/coins.
+- **Talmudic Acronyms Dictionary:** Live-search database for decoding rabbinic and halachic abbreviations.
+- **SEO & Structured Data:** Integrated with Google Search Console, Schema.org (`JSON-LD`), IndexNow, and `llms.txt` for search and AI indexing.
 
 ---
 
 ## 🤖 AI-Powered Capabilities & Agents
-The platform features integrated custom AI agents designed to elevate the user experience:
-1. **Content & Knowledge Expert Agent:** Searches deeply through the platform's article repository to deliver professional, comprehensive answers accompanied by precise references and citations.
-2. **Site Navigation & Orientation Agent:** Assists users in exploring the platform, providing dynamic routing, guidance, and helpful references to relevant pages and resources.
-3. **AI Audio Generation (Text-to-Speech):** Automated, high-quality AI voice narrations generated directly from article texts, providing users with an accessible and seamless listening experience.
+The platform integrates specialized AI modules and data-analysis workflows:
+1. **Content & Knowledge Expert Agent:** Performs hybrid semantic and keyword search across the library's repository to provide grounded answers with direct source citations.
+2. **Site Navigation & Orientation Agent:** Assists users in exploring the platform by routing queries to relevant tools, calculators, and articles.
+3. **AI Audio Generation (Text-to-Speech):** Automated Hebrew neural voice narration (`Edge-TTS`) with a custom rabbinic abbreviation pronunciation dictionary.
+4. **Corpus Data Analysis & Concept Mapping:** Cross-references terms across all Torah corpora, Gematria equivalents, and ELS patterns to generate interactive network graphs (`Vis.js`) and structured topical syntheses.
 
 ---
 
 ## 🛠️ Tech Stack
-* **Backend:** Python, Django
-* **Frontend:** HTML5, CSS3, JavaScript
-* **Server & Deployment:** Ubuntu Linux, Gunicorn, Nginx
-* **Version Control:** Git & GitHub
+- **Backend:** Python, Django, PostgreSQL
+- **Frontend:** HTML5, CSS3, Bootstrap 5, JavaScript, Vis.js
+- **AI & Audio:** Google Gemini API, ChromaDB (Vector Search), Microsoft Edge-TTS
+- **Server & Monitoring:** Ubuntu Linux, Gunicorn, Nginx, Sentry
+- **Version Control:** Git & GitHub
 
 ---
 
@@ -47,8 +50,9 @@ The platform features integrated custom AI agents designed to elevate the user e
 To run this project locally for development or testing:
 
 1. **Clone the repository:**
-    git clone https://github.com/mole28/leblibrary.git
-    cd leblibrary
+   ```bash
+   git clone [https://github.com/mole28/leblibrary.git](https://github.com/mole28/leblibrary.git)
+   cd leblibrary
 
 2. **Install dependencies:**
     pip install -r requirements.txt
