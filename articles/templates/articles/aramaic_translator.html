@@ -117,18 +117,6 @@
         background: #d4af37;
         color: #0f172a;
     }
-    .dialect-card {
-        background: #ffffff;
-        border: 1.5px solid #e6dec9;
-        border-radius: 14px;
-        padding: 16px;
-        height: 100%;
-    }
-    .dialect-card.highlighted-dialect {
-        border: 2px solid #d4af37;
-        background: #fffdf5;
-        box-shadow: 0 4px 14px rgba(212, 175, 55, 0.18);
-    }
     .example-clickable-item {
         background: #f8f5ec;
         border-right: 4px solid #d4af37 !important;
@@ -153,36 +141,43 @@
     .aleph-bet-bar {
         display: flex;
         flex-wrap: wrap;
-        gap: 5px;
+        gap: 6px;
         justify-content: center;
-        padding: 12px 16px;
+        padding: 14px 16px;
         background: #fdfbf5;
-        border-bottom: 1px solid #e6dec9;
+        border-bottom: 1.5px solid #e6dec9;
     }
     .aleph-bet-btn {
-        min-width: 34px;
-        height: 34px;
-        border-radius: 8px;
-        border: 1px solid #d4af37;
+        min-width: 42px;
+        height: 38px;
+        border-radius: 9px;
+        border: 1.5px solid #d4af37;
         background: #ffffff;
-        color: #2b2110;
+        color: #1e293b;
         font-weight: 800;
-        font-size: 0.95rem;
+        font-size: 1rem;
         cursor: pointer;
         transition: all 0.15s ease;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 0 8px;
+        padding: 0 10px;
+        gap: 4px;
     }
     .aleph-bet-btn:hover {
         background: #fcf3cf;
+        transform: translateY(-1px);
     }
     .aleph-bet-btn.active {
         background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
         color: #f7e199;
         border-color: #d4af37;
-        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+        box-shadow: 0 3px 8px rgba(15, 23, 42, 0.25);
+    }
+    .letter-count-sub {
+        font-size: 0.7rem;
+        opacity: 0.75;
+        font-weight: 600;
     }
     .letter-group-badge {
         display: inline-flex;
@@ -229,7 +224,7 @@
 
         <form id="aramaicForm">
             <div class="mb-3">
-                <textarea id="aramaicInput" class="form-control form-control-lg fw-bold" rows="2" placeholder="הקלד כל מילה, ביטוי או משפט בארמית או בעברית (למשל: קאי, אמאי, איבעיא להו, אומדנא, תמן, בגין)..." style="border: 2px solid #d4af37; border-radius: 14px; font-size: 1.25rem;"></textarea>
+                <textarea id="aramaicInput" class="form-control form-control-lg fw-bold" rows="2" placeholder="הקלד כל מילה, הטיה, ביטוי או משפט בארמית או בעברית (למשל: קאי, אמאי, דקאמר, איבעיא להו, אומדנא, תמן, בגין)..." style="border: 2px solid #d4af37; border-radius: 14px; font-size: 1.25rem;"></textarea>
             </div>
 
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
@@ -245,11 +240,11 @@
 
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden" style="border: 2px solid #d4af37 !important;">
         <div class="card-header p-3 p-md-4 d-flex flex-wrap justify-content-between align-items-center gap-3" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-bottom: 2px solid #d4af37;">
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center flex-wrap gap-2">
                 <h5 class="fw-bold mb-0" id="dictionaryTableTitle" style="color: #f7e199; font-family: 'Frank Ruhl Libre', serif; font-size: 1.35rem;">
-                    <i class="bi bi-book-half ms-2" style="color: #d4af37;"></i>מילון מונחי יסוד ממוין לפי א"ב — תלמוד בבלי
+                    <i class="bi bi-book-half ms-2" style="color: #d4af37;"></i>מילון ארמי-עברי שלם ממוין לפי א"ב — תלמוד בבלי
                 </h5>
-                <span id="visibleTermsCountBadge" class="badge rounded-pill px-3 py-1" style="background: #d4af37; color: #0f172a; font-weight: 800;"></span>
+                <span id="visibleTermsCountBadge" class="badge rounded-pill px-3 py-2" style="background: #d4af37; color: #0f172a; font-weight: 800; font-size: 0.9rem;"></span>
             </div>
             <div class="d-flex flex-wrap align-items-center gap-2">
                 <select id="categoryFilterSelect" class="form-select form-select-sm fw-bold" style="width: auto; border-color: #d4af37; border-radius: 50px; padding-right: 14px;">
@@ -257,116 +252,33 @@
                     <option value="מונח שקלא וטריא">מונחי שקלא וטריא</option>
                     <option value="מונח הלכתי">מונחים הלכתיים</option>
                     <option value="מילת שאלה">מילות שאלה</option>
-                    <option value="פועל">פעלים בארמית</option>
-                    <option value="שם עצם">שמות עצם</option>
+                    <option value="פועל">פעלים והטיות בארמית</option>
+                    <option value="שם עצם">שמות עצם ונטיות</option>
                     <option value="מונח תנאי">מונחי משנה וברייתא</option>
                     <option value="מושג">מושגי הזוהר והקבלה</option>
+                    <option value="ראשי תיבות">ראשי תיבות ומונחים</option>
                 </select>
-                <input type="text" id="filterLexiconInput" class="form-control form-control-sm fw-semibold" placeholder="חיפוש מהיר במילון (ארמית או עברית)..." style="width: 250px; border-color: #d4af37; border-radius: 50px; padding: 6px 14px;">
+                <input type="text" id="filterLexiconInput" class="form-control form-control-sm fw-semibold" placeholder="חיפוש מהיר מבין אלפי המילים..." style="width: 260px; border-color: #d4af37; border-radius: 50px; padding: 6px 14px;">
             </div>
         </div>
 
-        <div class="aleph-bet-bar" id="alephBetFilterBar">
-            <button type="button" class="aleph-bet-btn active" data-letter="">הכל (א-ת)</button>
-            <button type="button" class="aleph-bet-btn" data-letter="א">א</button>
-            <button type="button" class="aleph-bet-btn" data-letter="ב">ב</button>
-            <button type="button" class="aleph-bet-btn" data-letter="ג">ג</button>
-            <button type="button" class="aleph-bet-btn" data-letter="ד">ד</button>
-            <button type="button" class="aleph-bet-btn" data-letter="ה">ה</button>
-            <button type="button" class="aleph-bet-btn" data-letter="ו">ו</button>
-            <button type="button" class="aleph-bet-btn" data-letter="ז">ז</button>
-            <button type="button" class="aleph-bet-btn" data-letter="ח">ח</button>
-            <button type="button" class="aleph-bet-btn" data-letter="ט">ט</button>
-            <button type="button" class="aleph-bet-btn" data-letter="י">י</button>
-            <button type="button" class="aleph-bet-btn" data-letter="כ">כ</button>
-            <button type="button" class="aleph-bet-btn" data-letter="ל">ל</button>
-            <button type="button" class="aleph-bet-btn" data-letter="מ">מ</button>
-            <button type="button" class="aleph-bet-btn" data-letter="נ">נ</button>
-            <button type="button" class="aleph-bet-btn" data-letter="ס">ס</button>
-            <button type="button" class="aleph-bet-btn" data-letter="ע">ע</button>
-            <button type="button" class="aleph-bet-btn" data-letter="פ">פ</button>
-            <button type="button" class="aleph-bet-btn" data-letter="צ">צ</button>
-            <button type="button" class="aleph-bet-btn" data-letter="ק">ק</button>
-            <button type="button" class="aleph-bet-btn" data-letter="ר">ר</button>
-            <button type="button" class="aleph-bet-btn" data-letter="ש">ש</button>
-            <button type="button" class="aleph-bet-btn" data-letter="ת">ת</button>
-        </div>
+        <div class="aleph-bet-bar" id="alephBetFilterBar"></div>
 
         <div class="card-body p-0">
-            <div id="lexiconTableBavli" class="table-responsive" style="max-height: 560px; overflow-y: auto;">
+            <div class="table-responsive" style="max-height: 620px; overflow-y: auto;">
                 <table class="table table-hover mb-0 align-middle">
                     <thead class="table-light" style="position: sticky; top: 0; z-index: 2;">
                         <tr>
-                            <th class="ps-4" style="width: 24%;">ערך בארמית (א-ב)</th>
-                            <th style="width: 34%;">תרגום וביאור בעברית</th>
+                            <th class="ps-4" style="width: 24%;">ערך בארמית (ממוין א-ב)</th>
+                            <th style="width: 36%;">תרגום וביאור בעברית</th>
                             <th style="width: 16%;">סוג מונח</th>
-                            <th style="width: 26%;">דוגמה והערות</th>
+                            <th style="width: 24%;">שורש, דוגמה והערות</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for item in bavli_lexicon %}
-                        <tr class="lexicon-row" data-letter="{{ item.first_letter }}" data-cat="{{ item.cat }}" style="cursor: pointer;" onclick="runQuickTerm('{{ item.term }}')">
-                            <td class="ps-4 fw-bold fs-5" style="color: #1e3a8a; font-family: 'Frank Ruhl Libre', serif;">
-                                <span class="letter-group-badge">{{ item.first_letter }}</span>{{ item.term }}
-                            </td>
-                            <td class="fw-semibold text-dark">{{ item.he }}</td>
-                            <td><span class="badge bg-light text-dark border">{{ item.cat }}</span></td>
-                            <td class="text-muted small">{{ item.note }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
+                    <tbody id="dynamicLexiconTbody"></tbody>
                 </table>
             </div>
-
-            <div id="lexiconTableYerushalmi" class="table-responsive" style="display: none; max-height: 560px; overflow-y: auto;">
-                <table class="table table-hover mb-0 align-middle">
-                    <thead class="table-light" style="position: sticky; top: 0; z-index: 2;">
-                        <tr>
-                            <th class="ps-4" style="width: 24%;">ערך בארמית (א-ב)</th>
-                            <th style="width: 34%;">תרגום וביאור בעברית</th>
-                            <th style="width: 16%;">סוג מונח</th>
-                            <th style="width: 26%;">דוגמה והערות</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in yerushalmi_lexicon %}
-                        <tr class="lexicon-row" data-letter="{{ item.first_letter }}" data-cat="{{ item.cat }}" style="cursor: pointer;" onclick="runQuickTerm('{{ item.term }}')">
-                            <td class="ps-4 fw-bold fs-5" style="color: #065f46; font-family: 'Frank Ruhl Libre', serif;">
-                                <span class="letter-group-badge">{{ item.first_letter }}</span>{{ item.term }}
-                            </td>
-                            <td class="fw-semibold text-dark">{{ item.he }}</td>
-                            <td><span class="badge bg-light text-dark border">{{ item.cat }}</span></td>
-                            <td class="text-muted small">{{ item.note }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <div id="lexiconTableZohar" class="table-responsive" style="display: none; max-height: 560px; overflow-y: auto;">
-                <table class="table table-hover mb-0 align-middle">
-                    <thead class="table-light" style="position: sticky; top: 0; z-index: 2;">
-                        <tr>
-                            <th class="ps-4" style="width: 24%;">ערך בארמית (א-ב)</th>
-                            <th style="width: 34%;">תרגום וביאור בעברית</th>
-                            <th style="width: 16%;">סוג מונח</th>
-                            <th style="width: 26%;">דוגמה והערות</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in zohar_lexicon %}
-                        <tr class="lexicon-row" data-letter="{{ item.first_letter }}" data-cat="{{ item.cat }}" style="cursor: pointer;" onclick="runQuickTerm('{{ item.term }}')">
-                            <td class="ps-4 fw-bold fs-5" style="color: #92400e; font-family: 'Frank Ruhl Libre', serif;">
-                                <span class="letter-group-badge">{{ item.first_letter }}</span>{{ item.term }}
-                            </td>
-                            <td class="fw-semibold text-dark">{{ item.he }}</td>
-                            <td><span class="badge bg-light text-dark border">{{ item.cat }}</span></td>
-                            <td class="text-muted small">{{ item.note }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+            <div id="lexiconPaginationBar" class="p-3 bg-light border-top d-flex justify-content-between align-items-center flex-wrap gap-2"></div>
         </div>
     </div>
 </div>
@@ -385,82 +297,157 @@
     </div>
 </div>
 
+<script id="bavli-json-data" type="application/json">{{ bavli_json|safe }}</script>
+<script id="yerushalmi-json-data" type="application/json">{{ yerushalmi_json|safe }}</script>
+<script id="zohar-json-data" type="application/json">{{ zohar_json|safe }}</script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    function parseJsonScript(id) {
+        const el = document.getElementById(id);
+        if (!el || !el.textContent.trim()) return [];
+        try {
+            return JSON.parse(el.textContent);
+        } catch (e) {
+            return [];
+        }
+    }
+
+    const DICTIONARIES = {
+        bavli: parseJsonScript('bavli-json-data'),
+        yerushalmi: parseJsonScript('yerushalmi-json-data'),
+        zohar: parseJsonScript('zohar-json-data')
+    };
+
+    const HEBREW_LETTERS = ['א','ב','ג','ד','ה','ו','ז','ח','ט','י','כ','ל','מ','נ','ס','ע','פ','צ','ק','ר','ש','ת'];
+
     let selectedDir = 'auto';
     let selectedDialect = 'bavli';
-    let activeLetterFilter = '';
+    let activeLetterFilter = 'א';
+    let currentLexPage = 1;
+    const rowsPerPage = 80;
     let lastExamplesList = [];
 
     const divisionMeta = {
         bavli: {
             header: '📜 מתרגם תלמוד בבלי (ארמית ⇄ עברית)',
-            dictTitle: 'מילון מונחי יסוד ממוין לפי א"ב — תלמוד בבלי',
-            tableId: 'lexiconTableBavli',
-            chips: ['קאי', 'אמאי', 'איבעיא להו', 'קא משמע לן', 'אדהכי והכי', 'הוה אמינא', 'איפכא מסתברא', 'נפקא מינה']
+            dictTitle: 'מילון ארמי-עברי שלם ממוין לפי א"ב — תלמוד בבלי',
+            color: '#1e3a8a',
+            chips: ['קאי', 'אמאי', 'דקאמר', 'איבעיא להו', 'קא משמע לן', 'אדהכי והכי', 'הוה אמינא', 'נפקא מינה']
         },
         yerushalmi: {
             header: '🏛️ מתרגם תלמוד ירושלמי (ארמית ⇄ עברית)',
-            dictTitle: 'מילון מונחי יסוד ממוין לפי א"ב — תלמוד ירושלמי',
-            tableId: 'lexiconTableYerushalmi',
+            dictTitle: 'מילון ארמי-עברי שלם ממוין לפי א"ב — תלמוד ירושלמי',
+            color: '#065f46',
             chips: ['תמן', 'אית תניי תני', 'הדא אמרה', 'גרמיה', 'צורכה', 'תנינן', 'קומי', 'קיימין']
         },
         zohar: {
             header: '📖 מתרגם ספר הזוהר (ארמית הזוהר ⇄ עברית)',
-            dictTitle: 'מילון מונחי יסוד ממוין לפי א"ב — ספר הזוהר הקדוש',
-            tableId: 'lexiconTableZohar',
-            chips: ['בגין', 'רזא', 'קודשא בריך הוא', 'איהו', 'תאנא', 'נהורא', 'זעיר אנפין', 'קאי']
+            dictTitle: 'מילון ארמי-עברי שלם ממוין לפי א"ב — ספר הזוהר הקדוש',
+            color: '#92400e',
+            chips: ['בגין', 'רזא', 'קודשא בריך הוא', 'איהו', 'תאנא', 'נהורא', 'זעיר אנפין', 'בוצינא דקרדינותא']
         }
     };
 
     function renderChips(dialectKey) {
         const box = document.getElementById('quickChipsContainer');
         const list = (divisionMeta[dialectKey] || divisionMeta.bavli).chips;
-        box.innerHTML = `<span class="small text-muted fw-bold">דוגמאות מהירות:</span>` +
-            list.map(c => `<span class="quick-word-chip" onclick="runQuickTerm('${c}')">${c}</span>`).join('');
+        box.innerHTML = '<span class="small text-muted fw-bold">דוגמאות מהירות:</span>' +
+            list.map(function(c) {
+                return '<span class="quick-word-chip" onclick="runQuickTerm(\'' + c + '\')">' + c + '</span>';
+            }).join('');
     }
 
-    function applyTableFilters() {
-        const textVal = document.getElementById('filterLexiconInput').value.trim();
-        const catVal = document.getElementById('categoryFilterSelect').value.trim();
-        const activeMeta = divisionMeta[selectedDialect] || divisionMeta.bavli;
-        const container = document.getElementById(activeMeta.tableId);
-        if (!container) return;
-
-        let visibleCount = 0;
-        container.querySelectorAll('tbody tr.lexicon-row').forEach(row => {
-            const rowLetter = row.getAttribute('data-letter') || '';
-            const rowCat = row.getAttribute('data-cat') || '';
-            const matchLetter = !activeLetterFilter || rowLetter === activeLetterFilter;
-            const matchCat = !catVal || rowCat.includes(catVal);
-            const matchText = !textVal || row.innerText.includes(textVal);
-
-            if (matchLetter && matchCat && matchText) {
-                row.style.display = '';
-                visibleCount++;
-            } else {
-                row.style.display = 'none';
+    function buildAlephBetBar() {
+        const activeList = DICTIONARIES[selectedDialect] || [];
+        const countsByLetter = {};
+        HEBREW_LETTERS.forEach(function(l) { countsByLetter[l] = 0; });
+        activeList.forEach(function(item) {
+            if (countsByLetter[item.first_letter] !== undefined) {
+                countsByLetter[item.first_letter]++;
             }
         });
 
-        document.getElementById('visibleTermsCountBadge').textContent = `${visibleCount} מונחים`;
+        const bar = document.getElementById('alephBetFilterBar');
+        let html = '<button type="button" class="aleph-bet-btn ' + (activeLetterFilter === '' ? 'active' : '') + '" onclick="setLetterFilter(\'\')">הכל <span class="letter-count-sub">(' + activeList.length + ')</span></button>';
+        HEBREW_LETTERS.forEach(function(l) {
+            const cnt = countsByLetter[l] || 0;
+            html += '<button type="button" class="aleph-bet-btn ' + (activeLetterFilter === l ? 'active' : '') + '" onclick="setLetterFilter(\'' + l + '\')">' + l + ' <span class="letter-count-sub">(' + cnt + ')</span></button>';
+        });
+        bar.innerHTML = html;
+    }
+
+    window.setLetterFilter = function(letter) {
+        activeLetterFilter = letter;
+        currentLexPage = 1;
+        buildAlephBetBar();
+        renderLexiconTable();
+    };
+
+    window.changeLexPage = function(newPage) {
+        currentLexPage = newPage;
+        renderLexiconTable();
+    };
+
+    function renderLexiconTable() {
+        const activeList = DICTIONARIES[selectedDialect] || [];
+        const textVal = document.getElementById('filterLexiconInput').value.trim();
+        const catVal = document.getElementById('categoryFilterSelect').value.trim();
+        const meta = divisionMeta[selectedDialect] || divisionMeta.bavli;
+
+        const filtered = activeList.filter(function(item) {
+            const matchLetter = (textVal !== '') ? true : (!activeLetterFilter || item.first_letter === activeLetterFilter);
+            const matchCat = !catVal || (item.cat && item.cat.includes(catVal));
+            const matchText = !textVal || item.term.includes(textVal) || item.he.includes(textVal) || (item.note && item.note.includes(textVal));
+            return matchLetter && matchCat && matchText;
+        });
+
+        document.getElementById('visibleTermsCountBadge').textContent = 'סה"כ בחטיבה: ' + activeList.length + ' ערכים (מוצגים: ' + filtered.length + ')';
+
+        const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
+        if (currentLexPage > totalPages) currentLexPage = 1;
+        const startIdx = (currentLexPage - 1) * rowsPerPage;
+        const pageItems = filtered.slice(startIdx, startIdx + rowsPerPage);
+
+        const tbody = document.getElementById('dynamicLexiconTbody');
+        if (!pageItems.length) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted fw-bold">לא נמצאו ערכים התואמים לסינון זה בטבלה — לחץ על "תרגם ונתח כעת" למעלה לפענוח כל מילה או הטיה!</td></tr>';
+        } else {
+            tbody.innerHTML = pageItems.map(function(item) {
+                const safeTerm = item.term.replace(/'/g, "\\'");
+                return '<tr style="cursor: pointer;" onclick="runQuickTerm(\'' + safeTerm + '\')">' +
+                    '<td class="ps-4 fw-bold fs-5" style="color: ' + meta.color + '; font-family: \'Frank Ruhl Libre\', serif;">' +
+                    '<span class="letter-group-badge">' + item.first_letter + '</span>' + item.term +
+                    '</td>' +
+                    '<td class="fw-semibold text-dark">' + item.he + '</td>' +
+                    '<td><span class="badge bg-light text-dark border">' + item.cat + '</span></td>' +
+                    '<td class="text-muted small">' + (item.note || '') + '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        const pagBar = document.getElementById('lexiconPaginationBar');
+        if (totalPages <= 1) {
+            pagBar.innerHTML = '<span class="small text-muted fw-bold">מציג ' + filtered.length + ' ערכים באות ' + (activeLetterFilter || 'א-ת') + ' (לחץ על כל שורה לתרגום מלא ודוגמאות מהש"ס והזוהר)</span>';
+        } else {
+            pagBar.innerHTML = '<button type="button" class="btn btn-sm btn-outline-dark fw-bold rounded-pill px-3" ' + (currentLexPage <= 1 ? 'disabled' : '') + ' onclick="changeLexPage(' + (currentLexPage - 1) + ')">הקודם</button>' +
+                '<span class="fw-bold small">עמוד ' + currentLexPage + ' מתוך ' + totalPages + ' (' + filtered.length + ' ערכים)</span>' +
+                '<button type="button" class="btn btn-sm btn-outline-dark fw-bold rounded-pill px-3" ' + (currentLexPage >= totalPages ? 'disabled' : '') + ' onclick="changeLexPage(' + (currentLexPage + 1) + ')">הבא</button>';
+        }
     }
 
     window.selectDivision = function(dialectKey, cardEl) {
         selectedDialect = dialectKey;
-        document.querySelectorAll('#dialectDivisionTabs .corpus-division-card').forEach(c => c.classList.remove('active'));
+        currentLexPage = 1;
+        document.querySelectorAll('#dialectDivisionTabs .corpus-division-card').forEach(function(c) { c.classList.remove('active'); });
         cardEl.classList.add('active');
 
         const meta = divisionMeta[dialectKey] || divisionMeta.bavli;
         document.getElementById('activeDivisionHeader').textContent = meta.header;
-        document.getElementById('dictionaryTableTitle').innerHTML = `<i class="bi bi-book-half ms-2" style="color: #d4af37;"></i>${meta.dictTitle}`;
+        document.getElementById('dictionaryTableTitle').innerHTML = '<i class="bi bi-book-half ms-2" style="color: #d4af37;"></i>' + meta.dictTitle;
         renderChips(dialectKey);
-
-        document.getElementById('lexiconTableBavli').style.display = (dialectKey === 'bavli') ? 'block' : 'none';
-        document.getElementById('lexiconTableYerushalmi').style.display = (dialectKey === 'yerushalmi') ? 'block' : 'none';
-        document.getElementById('lexiconTableZohar').style.display = (dialectKey === 'zohar') ? 'block' : 'none';
-
-        applyTableFilters();
+        buildAlephBetBar();
+        renderLexiconTable();
 
         if (document.getElementById('aramaicInput').value.trim()) {
             executeTranslation();
@@ -468,23 +455,21 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     renderChips('bavli');
-    applyTableFilters();
+    buildAlephBetBar();
+    renderLexiconTable();
 
-    document.querySelectorAll('#alephBetFilterBar .aleph-bet-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('#alephBetFilterBar .aleph-bet-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            activeLetterFilter = btn.getAttribute('data-letter') || '';
-            applyTableFilters();
-        });
+    document.getElementById('filterLexiconInput').addEventListener('input', function() {
+        currentLexPage = 1;
+        renderLexiconTable();
+    });
+    document.getElementById('categoryFilterSelect').addEventListener('change', function() {
+        currentLexPage = 1;
+        renderLexiconTable();
     });
 
-    document.getElementById('filterLexiconInput').addEventListener('input', applyTableFilters);
-    document.getElementById('categoryFilterSelect').addEventListener('change', applyTableFilters);
-
-    document.querySelectorAll('#directionGroup .dir-pill-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('#directionGroup .dir-pill-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#directionGroup .dir-pill-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('#directionGroup .dir-pill-btn').forEach(function(b) { b.classList.remove('active'); });
             btn.classList.add('active');
             selectedDir = btn.getAttribute('data-dir');
             if (document.getElementById('aramaicInput').value.trim()) executeTranslation();
@@ -510,47 +495,43 @@ document.addEventListener('DOMContentLoaded', function() {
         const titleEl = document.getElementById('aramaicSourceModalTitle');
         const bodyEl = document.getElementById('aramaicSourceModalBody');
 
-        titleEl.innerHTML = `<i class="bi bi-book-fill ms-2"></i>${ex.ref}`;
-        bodyEl.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-warning"></div><p class="mt-2 text-muted fw-bold">פותח את המקור המלא...</p></div>`;
+        titleEl.innerHTML = '<i class="bi bi-book-fill ms-2"></i>' + ex.ref;
+        bodyEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-warning"></div><p class="mt-2 text-muted fw-bold">פותח את הדף / המקור המלא...</p></div>';
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
 
         if (ex.full_text) {
-            bodyEl.innerHTML = `
-                <div class="p-4 rounded-3" style="background: #fff8dc; border: 2px solid #d4af37;">
-                    <div class="fw-bold mb-2" style="color: #8c6239;">${ex.ref}</div>
-                    <div class="fs-3 lh-lg text-dark" style="font-family: 'Frank Ruhl Libre', serif;">${ex.full_text}</div>
-                </div>
-            `;
+            bodyEl.innerHTML = '<div class="p-4 rounded-3" style="background: #fff8dc; border: 2px solid #d4af37;">' +
+                '<div class="fw-bold mb-2" style="color: #8c6239;">' + ex.ref + '</div>' +
+                '<div class="fs-3 lh-lg text-dark" style="font-family: \'Frank Ruhl Libre\', serif;">' + ex.full_text + '</div>' +
+                '</div>';
             return;
         }
 
-        const url = `/api/tanakh-search/?type=chapter_context&target_book=${encodeURIComponent(ex.book)}&target_chapter=${encodeURIComponent(ex.chapter)}`;
+        const url = '/api/tanakh-search/?type=chapter_context&target_book=' + encodeURIComponent(ex.book) + '&target_chapter=' + encodeURIComponent(ex.chapter);
         fetch(url)
-            .then(r => r.json())
-            .then(data => {
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
                 const verses = data.verses || [];
                 if (!verses.length) {
-                    bodyEl.innerHTML = `<div class="p-3 fs-4" style="font-family: 'Frank Ruhl Libre', serif;">${ex.text}</div>`;
+                    bodyEl.innerHTML = '<div class="p-3 fs-4" style="font-family: \'Frank Ruhl Libre\', serif;">' + ex.text + '</div>';
                     return;
                 }
                 const label = data.verse_label || 'שורה';
-                bodyEl.innerHTML = verses.map(v => {
+                bodyEl.innerHTML = verses.map(function(v) {
                     const isTarget = String(v.verse).trim() === String(ex.verse).trim();
-                    return `
-                        <div ${isTarget ? 'id="modalAramaicTargetRow"' : ''} class="daf-context-verse ${isTarget ? 'target-highlight' : ''}">
-                            <span class="badge bg-secondary ms-2">${label} ${v.verse}</span>
-                            <span class="fs-4 lh-lg text-dark" style="font-family: 'Frank Ruhl Libre', serif;">${v.text}</span>
-                        </div>
-                    `;
+                    return '<div ' + (isTarget ? 'id="modalAramaicTargetRow"' : '') + ' class="daf-context-verse ' + (isTarget ? 'target-highlight' : '') + '">' +
+                        '<span class="badge bg-secondary ms-2">' + label + ' ' + v.verse + '</span>' +
+                        '<span class="fs-4 lh-lg text-dark" style="font-family: \'Frank Ruhl Libre\', serif;">' + v.text + '</span>' +
+                        '</div>';
                 }).join('');
 
-                setTimeout(() => {
+                setTimeout(function() {
                     const tr = document.getElementById('modalAramaicTargetRow');
                     if (tr) tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }, 200);
             })
-            .catch(() => {
-                bodyEl.innerHTML = `<div class="p-3 fs-4" style="font-family: 'Frank Ruhl Libre', serif;">${ex.text}</div>`;
+            .catch(function() {
+                bodyEl.innerHTML = '<div class="p-3 fs-4" style="font-family: \'Frank Ruhl Libre\', serif;">' + ex.text + '</div>';
             });
     };
 
@@ -560,108 +541,86 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const outEl = document.getElementById('translationResultArea');
         outEl.style.display = 'block';
-        outEl.innerHTML = `
-            <div class="text-center py-4">
-                <div class="spinner-border text-warning" role="status"></div>
-                <h5 class="mt-3 fw-bold" style="color: #1e293b;">מתרגם ומנתח לפי חטיבת הלימוד שנבחרה...</h5>
-            </div>
-        `;
+        outEl.innerHTML = '<div class="text-center py-4">' +
+            '<div class="spinner-border text-warning" role="status"></div>' +
+            '<h5 class="mt-3 fw-bold" style="color: #1e293b;">מתרגם ומנתח מתוך מאגר המילון...</h5>' +
+            '</div>';
 
-        const url = `/api/aramaic-translate/?q=${encodeURIComponent(q)}&dir=${encodeURIComponent(selectedDir)}&dialect=${encodeURIComponent(selectedDialect)}`;
+        const url = '/api/aramaic-translate/?q=' + encodeURIComponent(q) + '&dir=' + encodeURIComponent(selectedDir) + '&dialect=' + encodeURIComponent(selectedDialect);
         fetch(url)
-            .then(r => r.json())
-            .then(data => {
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
                 if (data.error) {
-                    outEl.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                    outEl.innerHTML = '<div class="alert alert-danger">' + data.error + '</div>';
                     return;
+                }
+
+                const dList = data.dialects_list || ['בבלי', 'ירושלמי', 'זוהר'];
+                let badgesHtml = '';
+                if (dList.some(function(d) { return d.includes('בבלי'); })) {
+                    badgesHtml += '<span class="badge px-3 py-2" style="background: #dbeafe; color: #1e3a8a; font-size: 0.85rem;">📜 תלמוד בבלי</span>';
+                }
+                if (dList.some(function(d) { return d.includes('ירושלמי'); })) {
+                    badgesHtml += '<span class="badge px-3 py-2" style="background: #d1fae5; color: #065f46; font-size: 0.85rem;">🏛️ תלמוד ירושלמי</span>';
+                }
+                if (dList.some(function(d) { return d.includes('זוהר'); })) {
+                    badgesHtml += '<span class="badge px-3 py-2" style="background: #fef3c7; color: #92400e; font-size: 0.85rem;">📖 ספר הזוהר</span>';
                 }
 
                 lastExamplesList = data.talmud_examples || [];
                 let examplesHtml = '';
                 if (lastExamplesList.length) {
-                    examplesHtml = `
-                        <div class="mt-4 pt-3 border-top">
-                            <h6 class="fw-bold mb-3" style="color: #1e293b;"><i class="bi bi-journal-bookmark-fill ms-2" style="color: #d4af37;"></i>הופעות חיות במאגר האתר (לחץ על כל מקור לפתיחת הדף המלא):</h6>
-                            <div class="list-group">
-                                ${lastExamplesList.map((ex, i) => `
-                                    <div class="list-group-item border-0 rounded-3 mb-2 p-3 example-clickable-item" onclick="openAramaicSourceModal(${i})">
-                                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
-                                            <div class="fw-bold small" style="color: #8c6239;">
-                                                ${ex.ref} <span class="badge bg-dark text-warning ms-2">${ex.dialect_tag}</span>
-                                            </div>
-                                            <button type="button" class="btn btn-sm fw-bold py-0 px-2" style="background: #d4af37; color: #0f172a; font-size: 0.78rem; border-radius: 6px;">
-                                                📖 פתח דף / מקור מלא
-                                            </button>
-                                        </div>
-                                        <div class="fs-5" style="font-family: 'Frank Ruhl Libre', serif;">${ex.text}</div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
+                    examplesHtml = '<div class="mt-4 pt-3 border-top">' +
+                        '<h6 class="fw-bold mb-3" style="color: #1e293b;"><i class="bi bi-journal-bookmark-fill ms-2" style="color: #d4af37;"></i>הופעות חיות במאגר האתר (לחץ על כל מקור לפתיחת הדף המלא):</h6>' +
+                        '<div class="list-group">' +
+                        lastExamplesList.map(function(ex, i) {
+                            return '<div class="list-group-item border-0 rounded-3 mb-2 p-3 example-clickable-item" onclick="openAramaicSourceModal(' + i + ')">' +
+                                '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">' +
+                                '<div class="fw-bold small" style="color: #8c6239;">' +
+                                ex.ref + ' <span class="badge bg-dark text-warning ms-2">' + ex.dialect_tag + '</span>' +
+                                '</div>' +
+                                '<button type="button" class="btn btn-sm fw-bold py-0 px-2" style="background: #d4af37; color: #0f172a; font-size: 0.78rem; border-radius: 6px;">' +
+                                '📖 פתח דף / מקור מלא' +
+                                '</button>' +
+                                '</div>' +
+                                '<div class="fs-5" style="font-family: \'Frank Ruhl Libre\', serif;">' + ex.text + '</div>' +
+                                '</div>';
+                        }).join('') +
+                        '</div></div>';
                 }
 
-                outEl.innerHTML = `
-                    <div class="p-4 rounded-4" style="background: #fffdf7; border: 2px solid #d4af37;">
-                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-2 border-bottom">
-                            <div>
-                                <span class="badge bg-dark text-warning px-3 py-2 fs-6">${data.detected_direction}</span>
-                                <span class="fw-bold fs-4 me-2" style="color: #1e293b;">"${data.query}"</span>
-                            </div>
-                            <button type="button" class="btn btn-sm btn-dark fw-bold px-3" onclick="navigator.clipboard.writeText(document.getElementById('mainTransBox').innerText)">
-                                <i class="bi bi-clipboard-check ms-1"></i>העתק תרגום
-                            </button>
-                        </div>
-
-                        <div id="mainTransBox">
-                            <div class="p-3 mb-4 rounded-3" style="background: #fff8dc; border-right: 5px solid #b8860b;">
-                                <div class="small fw-bold text-muted mb-1">תרגום מרכזי מדויק:</div>
-                                <div class="fs-2 fw-bold" style="font-family: 'Frank Ruhl Libre', serif; color: #0f172a;">${data.main_translation}</div>
-                            </div>
-
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-4">
-                                    <div class="dialect-card ${selectedDialect === 'bavli' ? 'highlighted-dialect' : ''}">
-                                        <span class="badge mb-2" style="background: #dbeafe; color: #1e3a8a;">📜 תלמוד בבלי</span>
-                                        <div class="fs-5 fw-semibold" style="font-family: 'Frank Ruhl Libre', serif;">${data.bavli_variant || '—'}</div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="dialect-card ${selectedDialect === 'yerushalmi' ? 'highlighted-dialect' : ''}">
-                                        <span class="badge mb-2" style="background: #d1fae5; color: #065f46;">🏛️ תלמוד ירושלמי</span>
-                                        <div class="fs-5 fw-semibold" style="font-family: 'Frank Ruhl Libre', serif;">${data.yerushalmi_variant || '—'}</div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="dialect-card ${selectedDialect === 'zohar' ? 'highlighted-dialect' : ''}">
-                                        <span class="badge mb-2" style="background: #fef3c7; color: #92400e;">📖 ספר הזוהר</span>
-                                        <div class="fs-5 fw-semibold" style="font-family: 'Frank Ruhl Libre', serif;">${data.zohar_variant || '—'}</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <div class="p-3 rounded-3 border bg-white h-100">
-                                        <h6 class="fw-bold" style="color: #8c6239;"><i class="bi bi-diagram-2-fill ms-1"></i>פירוק דקדוקי ושורש:</h6>
-                                        <div>${data.grammar_breakdown || '—'}</div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="p-3 rounded-3 border bg-white h-100">
-                                        <h6 class="fw-bold" style="color: #8c6239;"><i class="bi bi-chat-quote-fill ms-1"></i>דוגמת שימוש במקורות:</h6>
-                                        <div style="font-family: 'Frank Ruhl Libre', serif; font-size: 1.1rem;">${data.usage_example || '—'}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        ${examplesHtml}
-                    </div>
-                `;
+                outEl.innerHTML = '<div class="p-4 rounded-4" style="background: #fffdf7; border: 2px solid #d4af37;">' +
+                    '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-2 border-bottom">' +
+                    '<div class="d-flex align-items-center flex-wrap gap-2">' +
+                    '<span class="badge bg-dark text-warning px-3 py-2 fs-6">' + data.detected_direction + '</span>' +
+                    '<span class="fw-bold fs-4 me-1" style="color: #1e293b;">"' + data.query + '"</span>' +
+                    badgesHtml +
+                    '</div>' +
+                    '<button type="button" class="btn btn-sm btn-dark fw-bold px-3" onclick="navigator.clipboard.writeText(document.getElementById(\'mainTransBox\').innerText)">' +
+                    '<i class="bi bi-clipboard-check ms-1"></i>העתק תרגום' +
+                    '</button>' +
+                    '</div>' +
+                    '<div id="mainTransBox">' +
+                    '<div class="p-4 mb-3 rounded-3" style="background: #fff8dc; border-right: 5px solid #b8860b;">' +
+                    '<div class="small fw-bold text-muted mb-1">תרגום וביאור מדויק:</div>' +
+                    '<div class="fs-2 fw-bold" style="font-family: \'Frank Ruhl Libre\', serif; color: #0f172a;">' + data.main_translation + '</div>' +
+                    '</div>' +
+                    '<div class="row g-3">' +
+                    '<div class="col-md-6">' +
+                    '<div class="p-3 rounded-3 border bg-white h-100">' +
+                    '<h6 class="fw-bold" style="color: #8c6239;"><i class="bi bi-diagram-2-fill ms-1"></i>פירוק דקדוקי ושורש:</h6>' +
+                    '<div class="fw-semibold text-dark">' + (data.grammar_breakdown || '—') + '</div>' +
+                    '</div></div>' +
+                    '<div class="col-md-6">' +
+                    '<div class="p-3 rounded-3 border bg-white h-100">' +
+                    '<h6 class="fw-bold" style="color: #8c6239;"><i class="bi bi-chat-quote-fill ms-1"></i>דוגמת שימוש והערות:</h6>' +
+                    '<div style="font-family: \'Frank Ruhl Libre\', serif; font-size: 1.15rem; color: #1e293b;">' + (data.usage_example || '—') + '</div>' +
+                    '</div></div></div></div>' +
+                    examplesHtml +
+                    '</div>';
             })
-            .catch(() => {
-                outEl.innerHTML = `<div class="alert alert-danger">אירעה שגיאת תקשורת. אנא נסה שוב.</div>`;
+            .catch(function() {
+                outEl.innerHTML = '<div class="alert alert-danger">אירעה שגיאת תקשורת. אנא נסה שוב.</div>';
             });
     }
 });
