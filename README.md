@@ -55,12 +55,15 @@ To run this project locally for development or testing:
    cd leblibrary
 
 2. **Install dependencies:**
+    ```bash
     pip install -r requirements.txt
 
 3. **Run database migrations:**
+    ```bash
     python manage.py migrate
 
 4. **Start the development server:**
+    ```bash
     python manage.py runserver
 
 ---
