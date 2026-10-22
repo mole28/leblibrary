@@ -845,12 +845,67 @@ def article_delete(request, slug):
     return redirect('articles:list')
 
 
+def _send_gmail_ipv4(subject, body, recipient_list, reply_to_email=None):
+    import socket
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.header import Header
+    from email.utils import formataddr
+
+    _load_local_env()
+    smtp_user = os.environ.get('EMAIL_HOST_USER', '').strip() or getattr(settings, 'EMAIL_HOST_USER', '').strip() or 'moshe111moshe111@gmail.com'
+    raw_pass = os.environ.get('EMAIL_HOST_PASSWORD', '').strip() or getattr(settings, 'EMAIL_HOST_PASSWORD', '').strip()
+    smtp_pass = re.sub(r'\s+', '', raw_pass).strip('"').strip("'")
+
+    if not smtp_pass:
+        raise Exception("EMAIL_HOST_PASSWORD חסר בקובץ ה-.env בשרת.")
+
+    msg = MIMEText(body, 'plain', 'utf-8')
+    msg['Subject'] = Header(subject, 'utf-8')
+    msg['From'] = formataddr((str(Header('ספריית לייבוביץ', 'utf-8')), smtp_user))
+    msg['To'] = ", ".join(recipient_list)
+    if reply_to_email:
+        msg['Reply-To'] = reply_to_email
+
+    try:
+        ipv4_host = socket.getaddrinfo('smtp.gmail.com', None, socket.AF_INET)[0][4][0]
+    except Exception:
+        ipv4_host = 'smtp.gmail.com'
+
+    last_err = None
+
+    for host_target in [ipv4_host, 'smtp.gmail.com']:
+        try:
+            server = smtplib.SMTP_SSL(host_target, 465, timeout=12)
+            server.ehlo()
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, recipient_list, msg.as_string())
+            server.quit()
+            return True
+        except Exception as e:
+            last_err = e
+
+        try:
+            server = smtplib.SMTP(host_target, 587, timeout=12)
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, recipient_list, msg.as_string())
+            server.quit()
+            return True
+        except Exception as e:
+            last_err = e
+
+    raise last_err
+
+
 @ratelimit(rate=10, timeout=600)
 def contact(request):
     if request.method == 'POST':
         honeypot = request.POST.get('website_url', '').strip()
         if honeypot:
-            messages.success(request, 'תודה! הודעתך נשלחה בהצלחה.')
+            messages.success(request, 'תודה רבה! הודעתך נשלחה בהצלחה.')
             return redirect('articles:contact')
 
         name = request.POST.get('name', '').strip() or 'ללא שם'
@@ -868,15 +923,12 @@ def contact(request):
             f"תוכן ההודעה:\n{message}"
         )
 
-        sender_email = getattr(settings, 'DEFAULT_FROM_EMAIL', '') or os.environ.get('EMAIL_HOST_USER', 'moshe111moshe111@gmail.com')
-
         try:
-            send_mail(
+            _send_gmail_ipv4(
                 subject=f"פנייה מהאתר: {subject} ({name})",
-                message=full_message,
-                from_email=sender_email,
+                body=full_message,
                 recipient_list=['moshe111moshe111@gmail.com'],
-                fail_silently=False,
+                reply_to_email=email if '@' in email else None
             )
             messages.success(request, 'תודה רבה! הודעתך נשלחה בהצלחה ונחזור אליך בהקדם.')
         except Exception as e:

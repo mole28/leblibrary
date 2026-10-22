@@ -18,15 +18,7 @@
     "name": "הרב משה לייבוביץ",
     "url": "https://leblibrary.co.il/about/"
   },
-  "description": "מנוע חיפוש תורני מתקדם ומערכת ניתוח נתונים ב-AI הסורקים את התורה, התנ\"ך השלם, המשנה, התוספתא, תלמוד בבלי, תלמוד ירושלמי, רמב\"ם (משנה תורה) ושולחן ערוך. כולל חיפוש מדויק וחופשי, חישוב והצלבת גימטריאות, ראשי תיבות, סופי תיבות, דילוגי אותיות (ELS), היפוך אותיות, מפת קשרים רעיונית וחיבור נתונים ב-AI.",
-  "featureList": [
-    "חיפוש מילולי מדויק וחיפוש רחב בתנ\"ך, במשנה, בתוספתא, בתלמוד הבבלי והירושלמי, ברמב\"ם ובשולחן ערוך",
-    "מנוע גימטריאות מאונדקס לאיתור מילים ופסוקים בעלי ערך גימטרי זהה",
-    "איתור ראשי תיבות (ר\"ת) וסופי תיבות (ס\"ת) ברצפי מילים במקרא ובהלכה",
-    "סריקת דילוגי אותיות במרווחים שווים (ELS) במילה בודדת ולאורך הפסוק",
-    "זיהוי מילים הפוכות ופלינדרומים במקורות",
-    "ניתוח AI של הנתונים: מיפוי מוקדי סוגיות, מפת קשרים ויזואלית וחיבור נתוני עומק לרעיון משותף"
-  ],
+  "description": "מנוע חיפוש תורני מתקדם, ניתוח AI של הנתונים ומתרגם ארמי-עברי לתלמוד הבבלי, הירושלמי וספר הזוהר.",
   "potentialAction": {
     "@type": "SearchAction",
     "target": "https://leblibrary.co.il/advanced-search/?q={search_term_string}",
@@ -186,9 +178,6 @@
     .qa-mini-sidebar { background: linear-gradient(180deg, #ffffff 0%, #fdfbf7 100%); border: 1px solid #e2d5c5; border-radius: 16px; padding: 25px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
     .qa-mini-icon { width: 40px; height: 40px; background: #d4af37; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; position: absolute; top: -20px; right: 20px; box-shadow: 0 4px 10px rgba(212,175,55,0.4); }
 
-    .qa-small-banner { background: linear-gradient(135deg, #a67c52 0%, #d4af37 100%); border-radius: 16px; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(166, 124, 82, 0.25); padding: 25px; }
-    .qa-small-banner::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml;utf8,<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="2" cy="2" r="2" fill="white" opacity="0.1"/></svg>'); pointer-events: none; }
-
     .parasha-sidebar { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-right: 6px solid #d4af37; border-radius: 16px; position: relative; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15); }
     .parasha-sidebar::before { content: '\F13E'; font-family: 'bootstrap-icons'; position: absolute; left: -20px; bottom: -20px; font-size: 14rem; color: rgba(255,255,255,0.04); transform: rotate(-15deg); }
 
@@ -208,7 +197,7 @@
     body.dark-mode .live-search-dropdown .border-bottom { border-color: #334155 !important; }
     body.dark-mode .hover-bg-light:hover { background-color: #0f172a !important; }
 
-    .acronym-widget-card { background: linear-gradient(145deg, #fdfbf7 0%, #f4ebd8 100%); border: 1px solid rgba(166, 124, 82, 0.3); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08); border-radius: 16px; padding: 24px; margin-bottom: 25px; position: relative; overflow: hidden; }
+    .acronym-widget-card { background: linear-gradient(145deg, #fdfbf7 0%, #f4ebd8 100%); border: 1px solid rgba(166, 124, 82, 0.3); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08); border-radius: 16px; padding: 22px; position: relative; overflow: hidden; }
     .acronym-widget-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, #d4af37, #a67c52, #d4af37); }
     body.dark-mode .acronym-widget-card { background: #1e293b; border-color: #334155; }
     body.dark-mode .acronym-widget-card h5 { color: #f8fafc !important; }
@@ -448,11 +437,21 @@
                 </div>
 
                 <div class="mt-5 pt-3 mb-5">
-                    <div class="qa-mini-sidebar shadow-sm h-100 d-flex flex-column justify-content-center" style="min-height: 280px;">
+                    <div class="qa-mini-sidebar shadow-sm h-100 d-flex flex-column justify-content-center" style="min-height: 290px;">
                         <div class="qa-mini-icon"><i class="bi bi-chat-quote-fill"></i></div>
-                        <h4 class="fw-bold mb-2 mt-1" style="color: #2c3e50; font-size: 1.2rem;">שאלות ותשובות</h4>
-                        <p class="text-muted mb-3" style="font-size: 0.9rem;">מדור הלכה ובירורים מרכזי.</p>
+                        <h4 class="fw-bold mb-1 mt-1" style="color: #2c3e50; font-size: 1.25rem;">שאלות ותשובות</h4>
+                        <p class="text-muted mb-2" style="font-size: 0.92rem;">מדור הלכה ובירורים מרכזי.</p>
                         
+                        <div class="mb-3 p-2 px-3 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2" style="background: rgba(212, 175, 55, 0.12); border: 1px solid rgba(212, 175, 55, 0.4);">
+                            <span style="font-size: 0.92rem; color: #3b2f14; font-weight: 600;">
+                                <i class="bi bi-envelope-paper-heart-fill ms-1" style="color: #a67c52;"></i>
+                                יש לכם שאלה הלכתית? זקוקים להכוונה? צוות האתר ישמח לענות.
+                            </span>
+                            <a href="{% url 'articles:contact' %}" class="btn btn-sm rounded-pill fw-bold px-3" style="background: linear-gradient(135deg, #a67c52 0%, #d4af37 100%); color: #fff;">
+                                שליחת שאלה / צור קשר <i class="bi bi-arrow-left-short"></i>
+                            </a>
+                        </div>
+
                         {% if latest_qa %}
                         <div class="p-3 bg-white rounded-3 border mb-3 shadow-sm flex-grow-1">
                             <p class="fw-bold mb-1" style="color: #a67c52; font-size: 0.85rem;"><i class="bi bi-patch-question me-1"></i> שאלה אחרונה:</p>
@@ -468,18 +467,18 @@
 
             <div class="col-lg-4">
                 
-                <div class="calc-sidebar-card p-4 text-center mb-5">
-                    <div class="mb-4 d-flex justify-content-center gap-3">
+                <div class="calc-sidebar-card p-4 text-center mb-4">
+                    <div class="mb-3 d-flex justify-content-center gap-3">
                         <div class="icon-circle" title="אורך"><i class="bi bi-rulers"></i></div>
                         <div class="icon-circle" title="נפח"><i class="bi bi-cup-straw"></i></div>
                         <div class="icon-circle" title="משקל ומטבעות"><i class="bi bi-coin"></i></div>
                     </div>
                     <h4 class="fw-bold mb-2" style="color: #2c3e50; font-family: 'Frank Ruhl Libre', serif;">מחשבוני מידות התורה וחז"ל</h4>
-                    <div class="mx-auto mb-4" style="width: 50px; height: 3px; background: linear-gradient(90deg, #d4af37, #a67c52); border-radius: 2px;"></div>
-                    <p class="mb-4 pb-2 px-2 text-muted" style="font-size: 0.95rem;">
+                    <div class="mx-auto mb-3" style="width: 50px; height: 3px; background: linear-gradient(90deg, #d4af37, #a67c52); border-radius: 2px;"></div>
+                    <p class="mb-3 px-2 text-muted" style="font-size: 0.92rem;">
                         כלי עזר מהיר ואלגנטי להמרת מידות אורך, נפח, ומשקל מטבעות.
                     </p>
-                    <div class="d-grid gap-3">
+                    <div class="d-grid gap-2">
                         <a href="{% url 'articles:calculator' %}" class="calc-btn-primary">
                             מחשבון מידות אורך <i class="bi bi-arrow-left-short fs-5"></i>
                         </a>
@@ -492,19 +491,19 @@
                     </div>
                 </div>
 
-                <div class="acronym-widget-card mb-5">
-                    <div style="display: flex; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #d4af37; padding-bottom: 10px;">
-                        <i class="bi bi-journal-text" style="font-size: 1.4rem; color: #d4af37; margin-left: 10px;"></i>
+                <div class="acronym-widget-card mb-4">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px; border-bottom: 2px solid #d4af37; padding-bottom: 8px;">
+                        <i class="bi bi-journal-text" style="font-size: 1.35rem; color: #d4af37; margin-left: 10px;"></i>
                         <h5 style="margin: 0; font-weight: 700; color: #2d3748; font-size: 1.1rem;">מילון ראשי תיבות</h5>
                     </div>
                     
-                    <p style="font-size: 0.85em; color: #718096; margin-bottom: 12px;">הקלד ראשי תיבות (כמו "רש"י") או מילה מתוך הפירוש:</p>
+                    <p style="font-size: 0.84em; color: #718096; margin-bottom: 10px;">הקלד ראשי תיבות (כמו "רש"י") או מילה מתוך הפירוש:</p>
                     
-                    <div style="position: relative; margin-bottom: 12px;">
-                        <input type="text" id="acronymSearchInput" placeholder="חפש ראשי תיבות או פירוש..." style="width: 100%; padding: 10px 15px; background-color: #ffffff; border: 1px solid #dcd3c1; border-radius: 8px; font-size: 0.95em; outline: none; transition: border-color 0.2s;">
+                    <div style="position: relative; margin-bottom: 10px;">
+                        <input type="text" id="acronymSearchInput" placeholder="חפש ראשי תיבות או פירוש..." style="width: 100%; padding: 9px 14px; background-color: #ffffff; border: 1px solid #dcd3c1; border-radius: 8px; font-size: 0.92em; outline: none;">
                     </div>
                     
-                    <div style="display: flex; gap: 10px; margin-bottom: 15px; font-size: 0.85em;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 12px; font-size: 0.84em;">
                         <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
                             <input type="radio" name="acronymSearchType" value="short" checked style="accent-color: #d4af37;"> לפי ראשי תיבות
                         </label>
@@ -513,16 +512,46 @@
                         </label>
                     </div>
 
-                    <div id="acronymResultsContainer" style="max-height: 220px; overflow-y: auto; font-size: 0.9em; background: #ffffff; border: 1px solid #dcd3c1; border-radius: 8px; padding: 10px;">
+                    <div id="acronymResultsContainer" style="max-height: 155px; overflow-y: auto; font-size: 0.88em; background: #ffffff; border: 1px solid #dcd3c1; border-radius: 8px; padding: 10px;">
                         <div style="color: #a0aec0; text-align: center; padding: 10px; font-style: italic;">הקלד לחיפוש מהיר במאגר...</div>
                     </div>
                 </div>
 
-                <div class="mb-5">
-                    <div class="parasha-sidebar p-4 p-md-5 d-flex flex-column justify-content-center" style="min-height: 460px;">
+                <div class="acronym-widget-card mb-4">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; border-bottom: 2px solid #d4af37; padding-bottom: 8px;">
+                        <div style="display: flex; align-items: center;">
+                            <i class="bi bi-translate" style="font-size: 1.35rem; color: #d4af37; margin-left: 8px;"></i>
+                            <h5 style="margin: 0; font-weight: 700; color: #2d3748; font-size: 1.08rem;">מתרגם ארמי ⇄ עברי</h5>
+                        </div>
+                        <span class="badge" style="background: #1e293b; color: #f7e199; font-size: 0.72rem;">בבלי • ירושלמי • זוהר</span>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-bottom: 9px; font-size: 0.82em;">
+                        <label style="cursor: pointer;"><input type="radio" name="homeAramaicDialect" value="bavli" checked style="accent-color: #d4af37;"> תלמוד בבלי</label>
+                        <label style="cursor: pointer;"><input type="radio" name="homeAramaicDialect" value="yerushalmi" style="accent-color: #d4af37;"> ירושלמי</label>
+                        <label style="cursor: pointer;"><input type="radio" name="homeAramaicDialect" value="zohar" style="accent-color: #d4af37;"> ספר הזוהר</label>
+                    </div>
+
+                    <div class="input-group input-group-sm mb-2">
+                        <input type="text" id="homeAramaicInput" placeholder="הקלד מילה בארמית או בעברית..." style="flex: 1; padding: 8px 12px; background-color: #ffffff; border: 1px solid #dcd3c1; border-radius: 0 8px 8px 0; font-size: 0.9em; outline: none;">
+                        <button type="button" class="btn fw-bold px-3" onclick="runHomeAramaicTranslate()" style="background: #d4af37; color: #0f172a; border-radius: 8px 0 0 8px;">תרגם</button>
+                    </div>
+
+                    <div id="homeAramaicResults" style="min-height: 68px; max-height: 120px; overflow-y: auto; font-size: 0.88em; background: #ffffff; border: 1px solid #dcd3c1; border-radius: 8px; padding: 9px; margin-bottom: 10px;">
+                        <div style="color: #a0aec0; text-align: center; padding-top: 10px; font-style: italic;">תרגום מהיר (למשל: איבעיא להו, תמן, בגין)...</div>
+                    </div>
+
+                    <a href="{% url 'articles:aramaic_translator' %}" class="calc-btn-secondary py-2 px-3" style="font-size: 0.86rem;">
+                        <span>למתרגם והמילון המלא (בבלי, ירושלמי והזוהר)</span>
+                        <i class="bi bi-arrow-left-short fs-5"></i>
+                    </a>
+                </div>
+
+                <div class="mb-4">
+                    <div class="parasha-sidebar p-4 d-flex flex-column justify-content-center" style="min-height: 420px;">
                         <div style="z-index: 1;">
                             
-                            <div class="text-center mb-4">
+                            <div class="text-center mb-3">
                                 <span class="bg-warning text-dark px-4 py-2 rounded-pill fw-bold fs-6 shadow-sm"><i class="bi bi-book me-2"></i> לוח שנה שבועי</span>
                             </div>
 
@@ -533,7 +562,7 @@
                             {% endif %}
                             
                             {% if jewish_cal %}
-                            <div class="bg-white bg-opacity-10 rounded-4 p-4 mb-4 text-center border border-light border-opacity-25 shadow-sm">
+                            <div class="bg-white bg-opacity-10 rounded-4 p-4 mb-3 text-center border border-light border-opacity-25 shadow-sm">
                                 <h3 class="fw-bold text-white mb-2" style="font-family: 'Frank Ruhl Libre', serif; letter-spacing: 1px;">
                                     <i class="bi bi-bookmark-star text-warning me-2"></i> {% if jewish_cal.parasha %}{{ jewish_cal.parasha }}{% else %}פרשת השבוע{% endif %}
                                 </h3>
@@ -558,32 +587,20 @@
 
                             {% if parasha_article %}
                             <div class="text-center">
-                                <p class="text-white opacity-75 mb-3 px-2 small">מאמר עיוני על פרשיות השבוע מומלץ:</p>
+                                <p class="text-white opacity-75 mb-2 px-2 small">מאמר עיוני על פרשיות השבוע מומלץ:</p>
                                 <p class="text-white fw-bold mb-3 fs-5">{{ parasha_article.title|striptags }}</p>
-                                <a href="{% url 'articles:detail' parasha_article.slug %}" class="btn btn-light w-100 rounded-pill fw-bold text-dark shadow-sm py-2 mb-3">
+                                <a href="{% url 'articles:detail' parasha_article.slug %}" class="btn btn-light w-100 rounded-pill fw-bold text-dark shadow-sm py-2 mb-2">
                                     לקריאת המאמר <i class="bi bi-arrow-left-short fs-5 align-middle"></i>
                                 </a>
                             </div>
                             {% endif %}
                             
-                            <div class="text-center mt-3">
+                            <div class="text-center mt-2">
                                 <a href="/parasha/" class="text-white opacity-75 fw-bold text-decoration-none hover-white" style="border-bottom: 1px dashed rgba(255,255,255,0.5);">
                                     לכל מאמרי פרשת שבוע ומועדים <i class="bi bi-chevron-left small"></i>
                                 </a>
                             </div>
                             
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mb-4">
-                    <div class="qa-small-banner text-center text-white d-flex flex-column justify-content-center" style="min-height: 280px;">
-                        <div style="position: relative; z-index: 1;">
-                            <h5 class="fw-bold mb-3 text-white" style="font-size: 1.25rem;">יש לכם שאלה הלכתית?</h5>
-                            <p class="small mb-4 text-white opacity-75" style="font-size: 0.95rem;">זקוקים להכוונה? צוות האתר ישמח לענות.</p>
-                            <a href="{% url 'articles:contact' %}" class="btn btn-light rounded-pill fw-bold px-4 py-2 shadow-sm" style="color: #a67c52; font-size: 1rem;">
-                                <i class="bi bi-envelope-paper me-1"></i> צור קשר עכשיו
-                            </a>
                         </div>
                     </div>
                 </div>
@@ -710,7 +727,6 @@
                         }
 
                         let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
-                        data.results.duplicates = false;
                         data.results.forEach(item => {
                             html += `
                                 <li style="padding: 8px 10px; border-bottom: 1px solid #e6dec9; margin-bottom: 4px;">
@@ -722,7 +738,7 @@
                         html += '</ul>';
                         acronymContainer.innerHTML = html;
                     })
-                    .catch(error => {
+                    .catch(() => {
                         acronymContainer.innerHTML = '<div style="color: #e53e3e; text-align: center; padding: 10px;">שגיאה בביצוע החיפוש.</div>';
                     });
             }
@@ -734,6 +750,37 @@
 
             radioButtons.forEach(radio => {
                 radio.addEventListener('change', performAcronymSearch);
+            });
+        }
+
+        window.runHomeAramaicTranslate = function() {
+            const q = document.getElementById('homeAramaicInput').value.trim();
+            const resBox = document.getElementById('homeAramaicResults');
+            const dialectEl = document.querySelector('input[name="homeAramaicDialect"]:checked');
+            const dialect = dialectEl ? dialectEl.value : 'bavli';
+            if (!q) return;
+            resBox.innerHTML = '<div class="text-center text-muted pt-2">מתרגם...</div>';
+            fetch(`/api/aramaic-translate/?q=${encodeURIComponent(q)}&dialect=${encodeURIComponent(dialect)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        resBox.innerHTML = `<div class="text-danger small">${data.error}</div>`;
+                        return;
+                    }
+                    resBox.innerHTML = `<div><strong style="color: #a67c52;">${data.query}:</strong> <span class="fw-bold text-dark">${data.main_translation}</span></div><div class="text-muted" style="font-size: 0.8rem;">${data.grammar_breakdown || ''}</div>`;
+                })
+                .catch(() => {
+                    resBox.innerHTML = '<div class="text-danger small">שגיאה בתרגום.</div>';
+                });
+        };
+
+        const homeArInput = document.getElementById('homeAramaicInput');
+        if (homeArInput) {
+            homeArInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    window.runHomeAramaicTranslate();
+                }
             });
         }
     });

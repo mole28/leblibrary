@@ -71,4 +71,6 @@ urlpatterns = [
     path('advanced-search/', views.advanced_search_view, name='advanced_search'),
     path('api/tanakh-search/', views.tanakh_advanced_search_api, name='tanakh_advanced_search_api'),
     path('api/torah-ai-insights/', views.torah_ai_insights_api, name='torah_ai_insights_api'),
+    path('aramaic-translator/', views.aramaic_translator_view, name='aramaic_translator'),
+    path('api/aramaic-translate/', views.aramaic_translate_api, name='aramaic_translate_api'),
 ]

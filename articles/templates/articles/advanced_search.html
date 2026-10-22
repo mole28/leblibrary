@@ -824,6 +824,99 @@
     </div>
 </div>
 
+<div class="bottom-tools-section">
+    <div class="row g-4 justify-content-center align-items-stretch">
+        
+        <div class="col-md-6 col-lg-4">
+            <div class="compact-tool-card text-center">
+                <div>
+                    <div class="mb-2 d-flex justify-content-center gap-2">
+                        <div class="compact-tool-icon" title="אורך"><i class="bi bi-rulers"></i></div>
+                        <div class="compact-tool-icon" title="נפח"><i class="bi bi-cup-straw"></i></div>
+                        <div class="compact-tool-icon" title="משקל ומטבעות"><i class="bi bi-coin"></i></div>
+                    </div>
+                    <h5 class="fw-bold mb-1" style="color: #2c3e50; font-family: 'Frank Ruhl Libre', serif; font-size: 1.12rem;">מחשבוני מידות התורה וחז"ל</h5>
+                    <div class="mx-auto mb-2" style="width: 40px; height: 2.5px; background: linear-gradient(90deg, #d4af37, #a67c52); border-radius: 2px;"></div>
+                    <p class="text-muted mb-3" style="font-size: 0.82rem; line-height: 1.4;">
+                        כלי עזר מהיר להמרת מידות אורך, נפח, ומשקל מטבעות.
+                    </p>
+                </div>
+                <div class="d-grid gap-2">
+                    <a href="{% url 'articles:calculator' %}" class="compact-calc-btn-primary">
+                        <span>מחשבון מידות אורך</span>
+                        <i class="bi bi-arrow-left-short fs-5"></i>
+                    </a>
+                    <a href="{% url 'articles:volume_calculator' %}" class="compact-calc-btn-secondary">
+                        <span>מחשבון מידות נפח</span>
+                        <i class="bi bi-arrow-left-short fs-5"></i>
+                    </a>
+                    <a href="{% url 'articles:weight_calculator' %}" class="compact-calc-btn-secondary">
+                        <span>מחשבון משקל ומטבעות</span>
+                        <i class="bi bi-arrow-left-short fs-5"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="compact-tool-card">
+                <div>
+                    <div class="d-flex align-items-center mb-2 pb-2" style="border-bottom: 1.5px solid #d4af37;">
+                        <i class="bi bi-journal-text ms-2" style="font-size: 1.2rem; color: #d4af37;"></i>
+                        <h5 class="mb-0 fw-bold" style="color: #2d3748; font-size: 1.08rem; font-family: 'Frank Ruhl Libre', serif;">מילון ראשי תיבות</h5>
+                    </div>
+                    <p class="text-muted mb-2" style="font-size: 0.81rem;">הקלד ראשי תיבות (כמו "רש"י") או מילה מתוך הפירוש:</p>
+                    <div class="mb-2">
+                        <input type="text" id="bottomAcronymInput" class="compact-acr-input" placeholder="חפש ראשי תיבות או פירוש...">
+                    </div>
+                    <div class="d-flex gap-3 mb-2" style="font-size: 0.8rem; color: #4a5568;">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                            <input type="radio" name="bottomAcronymType" value="short" checked style="accent-color: #d4af37;"> לפי ר"ת
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                            <input type="radio" name="bottomAcronymType" value="meaning" style="accent-color: #d4af37;"> לפי פירוש
+                        </label>
+                    </div>
+                </div>
+                <div id="bottomAcronymResults" class="compact-acr-results">
+                    <div style="color: #a0aec0; text-align: center; padding-top: 28px; font-style: italic;">הקלד לחיפוש מהיר במאגר...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="compact-tool-card">
+                <div>
+                    <div class="d-flex align-items-center justify-content-between mb-2 pb-2" style="border-bottom: 1.5px solid #d4af37;">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-translate ms-2" style="font-size: 1.2rem; color: #d4af37;"></i>
+                            <h5 class="mb-0 fw-bold" style="color: #2d3748; font-size: 1.08rem; font-family: 'Frank Ruhl Libre', serif;">מתרגם ארמי ⇄ עברי</h5>
+                        </div>
+                        <span class="badge" style="background: #1e293b; color: #f7e199; font-size: 0.7rem;">בבלי • ירושלמי • זוהר</span>
+                    </div>
+                    <div class="d-flex gap-2 mb-2" style="font-size: 0.78rem;">
+                        <label style="cursor: pointer;"><input type="radio" name="miniAramaicDialect" value="bavli" checked style="accent-color: #d4af37;"> בבלי</label>
+                        <label style="cursor: pointer;"><input type="radio" name="miniAramaicDialect" value="yerushalmi" style="accent-color: #d4af37;"> ירושלמי</label>
+                        <label style="cursor: pointer;"><input type="radio" name="miniAramaicDialect" value="zohar" style="accent-color: #d4af37;"> זוהר</label>
+                    </div>
+                    <div class="input-group input-group-sm mb-2">
+                        <input type="text" id="miniAramaicInput" class="compact-acr-input" placeholder="הקלד מילה בארמית או בעברית..." style="border-radius: 0 8px 8px 0;">
+                        <button type="button" class="btn fw-bold px-3" onclick="runMiniAramaicTranslate()" style="background: #d4af37; color: #0f172a; border-radius: 8px 0 0 8px;">תרגם</button>
+                    </div>
+                </div>
+                <div id="miniAramaicResults" class="compact-acr-results mb-2" style="height: 76px;">
+                    <div style="color: #a0aec0; text-align: center; padding-top: 16px; font-style: italic;">תרגום מהיר (למשל: איבעיא להו, תמן, בגין)...</div>
+                </div>
+                <a href="{% url 'articles:aramaic_translator' %}" class="compact-calc-btn-secondary py-1 px-3" style="font-size: 0.82rem;">
+                    <span>למתרגם והמילון המלא (בבלי, ירושלמי והזוהר)</span>
+                    <i class="bi bi-arrow-left-short fs-5"></i>
+                </a>
+            </div>
+        </div>
+
+    </div>
+</div>
+
 <div class="modal fade" id="chapterContextModal" tabindex="-1" aria-hidden="true" dir="rtl">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content" style="border: 2px solid #d4af37; border-radius: 16px;">
@@ -1865,6 +1958,35 @@ document.addEventListener('DOMContentLoaded', function() {
             acrTimer = setTimeout(searchBottomAcronyms, 300);
         });
         acrRadios.forEach(r => r.addEventListener('change', searchBottomAcronyms));
+    }
+    window.runMiniAramaicTranslate = function() {
+        const q = document.getElementById('miniAramaicInput').value.trim();
+        const resBox = document.getElementById('miniAramaicResults');
+        const dialectEl = document.querySelector('input[name="miniAramaicDialect"]:checked');
+        const dialect = dialectEl ? dialectEl.value : 'bavli';
+        if (!q) return;
+        resBox.innerHTML = '<div class="text-center text-muted pt-2">מתרגם...</div>';
+        fetch(`/api/aramaic-translate/?q=${encodeURIComponent(q)}&dialect=${encodeURIComponent(dialect)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    resBox.innerHTML = `<div class="text-danger small">${data.error}</div>`;
+                    return;
+                }
+                resBox.innerHTML = `<div><strong style="color: #8c6239;">${data.query}:</strong> <span class="fw-bold text-dark">${data.main_translation}</span></div><div class="text-muted" style="font-size: 0.76rem;">${data.grammar_breakdown || ''}</div>`;
+            })
+            .catch(() => {
+                resBox.innerHTML = '<div class="text-danger small">שגיאה בתרגום.</div>';
+            });
+    };
+    const miniArInput = document.getElementById('miniAramaicInput');
+    if (miniArInput) {
+        miniArInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                window.runMiniAramaicTranslate();
+            }
+        });
     }
 });
 </script>
