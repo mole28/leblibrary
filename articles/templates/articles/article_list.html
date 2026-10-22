@@ -73,7 +73,7 @@
 {% block content %}
 <style>
     .home-dashboard { max-width: 1400px; margin: 0 auto; padding-top: 2rem; position: relative; }
-    .section-title { font-family: 'Frank Ruhl Libre', serif; color: #1a252f; font-weight: 800; position: relative; padding-bottom: 12px; margin-bottom: 30px; }
+    .section-title { font-family: 'Frank Ruhl Libre', serif; color: #1a252f; font-weight: 800; position: relative; padding-bottom: 12px; margin-bottom: 24px; }
     .section-title::after { content: ''; position: absolute; bottom: 0; right: 0; width: 60px; height: 4px; background: linear-gradient(90deg, #d4af37, #a67c52); border-radius: 2px; }
     
     .live-search-dropdown { position: absolute; top: 100%; left: 0; right: 0; background-color: #ffffff; border-radius: 16px; box-shadow: 0 15px 40px rgba(0,0,0,0.25); z-index: 1055; max-height: 350px; overflow-y: auto; margin-top: -10px; border: 1px solid #eaeaea; text-align: right; }
@@ -120,9 +120,6 @@
         white-space: nowrap;
         transition: all 0.2s ease;
     }
-    .hero-torah-gateway-bar:hover .gateway-cta-pill {
-        background: linear-gradient(135deg, #e5c148 0%, #fff3c4 100%);
-    }
     @media (max-width: 768px) {
         .hero-torah-gateway-bar {
             flex-direction: column;
@@ -130,14 +127,8 @@
             padding: 8px 14px;
             border-radius: 16px;
         }
-        .gateway-right-text {
-            font-size: 0.82rem;
-            text-align: center;
-        }
-        .gateway-cta-pill {
-            font-size: 0.8rem;
-            padding: 4px 12px;
-        }
+        .gateway-right-text { font-size: 0.82rem; text-align: center; }
+        .gateway-cta-pill { font-size: 0.8rem; padding: 4px 12px; }
     }
 
     .floating-widget-container {
@@ -164,41 +155,39 @@
     }
     .intro-icon-wrapper { width: 50px; height: 50px; background: #fdfbf7; border: 2px solid #d4af37; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; color: #d4af37; margin: 0 auto 15px; box-shadow: 0 4px 10px rgba(212,175,55,0.2); }
 
-    .premium-card { background: #fff; border: 1px solid rgba(0,0,0,0.05); border-radius: 12px; transition: all 0.3s ease; height: 100%; display: flex; flex-direction: column; }
-    .premium-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.08); border-color: rgba(212, 175, 55, 0.3); }
-    .book-card-img { height: 200px; object-fit: contain; background: #f8f9fa; padding: 15px; border-radius: 12px 12px 0 0; }
+    .premium-card { background: #fff; border: 1px solid rgba(0,0,0,0.06); border-radius: 14px; transition: all 0.3s ease; height: 100%; display: flex; flex-direction: column; }
+    .premium-card:hover { transform: translateY(-4px); box-shadow: 0 15px 30px rgba(0,0,0,0.08); border-color: rgba(212, 175, 55, 0.4); }
+    .book-card-img { height: 195px; object-fit: contain; background: #f8f9fa; padding: 14px; border-radius: 14px 14px 0 0; }
     
-    .calc-sidebar-card { background: linear-gradient(145deg, #fdfbf7 0%, #f4ebd8 100%); border: 1px solid rgba(166, 124, 82, 0.3); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08); border-radius: 16px; position: relative; overflow: hidden; }
-    .calc-sidebar-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, #d4af37, #a67c52, #d4af37); }
-    .icon-circle { background-color: #ffffff; border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; transition: transform 0.3s ease; }
-    .icon-circle i { font-size: 1.5rem; background: linear-gradient(135deg, #a67c52 0%, #d4af37 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-    .calc-btn-primary { border-radius: 12px; padding: 13px 20px; font-weight: 600; display: flex; justify-content: space-between; text-decoration: none; background: linear-gradient(135deg, #a67c52 0%, #835c39 100%); color: white !important; }
-    .calc-btn-secondary { border-radius: 12px; padding: 13px 20px; font-weight: 600; display: flex; justify-content: space-between; text-decoration: none; background-color: #ffffff; color: #946b45 !important; border: 1px solid rgba(166, 124, 82, 0.4); }
+    .calc-sidebar-card { background: linear-gradient(145deg, #fdfbf7 0%, #f4ebd8 100%); border: 1px solid rgba(166, 124, 82, 0.3); box-shadow: 0 12px 28px rgba(0, 0, 0, 0.06); border-radius: 16px; position: relative; overflow: hidden; }
+    .calc-sidebar-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: linear-gradient(90deg, #d4af37, #a67c52, #d4af37); }
+    .icon-circle { background-color: #ffffff; border: 1px solid rgba(212, 175, 55, 0.25); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
+    .icon-circle i { font-size: 1.3rem; color: #a67c52; }
+    .calc-btn-primary { border-radius: 10px; padding: 10px 16px; font-weight: 600; font-size: 0.92rem; display: flex; justify-content: space-between; align-items: center; text-decoration: none; background: linear-gradient(135deg, #a67c52 0%, #835c39 100%); color: white !important; }
+    .calc-btn-secondary { border-radius: 10px; padding: 10px 16px; font-weight: 600; font-size: 0.92rem; display: flex; justify-content: space-between; align-items: center; text-decoration: none; background-color: #ffffff; color: #946b45 !important; border: 1px solid rgba(166, 124, 82, 0.4); }
     
-    .qa-mini-sidebar { background: linear-gradient(180deg, #ffffff 0%, #fdfbf7 100%); border: 1px solid #e2d5c5; border-radius: 16px; padding: 25px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-    .qa-mini-icon { width: 40px; height: 40px; background: #d4af37; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; position: absolute; top: -20px; right: 20px; box-shadow: 0 4px 10px rgba(212,175,55,0.4); }
+    .qa-mini-sidebar { background: linear-gradient(180deg, #ffffff 0%, #fdfbf7 100%); border: 1.5px solid #e2d5c5; border-radius: 16px; padding: 26px; position: relative; box-shadow: 0 12px 28px rgba(0,0,0,0.05); }
+    .qa-mini-icon { width: 42px; height: 42px; background: #d4af37; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; position: absolute; top: -21px; right: 24px; box-shadow: 0 4px 10px rgba(212,175,55,0.4); }
 
     .parasha-sidebar { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-right: 6px solid #d4af37; border-radius: 16px; position: relative; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15); }
-    .parasha-sidebar::before { content: '\F13E'; font-family: 'bootstrap-icons'; position: absolute; left: -20px; bottom: -20px; font-size: 14rem; color: rgba(255,255,255,0.04); transform: rotate(-15deg); }
+    .parasha-sidebar::before { content: '\F13E'; font-family: 'bootstrap-icons'; position: absolute; left: -20px; bottom: -20px; font-size: 13rem; color: rgba(255,255,255,0.04); transform: rotate(-15deg); }
 
     .btn-gold-outline { color: #a67c52; border: 1px solid #a67c52; border-radius: 50px; padding: 8px 25px; font-weight: 600; transition: all 0.3s; background: transparent; }
     .btn-gold-outline:hover { background: #a67c52; color: white; }
-    
+
+    .acronym-widget-card { background: linear-gradient(145deg, #fdfbf7 0%, #f4ebd8 100%); border: 1px solid rgba(166, 124, 82, 0.3); box-shadow: 0 12px 28px rgba(0, 0, 0, 0.06); border-radius: 16px; padding: 20px; position: relative; overflow: hidden; }
+    .acronym-widget-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: linear-gradient(90deg, #d4af37, #a67c52, #d4af37); }
+
     body.dark-mode .section-title { color: #f8fafc; }
     body.dark-mode .premium-card, body.dark-mode .qa-mini-sidebar { background: #1e293b; border-color: #334155; }
     body.dark-mode .book-card-img { background: #0f172a; }
-    
     body.dark-mode .site-intro-card-floating { background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%) !important; border-color: rgba(212, 175, 55, 0.25) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.6) !important; }
     body.dark-mode .intro-icon-wrapper { background: #0f172a; border-color: rgba(212, 175, 55, 0.5); }
     body.dark-mode .intro-text-sq { color: #e2e8f0 !important; }
-
     body.dark-mode .live-search-dropdown { background-color: #1e293b; border-color: #334155; box-shadow: 0 15px 40px rgba(0,0,0,0.6); }
     body.dark-mode .live-search-dropdown .text-dark { color: #f8fafc !important; }
     body.dark-mode .live-search-dropdown .border-bottom { border-color: #334155 !important; }
     body.dark-mode .hover-bg-light:hover { background-color: #0f172a !important; }
-
-    .acronym-widget-card { background: linear-gradient(145deg, #fdfbf7 0%, #f4ebd8 100%); border: 1px solid rgba(166, 124, 82, 0.3); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08); border-radius: 16px; padding: 22px; position: relative; overflow: hidden; }
-    .acronym-widget-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, #d4af37, #a67c52, #d4af37); }
     body.dark-mode .acronym-widget-card { background: #1e293b; border-color: #334155; }
     body.dark-mode .acronym-widget-card h5 { color: #f8fafc !important; }
     body.dark-mode .acronym-widget-card p { color: #94a3b8 !important; }
@@ -228,13 +217,6 @@
         padding: 7px 16px;
         font-size: 0.92rem;
         font-weight: 700;
-        letter-spacing: 0.2px;
-        transition: all 0.2s ease;
-    }
-    .torah-search-pill:hover {
-        background-color: rgba(212, 175, 55, 0.2);
-        border-color: #d4af37;
-        color: #fff3c4;
     }
     .torah-search-pill-ai {
         background: linear-gradient(135deg, rgba(49, 46, 129, 0.65) 0%, rgba(30, 27, 75, 0.85) 100%);
@@ -256,15 +238,8 @@
         font-weight: 800;
         font-size: 1.2rem;
         border-radius: 50px;
-        border: none;
         text-decoration: none;
         box-shadow: 0 6px 25px rgba(212, 175, 55, 0.4);
-        transition: all 0.25s ease;
-    }
-    .torah-search-cta-btn:hover {
-        background: linear-gradient(90deg, #deb53e 0%, #f0cf68 50%, #deb53e 100%);
-        box-shadow: 0 8px 32px rgba(212, 175, 55, 0.6);
-        transform: scale(1.01);
     }
 
     @keyframes pulse {
@@ -315,7 +290,7 @@
         </div>
 
     {% else %}
-        <div class="row g-5" style="position: relative;">
+        <div class="row g-4 g-xl-5 align-items-stretch" style="position: relative;">
             
             <div class="floating-widget-container d-none d-xl-block">
                 <div class="site-intro-card-floating">
@@ -328,43 +303,45 @@
                 </div>
             </div>
 
-            <div class="col-lg-8">
+            <div class="col-lg-8 d-flex flex-column justify-content-between">
                 
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h3 class="section-title mb-0">מאמרים נבחרים לאחרונה</h3>
-                    <a href="{% url 'articles:recently_added' %}" class="text-muted text-decoration-none small fw-bold hover-gold">לכל המאמרים <i class="bi bi-chevron-left"></i></a>
-                </div>
-                
-                <div class="row g-4">
-                    {% for article in latest_articles %}
-                    <div class="col-md-6">
-                        <div class="premium-card p-4">
-                            <div class="text-muted small mb-2 d-flex justify-content-between">
-                                <span><i class="bi bi-calendar3"></i> {{ article.hebrew_date }}</span>
-                            </div>
-                            <h4 class="fw-bold mb-3" style="color: #1a252f;">
-                                <a href="{% url 'articles:detail' article.slug %}" class="text-decoration-none text-dark">
-                                    {{ article.title|striptags }}
-                                    {% if article.is_new %}
-                                        <span class="ms-1" style="color: #dc3545; font-size: 0.8em; font-weight: 800; display: inline-block; animation: pulse 1.5s infinite;">(חדש)</span>
-                                    {% endif %}
-                                </a>
-                            </h4>
-                            <p class="text-muted flex-grow-1">{{ article.content|striptags|truncatewords:20|safe }}</p>
-                            <div class="mt-3">
-                                <a href="{% url 'articles:detail' article.slug %}" class="btn-gold-outline d-inline-block text-center w-100">קרא מאמר מלא</a>
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="section-title mb-0">מאמרים נבחרים לאחרונה</h3>
+                        <a href="{% url 'articles:recently_added' %}" class="text-muted text-decoration-none small fw-bold">לכל המאמרים <i class="bi bi-chevron-left"></i></a>
+                    </div>
+                    
+                    <div class="row g-4">
+                        {% for article in latest_articles %}
+                        <div class="col-md-6">
+                            <div class="premium-card p-4">
+                                <div class="text-muted small mb-2 d-flex justify-content-between">
+                                    <span><i class="bi bi-calendar3"></i> {{ article.hebrew_date }}</span>
+                                </div>
+                                <h4 class="fw-bold mb-3" style="color: #1a252f;">
+                                    <a href="{% url 'articles:detail' article.slug %}" class="text-decoration-none text-dark">
+                                        {{ article.title|striptags }}
+                                        {% if article.is_new %}
+                                            <span class="ms-1" style="color: #dc3545; font-size: 0.8em; font-weight: 800; display: inline-block; animation: pulse 1.5s infinite;">(חדש)</span>
+                                        {% endif %}
+                                    </a>
+                                </h4>
+                                <p class="text-muted flex-grow-1">{{ article.content|striptags|truncatewords:20|safe }}</p>
+                                <div class="mt-3">
+                                    <a href="{% url 'articles:detail' article.slug %}" class="btn-gold-outline d-inline-block text-center w-100">קרא מאמר מלא</a>
+                                </div>
                             </div>
                         </div>
+                        {% empty %}
+                        <div class="col-12"><p class="text-muted">אין מאמרים להצגה כרגע.</p></div>
+                        {% endfor %}
                     </div>
-                    {% empty %}
-                    <div class="col-12"><p class="text-muted">אין מאמרים להצגה כרגע.</p></div>
-                    {% endfor %}
                 </div>
 
-                <div class="mt-5 pt-3">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="mt-4 pt-2">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
                         <h3 class="section-title mb-0">ספריית קריאה דיגיטלית</h3>
-                        <a href="{% url 'articles:books' %}" class="text-muted text-decoration-none small fw-bold hover-gold">לכל הספרים <i class="bi bi-chevron-left"></i></a>
+                        <a href="{% url 'articles:books' %}" class="text-muted text-decoration-none small fw-bold">לכל הספרים <i class="bi bi-chevron-left"></i></a>
                     </div>
                     
                     <div class="row g-4">
@@ -375,7 +352,7 @@
                                     <img src="{{ book.cover_image.url }}" class="book-card-img w-100" alt="{{ book.title|striptags }}" loading="lazy">
                                 {% else %}
                                     <div class="book-card-img w-100 d-flex align-items-center justify-content-center">
-                                        <i class="bi bi-book text-muted" style="font-size: 4rem; opacity: 0.2;"></i>
+                                        <i class="bi bi-book text-muted" style="font-size: 3.5rem; opacity: 0.2;"></i>
                                     </div>
                                 {% endif %}
                                 <div class="p-3 d-flex flex-column flex-grow-1">
@@ -396,10 +373,10 @@
                     </div>
                 </div>
 
-                <div class="mt-5 pt-3">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="mt-4 pt-2">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
                         <h3 class="section-title mb-0">ספרים לרכישה עד הבית</h3>
-                        <a href="{% url 'articles:books' %}?sale=1" class="text-muted text-decoration-none small fw-bold hover-gold">לחנות המלאה <i class="bi bi-chevron-left"></i></a>
+                        <a href="{% url 'articles:books' %}?sale=1" class="text-muted text-decoration-none small fw-bold">לחנות המלאה <i class="bi bi-chevron-left"></i></a>
                     </div>
                     
                     <div class="row g-4">
@@ -410,7 +387,7 @@
                                     <img src="{{ book.cover_image.url }}" class="book-card-img w-100" alt="{{ book.title|striptags }}" loading="lazy">
                                 {% else %}
                                     <div class="book-card-img w-100 d-flex align-items-center justify-content-center">
-                                        <i class="bi bi-cart3 text-muted" style="font-size: 4rem; opacity: 0.2;"></i>
+                                        <i class="bi bi-cart3 text-muted" style="font-size: 3.5rem; opacity: 0.2;"></i>
                                     </div>
                                 {% endif %}
                                 <div class="p-3 d-flex flex-column flex-grow-1">
@@ -436,171 +413,170 @@
                     </div>
                 </div>
 
-                <div class="mt-5 pt-3 mb-5">
-                    <div class="qa-mini-sidebar shadow-sm h-100 d-flex flex-column justify-content-center" style="min-height: 290px;">
+                <div class="mt-4 pt-3">
+                    <div class="qa-mini-sidebar shadow-sm d-flex flex-column justify-content-between">
                         <div class="qa-mini-icon"><i class="bi bi-chat-quote-fill"></i></div>
-                        <h4 class="fw-bold mb-1 mt-1" style="color: #2c3e50; font-size: 1.25rem;">שאלות ותשובות</h4>
-                        <p class="text-muted mb-2" style="font-size: 0.92rem;">מדור הלכה ובירורים מרכזי.</p>
-                        
-                        <div class="mb-3 p-2 px-3 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2" style="background: rgba(212, 175, 55, 0.12); border: 1px solid rgba(212, 175, 55, 0.4);">
-                            <span style="font-size: 0.92rem; color: #3b2f14; font-weight: 600;">
-                                <i class="bi bi-envelope-paper-heart-fill ms-1" style="color: #a67c52;"></i>
-                                יש לכם שאלה הלכתית? זקוקים להכוונה? צוות האתר ישמח לענות.
-                            </span>
-                            <a href="{% url 'articles:contact' %}" class="btn btn-sm rounded-pill fw-bold px-3" style="background: linear-gradient(135deg, #a67c52 0%, #d4af37 100%); color: #fff;">
-                                שליחת שאלה / צור קשר <i class="bi bi-arrow-left-short"></i>
+                        <div>
+                            <h4 class="fw-bold mb-1 mt-1" style="color: #2c3e50; font-size: 1.3rem;">שאלות ותשובות</h4>
+                            <p class="text-muted mb-3" style="font-size: 0.92rem;">מדור הלכה ובירורים מרכזי.</p>
+                            
+                            {% if latest_qa %}
+                            <div class="p-3 bg-white rounded-3 border mb-3 shadow-sm">
+                                <p class="fw-bold mb-1" style="color: #a67c52; font-size: 0.88rem;"><i class="bi bi-patch-question ms-1"></i>שאלה לדוגמה מתוך המדור:</p>
+                                <p class="mb-0 text-dark fw-semibold" style="font-size: 0.98rem; line-height: 1.55;">{{ latest_qa.question }}</p>
+                            </div>
+                            {% endif %}
+
+                            <a href="{% url 'articles:qa' %}" class="btn btn-outline-dark w-100 rounded-pill fw-bold py-2 mb-3" style="font-size: 0.95rem;">
+                                היכנס למדור השו"ת המלא
                             </a>
                         </div>
 
-                        {% if latest_qa %}
-                        <div class="p-3 bg-white rounded-3 border mb-3 shadow-sm flex-grow-1">
-                            <p class="fw-bold mb-1" style="color: #a67c52; font-size: 0.85rem;"><i class="bi bi-patch-question me-1"></i> שאלה אחרונה:</p>
-                            <p class="mb-0 text-dark" style="font-size: 0.95rem; line-height: 1.5;">{{ latest_qa.question }}</p>
+                        <div class="p-3 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2" style="background: linear-gradient(135deg, #fcf6e6 0%, #f5ead0 100%); border: 1.5px solid #d4af37;">
+                            <span style="font-size: 0.95rem; color: #2b2110; font-weight: 700;">
+                                <i class="bi bi-envelope-paper-heart-fill ms-2" style="color: #a67c52;"></i>יש לכם שאלה הלכתית? זקוקים להכוונה? צוות האתר ישמח לענות.
+                            </span>
+                            <a href="{% url 'articles:contact' %}" class="btn btn-sm rounded-pill fw-bold px-4 py-2" style="background: linear-gradient(135deg, #a67c52 0%, #835c39 100%); color: #fff; font-size: 0.9rem;">
+                                לשליחת שאלה / צור קשר <i class="bi bi-arrow-left-short"></i>
+                            </a>
                         </div>
-                        {% endif %}
-                        
-                        <a href="{% url 'articles:qa' %}" class="btn btn-outline-dark w-100 rounded-pill fw-bold mt-auto" style="font-size: 0.95rem;">היכנס למדור השו"ת המלא</a>
                     </div>
                 </div>
 
             </div>
 
-            <div class="col-lg-4">
+            <div class="col-lg-4 d-flex flex-column justify-content-between">
                 
-                <div class="calc-sidebar-card p-4 text-center mb-4">
-                    <div class="mb-3 d-flex justify-content-center gap-3">
+                <div class="calc-sidebar-card p-3 p-xl-4 text-center mb-3">
+                    <div class="mb-2 d-flex justify-content-center gap-2">
                         <div class="icon-circle" title="אורך"><i class="bi bi-rulers"></i></div>
                         <div class="icon-circle" title="נפח"><i class="bi bi-cup-straw"></i></div>
                         <div class="icon-circle" title="משקל ומטבעות"><i class="bi bi-coin"></i></div>
                     </div>
-                    <h4 class="fw-bold mb-2" style="color: #2c3e50; font-family: 'Frank Ruhl Libre', serif;">מחשבוני מידות התורה וחז"ל</h4>
-                    <div class="mx-auto mb-3" style="width: 50px; height: 3px; background: linear-gradient(90deg, #d4af37, #a67c52); border-radius: 2px;"></div>
-                    <p class="mb-3 px-2 text-muted" style="font-size: 0.92rem;">
+                    <h5 class="fw-bold mb-1" style="color: #2c3e50; font-family: 'Frank Ruhl Libre', serif; font-size: 1.2rem;">מחשבוני מידות התורה וחז"ל</h5>
+                    <div class="mx-auto mb-2" style="width: 45px; height: 3px; background: linear-gradient(90deg, #d4af37, #a67c52); border-radius: 2px;"></div>
+                    <p class="mb-3 text-muted" style="font-size: 0.86rem;">
                         כלי עזר מהיר ואלגנטי להמרת מידות אורך, נפח, ומשקל מטבעות.
                     </p>
                     <div class="d-grid gap-2">
                         <a href="{% url 'articles:calculator' %}" class="calc-btn-primary">
-                            מחשבון מידות אורך <i class="bi bi-arrow-left-short fs-5"></i>
+                            <span>מחשבון מידות אורך</span> <i class="bi bi-arrow-left-short fs-5"></i>
                         </a>
                         <a href="{% url 'articles:volume_calculator' %}" class="calc-btn-secondary">
-                            מחשבון מידות נפח <i class="bi bi-arrow-left-short fs-5"></i>
+                            <span>מחשבון מידות נפח</span> <i class="bi bi-arrow-left-short fs-5"></i>
                         </a>
                         <a href="{% url 'articles:weight_calculator' %}" class="calc-btn-secondary">
-                            מחשבון משקל ומטבעות <i class="bi bi-arrow-left-short fs-5"></i>
+                            <span>מחשבון משקל ומטבעות</span> <i class="bi bi-arrow-left-short fs-5"></i>
                         </a>
                     </div>
                 </div>
 
-                <div class="acronym-widget-card mb-4">
-                    <div style="display: flex; align-items: center; margin-bottom: 12px; border-bottom: 2px solid #d4af37; padding-bottom: 8px;">
-                        <i class="bi bi-journal-text" style="font-size: 1.35rem; color: #d4af37; margin-left: 10px;"></i>
-                        <h5 style="margin: 0; font-weight: 700; color: #2d3748; font-size: 1.1rem;">מילון ראשי תיבות</h5>
+                <div class="acronym-widget-card mb-3">
+                    <div class="d-flex align-items-center mb-2 pb-2" style="border-bottom: 2px solid #d4af37;">
+                        <i class="bi bi-journal-text ms-2" style="font-size: 1.25rem; color: #d4af37;"></i>
+                        <h5 class="mb-0 fw-bold" style="color: #2d3748; font-size: 1.08rem;">מילון ראשי תיבות</h5>
                     </div>
                     
-                    <p style="font-size: 0.84em; color: #718096; margin-bottom: 10px;">הקלד ראשי תיבות (כמו "רש"י") או מילה מתוך הפירוש:</p>
+                    <p class="mb-2 text-muted" style="font-size: 0.82rem;">הקלד ראשי תיבות (כמו "רש"י") או מילה מתוך הפירוש:</p>
                     
-                    <div style="position: relative; margin-bottom: 10px;">
-                        <input type="text" id="acronymSearchInput" placeholder="חפש ראשי תיבות או פירוש..." style="width: 100%; padding: 9px 14px; background-color: #ffffff; border: 1px solid #dcd3c1; border-radius: 8px; font-size: 0.92em; outline: none;">
+                    <div class="mb-2">
+                        <input type="text" id="acronymSearchInput" placeholder="חפש ראשי תיבות או פירוש..." style="width: 100%; padding: 8px 12px; background-color: #ffffff; border: 1px solid #dcd3c1; border-radius: 8px; font-size: 0.9rem; outline: none;">
                     </div>
                     
-                    <div style="display: flex; gap: 10px; margin-bottom: 12px; font-size: 0.84em;">
-                        <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                    <div class="d-flex gap-3 mb-2" style="font-size: 0.82rem;">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;">
                             <input type="radio" name="acronymSearchType" value="short" checked style="accent-color: #d4af37;"> לפי ראשי תיבות
                         </label>
-                        <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;">
                             <input type="radio" name="acronymSearchType" value="meaning" style="accent-color: #d4af37;"> לפי מילים בפירוש
                         </label>
                     </div>
 
-                    <div id="acronymResultsContainer" style="max-height: 155px; overflow-y: auto; font-size: 0.88em; background: #ffffff; border: 1px solid #dcd3c1; border-radius: 8px; padding: 10px;">
-                        <div style="color: #a0aec0; text-align: center; padding: 10px; font-style: italic;">הקלד לחיפוש מהיר במאגר...</div>
+                    <div id="acronymResultsContainer" style="height: 105px; overflow-y: auto; font-size: 0.88em; background: #ffffff; border: 1px solid #dcd3c1; border-radius: 8px; padding: 8px;">
+                        <div style="color: #a0aec0; text-align: center; padding-top: 26px; font-style: italic;">הקלד לחיפוש מהיר במאגר...</div>
                     </div>
                 </div>
 
-                <div class="acronym-widget-card mb-4">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; border-bottom: 2px solid #d4af37; padding-bottom: 8px;">
-                        <div style="display: flex; align-items: center;">
-                            <i class="bi bi-translate" style="font-size: 1.35rem; color: #d4af37; margin-left: 8px;"></i>
-                            <h5 style="margin: 0; font-weight: 700; color: #2d3748; font-size: 1.08rem;">מתרגם ארמי ⇄ עברי</h5>
+                <div class="acronym-widget-card mb-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2 pb-2" style="border-bottom: 2px solid #d4af37;">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-translate ms-2" style="font-size: 1.25rem; color: #d4af37;"></i>
+                            <h5 class="mb-0 fw-bold" style="color: #2d3748; font-size: 1.08rem;">מתרגם ארמי ⇄ עברי</h5>
                         </div>
                         <span class="badge" style="background: #1e293b; color: #f7e199; font-size: 0.72rem;">בבלי • ירושלמי • זוהר</span>
                     </div>
 
-                    <div style="display: flex; gap: 12px; margin-bottom: 9px; font-size: 0.82em;">
+                    <div class="d-flex gap-3 mb-2" style="font-size: 0.82rem;">
                         <label style="cursor: pointer;"><input type="radio" name="homeAramaicDialect" value="bavli" checked style="accent-color: #d4af37;"> תלמוד בבלי</label>
                         <label style="cursor: pointer;"><input type="radio" name="homeAramaicDialect" value="yerushalmi" style="accent-color: #d4af37;"> ירושלמי</label>
                         <label style="cursor: pointer;"><input type="radio" name="homeAramaicDialect" value="zohar" style="accent-color: #d4af37;"> ספר הזוהר</label>
                     </div>
 
-                    <div class="input-group input-group-sm mb-2">
-                        <input type="text" id="homeAramaicInput" placeholder="הקלד מילה בארמית או בעברית..." style="flex: 1; padding: 8px 12px; background-color: #ffffff; border: 1px solid #dcd3c1; border-radius: 0 8px 8px 0; font-size: 0.9em; outline: none;">
-                        <button type="button" class="btn fw-bold px-3" onclick="runHomeAramaicTranslate()" style="background: #d4af37; color: #0f172a; border-radius: 8px 0 0 8px;">תרגם</button>
+                    <div class="d-flex gap-2 mb-2">
+                        <input type="text" id="homeAramaicInput" placeholder="הקלד מילה בארמית או בעברית (למשל: אמאי)..." style="flex: 1; padding: 8px 12px; background-color: #ffffff; border: 1px solid #dcd3c1; border-radius: 8px; font-size: 0.9rem; outline: none;">
+                        <button type="button" class="btn fw-bold px-3" onclick="runHomeAramaicTranslate()" style="background: linear-gradient(135deg, #d4af37 0%, #b8860b 100%); color: #0f172a; border-radius: 8px;">תרגם</button>
                     </div>
 
-                    <div id="homeAramaicResults" style="min-height: 68px; max-height: 120px; overflow-y: auto; font-size: 0.88em; background: #ffffff; border: 1px solid #dcd3c1; border-radius: 8px; padding: 9px; margin-bottom: 10px;">
-                        <div style="color: #a0aec0; text-align: center; padding-top: 10px; font-style: italic;">תרגום מהיר (למשל: איבעיא להו, תמן, בגין)...</div>
+                    <div id="homeAramaicResults" style="height: 82px; overflow-y: auto; font-size: 0.88em; background: #ffffff; border: 1px solid #dcd3c1; border-radius: 8px; padding: 8px; margin-bottom: 10px;">
+                        <div style="color: #a0aec0; text-align: center; padding-top: 18px; font-style: italic;">תרגום מהיר (למשל: אמאי, איבעיא להו, תמן, בגין)...</div>
                     </div>
 
-                    <a href="{% url 'articles:aramaic_translator' %}" class="calc-btn-secondary py-2 px-3" style="font-size: 0.86rem;">
+                    <a href="{% url 'articles:aramaic_translator' %}" class="calc-btn-secondary py-2 px-3" style="font-size: 0.85rem;">
                         <span>למתרגם והמילון המלא (בבלי, ירושלמי והזוהר)</span>
                         <i class="bi bi-arrow-left-short fs-5"></i>
                     </a>
                 </div>
 
-                <div class="mb-4">
-                    <div class="parasha-sidebar p-4 d-flex flex-column justify-content-center" style="min-height: 420px;">
-                        <div style="z-index: 1;">
-                            
-                            <div class="text-center mb-3">
-                                <span class="bg-warning text-dark px-4 py-2 rounded-pill fw-bold fs-6 shadow-sm"><i class="bi bi-book me-2"></i> לוח שנה שבועי</span>
-                            </div>
+                <div class="parasha-sidebar p-4 d-flex flex-column justify-content-center">
+                    <div style="z-index: 1;">
+                        <div class="text-center mb-2">
+                            <span class="bg-warning text-dark px-4 py-1 rounded-pill fw-bold fs-6 shadow-sm"><i class="bi bi-book me-1"></i> לוח שנה שבועי</span>
+                        </div>
 
-                            {% if jewish_cal.hebrew_date %}
-                            <div class="text-center mb-3">
-                                <span class="text-light fw-bold fs-5">{{ jewish_cal.hebrew_date }}</span>
-                            </div>
-                            {% endif %}
+                        {% if jewish_cal.hebrew_date %}
+                        <div class="text-center mb-2">
+                            <span class="text-light fw-bold fs-5">{{ jewish_cal.hebrew_date }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        {% if jewish_cal %}
+                        <div class="bg-white bg-opacity-10 rounded-4 p-3 mb-3 text-center border border-light border-opacity-25 shadow-sm">
+                            <h3 class="fw-bold text-white mb-1" style="font-family: 'Frank Ruhl Libre', serif; font-size: 1.5rem;">
+                                <i class="bi bi-bookmark-star text-warning me-1"></i> {% if jewish_cal.parasha %}{{ jewish_cal.parasha }}{% else %}פרשת השבוע{% endif %}
+                            </h3>
                             
-                            {% if jewish_cal %}
-                            <div class="bg-white bg-opacity-10 rounded-4 p-4 mb-3 text-center border border-light border-opacity-25 shadow-sm">
-                                <h3 class="fw-bold text-white mb-2" style="font-family: 'Frank Ruhl Libre', serif; letter-spacing: 1px;">
-                                    <i class="bi bi-bookmark-star text-warning me-2"></i> {% if jewish_cal.parasha %}{{ jewish_cal.parasha }}{% else %}פרשת השבוע{% endif %}
-                                </h3>
-                                
-                                {% if jewish_cal.haftarah %}
-                                <div class="mt-3 pt-3 border-top border-light border-opacity-25">
-                                    <p class="text-warning mb-1 small fw-bold">הפטרה:</p>
-                                    <p class="text-white mb-0 fs-6" dir="rtl" style="text-align: center;">{{ jewish_cal.haftarah }}</p>
-                                </div>
-                                {% endif %}
-                                
-                                {% if jewish_cal.holidays %}
-                                <div class="mt-3 pt-3 border-top border-light border-opacity-25">
-                                    <p class="text-warning mb-2 small fw-bold"><i class="bi bi-calendar-event"></i> צומות ומועדים השבוע:</p>
-                                    {% for holiday in jewish_cal.holidays %}
-                                    <span class="badge bg-light text-dark m-1 fs-6 px-3 py-2 rounded-pill shadow-sm">{{ holiday }}</span>
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
+                            {% if jewish_cal.haftarah %}
+                            <div class="mt-2 pt-2 border-top border-light border-opacity-25">
+                                <p class="text-warning mb-0 small fw-bold">הפטרה:</p>
+                                <p class="text-white mb-0 small" dir="rtl">{{ jewish_cal.haftarah }}</p>
                             </div>
                             {% endif %}
 
-                            {% if parasha_article %}
-                            <div class="text-center">
-                                <p class="text-white opacity-75 mb-2 px-2 small">מאמר עיוני על פרשיות השבוע מומלץ:</p>
-                                <p class="text-white fw-bold mb-3 fs-5">{{ parasha_article.title|striptags }}</p>
-                                <a href="{% url 'articles:detail' parasha_article.slug %}" class="btn btn-light w-100 rounded-pill fw-bold text-dark shadow-sm py-2 mb-2">
-                                    לקריאת המאמר <i class="bi bi-arrow-left-short fs-5 align-middle"></i>
-                                </a>
+                            {% if jewish_cal.holidays %}
+                            <div class="mt-2 pt-2 border-top border-light border-opacity-25">
+                                <p class="text-warning mb-1 small fw-bold"><i class="bi bi-calendar-event"></i> צומות ומועדים השבוע:</p>
+                                {% for holiday in jewish_cal.holidays %}
+                                <span class="badge bg-light text-dark m-1 px-3 py-1 rounded-pill shadow-sm">{{ holiday }}</span>
+                                {% endfor %}
                             </div>
                             {% endif %}
-                            
-                            <div class="text-center mt-2">
-                                <a href="/parasha/" class="text-white opacity-75 fw-bold text-decoration-none hover-white" style="border-bottom: 1px dashed rgba(255,255,255,0.5);">
-                                    לכל מאמרי פרשת שבוע ומועדים <i class="bi bi-chevron-left small"></i>
-                                </a>
-                            </div>
-                            
+                        </div>
+                        {% endif %}
+
+                        {% if parasha_article %}
+                        <div class="text-center">
+                            <p class="text-white opacity-75 mb-1 small">מאמר עיוני מומלץ לפרשה:</p>
+                            <p class="text-white fw-bold mb-2 fs-6">{{ parasha_article.title|striptags }}</p>
+                            <a href="{% url 'articles:detail' parasha_article.slug %}" class="btn btn-light w-100 rounded-pill fw-bold text-dark shadow-sm py-2 mb-2">
+                                לקריאת המאמר <i class="bi bi-arrow-left-short fs-5 align-middle"></i>
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="text-center mt-1">
+                            <a href="/parasha/" class="text-white opacity-75 fw-bold text-decoration-none small" style="border-bottom: 1px dashed rgba(255,255,255,0.5);">
+                                לכל מאמרי פרשת שבוע ומועדים <i class="bi bi-chevron-left small"></i>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -608,21 +584,17 @@
             </div>
         </div>
 
-        <div class="card torah-search-showcase mb-5 mt-3">
+        <div class="card torah-search-showcase mb-5 mt-5">
             <div class="card-body p-4 p-md-5 text-center position-relative">
-                
                 <div class="mb-3">
                     <i class="bi bi-gem" style="font-size: 3.2rem; color: #d4af37; filter: drop-shadow(0 0 14px rgba(212, 175, 55, 0.55));"></i>
                 </div>
-
-                <h2 class="fw-bold mb-3" style="color: #d4af37 !important; font-size: 2.2rem; text-shadow: 0 2px 8px rgba(0,0,0,0.6);">
+                <h2 class="fw-bold mb-3" style="color: #d4af37 !important; font-size: 2.2rem;">
                     מנוע חיפוש תורני מתקדם
                 </h2>
-
-                <p class="text-white fs-5 mb-4" style="max-width: 820px; margin: 0 auto; line-height: 1.65; color: #f1f5f9 !important;">
+                <p class="text-white fs-5 mb-4" style="max-width: 820px; margin: 0 auto; line-height: 1.65;">
                     איתור לשונות, פסוקים ומקורות בתנ"ך, במשנה, בתוספתא, בתלמוד הבבלי והירושלמי, ברמב"ם ובשולחן ערוך, בשילוב כלים ייחודיים וניתוח AI של הנתונים:
                 </p>
-
                 <div class="d-flex justify-content-center align-items-center flex-wrap gap-2 mb-4 pb-2">
                     <span class="torah-search-pill">חיפוש מדויק וחופשי</span>
                     <span class="torah-search-pill">גימטריאות</span>
@@ -631,13 +603,11 @@
                     <span class="torah-search-pill">פלינדרום והיפוך אותיות</span>
                     <span class="torah-search-pill-ai"><i class="bi bi-stars ms-1"></i>ניתוח AI של הנתונים ומפת קשרים</span>
                 </div>
-
                 <div class="mt-2">
                     <a href="{% url 'articles:advanced_search' %}" class="torah-search-cta-btn">
                         <i class="bi bi-search ms-2"></i>הפעל את המנוע עכשיו
                     </a>
                 </div>
-
             </div>
         </div>
 
@@ -654,26 +624,21 @@
             searchInput.addEventListener('input', function() {
                 clearTimeout(debounceTimer);
                 const q = this.value.trim();
-                
                 if (q.length < 2) {
                     searchResults.classList.add('d-none');
                     return;
                 }
-
                 searchResults.innerHTML = '<div class="p-4 text-center text-muted fw-bold"><div class="spinner-border text-warning spinner-border-sm me-2" role="status"></div>מחפש בספרייה...</div>';
                 searchResults.classList.remove('d-none');
 
                 debounceTimer = setTimeout(async () => {
                     try {
                         const response = await fetch(`/api/live-search/?q=${encodeURIComponent(q)}`);
-                        if (!response.ok) throw new Error("Network Error");
                         const data = await response.json();
-                        
-                        if (data.results.length === 0) {
+                        if (!data.results || data.results.length === 0) {
                             searchResults.innerHTML = '<div class="p-4 text-center text-muted"><i class="bi bi-search fs-2 d-block mb-2 opacity-50"></i>לא נמצאו תוצאות.</div>';
                             return;
                         }
-
                         let html = '';
                         data.results.forEach(item => {
                             html += `
@@ -687,7 +652,6 @@
                             `;
                         });
                         searchResults.innerHTML = html;
-                        
                     } catch (err) {
                         searchResults.innerHTML = '<div class="p-3 text-center text-danger">שגיאה בטעינה</div>';
                     }
@@ -710,36 +674,27 @@
             function performAcronymSearch() {
                 const query = acronymInput.value.trim();
                 const searchType = document.querySelector('input[name="acronymSearchType"]:checked').value;
-
                 if (query.length < 1) {
-                    acronymContainer.innerHTML = '<div style="color: #a0aec0; text-align: center; padding: 10px; font-style: italic;">הקלד לחיפוש מהיר במאגר...</div>';
+                    acronymContainer.innerHTML = '<div style="color: #a0aec0; text-align: center; padding-top: 26px; font-style: italic;">הקלד לחיפוש מהיר במאגר...</div>';
                     return;
                 }
-
-                acronymContainer.innerHTML = '<div style="color: #718096; text-align: center; padding: 10px;">מחפש במאגר...</div>';
-
+                acronymContainer.innerHTML = '<div style="color: #718096; text-align: center; padding-top: 26px;">מחפש במאגר...</div>';
                 fetch(`/api/search-acronyms/?q=${encodeURIComponent(query)}&type=${searchType}`)
                     .then(response => response.json())
                     .then(data => {
                         if (!data.results || data.results.length === 0) {
-                            acronymContainer.innerHTML = '<div style="color: #e53e3e; text-align: center; padding: 10px;">לא נמצאו תוצאות.</div>';
+                            acronymContainer.innerHTML = '<div style="color: #e53e3e; text-align: center; padding-top: 26px;">לא נמצאו תוצאות.</div>';
                             return;
                         }
-
                         let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
                         data.results.forEach(item => {
-                            html += `
-                                <li style="padding: 8px 10px; border-bottom: 1px solid #e6dec9; margin-bottom: 4px;">
-                                    <strong style="color: #a67c52; font-size: 1.05em;">${item.short}</strong>: 
-                                    <span style="color: #2c3e50;">${item.meaning}</span>
-                                </li>
-                            `;
+                            html += `<li style="padding: 6px 8px; border-bottom: 1px solid #e6dec9;"><strong style="color: #a67c52;">${item.short}</strong>: <span style="color: #2c3e50;">${item.meaning}</span></li>`;
                         });
                         html += '</ul>';
                         acronymContainer.innerHTML = html;
                     })
                     .catch(() => {
-                        acronymContainer.innerHTML = '<div style="color: #e53e3e; text-align: center; padding: 10px;">שגיאה בביצוע החיפוש.</div>';
+                        acronymContainer.innerHTML = '<div style="color: #e53e3e; text-align: center; padding-top: 26px;">שגיאה בביצוע החיפוש.</div>';
                     });
             }
 
@@ -747,10 +702,7 @@
                 clearTimeout(acronymDebounceTimer);
                 acronymDebounceTimer = setTimeout(performAcronymSearch, 300);
             });
-
-            radioButtons.forEach(radio => {
-                radio.addEventListener('change', performAcronymSearch);
-            });
+            radioButtons.forEach(radio => radio.addEventListener('change', performAcronymSearch));
         }
 
         window.runHomeAramaicTranslate = function() {
@@ -767,7 +719,7 @@
                         resBox.innerHTML = `<div class="text-danger small">${data.error}</div>`;
                         return;
                     }
-                    resBox.innerHTML = `<div><strong style="color: #a67c52;">${data.query}:</strong> <span class="fw-bold text-dark">${data.main_translation}</span></div><div class="text-muted" style="font-size: 0.8rem;">${data.grammar_breakdown || ''}</div>`;
+                    resBox.innerHTML = `<div><strong style="color: #a67c52;">${data.query}:</strong> <span class="fw-bold text-dark">${data.main_translation}</span></div><div class="text-muted" style="font-size: 0.78rem;">${data.grammar_breakdown || ''}</div>`;
                 })
                 .catch(() => {
                     resBox.innerHTML = '<div class="text-danger small">שגיאה בתרגום.</div>';
