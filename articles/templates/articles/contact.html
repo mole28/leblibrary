@@ -1,13 +1,23 @@
 {% extends 'articles/base.html' %}
+{% load static %}
 
-{% block title %}צור קשר | הספרייה{% endblock %}
+{% block title %}צור קשר | ספריית לייבוביץ{% endblock %}
 
 {% block hero %}
-<div class="hero-section" style="height: 280px;">
-    <div class="hero-overlay"></div>
-    <div class="hero-content text-center w-100">
-        <h1 class="text-white mb-0 fw-bold display-4" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.8);">צור קשר</h1>
-        <p class="text-white mt-2 fs-4" style="text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">השארת פניה, הודעה או שאלה</p>
+<style>
+    .contact-hero-bg {
+        height: 240px;
+        background-image: url('{% static "images/banner.png" %}');
+        background-size: cover;
+        background-position: center 15%;
+    }
+</style>
+<div class="hero-section contact-hero-bg">
+    <div class="hero-overlay" style="background-color: rgba(15, 23, 42, 0.65);"></div>
+    <div class="hero-content text-center w-100" style="transform: translateY(0);">
+        <i class="bi bi-envelope-paper-heart mb-2 d-inline-block" style="font-size: 2.3rem; color: #d4af37;"></i>
+        <h1 class="text-white mb-2 fw-bold display-5" style="color: #d4af37 !important; text-shadow: 2px 2px 8px rgba(0,0,0,0.85);">צור קשר</h1>
+        <p class="text-white mt-1 fs-5 mb-0" style="text-shadow: 1px 1px 6px rgba(0,0,0,0.9);">השארת פנייה, הודעה או שאלה הלכתית</p>
     </div>
 </div>
 {% endblock %}
@@ -25,213 +35,108 @@
 
 {% block content %}
 <style>
-    /* ========================================== */
-    /* עיצוב יוקרתי לטופס צור קשר */
-    /* ========================================== */
-    .contact-card {
-        background-color: #ffffff;
-        border: none;
+    .contact-luxury-card {
+        background: #ffffff;
+        border: 1.5px solid rgba(212, 175, 55, 0.45);
         border-top: 4px solid #d4af37;
-        border-radius: 16px;
-        box-shadow: 0 15px 40px rgba(0,0,0,0.06);
-        overflow: hidden;
+        border-radius: 18px;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.06);
+        padding: 40px 36px;
+        max-width: 820px;
+        margin: 0 auto 3rem;
     }
-    .form-header {
-        text-align: center;
-        margin-bottom: 2.5rem;
+    .contact-form-input {
+        border-radius: 12px;
+        border: 1.5px solid #e2e8f0;
+        padding: 13px 16px;
+        font-size: 1rem;
+        background-color: #f8fafc;
+        transition: all 0.2s ease;
     }
-    .form-header h2 {
-        color: #2c3e50;
-        font-weight: 700;
-        font-size: 2.2rem;
-    }
-    .form-header .separator {
-        width: 60px;
-        height: 3px;
-        background-color: #d4af37;
-        margin: 15px auto;
-        border-radius: 2px;
-    }
-    
-    .lux-input {
-        background-color: #f8f9fa;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 16px 20px;
-        font-size: 1.15rem;
-        color: #2c3e50;
-        transition: all 0.3s ease;
-        width: 100%;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-    }
-    .lux-input:focus {
+    .contact-form-input:focus {
+        border-color: #d4af37;
         background-color: #ffffff;
-        border-color: #d4af37;
         box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.15);
-        outline: none;
     }
-    .lux-input::placeholder {
-        color: #94a3b8;
-    }
-
-    .lux-btn {
-        background: linear-gradient(145deg, #1e202c 0%, #2a2d3e 100%);
-        color: #d4af37;
-        border: 1px solid rgba(212, 175, 55, 0.5);
+    .contact-submit-btn {
+        background: linear-gradient(135deg, #d4af37 0%, #b8860b 100%);
+        color: #0f172a;
+        font-weight: 800;
+        font-size: 1.15rem;
+        padding: 14px 32px;
         border-radius: 50px;
-        padding: 14px 60px;
-        font-size: 1.3rem;
-        font-weight: 700;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
+        border: none;
+        width: 100%;
+        box-shadow: 0 6px 20px rgba(212, 175, 55, 0.35);
+        transition: all 0.25s ease;
     }
-    .lux-btn:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 25px rgba(212, 175, 55, 0.3);
-        border-color: #d4af37;
-        color: #ffffff;
+    .contact-submit-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(212, 175, 55, 0.45);
+        color: #000;
     }
-    .lux-btn:disabled {
-        opacity: 0.7;
-        cursor: not-allowed;
+    body.dark-mode .contact-luxury-card {
+        background: #1e293b;
+        border-color: rgba(212, 175, 55, 0.4);
+    }
+    body.dark-mode .contact-form-input {
+        background-color: #0f172a;
+        border-color: #334155;
+        color: #f8fafc;
     }
 </style>
 
-<div class="container mb-5 pb-5">
-    <div class="row">
-        <div class="col-12">
-            <div class="contact-card p-4 p-md-5">
-                
-                <div class="form-header">
-                    <h2>השארת הודעה או שאלה</h2>
-                    <div class="separator"></div>
-                    <p class="text-muted fs-5">מלאו את הפרטים מטה ונחזיר תשובה בהקדם האפשרי</p>
-                </div>
-                
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show fs-5" role="alert" style="border-radius: 10px;">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-
-                <form action="{% url 'articles:contact' %}" method="POST" id="contact-form">
-                    {% csrf_token %}
-                    <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response">
-
-                    <div class="row g-4">
-                        <div class="col-md-6">
-                            <input type="text" class="lux-input" name="name" placeholder="שם מלא*" required>
-                        </div>
-                        <div class="col-md-6">
-                            <input type="text" class="lux-input" name="phone" placeholder="טלפון">
-                        </div>
-                        <div class="col-md-6">
-                            <input type="email" class="lux-input" name="email" placeholder='דוא"ל*' required>
-                        </div>
-                        <div class="col-md-6">
-                            <input type="text" class="lux-input" name="subject" placeholder="נושא פנייה*" required>
-                        </div>
-                        <div class="col-12">
-                            <textarea class="lux-input" name="message" rows="6" placeholder="תוכן ההודעה..." required></textarea>
-                        </div>
-                        <div class="col-12 text-center mt-5">
-                            <button type="submit" class="lux-btn" id="submit-btn">
-                                <i class="bi bi-send"></i> שלח הודעה
-                            </button>
-                        </div>
-                    </div>
-                </form>
-
-            </div>
+<div class="container">
+    <div class="contact-luxury-card">
+        <div class="text-center mb-4">
+            <h2 class="fw-bold mb-2" style="color: #1e293b; font-family: 'Frank Ruhl Libre', serif;">השארת הודעה או שאלה</h2>
+            <div class="mx-auto mb-2" style="width: 50px; height: 3px; background: #d4af37; border-radius: 2px;"></div>
+            <p class="text-muted mb-0">מלאו את הפרטים מטה ונחזור אליכם בהקדם האפשרי</p>
         </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
+                    <i class="bi {% if message.tags == 'error' %}bi-exclamation-triangle-fill{% else %}bi-check-circle-fill{% endif %} ms-2"></i>
+                    <strong>{{ message }}</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="סגור"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="post" action="{% url 'articles:contact' %}" id="contactForm">
+            {% csrf_token %}
+            
+            <div style="position: absolute; left: -9999px; opacity: 0; pointer-events: none;" aria-hidden="true">
+                <input type="text" name="website_url" tabindex="-1" autocomplete="off">
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <input type="text" name="name" class="form-control contact-form-input" placeholder="שם מלא *" required>
+                </div>
+                <div class="col-md-6">
+                    <input type="tel" name="phone" class="form-control contact-form-input" placeholder="טלפון">
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <input type="email" name="email" class="form-control contact-form-input" placeholder="דוא״ל לחזרה *" required>
+                </div>
+                <div class="col-md-6">
+                    <input type="text" name="subject" class="form-control contact-form-input" placeholder="נושא הפנייה *" required>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <textarea name="message" rows="5" class="form-control contact-form-input" placeholder="תוכן ההודעה או השאלה *" required></textarea>
+            </div>
+
+            <button type="submit" class="contact-submit-btn" id="contactSubmitBtn">
+                <i class="bi bi-send-fill ms-2"></i>שלח הודעה
+            </button>
+        </form>
     </div>
 </div>
-
-<script src="https://www.google.com/recaptcha/api.js?render=6LfC_VQtAAAAAGC81qfJWQpnMGlbgaTD91finoP6"></script>
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        
-        // ==============================================================
-        // שובר שוויון: עוקר את הסמל מהמיכל שחותך אותו, ומעביר אותו ל-body
-        // ==============================================================
-        const breakOutInterval = setInterval(() => {
-            const badge = document.querySelector('.grecaptcha-badge');
-            if (badge) {
-                clearInterval(breakOutInterval); // הסמל נמצא, עוצרים את החיפוש
-                
-                // אם הסמל לא נמצא ב-body הראשי (אלא קבור בתוך div שחותך אותו)
-                if (badge.parentElement !== document.body) {
-                    document.body.appendChild(badge); // שותלים אותו במקום שלא נגזר
-                }
-            }
-        }, 100);
-
-        // ==============================================================
-        // לוגיקת האבטחה (נשארת חזקה ועובדת מאחורי הקלעים)
-        // ==============================================================
-        const form = document.getElementById('contact-form');
-        const submitBtn = document.getElementById('submit-btn');
-
-        if (form && submitBtn) {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault(); 
-                
-                const originalBtnContent = submitBtn.innerHTML;
-                submitBtn.innerHTML = 'מאמת נתוני אבטחה...';
-                submitBtn.disabled = true;
-
-                grecaptcha.ready(function() {
-                    grecaptcha.execute('6LfC_VQtAAAAAGC81qfJWQpnMGlbgaTD91finoP6', {action: 'submit'}).then(function(token) {
-                        document.getElementById('g-recaptcha-response').value = token;
-                        form.submit();
-                    }).catch(function(error) {
-                        console.error('reCAPTCHA Error:', error);
-                        submitBtn.innerHTML = originalBtnContent;
-                        submitBtn.disabled = false;
-                        alert('אירעה שגיאה באימות מול שרתי האבטחה. אנא נסה שוב.');
-                    });
-                });
-            });
-        }
-    });
-</script>
-
-<style id="bulletproof-recaptcha">
-    /* ============================================================== */
-    /* העיצוב שכופה את תצוגת הכיווץ/התרחבות בדיוק כמו שביקשת */
-    /* ============================================================== */
-    body > .grecaptcha-badge {
-        display: block !important;
-        visibility: visible !important;
-        position: fixed !important;
-        bottom: 25px !important;
-        
-        /* מצמיד את הסמל לקצה כדי שגוגל לא ידחפו אותו החוצה בטעות */
-        right: 0px !important; 
-        
-        /* 70px יציגו בדיוק את הלוגו של גוגל */
-        width: 70px !important; 
-        overflow: hidden !important;
-        
-        /* אנימציית התרחבות רכה ויפה */
-        transition: width 0.3s ease !important;
-        
-        /* מוודא שהוא תמיד מעל הכל */
-        z-index: 2147483647 !important; 
-        border-radius: 8px 0 0 8px !important;
-        box-shadow: -2px 0px 10px rgba(0,0,0,0.1) !important;
-    }
-
-    /* כשהעכבר עליו, הוא נפתח לרוחב המקורי שלו - 256 פיקסלים */
-    body > .grecaptcha-badge:hover {
-        width: 256px !important; 
-    }
-</style>
 {% endblock %}

@@ -845,55 +845,45 @@ def article_delete(request, slug):
     return redirect('articles:list')
 
 
+@ratelimit(rate=10, timeout=600)
 def contact(request):
     if request.method == 'POST':
-        name = request.POST.get('name')
-        phone = request.POST.get('phone', 'לא צוין')
-        email = request.POST.get('email')
-        subject = request.POST.get('subject', 'פנייה כללית')
-        message = request.POST.get('message', '').strip()
-        if not message:
-            message = "[הגולש לא כתב תוכן]"
-
-        recaptcha_response = request.POST.get('g-recaptcha-response')
-
-        if not recaptcha_response:
-            messages.error(request, 'שגיאת אבטחה: לא התקבל אימות reCAPTCHA. אנא ודא שהדפדפן שלך אינו חוסם סקריפטים ונסה שוב.')
+        honeypot = request.POST.get('website_url', '').strip()
+        if honeypot:
+            messages.success(request, 'תודה! הודעתך נשלחה בהצלחה.')
             return redirect('articles:contact')
 
-        secret_key = os.environ.get('RECAPTCHA_SECRET_KEY', '').strip()
-        data = urllib.parse.urlencode({'secret': secret_key, 'response': recaptcha_response}).encode('utf-8')
+        name = request.POST.get('name', '').strip() or 'ללא שם'
+        phone = request.POST.get('phone', '').strip() or 'לא צוין'
+        email = request.POST.get('email', '').strip() or 'לא צוין'
+        subject = request.POST.get('subject', '').strip() or 'פנייה כללית מהאתר'
+        message = request.POST.get('message', '').strip() or '[הגולש לא כתב תוכן]'
 
-        try:
-            req = urllib.request.Request('https://www.google.com/recaptcha/api/siteverify', data=data)
-            response = urllib.request.urlopen(req, timeout=10)
-            result = json.loads(response.read().decode('utf-8'))
+        full_message = (
+            f"התקבלה פנייה חדשה מאתר ספריית לייבוביץ:\n\n"
+            f"שם: {name}\n"
+            f"טלפון: {phone}\n"
+            f"אימייל לחזרה: {email}\n"
+            f"נושא הפנייה: {subject}\n\n"
+            f"תוכן ההודעה:\n{message}"
+        )
 
-            if not result.get('success'):
-                error_codes = result.get('error-codes', ['unknown_error'])
-                messages.error(request, f'שגיאת אימות מול שרתי גוגל. קוד השגיאה: {error_codes}. נא לוודא שהמפתחות תקינים במסוף של גוגל.')
-                return redirect('articles:contact')
-        except Exception as e:
-            messages.error(request, f'שגיאת תקשורת עם שרתי האבטחה: {str(e)}')
-            return redirect('articles:contact')
-
-        full_message = f"התקבלה פנייה חדשה מאתר הספרייה:\n\nשם: {name}\nטלפון: {phone}\nאימייל: {email}\nנושא הפנייה: {subject}\n\nהודעה:\n{message}"
+        sender_email = getattr(settings, 'DEFAULT_FROM_EMAIL', '') or os.environ.get('EMAIL_HOST_USER', 'moshe111moshe111@gmail.com')
 
         try:
             send_mail(
-                subject=f"פנייה מהאתר: {subject}",
+                subject=f"פנייה מהאתר: {subject} ({name})",
                 message=full_message,
-                from_email=settings.DEFAULT_FROM_EMAIL if hasattr(settings, 'DEFAULT_FROM_EMAIL') else 'webmaster@localhost',
+                from_email=sender_email,
                 recipient_list=['moshe111moshe111@gmail.com'],
                 fail_silently=False,
             )
-            messages.success(request, 'תודה! הודעתך נשלחה בהצלחה.')
+            messages.success(request, 'תודה רבה! הודעתך נשלחה בהצלחה ונחזור אליך בהקדם.')
         except Exception as e:
-            messages.success(request, f'הפנייה התקבלה, אך שרת המיילים החזיר שגיאה: {e}')
+            messages.error(request, f'אירעה שגיאה בשליחת המייל: {e}')
         return redirect('articles:contact')
 
     return render(request, 'articles/contact.html', {'current_page': 'contact'})
-
 
 def calculator(request):
     mida_book = Book.objects.filter(title__icontains='מידה').first()
@@ -3049,63 +3039,76 @@ def torah_ai_insights_api(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
-
 CORE_ARAMAIC_LEXICON = {
-    'מאי': {'he': 'מה / מהו', 'dialect': 'בבלי', 'cat': 'מילת שאלה', 'note': 'למשל: מאי קא משמע לן (מה משמיע לנו)'},
-    'קא': {'he': 'עומד ו... (מציין הווה מתמשך)', 'dialect': 'בבלי', 'cat': 'מילית פועל', 'note': 'למשל: קא אמינא (אני אומר כעת)'},
-    'קמ"ל': {'he': 'קא משמע לן — משמיע לנו / בא ללמדנו', 'dialect': 'בבלי', 'cat': 'ביטוי תלמודי', 'note': 'חידוש שהתנא או האמורא משמיע'},
+    'מאי': {'he': 'מה / מהו', 'dialect': 'בבלי', 'cat': 'מילת שאלה', 'note': 'מאי קא משמע לן (מה משמיע לנו)'},
+    'קא': {'he': 'עומד ו... (מציין הווה מתמשך)', 'dialect': 'בבלי', 'cat': 'מילית פועל', 'note': 'קא אמינא (אני אומר כעת)'},
+    'קמ"ל': {'he': 'קא משמע לן — משמיע לנו / בא ללמדנו', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'חידוש שהתנא או האמורא משמיע'},
     'ת"ש': {'he': 'תא שמע — בוא ושמע (הבאת ראיה או קושיה)', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'פתיחה להבאת ראיה ממשנה או ברייתא'},
     'איבעיא להו': {'he': 'נשאלה להם (לבני הישיבה שאלה)', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'פתיחה לספק הלכתי בגמרא'},
-    'תיקו': {'he': 'תעמוד (השאלה במקומה ללא הכרעה)', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'קיצור של תיקום, ובדרש: תשבי יתרץ קושיות ובעיות'},
-    'תיובתא': {'he': 'קושיה מוחצת (בבבלי) / חזרה בתשובה (בזוהר)', 'dialect': 'בבלי וזוהר', 'cat': 'מונח יסוד', 'note': 'בבבלי: תיובתא דפלוני; בזוהר: תיובתא שלמה'},
+    'תיקו': {'he': 'תעמוד (השאלה במקומה ללא הכרעה)', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'קיצור של תיקום'},
+    'תיובתא': {'he': 'קושיה מוחצת שאין עליה תירוץ', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'תיובתא דפלוני תיובתא'},
     'בשלמא': {'he': 'ניחא / מובן הדבר (לפי שיטת...)', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'בשלמא למאן דאמר... אלא למאן דאמר...'},
-    'אלא': {'he': 'אבל / אולם (פתיחה לקושיה או חזרה מהסבר קודם)', 'dialect': 'בבלי וירושלמי', 'cat': 'מילת קישור', 'note': 'אלא אמר רבא'},
+    'אלא': {'he': 'אבל / אולם (פתיחה לקושיה או חזרה מהסבר קודם)', 'dialect': 'בבלי', 'cat': 'מילת קישור', 'note': 'אלא אמר רבא'},
     'דלמא': {'he': 'שמא / אולי', 'dialect': 'בבלי', 'cat': 'מילת ספק', 'note': 'ממאי? דלמא שאני התם'},
-    'מסתברא': {'he': 'מסתבר / מתקבל על הדעת', 'dialect': 'בבלי וירושלמי', 'cat': 'מונח הכרעה', 'note': 'וכן מסתברא'},
-    'איפכא': {'he': 'להפך / הפוך', 'dialect': 'בבלי', 'cat': 'תואר הפועל', 'note': 'איפכא מסתברא (ההפך הוא המסתבר)'},
-    'רחמנא': {'he': 'הרחמן (כינוי להקב"ה ולהתורה)', 'dialect': 'בבלי וזוהר', 'cat': 'שם עצם', 'note': 'אמר רחמנא (אמרה התורה)'},
+    'מסתברא': {'he': 'מסתבר / מתקבל על הדעת', 'dialect': 'בבלי', 'cat': 'מונח הכרעה', 'note': 'וכן מסתברא'},
+    'איפכא': {'he': 'להפך / הפוך', 'dialect': 'בבלי', 'cat': 'תואר הפועל', 'note': 'איפכא מסתברא'},
+    'רחמנא': {'he': 'הרחמן (כינוי להקב"ה ולהתורה)', 'dialect': 'בבלי', 'cat': 'שם עצם', 'note': 'אמר רחמנא (אמרה התורה)'},
     'אדהכי והכי': {'he': 'בינתיים / בתוך כך', 'dialect': 'בבלי', 'cat': 'ביטוי זמן', 'note': 'עד שהיה כך וכך'},
-    'הכא': {'he': 'כאן / במקרה זה', 'dialect': 'בבלי וזוהר', 'cat': 'תואר הפועל', 'note': 'הכא במאי עסקינן'},
-    'התם': {'he': 'שם / במקרה ההוא', 'dialect': 'בבלי וזוהר', 'cat': 'תואר הפועל', 'note': 'שאני התם (שונה שם)'},
-    'תמן': {'he': 'שם (מקביל ל"התם" בבבלי)', 'dialect': 'ירושלמי וזוהר', 'cat': 'תואר הפועל', 'note': 'תנינן תמן (שנינו שם במשנה)'},
-    'הכן': {'he': 'כך / כן / כאן', 'dialect': 'ירושלמי', 'cat': 'תואר הפועל', 'note': 'אופייני לארמית גלילית בתלמוד הירושלמי'},
-    'מהו': {'he': 'מה הדין? (מקביל ל"מאי" או "איבעיא להו")', 'dialect': 'ירושלמי ובבלי', 'cat': 'מילת שאלה', 'note': 'נפוץ מאוד בפתיחת שאלות בירושלמי'},
-    'אית תניי תני': {'he': 'יש תנאים השונים (גרסאות שונות בברייתא)', 'dialect': 'ירושלמי', 'cat': 'ביטוי ירושלמי', 'note': 'מציג שתי מסורות תנאיות מנוגדות'},
-    'גרמיה': {'he': 'עצמו (מקביל ל"נפשיה" בבבלי)', 'dialect': 'ירושלמי וזוהר', 'cat': 'כינוי גוף', 'note': 'לגרמיה (לעצמו)'},
+    'הכא': {'he': 'כאן / במקרה זה', 'dialect': 'בבלי', 'cat': 'תואר הפועל', 'note': 'הכא במאי עסקינן'},
+    'התם': {'he': 'שם / במקרה ההוא', 'dialect': 'בבלי', 'cat': 'תואר הפועל', 'note': 'שאני התם (שונה שם)'},
+    'הוה אמינא': {'he': 'הייתי אומר (סברא ראשונית שנדחית)', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'ראשי תיבות: הו"א'},
+    'מנא הני מילי': {'he': 'מניין הדברים הללו? (מה המקור בפסוק)', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'ראשי תיבות: מנה"מ'},
+    'קיימא לן': {'he': 'עומד לנו / מוחזק בידינו להלכה', 'dialect': 'בבלי', 'cat': 'מונח הלכתי', 'note': 'ראשי תיבות: קיי"ל'},
+    'סבירא ליה': {'he': 'סבור הוא / דעתו היא', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'ראשי תיבות: ס"ל'},
+    'פשיטא': {'he': 'פשוט וברור (מדוע הוצרך לומר זאת?)', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'פשיטא! מהו דתימא... קמ"ל'},
+    'מהו דתימא': {'he': 'מה היית אומר (לולא החידוש)', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'ראשי תיבות: מהו"ד'},
+    'גופא': {'he': 'הגוף עצמו (חזרה לדון במקור שהוזכר קודם)', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'פתיחה לדיון במקור שהובא כראיה'},
+    'נפקא מינה': {'he': 'יוצא ממנה (ההבדל ההלכתי המעשי)', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'למאי נפקא מינה?'},
+    'שפיר': {'he': 'יפה / היטב / נכון', 'dialect': 'בבלי', 'cat': 'תואר', 'note': 'שפיר קאמרת'},
     'נפשיה': {'he': 'עצמו', 'dialect': 'בבלי', 'cat': 'כינוי גוף', 'note': 'קם דינא לנפשיה'},
+    'האי': {'he': 'זה / זו', 'dialect': 'בבלי', 'cat': 'מילת רמז', 'note': 'האי מאן דאמר'},
+    'הני': {'he': 'אלו', 'dialect': 'בבלי', 'cat': 'מילת רמז', 'note': 'הני מילי (דברים אלו)'},
+    'תניא': {'he': 'שנינו בברייתא', 'dialect': 'בבלי', 'cat': 'מונח תנאי', 'note': 'מקור תנאי מחוץ למשנה'},
+    'תנן': {'he': 'שנינו במשנה', 'dialect': 'בבלי', 'cat': 'מונח תנאי', 'note': 'ציטוט מתוך המשנה'},
+
+    'תמן': {'he': 'שם (מקביל ל"התם" בבבלי)', 'dialect': 'ירושלמי', 'cat': 'תואר הפועל', 'note': 'תנינן תמן (שנינו שם במשנה)'},
+    'הכן': {'he': 'כך / כן / כאן', 'dialect': 'ירושלמי', 'cat': 'תואר הפועל', 'note': 'אופייני לארמית גלילית בתלמוד הירושלמי'},
+    'מהו': {'he': 'מה הדין? (מקביל ל"מאי" או "איבעיא להו")', 'dialect': 'ירושלמי', 'cat': 'מילת שאלה', 'note': 'פתיחת שאלה הלכתית בירושלמי'},
+    'אית תניי תני': {'he': 'יש תנאים השונים (חילופי גרסאות בברייתא)', 'dialect': 'ירושלמי', 'cat': 'מונח ירושלמי', 'note': 'מציג שתי מסורות תנאיות מנוגדות'},
+    'גרמיה': {'he': 'עצמו (מקביל ל"נפשיה" בבבלי)', 'dialect': 'ירושלמי', 'cat': 'כינוי גוף', 'note': 'לגרמיה (לעצמו)'},
+    'ניחא': {'he': 'נוח / מובן היטב (מקביל ל"בשלמא" בבבלי)', 'dialect': 'ירושלמי', 'cat': 'מונח ירושלמי', 'note': 'הדא אמרה ניחא'},
+    'הדא': {'he': 'זו / זאת (מקביל ל"הא" או "האי" בבבלי)', 'dialect': 'ירושלמי', 'cat': 'מילת רמז', 'note': 'הדא דתימר (זאת שאתה אומר)'},
+    'הדא אמרה': {'he': 'זאת אומרת (מכאן מוכח)', 'dialect': 'ירושלמי', 'cat': 'מונח ירושלמי', 'note': 'מקביל ל"שמע מינה" בבבלי'},
+    'תנינן': {'he': 'שנינו במשנה (מקביל ל"תנן" בבבלי)', 'dialect': 'ירושלמי', 'cat': 'מונח תנאי', 'note': 'תנינן תמן'},
+    'צורכה': {'he': 'צריכה (הסוגיה או הברייתא צריכה ביאור)', 'dialect': 'ירושלמי', 'cat': 'מונח ירושלמי', 'note': 'מקביל ל"צריכא" בבבלי'},
+    'כדון': {'he': 'כעת / עכשיו / הרי זה', 'dialect': 'ירושלמי', 'cat': 'תואר הפועל', 'note': 'עד כדון (עד כאן)'},
+    'בגיני': {'he': 'בשבילי / בגללי', 'dialect': 'ירושלמי', 'cat': 'מילת יחס', 'note': 'בגינך = בשבילך'},
+    'חמי': {'he': 'רואה (מקביל ל"חזי" בבבלי)', 'dialect': 'ירושלמי', 'cat': 'פועל', 'note': 'מה אנן חמיי (מה אנו רואים)'},
+    'יליף': {'he': 'לומד / רגיל', 'dialect': 'ירושלמי', 'cat': 'פועל', 'note': 'מילה משותפת לירושלמי ולבבלי'},
+    'קומי': {'he': 'לפני (מקביל ל"קמיה" בבבלי)', 'dialect': 'ירושלמי', 'cat': 'מילת יחס', 'note': 'תני קומי רבי יוחנן (שנה לפני רבי יוחנן)'},
+    'מילתא': {'he': 'דבר / עניין / הלכה', 'dialect': 'ירושלמי', 'cat': 'שם עצם', 'note': 'חדא מילתא'},
+
     'בגין': {'he': 'בשביל / למען / מפני', 'dialect': 'זוהר', 'cat': 'מילת יחס', 'note': 'בגין כך (משום כך), בגין ד- (מפני ש-)'},
     'דא': {'he': 'זה / זו (מקביל ל"האי" בבבלי)', 'dialect': 'זוהר', 'cat': 'מילת רמז', 'note': 'דא הוא דכתיב (זהו שכתוב)'},
-    'האי': {'he': 'זה / זו', 'dialect': 'בבלי', 'cat': 'מילת רמז', 'note': 'האי מאן ד- (זה מי ש-)'},
-    'איהו': {'he': 'הוא', 'dialect': 'זוהר ובבלי', 'cat': 'כינוי גוף', 'note': 'איהי = היא, אינון = הם'},
-    'איהי': {'he': 'היא', 'dialect': 'זוהר ובבלי', 'cat': 'כינוי גוף', 'note': 'כינוי שכיח בספר הזוהר'},
-    'אינון': {'he': 'הם / אלו', 'dialect': 'זוהר וירושלמי', 'cat': 'כינוי גוף', 'note': 'מקביל ל"הני" או "אינהו" בבבלי'},
-    'רזא': {'he': 'סוד / רז פנימי', 'dialect': 'זוהר', 'cat': 'מושג יסוד בזוהר', 'note': 'רזא דמהימנותא (סוד האמונה)'},
-    'תאנא': {'he': 'שנינו (מקביל ל"תניא" או "תנן")', 'dialect': 'זוהר', 'cat': 'פתיחה בזוהר', 'note': 'פתיחה למאמרי חז"ל בספר הזוהר'},
-    'תניא': {'he': 'שנינו בברייתא', 'dialect': 'בבלי', 'cat': 'מונח תנאי', 'note': 'מציין מקור תנאי מחוץ למשנה'},
-    'תנן': {'he': 'שנינו במשנה', 'dialect': 'בבלי וירושלמי', 'cat': 'מונח תנאי', 'note': 'ציטוט ישיר מתוך המשנה'},
-    'קודשא בריך הוא': {'he': 'הקדוש ברוך הוא (הקב"ה)', 'dialect': 'זוהר ובבלי', 'cat': 'כינוי קודש', 'note': 'ראשי תיבות: קוב"ה'},
-    'שכינתא': {'he': 'השכינה הקדושה', 'dialect': 'זוהר ובבלי', 'cat': 'מושג יסוד', 'note': 'שכינתא בגלותא'},
-    'נהורא': {'he': 'אור', 'dialect': 'זוהר ובבלי', 'cat': 'שם עצם', 'note': 'בלשון סגי נהור (רב-אור)'},
-    'סיהרא': {'he': 'ירח / לבנה', 'dialect': 'זוהר ובבלי', 'cat': 'שם עצם', 'note': 'מיהדר כסיהרא'},
-    'שימשא': {'he': 'שמש', 'dialect': 'בבלי וזוהר', 'cat': 'שם עצם', 'note': 'יומא ושימשא'},
-    'ארעא': {'he': 'ארץ / אדמה / קרקע', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'ארעא דישראל (ארץ ישראל)'},
-    'שמיא': {'he': 'שמים', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'מן שמיא (מן השמים)'},
-    'מיא': {'he': 'מים', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'מיא חיים'},
-    'נורא': {'he': 'אש', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'תרי גווני נורא'},
-    'גברא': {'he': 'איש / אדם', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'גברא רבא (אדם גדול)'},
-    'איתתא': {'he': 'אישה', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'ברבים: נשי'},
-    'ינוקא': {'he': 'ילד / תינוק', 'dialect': 'בבלי וזוהר', 'cat': 'שם עצם', 'note': 'מדור ה"ינוקא" בספר הזוהר'},
-    'טליא': {'he': 'נער / ילד / טלה', 'dialect': 'ירושלמי, בבלי וזוהר', 'cat': 'שם עצם', 'note': 'בנקבה: טליתא'},
-    'סבא': {'he': 'זקן / חכם ישיש', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'פרשת "סבא דמשפטים" בזוהר'},
-    'אורייתא': {'he': 'תורה', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'בריך רחמנא דיהב אוריאן תליתאי'},
-    'מצוותא': {'he': 'מצווה', 'dialect': 'בבלי וזוהר', 'cat': 'שם עצם', 'note': 'ריבוי בזוהר: פיקודין / פיקודי אורייתא'},
-    'פיקודא': {'he': 'מצווה / ציווי', 'dialect': 'זוהר', 'cat': 'מושג בזוהר', 'note': 'רעיא מהימנא על תרי"ג פיקודין'},
-    'צלותא': {'he': 'תפילה', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'בעי צלותא'},
-    'עלמא': {'he': 'עולם', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'עלמא דאתי (העולם הבא)'},
-    'קושטא': {'he': 'אמת', 'dialect': 'בבלי, ירושלמי וזוהר', 'cat': 'שם עצם', 'note': 'קושטא קאי (האמת עומדת)'},
-    'שפיר': {'he': 'יפה / היטב / נכון', 'dialect': 'בבלי', 'cat': 'תואר', 'note': 'שפיר קאמרת (יפה אמרת)'},
-    'לחוד': {'he': 'בנפרד / לבד', 'dialect': 'בבלי וזוהר', 'cat': 'תואר הפועל', 'note': 'הא לחוד והא לחוד'},
-    'גופא': {'he': 'הגוף עצמו / חזרה לדון בגוף המקור שהוזכר קודם', 'dialect': 'בבלי', 'cat': 'מונח שקלא וטריא', 'note': 'פתיחה לדיון במקור שהובא קודם כראיה אגבית'}
+    'איהו': {'he': 'הוא', 'dialect': 'זוהר', 'cat': 'כינוי גוף', 'note': 'איהי = היא, אינון = הם'},
+    'איהי': {'he': 'היא', 'dialect': 'זוהר', 'cat': 'כינוי גוף', 'note': 'קוב"ה ושכינתיה איהו ואיהי'},
+    'אינון': {'he': 'הם / אלו', 'dialect': 'זוהר', 'cat': 'כינוי גוף', 'note': 'הני אינון'},
+    'רזא': {'he': 'סוד / רז עליון', 'dialect': 'זוהר', 'cat': 'מושג יסוד בזוהר', 'note': 'רזא דמהימנותא (סוד האמונה)'},
+    'תאנא': {'he': 'שנינו (פתיחה למאמר בזוהר, מקביל ל"תניא")', 'dialect': 'זוהר', 'cat': 'פתיחה בזוהר', 'note': 'תאנא בספרא דצניעותא'},
+    'קודשא בריך הוא': {'he': 'הקדוש ברוך הוא (הקב"ה)', 'dialect': 'זוהר', 'cat': 'כינוי קודש', 'note': 'ראשי תיבות: קוב"ה'},
+    'שכינתא': {'he': 'השכינה הקדושה', 'dialect': 'זוהר', 'cat': 'מושג יסוד בזוהר', 'note': 'שכינתא קדישא'},
+    'נהורא': {'he': 'אור', 'dialect': 'זוהר', 'cat': 'שם עצם', 'note': 'נהורא עילאה (אור עליון)'},
+    'סיהרא': {'he': 'ירח / לבנה', 'dialect': 'זוהר', 'cat': 'שם עצם', 'note': 'אשלמותא דסיהרא'},
+    'פיקודא': {'he': 'מצווה / ציווי התורה', 'dialect': 'זוהר', 'cat': 'מושג יסוד בזוהר', 'note': 'ברבים: פיקודין דאורייתא'},
+    'אורייתא': {'he': 'תורה', 'dialect': 'זוהר', 'cat': 'שם עצם', 'note': 'אורייתא וקוב"ה וישראל חד הוא'},
+    'צלותא': {'he': 'תפילה', 'dialect': 'זוהר', 'cat': 'שם עצם', 'note': 'צלותא דעניא'},
+    'עלמא': {'he': 'עולם', 'dialect': 'זוהר', 'cat': 'שם עצם', 'note': 'עלמא עילאה (עולם עליון), עלמא תתאה (עולם תחתון)'},
+    'עילאה': {'he': 'עליון', 'dialect': 'זוהר', 'cat': 'תואר', 'note': 'הפך מ"תתאה" (תחתון)'},
+    'תתאה': {'he': 'תחתון', 'dialect': 'זוהר', 'cat': 'תואר', 'note': 'דרי תתאי (שוכני מטה)'},
+    'דיוקנא': {'he': 'דמות / צורה / דיוקן', 'dialect': 'זוהר', 'cat': 'שם עצם', 'note': 'דיוקנא קדישא'},
+    'זעיר אנפין': {'he': 'קצר אפיים / מידת התפארת והרחמים בקבלה', 'dialect': 'זוהר', 'cat': 'מושג קבלי', 'note': 'ראשי תיבות: ז"א'},
+    'עתיקא קדישא': {'he': 'העתיק הקדוש (הדרגה העליונה בכתר)', 'dialect': 'זוהר', 'cat': 'מושג קבלי', 'note': 'עתיק יומין'},
+    'סטרא אחרא': {'he': 'הצד האחר (כוחות הטומאה והקליפה)', 'dialect': 'זוהר', 'cat': 'מושג בזוהר', 'note': 'ראשי תיבות: ס"א'}
 }
 
 
@@ -3130,20 +3133,29 @@ def save_learned_aramaic_cache(data_dict):
 
 
 def aramaic_translator_view(request):
-    return render(request, 'articles/aramaic_translator.html', {'current_page': 'aramaic_translator'})
+    bavli_list = [{'term': k, **v} for k, v in CORE_ARAMAIC_LEXICON.items() if v['dialect'] == 'בבלי']
+    yerushalmi_list = [{'term': k, **v} for k, v in CORE_ARAMAIC_LEXICON.items() if v['dialect'] == 'ירושלמי']
+    zohar_list = [{'term': k, **v} for k, v in CORE_ARAMAIC_LEXICON.items() if v['dialect'] == 'זוהר']
+
+    return render(request, 'articles/aramaic_translator.html', {
+        'current_page': 'aramaic_translator',
+        'bavli_lexicon': bavli_list,
+        'yerushalmi_lexicon': yerushalmi_list,
+        'zohar_lexicon': zohar_list
+    })
 
 
 @ratelimit(rate=30, timeout=60)
 def aramaic_translate_api(request):
     q = request.GET.get('q', '').strip()
     direction = request.GET.get('dir', 'auto').strip()
-    dialect = request.GET.get('dialect', 'all').strip()
+    dialect = request.GET.get('dialect', 'bavli').strip()
 
     if not q:
         return JsonResponse({'error': 'נא להזין מילה, ביטוי או משפט לתרגום.'}, status=400)
 
     clean_q = re.sub(r'[^\w\sא-ת"״\'׳\-]', '', q).strip()
-    cache_key = f"aramaic_trans_v1_{direction}_{dialect}_{clean_q}"
+    cache_key = f"aramaic_trans_v2_{direction}_{dialect}_{clean_q}"
     cached_res = cache.get(cache_key)
     if cached_res:
         return JsonResponse(cached_res, json_dumps_params={'ensure_ascii': False})
@@ -3154,13 +3166,17 @@ def aramaic_translate_api(request):
     WORD_TOKEN_RE = re.compile(r'[א-ת\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7]+')
     NON_HEB_RE = re.compile(r'[^א-ת]+')
 
-    def find_talmud_examples(search_term):
+    def find_talmud_examples(search_term, target_dialect):
         heb_words = [w for w in re.findall(r'[א-ת]+', search_term) if len(w) >= 2]
         if not heb_words:
             return []
-        qs = TorahText.objects.filter(
-            Q(chapter__startswith='דף') | Q(book__startswith='ירושלמי ')
-        )
+        if target_dialect == 'yerushalmi':
+            qs = TorahText.objects.filter(book__startswith='ירושלמי ')
+        elif target_dialect == 'bavli':
+            qs = TorahText.objects.filter(chapter__startswith='דף').exclude(book__startswith='ירושלמי ')
+        else:
+            qs = TorahText.objects.filter(Q(chapter__startswith='דף') | Q(book__startswith='ירושלמי '))
+
         for hw in heb_words[:2]:
             qs = qs.filter(clean_text__icontains=hw)
 
@@ -3214,7 +3230,7 @@ def aramaic_translate_api(request):
                 if len(direct_lex_matches) >= 4:
                     break
 
-    talmud_examples = find_talmud_examples(clean_q)
+    talmud_examples = find_talmud_examples(clean_q, dialect)
 
     if learned_key in learned_db:
         saved_data = learned_db[learned_key]
@@ -3224,33 +3240,33 @@ def aramaic_translate_api(request):
         return JsonResponse(saved_data, json_dumps_params={'ensure_ascii': False})
 
     dialect_names = {
-        'all': 'כל הניבים (תלמוד בבלי, תלמוד ירושלמי וספר הזוהר)',
         'bavli': 'ארמית של תלמוד בבלי (ארמית מזרחית)',
         'yerushalmi': 'ארמית של תלמוד ירושלמי (ארמית גלילית מערבית)',
-        'zohar': 'ארמית של ספר הזוהר והתיקונים'
+        'zohar': 'ארמית של ספר הזוהר הקדוש',
+        'all': 'כל הניבים (תלמוד בבלי, תלמוד ירושלמי וספר הזוהר)'
     }
     dir_names = {
-        'auto': 'זיהוי אוטומטי (אם הקלט בארמית תרגם לעברית, ואם הקלט בעברית תרגם לארמית)',
+        'auto': 'זיהוי אוטומטי (אם הקלט בארמית תרגם לעברית, ואם הקלט בעברית תרגם לארמית של הניב הנבחר)',
         'ar_to_he': 'מארמית לעברית',
         'he_to_ar': 'מעברית לארמית'
     }
 
     prompt = (
         f"אתה בלשן תורני מומחה לארמית של התלמוד הבבלי, התלמוד הירושלמי וספר הזוהר באתר 'ספריית לייבוביץ'.\n"
-        f"המשתמש הזין את הביטוי/המשפט הבא: \"{clean_q}\"\n"
-        f"כיוון תרגום מבוקש: {dir_names.get(direction, dir_names['auto'])}\n"
-        f"ניב ארמי מבוקש: {dialect_names.get(dialect, dialect_names['all'])}\n\n"
-        f"החזר תשובה בפורמט JSON תקני בלבד (ללא סימני markdown וללא ```json) עם השדות הבאים בדיוק:\n"
+        f"המשתמש הזין: \"{clean_q}\"\n"
+        f"חטיבת המילון הנבחרת: {dialect_names.get(dialect, dialect_names['bavli'])}\n"
+        f"כיוון תרגום: {dir_names.get(direction, dir_names['auto'])}\n\n"
+        f"החזר תשובה בפורמט JSON תקני בלבד (ללא ```json) עם השדות הבאים:\n"
         f"{{\n"
         f"  \"detected_direction\": \"ארמית ⬅ עברית\" או \"עברית ⬅ ארמית\",\n"
-        f"  \"main_translation\": \"התרגום המדויק, הבהיר והמלא ביותר (מנוקד במידת הצורך)\",\n"
-        f"  \"bavli_variant\": \"איך אומרים או מפרשים זאת בארמית של תלמוד בבלי\",\n"
-        f"  \"yerushalmi_variant\": \"איך אומרים או מפרשים זאת בארמית של תלמוד ירושלמי\",\n"
-        f"  \"zohar_variant\": \"איך אומרים או מפרשים זאת בארמית של ספר הזוהר\",\n"
-        f"  \"grammar_breakdown\": \"פירוק דקדוקי קצר וברור (שורש, בניין, תחיליות/סופיות ומקבילה בלשון הקודש)\",\n"
-        f"  \"usage_example\": \"משפט דוגמה קצר ומוכר מהגמרא או מהזוהר עם תרגומו לעברית\"\n"
+        f"  \"main_translation\": \"התרגום המדויק והמלא ביותר בהתאם לחטיבה שנבחרה ({dialect_names.get(dialect)})\",\n"
+        f"  \"bavli_variant\": \"המילה/הביטוי ומשמעותו בתלמוד הבבלי\",\n"
+        f"  \"yerushalmi_variant\": \"המילה/הביטוי המקביל ומשמעותו בתלמוד הירושלמי\",\n"
+        f"  \"zohar_variant\": \"המילה/הביטוי המקביל ומשמעותו בספר הזוהר\",\n"
+        f"  \"grammar_breakdown\": \"פירוק דקדוקי קצר (שורש, תחיליות/סופיות ומקבילה בלשון הקודש)\",\n"
+        f"  \"usage_example\": \"משפט דוגמה קצר ומוכר מחטיבת הלימוד הנבחרת עם תרגומו לעברית\"\n"
         f"}}\n"
-        f"הקפד על דיוק תורני מוחלט, ולעולם אל תכתוב את שם ה' המפורש אלא רק י-ה-ו-ה."
+        f"הקפד על ניסוח עצמאי, נקי ומדויק, וכתוב את שם ה' רק כ-י-ה-ו-ה."
     )
 
     api_key = os.environ.get('GEMINI_API_KEY', '').strip() or getattr(settings, 'GEMINI_API_KEY', '').strip()
@@ -3258,7 +3274,7 @@ def aramaic_translate_api(request):
 
     if api_key:
         for m_name in ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-latest']:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{m_name}:generateContent?key={api_key}"
+            url = f"[https://generativelanguage.googleapis.com/v1beta/models/](https://generativelanguage.googleapis.com/v1beta/models/){m_name}:generateContent?key={api_key}"
             payload = {"contents": [{"parts": [{"text": prompt}]}]}
             req = urllib.request.Request(url, data=json.dumps(payload, ensure_ascii=False).encode('utf-8'), headers={'Content-Type': 'application/json'})
             try:
@@ -3280,9 +3296,9 @@ def aramaic_translate_api(request):
             ai_json = {
                 'detected_direction': 'ארמית ⬅ עברית' if clean_q == m0['term'] else 'עברית ⬅ ארמית',
                 'main_translation': m0['translation'] if clean_q == m0['term'] else m0['term'],
-                'bavli_variant': m0['term'] if 'בבלי' in m0['dialect'] else 'ראה מילון ליבה',
-                'yerushalmi_variant': m0['term'] if 'ירושלמי' in m0['dialect'] else 'ראה מילון ליבה',
-                'zohar_variant': m0['term'] if 'זוהר' in m0['dialect'] else 'ראה מילון ליבה',
+                'bavli_variant': m0['term'] if 'בבלי' in m0['dialect'] else '—',
+                'yerushalmi_variant': m0['term'] if 'ירושלמי' in m0['dialect'] else '—',
+                'zohar_variant': m0['term'] if 'זוהר' in m0['dialect'] else '—',
                 'grammar_breakdown': f"{m0['category']} ({m0['dialect']})",
                 'usage_example': m0['note']
             }
@@ -3299,6 +3315,7 @@ def aramaic_translate_api(request):
 
     result_payload = {
         'query': clean_q,
+        'selected_dialect': dialect,
         'detected_direction': ai_json.get('detected_direction', 'ארמית ⇄ עברית'),
         'main_translation': format_divine_name(ai_json.get('main_translation', '')),
         'bavli_variant': format_divine_name(ai_json.get('bavli_variant', '')),
