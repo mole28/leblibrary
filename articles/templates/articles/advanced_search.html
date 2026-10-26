@@ -39,492 +39,174 @@
 {% block content %}
 <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 <style>
-    .corpus-luxury-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        direction: rtl;
-    }
-    .corpus-luxury-btn {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 9px 11px;
-        background: #ffffff;
-        border: 1.5px solid #e2d9c5;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 0.9rem;
-        color: #3b352a;
-        cursor: pointer;
-        transition: all 0.18s ease;
-        user-select: none;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-    }
-    .corpus-luxury-btn:hover {
-        border-color: #d4af37;
-        background: #fdfaf2;
-        transform: translateY(-1px);
-    }
-    .corpus-luxury-btn.active {
-        background: linear-gradient(135deg, #fcf3cf 0%, #f5dc86 100%);
-        border-color: #b8860b;
-        color: #1f1a10;
-        font-weight: 700;
-        box-shadow: 0 3px 8px rgba(212, 175, 55, 0.25);
-    }
-    .corpus-luxury-btn.full-width {
-        grid-column: 1 / -1;
-        justify-content: center;
-        gap: 10px;
-    }
-    .corpus-check-indicator {
-        width: 19px;
-        height: 19px;
-        border-radius: 50%;
-        border: 1.5px solid #cbbba0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.72rem;
-        background: #fff;
-        color: transparent;
-        transition: all 0.18s ease;
-        flex-shrink: 0;
-    }
-    .corpus-luxury-btn.active .corpus-check-indicator {
-        background: #b8860b;
-        border-color: #b8860b;
-        color: #fff;
-    }
+    .corpus-luxury-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; direction: rtl; }
+    .corpus-luxury-btn { display: flex; align-items: center; justify-content: space-between; padding: 9px 11px; background: #ffffff; border: 1.5px solid #e2d9c5; border-radius: 10px; font-weight: 600; font-size: 0.9rem; color: #3b352a; cursor: pointer; transition: all 0.18s ease; user-select: none; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+    .corpus-luxury-btn:hover { border-color: #d4af37; background: #fdfaf2; transform: translateY(-1px); }
+    .corpus-luxury-btn.active { background: linear-gradient(135deg, #fcf3cf 0%, #f5dc86 100%); border-color: #b8860b; color: #1f1a10; font-weight: 700; box-shadow: 0 3px 8px rgba(212, 175, 55, 0.25); }
+    .corpus-luxury-btn.full-width { grid-column: 1 / -1; justify-content: center; gap: 10px; }
+    .corpus-check-indicator { width: 19px; height: 19px; border-radius: 50%; border: 1.5px solid #cbbba0; display: inline-flex; align-items: center; justify-content: center; font-size: 0.72rem; background: #fff; color: transparent; transition: all 0.18s ease; flex-shrink: 0; }
+    .corpus-luxury-btn.active .corpus-check-indicator { background: #b8860b; border-color: #b8860b; color: #fff; }
 
-    .action-luxury-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
+    .action-luxury-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; direction: rtl; }
+    .action-luxury-card { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 9px 11px; background: #ffffff; border: 1.5px solid #e2d9c5; border-radius: 10px; cursor: pointer; transition: all 0.18s ease; user-select: none; text-align: right; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    .action-luxury-card:hover { border-color: #d4af37; background: #fdfaf2; transform: translateY(-1px); }
+    .action-luxury-card.active { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border-color: #d4af37; color: #ffffff; box-shadow: 0 4px 10px rgba(30, 41, 59, 0.22); }
+    .action-card-header { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.9rem; color: #1e293b; width: 100%; }
+    .action-luxury-card.active .action-card-header { color: #f7e199; }
+    .action-card-sub { font-size: 0.75rem; color: #64748b; margin-top: 2px; line-height: 1.2; }
+    .action-luxury-card.active .action-card-sub { color: #e2e8f0; }
+
+    .search-input-luxury-wrap { position: relative; display: flex; align-items: center; }
+    .clear-search-btn { position: absolute; left: 12px; background: #eee5ce; border: none; color: #5c4b23; width: 26px; height: 26px; border-radius: 50%; font-size: 0.85rem; font-weight: bold; cursor: pointer; display: none; align-items: center; justify-content: center; transition: all 0.15s ease; z-index: 3; }
+    .clear-search-btn:hover { background: #d4af37; color: #fff; }
+
+    .els-skip-selector-wrap { display: none; margin-top: 10px; padding: 10px 12px; background: #fdfaf2; border: 1.5px solid #e2d1a0; border-radius: 10px; direction: rtl; }
+    .els-skips-bar { display: none; flex-wrap: wrap; gap: 7px; margin-top: 12px; padding: 11px; background: #fdfbf5; border: 1.5px solid #d4af37; border-radius: 10px; direction: rtl; align-items: center; justify-content: center; }
+    .els-skips-title { width: 100%; text-align: center; font-weight: bold; color: #5c4b23; font-size: 0.88rem; margin-bottom: 4px; }
+    .els-skip-pill { padding: 5px 11px; border-radius: 20px; border: 1.5px solid #d4af37; background: #fff; color: #4a3c1a; font-size: 0.84rem; font-weight: 600; cursor: pointer; transition: all 0.18s ease; }
+    .els-skip-pill:hover { background: #fcf3cf; }
+    .els-skip-pill.active { background: #d4af37; color: #fff; border-color: #b8860b; }
+
+    .result-action-btn { background: #ffffff; border: 1px solid #d4af37; color: #4a3c1a; border-radius: 8px; padding: 5px 11px; font-size: 0.84rem; font-weight: 600; cursor: pointer; transition: all 0.18s ease; display: inline-flex; align-items: center; gap: 5px; }
+    .result-action-btn:hover { background: #d4af37; color: #1e202c; box-shadow: 0 2px 6px rgba(212, 175, 55, 0.3); }
+    .result-ai-code-btn { background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%); border: 1.5px solid #f59e0b; color: #fde68a; border-radius: 8px; padding: 5px 13px; font-size: 0.84rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(49, 46, 129, 0.25); }
+    .result-ai-code-btn:hover { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #ffffff; border-color: #ffffff; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4); }
+
+    .export-toolbar-btn { background: linear-gradient(135deg, #fcf3cf 0%, #f5dc86 100%); border: 1.5px solid #b8860b; color: #1f1a10; border-radius: 8px; padding: 6px 13px; font-size: 0.88rem; font-weight: 700; cursor: pointer; transition: all 0.18s ease; display: inline-flex; align-items: center; gap: 6px; }
+    .export-toolbar-btn:hover { background: #d4af37; color: #fff; }
+    .share-luxury-btn { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 1.5px solid #d4af37; color: #f7e199 !important; border-radius: 8px; padding: 6px 14px; font-size: 0.88rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 6px; }
+    .share-luxury-btn:hover { background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 100%); color: #0f172a !important; }
+
+    /* סרגל פתיחה מהירה של מקור */
+    .quick-open-luxury-bar {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 2px solid #d4af37;
+        border-radius: 16px;
+        padding: 16px 20px;
+        margin-bottom: 18px;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.14);
         direction: rtl;
     }
-    .action-luxury-card {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        justify-content: center;
-        padding: 9px 11px;
-        background: #ffffff;
-        border: 1.5px solid #e2d9c5;
+    .quick-open-input {
+        border: 1.5px solid #d4af37;
         border-radius: 10px;
-        cursor: pointer;
-        transition: all 0.18s ease;
-        user-select: none;
-        text-align: right;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-    }
-    .action-luxury-card:hover {
-        border-color: #d4af37;
-        background: #fdfaf2;
-        transform: translateY(-1px);
-    }
-    .action-luxury-card.active {
-        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-        border-color: #d4af37;
-        color: #ffffff;
-        box-shadow: 0 4px 10px rgba(30, 41, 59, 0.22);
-    }
-    .action-card-header {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-weight: 700;
-        font-size: 0.9rem;
+        background: #ffffff;
         color: #1e293b;
-        width: 100%;
+        font-weight: 600;
+        padding: 9px 14px;
+        font-size: 0.95rem;
     }
-    .action-luxury-card.active .action-card-header {
-        color: #f7e199;
+    .quick-open-input:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.35);
     }
-    .action-card-sub {
-        font-size: 0.75rem;
-        color: #64748b;
-        margin-top: 2px;
-        line-height: 1.2;
-    }
-    .action-luxury-card.active .action-card-sub {
-        color: #e2e8f0;
-    }
-
-    .search-input-luxury-wrap {
-        position: relative;
-        display: flex;
-        align-items: center;
-    }
-    .clear-search-btn {
-        position: absolute;
-        left: 12px;
-        background: #eee5ce;
-        border: none;
-        color: #5c4b23;
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        font-size: 0.85rem;
-        font-weight: bold;
-        cursor: pointer;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.15s ease;
-        z-index: 3;
-    }
-    .clear-search-btn:hover {
-        background: #d4af37;
-        color: #fff;
-    }
-
-    .els-skip-selector-wrap {
-        display: none;
-        margin-top: 10px;
-        padding: 10px 12px;
-        background: #fdfaf2;
-        border: 1.5px solid #e2d1a0;
+    .quick-open-btn {
+        background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 100%);
+        color: #0f172a;
+        font-weight: 800;
+        border: 1px solid #fff;
         border-radius: 10px;
-        direction: rtl;
+        padding: 9px 18px;
+        white-space: nowrap;
+        transition: all 0.2s ease;
     }
-    .els-skips-bar {
-        display: none;
-        flex-wrap: wrap;
-        gap: 7px;
-        margin-top: 12px;
-        padding: 11px;
-        background: #fdfbf5;
-        border: 1.5px solid #d4af37;
-        border-radius: 10px;
-        direction: rtl;
-        align-items: center;
-        justify-content: center;
+    .quick-open-btn:hover {
+        background: linear-gradient(135deg, #f59e0b 0%, #d4af37 100%);
+        transform: translateY(-1px);
     }
-    .els-skips-title {
-        width: 100%;
-        text-align: center;
-        font-weight: bold;
-        color: #5c4b23;
-        font-size: 0.88rem;
-        margin-bottom: 4px;
-    }
-    .els-skip-pill {
-        padding: 5px 11px;
+    .quick-preset-chip {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(212, 175, 55, 0.45);
+        color: #f3e5ab;
         border-radius: 20px;
-        border: 1.5px solid #d4af37;
-        background: #fff;
-        color: #4a3c1a;
-        font-size: 0.84rem;
-        font-weight: 600;
+        padding: 2px 10px;
+        font-size: 0.76rem;
         cursor: pointer;
-        transition: all 0.18s ease;
+        transition: all 0.15s ease;
     }
-    .els-skip-pill:hover {
-        background: #fcf3cf;
-    }
-    .els-skip-pill.active {
+    .quick-preset-chip:hover {
         background: #d4af37;
-        color: #fff;
-        border-color: #b8860b;
+        color: #0f172a;
     }
 
-    .result-action-btn {
-        background: #ffffff;
-        border: 1px solid #d4af37;
-        color: #4a3c1a;
+    /* עיצוב מפרשים במעבר עכבר (Hover / Click) */
+    .commentary-badge-trigger {
+        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        border: 1px solid #d97706;
+        color: #92400e;
         border-radius: 8px;
-        padding: 5px 11px;
-        font-size: 0.84rem;
-        font-weight: 600;
+        padding: 4px 10px;
+        font-size: 0.82rem;
+        font-weight: 700;
         cursor: pointer;
-        transition: all 0.18s ease;
         display: inline-flex;
         align-items: center;
         gap: 5px;
-    }
-    .result-action-btn:hover {
-        background: #d4af37;
-        color: #1e202c;
-        box-shadow: 0 2px 6px rgba(212, 175, 55, 0.3);
-    }
-    .result-ai-code-btn {
-        background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
-        border: 1.5px solid #f59e0b;
-        color: #fde68a;
-        border-radius: 8px;
-        padding: 5px 13px;
-        font-size: 0.84rem;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        box-shadow: 0 2px 6px rgba(49, 46, 129, 0.25);
-    }
-    .result-ai-code-btn:hover {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        color: #ffffff;
-        border-color: #ffffff;
-        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
-    }
-
-    .export-toolbar-btn {
-        background: linear-gradient(135deg, #fcf3cf 0%, #f5dc86 100%);
-        border: 1.5px solid #b8860b;
-        color: #1f1a10;
-        border-radius: 8px;
-        padding: 6px 13px;
-        font-size: 0.88rem;
-        font-weight: 700;
-        cursor: pointer;
         transition: all 0.18s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
     }
-    .export-toolbar-btn:hover {
-        background: #d4af37;
-        color: #fff;
+    .commentary-badge-trigger:hover {
+        background: #d97706;
+        color: #ffffff;
     }
-
-    .share-luxury-btn {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-        border: 1.5px solid #d4af37;
-        color: #f7e199 !important;
-        border-radius: 8px;
-        padding: 6px 14px;
-        font-size: 0.88rem;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .share-luxury-btn:hover {
-        background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 100%);
-        color: #0f172a !important;
-    }
-
-    .chapter-context-verse {
-        padding: 12px 16px;
-        border-bottom: 1px solid #f1ece1;
-        border-radius: 8px;
-        transition: background 0.2s;
-    }
-    .chapter-context-verse.target-highlight {
-        background-color: #fff8dc;
-        border: 2px solid #d4af37;
-        box-shadow: 0 3px 10px rgba(212, 175, 55, 0.2);
-    }
-    .verse-num-badge {
-        display: inline-block;
-        min-width: 34px;
-        padding: 2px 8px;
-        background: #f3ead3;
-        color: #5c4b23;
-        border-radius: 6px;
-        font-weight: 700;
-        font-size: 0.9rem;
-        text-align: center;
-        margin-left: 10px;
-    }
-    .chapter-context-verse.target-highlight .verse-num-badge {
-        background: #d4af37;
-        color: #fff;
-    }
-
-    .ai-discovery-lab {
-        margin-top: 3rem;
-        background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 85%);
-        border: 2px solid #d4af37;
-        border-radius: 20px;
-        padding: 28px;
-        color: #f8fafc;
-        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
-    }
-    .ai-lab-tab-btn {
-        background: rgba(255, 255, 255, 0.06);
-        border: 1.5px solid rgba(212, 175, 55, 0.45);
-        color: #e2e8f0;
-        padding: 10px 20px;
-        border-radius: 12px;
-        font-weight: 700;
-        font-size: 0.96rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .ai-lab-tab-btn:hover {
-        background: rgba(212, 175, 55, 0.15);
-        color: #f7e199;
-    }
-    .ai-lab-tab-btn.active {
-        background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 100%);
-        color: #0f172a;
-        border-color: #ffffff;
-        box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
-    }
-    #conceptMapNetwork {
-        width: 100%;
-        height: 430px;
-        background: #0b1120;
-        border: 1.5px solid rgba(212, 175, 55, 0.4);
-        border-radius: 14px;
-    }
-    .synthesis-stat-badge {
-        background: #f8f4e8;
-        border: 1px solid #d4af37;
-        color: #3b2f14;
-        border-radius: 8px;
-        padding: 6px 12px;
-        font-size: 0.85rem;
-        font-weight: 700;
-    }
-
-    .bottom-tools-section {
-        margin-top: 3.5rem;
-        padding-top: 2rem;
-        border-top: 1px solid #ece5d5;
-    }
-    .compact-tool-card {
-        background: linear-gradient(145deg, #fdfbf7 0%, #f5efe2 100%);
-        border: 1px solid rgba(166, 124, 82, 0.28);
-        border-radius: 14px;
-        padding: 20px 22px;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+    .verse-hoverable {
         position: relative;
-        overflow: hidden;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .compact-tool-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.07);
-    }
-    .compact-tool-card::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, #d4af37, #a67c52, #d4af37);
-    }
-    .compact-tool-icon {
-        width: 38px;
-        height: 38px;
-        border-radius: 50%;
-        background-color: #ffffff;
-        border: 1px solid rgba(212, 175, 55, 0.28);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .compact-tool-icon i {
-        font-size: 1.15rem;
-        color: #a67c52;
-    }
-    .compact-calc-btn-primary {
-        border-radius: 9px;
-        padding: 9px 14px;
-        font-size: 0.88rem;
-        font-weight: 600;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        text-decoration: none;
-        background: linear-gradient(135deg, #a67c52 0%, #835c39 100%);
-        color: #ffffff !important;
-        transition: opacity 0.2s ease;
-    }
-    .compact-calc-btn-primary:hover {
-        opacity: 0.92;
-    }
-    .compact-calc-btn-secondary {
-        border-radius: 9px;
-        padding: 8px 14px;
-        font-size: 0.88rem;
-        font-weight: 600;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        text-decoration: none;
-        background-color: #ffffff;
-        color: #8c6239 !important;
-        border: 1px solid rgba(166, 124, 82, 0.35);
-        transition: background-color 0.2s ease;
-    }
-    .compact-calc-btn-secondary:hover {
-        background-color: #fcf8f0;
-    }
-    .compact-acr-input {
-        width: 100%;
-        padding: 8px 12px;
-        background-color: #ffffff;
-        border: 1px solid #dcd3c1;
+        transition: background-color 0.18s ease;
         border-radius: 8px;
-        font-size: 0.88rem;
-        outline: none;
-        transition: border-color 0.2s ease;
+        padding: 4px 6px;
     }
-    .compact-acr-input:focus {
-        border-color: #d4af37;
+    .verse-hoverable:hover {
+        background-color: rgba(212, 175, 55, 0.08);
     }
-    .compact-acr-results {
-        height: 112px;
-        overflow-y: auto;
-        font-size: 0.85rem;
-        background: #ffffff;
-        border: 1px solid #dcd3c1;
-        border-radius: 8px;
-        padding: 8px 10px;
+    .commentary-inline-drawer {
+        display: none;
+        margin-top: 12px;
+        padding: 14px 18px;
+        background: linear-gradient(145deg, #fffdf9 0%, #f9f4e8 100%);
+        border-right: 4px solid #b8860b;
+        border-top: 1px solid #e6dec8;
+        border-left: 1px solid #e6dec8;
+        border-bottom: 1px solid #e6dec8;
+        border-radius: 10px;
+        font-size: 1.08rem;
+        line-height: 1.75;
+        color: #1e293b;
+        box-shadow: inset 0 2px 6px rgba(0,0,0,0.03);
     }
 
-    body.dark-mode .bottom-tools-section {
-        border-top-color: #334155;
-    }
-    body.dark-mode .compact-tool-card {
-        background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
-        border-color: rgba(212, 175, 55, 0.25);
-    }
-    body.dark-mode .compact-tool-icon {
-        background-color: #0f172a;
-        border-color: rgba(212, 175, 55, 0.35);
-    }
-    body.dark-mode .compact-calc-btn-secondary {
-        background-color: #1e293b;
-        color: #d4af37 !important;
-        border-color: rgba(212, 175, 55, 0.35);
-    }
-    body.dark-mode .compact-acr-input,
-    body.dark-mode .compact-acr-results {
-        background-color: #0f172a;
-        border-color: #334155;
-        color: #f8fafc;
-    }
-    body.dark-mode #advancedSearchForm label,
-    body.dark-mode .card h4,
-    body.dark-mode .card h5,
-    body.dark-mode #sermonOutputArea h5,
-    body.dark-mode #sermonOutputArea h6,
-    body.dark-mode #codeFinderModalBody h6 {
-        color: #1e293b !important;
-    }
-    body.dark-mode .card .list-group-item strong {
-        color: #0f172a !important;
-    }
-    body.dark-mode .ai-discovery-lab h3 {
-        color: #f7e199 !important;
-    }
+    .chapter-context-verse { padding: 12px 16px; border-bottom: 1px solid #f1ece1; border-radius: 8px; transition: background 0.2s; }
+    .chapter-context-verse.target-highlight { background-color: #fff8dc; border: 2px solid #d4af37; box-shadow: 0 3px 10px rgba(212, 175, 55, 0.2); }
+    .verse-num-badge { display: inline-block; min-width: 34px; padding: 2px 8px; background: #f3ead3; color: #5c4b23; border-radius: 6px; font-weight: 700; font-size: 0.9rem; text-align: center; margin-left: 10px; }
+    .chapter-context-verse.target-highlight .verse-num-badge { background: #d4af37; color: #fff; }
+
+    .ai-discovery-lab { margin-top: 3rem; background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 85%); border: 2px solid #d4af37; border-radius: 20px; padding: 28px; color: #f8fafc; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22); }
+    .ai-lab-tab-btn { background: rgba(255, 255, 255, 0.06); border: 1.5px solid rgba(212, 175, 55, 0.45); color: #e2e8f0; padding: 10px 20px; border-radius: 12px; font-weight: 700; font-size: 0.96rem; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px; }
+    .ai-lab-tab-btn:hover { background: rgba(212, 175, 55, 0.15); color: #f7e199; }
+    .ai-lab-tab-btn.active { background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 100%); color: #0f172a; border-color: #ffffff; box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4); }
+    #conceptMapNetwork { width: 100%; height: 430px; background: #0b1120; border: 1.5px solid rgba(212, 175, 55, 0.4); border-radius: 14px; }
+    .synthesis-stat-badge { background: #f8f4e8; border: 1px solid #d4af37; color: #3b2f14; border-radius: 8px; padding: 6px 12px; font-size: 0.85rem; font-weight: 700; }
+
+    .bottom-tools-section { margin-top: 3.5rem; padding-top: 2rem; border-top: 1px solid #ece5d5; }
+    .compact-tool-card { background: linear-gradient(145deg, #fdfbf7 0%, #f5efe2 100%); border: 1px solid rgba(166, 124, 82, 0.28); border-radius: 14px; padding: 20px 22px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04); position: relative; overflow: hidden; height: 100%; display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .compact-tool-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.07); }
+    .compact-tool-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #d4af37, #a67c52, #d4af37); }
+    .compact-tool-icon { width: 38px; height: 38px; border-radius: 50%; background-color: #ffffff; border: 1px solid rgba(212, 175, 55, 0.28); display: flex; align-items: center; justify-content: center; }
+    .compact-tool-icon i { font-size: 1.15rem; color: #a67c52; }
+    .compact-calc-btn-primary { border-radius: 9px; padding: 9px 14px; font-size: 0.88rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; text-decoration: none; background: linear-gradient(135deg, #a67c52 0%, #835c39 100%); color: #ffffff !important; transition: opacity 0.2s ease; }
+    .compact-calc-btn-primary:hover { opacity: 0.92; }
+    .compact-calc-btn-secondary { border-radius: 9px; padding: 8px 14px; font-size: 0.88rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; text-decoration: none; background-color: #ffffff; color: #8c6239 !important; border: 1px solid rgba(166, 124, 82, 0.35); transition: background-color 0.2s ease; }
+    .compact-calc-btn-secondary:hover { background-color: #fcf8f0; }
+    .compact-acr-input { width: 100%; padding: 8px 12px; background-color: #ffffff; border: 1px solid #dcd3c1; border-radius: 8px; font-size: 0.88rem; outline: none; transition: border-color 0.2s ease; }
+    .compact-acr-input:focus { border-color: #d4af37; }
+    .compact-acr-results { height: 112px; overflow-y: auto; font-size: 0.85rem; background: #ffffff; border: 1px solid #dcd3c1; border-radius: 8px; padding: 8px 10px; }
+
+    body.dark-mode .bottom-tools-section { border-top-color: #334155; }
+    body.dark-mode .compact-tool-card { background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%); border-color: rgba(212, 175, 55, 0.25); }
+    body.dark-mode .compact-tool-icon { background-color: #0f172a; border-color: rgba(212, 175, 55, 0.35); }
+    body.dark-mode .compact-calc-btn-secondary { background-color: #1e293b; color: #d4af37 !important; border-color: rgba(212, 175, 55, 0.35); }
+    body.dark-mode .compact-acr-input, body.dark-mode .compact-acr-results { background-color: #0f172a; border-color: #334155; color: #f8fafc; }
+    body.dark-mode #advancedSearchForm label, body.dark-mode .card h4, body.dark-mode .card h5, body.dark-mode #sermonOutputArea h5, body.dark-mode #sermonOutputArea h6, body.dark-mode #codeFinderModalBody h6 { color: #1e293b !important; }
+    body.dark-mode .card .list-group-item strong { color: #0f172a !important; }
+    body.dark-mode .ai-discovery-lab h3 { color: #f7e199 !important; }
 </style>
 
 <div class="container mb-5 pb-4">
@@ -675,9 +357,39 @@
         </div>
 
         <div class="col-lg-8">
-            <div class="card shadow-sm h-100" style="border: 1px solid #ece6d8; border-radius: 16px; background-color: #ffffff;">
+            <!-- סרגל יוקרתי לפתיחה מהירה של מקור / פרק / דף -->
+            <div class="quick-open-luxury-bar">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-book-half fs-4" style="color: #d4af37;"></i>
+                        <div>
+                            <h5 class="mb-0 fw-bold" style="color: #f7e199; font-family: 'Frank Ruhl Libre', serif;">פתיחה מהירה של מקור (עיון ישיר בפרק / דף / סימן)</h5>
+                            <div style="font-size: 0.8rem; color: #cbd5e1;">הקלד שם ספר ופרק לעיון רציף בכל הפרק עם פירוש רש"י, ברטנורא, מגיד משנה ובאר היטב</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mt-2">
+                    <div class="flex-grow-1 position-relative">
+                        <input type="text" id="quickSourceRefInput" list="quickSourceBooksList" class="form-control quick-open-input" placeholder='לדוגמה: רמב"ם הלכות ברכות פרק ג | בראשית פרק א | ברכות דף ב | שולחן ערוך אורח חיים סימן א'>
+                        <datalist id="quickSourceBooksList"></datalist>
+                    </div>
+                    <button type="button" class="quick-open-btn" onclick="openQuickSourceReader()">
+                        <i class="bi bi-journal-arrow-up ms-1"></i>פתח פרק מלא
+                    </button>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                    <span style="font-size: 0.76rem; color: #94a3b8;">דוגמאות מהירות:</span>
+                    <span class="quick-preset-chip" onclick="quickOpenExample('רמב&quot;ם הלכות ברכות פרק ג')">רמב"ם הלכות ברכות פרק ג</span>
+                    <span class="quick-preset-chip" onclick="quickOpenExample('בראשית פרק א')">בראשית פרק א</span>
+                    <span class="quick-preset-chip" onclick="quickOpenExample('משנה ברכות פרק א')">משנה ברכות פרק א</span>
+                    <span class="quick-preset-chip" onclick="quickOpenExample('בבלי ברכות דף ב')">בבלי ברכות דף ב</span>
+                    <span class="quick-preset-chip" onclick="quickOpenExample('שולחן ערוך אורח חיים סימן א')">שו"ע אורח חיים סימן א</span>
+                </div>
+            </div>
+
+            <div class="card shadow-sm" style="border: 1px solid #ece6d8; border-radius: 16px; background-color: #ffffff; min-height: 540px;">
                 <div class="card-header p-4 d-flex justify-content-between align-items-center flex-wrap gap-2" style="background-color: #faf8f2; border-bottom: 2px solid #f1ece1; border-radius: 16px 16px 0 0;">
-                    <h4 class="mb-0 fw-bold" style="color: #1e293b;">
+                    <h4 class="mb-0 fw-bold" id="mainResultsPanelTitle" style="color: #1e293b;">
                         <i class="bi bi-journal-richtext ms-2" style="color: #d4af37;"></i>תוצאות הסריקה במאגר
                     </h4>
                     <div id="exportToolbar" style="display: none; gap: 8px; flex-wrap: wrap;">
@@ -696,8 +408,9 @@
                 <div class="card-body p-4">
                     <div id="resultsPlaceholder" class="text-center py-5">
                         <i class="bi bi-book-half" style="font-size: 4.5rem; color: #d4af37; opacity: 0.55;"></i>
-                        <h4 class="mt-3 fw-bold" style="color: #334155;">מאגר החיפוש מוכן לפעולה</h4>
-                        <p class="text-muted fs-6 mb-0">בחר מאגר וסוג פעולה מימין, הקלד את מילת החיפוש ולחץ על "בצע חיפוש מהיר".</p>
+                        <h4 class="mt-3 fw-bold" style="color: #334155;">מאגר החיפוש והעיון מוכן לפעולה</h4>
+                        <p class="text-muted fs-6 mb-1">בחר מאגר וסוג פעולה מימין לחיפוש, או הקלד שם ספר ופרק בסרגל העליון לעיון ישיר.</p>
+                        <p class="small text-secondary mb-0"><i class="bi bi-chat-square-quote ms-1" style="color: #b8860b;"></i>עמוד עם העכבר על כל פסוק/הלכה (או לחץ על כפתור המפרש) לצפייה בפירוש רש"י, ברטנורא, מגיד משנה ובאר היטב.</p>
                     </div>
 
                     <div id="resultsArea" style="display: none;"></div>
@@ -930,6 +643,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let lastFetchedResults = [];
     let lastSearchMeta = { query: '', actionTitle: '', total: 0 };
     let preparedSharePayload = { title: '', text: '', url: window.location.href };
+    const commentaryMemoryCache = {};
+    let hoverTimer = null;
 
     const gematriaMap = {
         'א':1, 'ב':2, 'ג':3, 'ד':4, 'ה':5, 'ו':6, 'ז':7, 'ח':8, 'ט':9,
@@ -987,6 +702,48 @@ document.addEventListener('DOMContentLoaded', function() {
             { group: 'שולחן ערוך (ארבעת הטורים)', prefix: 'shulchan_aruch', books: ['שולחן ערוך אורח חיים', 'שולחן ערוך יורה דעה', 'שולחן ערוך אבן העזר', 'שולחן ערוך חושן משפט'] }
         ]
     };
+
+    // מילוי אוטומטי של רשימת הספרים לפתיחה מהירה
+    const quickDatalist = document.getElementById('quickSourceBooksList');
+    if (quickDatalist) {
+        const seenQuick = new Set();
+        Object.keys(BOOKS_CATALOG).forEach(catKey => {
+            BOOKS_CATALOG[catKey].forEach(groupObj => {
+                groupObj.books.forEach(bName => {
+                    let sampleSuffix = ' פרק א';
+                    if (catKey === 'talmud') sampleSuffix = ' דף ב';
+                    else if (catKey === 'shulchan_aruch') sampleSuffix = ' סימן א';
+                    const sug = (catKey === 'talmud' ? 'בבלי ' + bName : bName) + sampleSuffix;
+                    if (!seenQuick.has(sug)) {
+                        seenQuick.add(sug);
+                        const opt = document.createElement('option');
+                        opt.value = sug;
+                        quickDatalist.appendChild(opt);
+                    }
+                });
+            });
+        });
+    }
+
+    // פונקציית מילוט בטוחה לחלוטין מפני גרשיים בשמות ספרי הרמב"ם
+    function escapeJsAndHtml(str) {
+        return String(str || '')
+            .replace(/\\/g, "\\\\")
+            .replace(/'/g, "\\'")
+            .replace(/"/g, "&quot;");
+    }
+
+    function getCommentatorLabelForBook(bookName, chapterName) {
+        const b = String(bookName || '').trim();
+        const c = String(chapterName || '').trim();
+        if (b.startsWith('רמב"ם ') || b.startsWith('רמב״ם ')) return 'מגיד משנה';
+        if (b.startsWith('שולחן ערוך ')) return 'באר היטב';
+        if (b.startsWith('תוספתא ') || b.startsWith('ירושלמי ')) return '';
+        if (c.startsWith('דף')) return 'רש"י';
+        const tanakhSet = new Set(BOOKS_CATALOG.tanakh.flatMap(g => g.books));
+        if (tanakhSet.has(b)) return 'רש"י';
+        return 'ברטנורא';
+    }
 
     const ALL_CORPORA_KEYS = ['torah', 'tanakh', 'mishnah', 'tosefta', 'talmud', 'yerushalmi', 'rambam', 'shulchan_aruch'];
     let selectedCorpora = new Set(['torah']);
@@ -1200,10 +957,14 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth' });
     };
 
-    function formatChapterTitle(chapterStr) {
+    function formatChapterTitle(chapterStr, bookStr) {
         const c = String(chapterStr || '').trim();
+        const b = String(bookStr || '').trim();
         if (c.startsWith('דף') || c.startsWith('פרק') || c.startsWith('סימן')) {
             return c;
+        }
+        if (b.startsWith('שולחן ערוך ')) {
+            return `סימן ${c}`;
         }
         return `פרק ${c}`;
     }
@@ -1245,15 +1006,102 @@ document.addEventListener('DOMContentLoaded', function() {
         elsSkipsBar.style.display = 'flex';
     }
 
+    // שליפת מפרשים במעבר עכבר (Hover) או לחיצה
+    window.loadVerseCommentary = function(bookName, chapterName, verseNum, drawerId, forceToggle) {
+        const drawerEl = document.getElementById(drawerId);
+        if (!drawerEl) return;
+
+        if (forceToggle && drawerEl.style.display === 'block' && drawerEl.getAttribute('data-loaded') === 'true') {
+            drawerEl.style.display = 'none';
+            return;
+        }
+
+        const commLabel = getCommentatorLabelForBook(bookName, chapterName);
+        if (!commLabel) return;
+
+        drawerEl.style.display = 'block';
+        const cacheKey = `${bookName}|${chapterName}|${verseNum}`;
+
+        if (commentaryMemoryCache[cacheKey]) {
+            drawerEl.innerHTML = commentaryMemoryCache[cacheKey];
+            drawerEl.setAttribute('data-loaded', 'true');
+            return;
+        }
+
+        drawerEl.innerHTML = `
+            <div class="d-flex align-items-center gap-2 text-muted small">
+                <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
+                <span>טוען פירוש <b>${commLabel}</b> על המקור...</span>
+            </div>
+        `;
+
+        const url = `/api/tanakh-search/?type=commentary&target_book=${encodeURIComponent(bookName)}&target_chapter=${encodeURIComponent(chapterName)}&target_verse=${encodeURIComponent(verseNum)}`;
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                let html = '';
+                if (data.comments && data.comments.length > 0) {
+                    html += `<div class="d-flex justify-content-between align-items-center mb-2 pb-1" style="border-bottom: 1px solid #e2d9c5;">
+                        <strong style="color: #8c6239; font-size: 0.95rem;"><i class="bi bi-chat-right-quote-fill ms-1" style="color: #d4af37;"></i>פירוש ${data.commentator || commLabel}:</strong>
+                        <button type="button" class="btn-close" style="font-size: 0.65rem;" onclick="document.getElementById('${drawerId}').style.display='none'"></button>
+                    </div>`;
+                    data.comments.forEach(cText => {
+                        html += `<div class="mb-2" style="font-family: 'Frank Ruhl Libre', serif;">${cText}</div>`;
+                    });
+                } else {
+                    html = `<div class="d-flex justify-content-between align-items-center text-muted small">
+                        <span>לא נמצא דיבור המתחיל של ${data.commentator || commLabel} על סעיף/פסוק זה.</span>
+                        <button type="button" class="btn-close" style="font-size: 0.65rem;" onclick="document.getElementById('${drawerId}').style.display='none'"></button>
+                    </div>`;
+                }
+                commentaryMemoryCache[cacheKey] = html;
+                drawerEl.innerHTML = html;
+                drawerEl.setAttribute('data-loaded', 'true');
+            })
+            .catch(() => {
+                drawerEl.innerHTML = `<div class="text-danger small">שגיאה בטעינת הפירוש.</div>`;
+            });
+    };
+
+    window.handleVerseMouseEnter = function(bookName, chapterName, verseNum, drawerId) {
+        clearTimeout(hoverTimer);
+        hoverTimer = setTimeout(() => {
+            const drawerEl = document.getElementById(drawerId);
+            if (drawerEl && drawerEl.style.display !== 'block') {
+                loadVerseCommentary(bookName, chapterName, verseNum, drawerId, false);
+            }
+        }, 420);
+    };
+
+    window.handleVerseMouseLeave = function() {
+        clearTimeout(hoverTimer);
+    };
+
+    // פתיחת כפתורי AI ופרק מלא לפי אינדקס התוצאה (מונע ב-100% שבירה בגלל גרשיים ברמב"ם)
+    window.openAutomatedCodeFinderByIdx = function(idx) {
+        const res = lastFetchedResults[idx];
+        if (!res) return;
+        openAutomatedCodeFinder(res.book, res.chapter, res.verse);
+    };
+
+    window.openFullChapterModalByIdx = function(idx) {
+        const res = lastFetchedResults[idx];
+        if (!res) return;
+        openFullChapterModal(res.book, res.chapter, res.verse, res.verse_label || 'פסוק');
+    };
+
     function performSearch(pageNum) {
         currentPage = pageNum || 1;
         const placeholder = document.getElementById('resultsPlaceholder');
         const resultsArea = document.getElementById('resultsArea');
         const exportToolbar = document.getElementById('exportToolbar');
+        const panelTitle = document.getElementById('mainResultsPanelTitle');
 
         const mode = searchActionInput.value;
         const query = searchQueryInput.value.trim();
         if (!query) return;
+
+        panelTitle.innerHTML = `<i class="bi bi-journal-richtext ms-2" style="color: #d4af37;"></i>תוצאות הסריקה במאגר`;
 
         const isAll = selectedCorpora.size === ALL_CORPORA_KEYS.length;
         const corpusParam = isAll ? 'all' : Array.from(selectedCorpora).join(',');
@@ -1336,13 +1184,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 results.forEach((res, idx) => {
                     const matchBadge = res.match_type ? `<span class="badge bg-light text-dark border shadow-sm px-3 py-2">${res.match_type}</span>` : '';
                     const verseLabel = res.verse_label || 'פסוק';
-                    const chDisplay = formatChapterTitle(res.chapter);
-                    const safeBook = String(res.book).replace(/'/g, "\\'");
-                    const safeChapter = String(res.chapter).replace(/'/g, "\\'");
-                    const safeVerse = String(res.verse).replace(/'/g, "\\'");
+                    const chDisplay = formatChapterTitle(res.chapter, res.book);
+                    const safeBook = escapeJsAndHtml(res.book);
+                    const safeChapter = escapeJsAndHtml(res.chapter);
+                    const safeVerse = escapeJsAndHtml(res.verse);
+                    const commLabel = getCommentatorLabelForBook(res.book, res.chapter);
+                    const drawerId = `commDrawer_res_${idx}`;
+
+                    const commBtnHtml = commLabel ? `
+                        <button type="button" class="commentary-badge-trigger" onclick="loadVerseCommentary('${safeBook}', '${safeChapter}', '${safeVerse}', '${drawerId}', true)">
+                            <i class="bi bi-chat-right-text"></i> פירוש ${commLabel}
+                        </button>
+                    ` : '';
 
                     html += `
-                        <div class="list-group-item p-4 mb-3 border-0 rounded-4 shadow-sm" style="background-color: #fcfbf8; border-right: 5px solid #d4af37 !important;">
+                        <div class="list-group-item p-4 mb-3 border-0 rounded-4 shadow-sm" style="background-color: #fcfbf8; border-right: 5px solid #d4af37 !important;"
+                             onmouseenter="handleVerseMouseEnter('${safeBook}', '${safeChapter}', '${safeVerse}', '${drawerId}')"
+                             onmouseleave="handleVerseMouseLeave()">
                             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
                                 <strong class="fs-5" style="color: #1e293b;">
                                     <i class="bi bi-book ms-2" style="color: #d4af37;"></i>
@@ -1350,10 +1208,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </strong>
                                 <div class="d-flex align-items-center flex-wrap gap-2">
                                     ${matchBadge}
-                                    <button type="button" class="result-ai-code-btn" onclick="openAutomatedCodeFinder('${safeBook}', '${safeChapter}', '${safeVerse}')">
+                                    ${commBtnHtml}
+                                    <button type="button" class="result-ai-code-btn" onclick="openAutomatedCodeFinderByIdx(${idx})">
                                         <i class="bi bi-stars"></i> ניתוח AI של הנתונים
                                     </button>
-                                    <button type="button" class="result-action-btn" onclick="openFullChapterModal('${safeBook}', '${safeChapter}', '${safeVerse}', '${verseLabel}')">
+                                    <button type="button" class="result-action-btn" onclick="openFullChapterModalByIdx(${idx})">
                                         <i class="bi bi-arrows-fullscreen"></i> הצג פרק מלא
                                     </button>
                                     <button type="button" class="result-action-btn" onclick="copySingleResult(${idx})">
@@ -1364,9 +1223,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </button>
                                 </div>
                             </div>
-                            <div class="fs-3 lh-lg text-dark mt-2" style="font-family: 'Frank Ruhl Libre', serif;">
+                            <div class="fs-3 lh-lg text-dark mt-2 verse-hoverable" style="font-family: 'Frank Ruhl Libre', serif;">
                                 ${res.text}
                             </div>
+                            <div id="${drawerId}" class="commentary-inline-drawer"></div>
                         </div>
                     `;
                 });
@@ -1398,6 +1258,151 @@ document.addEventListener('DOMContentLoaded', function() {
                 resultsArea.innerHTML = `<div class="alert alert-danger shadow-sm rounded-3"><i class="bi bi-x-circle-fill ms-2"></i>אירעה שגיאת תקשורת מול השרת. אנא נסה שוב.</div>`;
             });
     }
+
+    // פתיחה מהירה של מקור / פרק מלא ישירות בלוח המרכזי
+    window.quickOpenExample = function(refStr) {
+        const inp = document.getElementById('quickSourceRefInput');
+        inp.value = refStr;
+        openQuickSourceReader();
+    };
+
+    const quickInpEl = document.getElementById('quickSourceRefInput');
+    if (quickInpEl) {
+        quickInpEl.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                openQuickSourceReader();
+            }
+        });
+    }
+
+    window.openQuickSourceReader = function(explicitBook, explicitChapter) {
+        const refInput = document.getElementById('quickSourceRefInput');
+        const placeholder = document.getElementById('resultsPlaceholder');
+        const resultsArea = document.getElementById('resultsArea');
+        const exportToolbar = document.getElementById('exportToolbar');
+        const panelTitle = document.getElementById('mainResultsPanelTitle');
+
+        let url = `/api/tanakh-search/?type=quick_open`;
+        if (explicitBook && explicitChapter) {
+            url += `&target_book=${encodeURIComponent(explicitBook)}&target_chapter=${encodeURIComponent(explicitChapter)}`;
+            refInput.value = `${explicitBook} ${formatChapterTitle(explicitChapter, explicitBook)}`;
+        } else {
+            const qRef = refInput.value.trim();
+            if (!qRef) return;
+            url += `&ref=${encodeURIComponent(qRef)}`;
+        }
+
+        placeholder.style.display = 'none';
+        resultsArea.style.display = 'block';
+        resultsArea.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-warning" style="width: 3rem; height: 3rem;" role="status"></div>
+                <h5 class="mt-3 fw-bold" style="color: #1e293b;">פותח את המקור המבוקש...</h5>
+            </div>
+        `;
+
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error || !data.verses || !data.verses.length) {
+                    exportToolbar.style.display = 'none';
+                    resultsArea.innerHTML = `<div class="alert alert-warning shadow-sm rounded-3 fs-6"><i class="bi bi-exclamation-triangle-fill ms-2"></i>${data.error || 'לא נמצא המקור המבוקש. נסה לכתוב למשל: רמב"ם הלכות ברכות פרק ג'}</div>`;
+                    return;
+                }
+
+                const bName = data.book;
+                const chName = data.chapter;
+                const vLabel = data.verse_label || 'פסוק';
+                const chDisplay = formatChapterTitle(chName, bName);
+                const safeBook = escapeJsAndHtml(bName);
+                const safeChapter = escapeJsAndHtml(chName);
+                const commLabel = getCommentatorLabelForBook(bName, chName);
+
+                panelTitle.innerHTML = `<i class="bi bi-book-half ms-2" style="color: #d4af37;"></i>עיון במקור: ${bName} — ${chDisplay}`;
+
+                lastFetchedResults = data.verses.map(v => ({
+                    book: bName,
+                    chapter: chName,
+                    verse: v.verse,
+                    verse_label: vLabel,
+                    text: v.text,
+                    match_type: 'עיון בפרק מלא'
+                }));
+                lastSearchMeta = {
+                    query: `${bName} ${chDisplay}`,
+                    actionTitle: 'פרק מלא',
+                    total: data.verses.length
+                };
+                exportToolbar.style.display = 'flex';
+
+                let chapterSelectHtml = '';
+                if (Array.isArray(data.all_chapters) && data.all_chapters.length > 1) {
+                    chapterSelectHtml = `<select class="form-select form-select-sm fw-bold border-warning" style="width: auto; min-width: 130px;" onchange="openQuickSourceReader('${safeBook}', this.value)">`;
+                    data.all_chapters.forEach(chOpt => {
+                        const sel = (String(chOpt) === String(chName)) ? 'selected' : '';
+                        chapterSelectHtml += `<option value="${escapeJsAndHtml(chOpt)}" ${sel}>${formatChapterTitle(chOpt, bName)}</option>`;
+                    });
+                    chapterSelectHtml += `</select>`;
+                }
+
+                const prevBtn = data.prev_chapter
+                    ? `<button type="button" class="btn btn-sm btn-outline-dark fw-bold rounded-pill px-3" onclick="openQuickSourceReader('${safeBook}', '${escapeJsAndHtml(data.prev_chapter)}')"><i class="bi bi-arrow-right ms-1"></i>${formatChapterTitle(data.prev_chapter, bName)}</button>`
+                    : `<span></span>`;
+                const nextBtn = data.next_chapter
+                    ? `<button type="button" class="btn btn-sm btn-outline-dark fw-bold rounded-pill px-3" onclick="openQuickSourceReader('${safeBook}', '${escapeJsAndHtml(data.next_chapter)}')">${formatChapterTitle(data.next_chapter, bName)}<i class="bi bi-arrow-left me-1"></i></button>`
+                    : `<span></span>`;
+
+                let html = `
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4 p-3 rounded-4" style="background: #faf6eb; border: 1.5px solid #d4af37;">
+                        ${prevBtn}
+                        <div class="d-flex align-items-center gap-2">
+                            <strong class="fs-5" style="color: #1e293b;">${bName}</strong>
+                            ${chapterSelectHtml}
+                        </div>
+                        ${nextBtn}
+                    </div>
+                    <div class="list-group">
+                `;
+
+                data.verses.forEach((v, idx) => {
+                    const safeVerse = escapeJsAndHtml(v.verse);
+                    const drawerId = `commDrawer_quick_${idx}`;
+                    const commBtnHtml = commLabel ? `
+                        <button type="button" class="commentary-badge-trigger" onclick="loadVerseCommentary('${safeBook}', '${safeChapter}', '${safeVerse}', '${drawerId}', true)">
+                            <i class="bi bi-chat-right-text"></i> פירוש ${commLabel}
+                        </button>
+                    ` : '';
+
+                    html += `
+                        <div class="list-group-item p-3 mb-2 border-0 rounded-3 shadow-sm" style="background-color: #fcfbf8; border-right: 4px solid #d4af37 !important;"
+                             onmouseenter="handleVerseMouseEnter('${safeBook}', '${safeChapter}', '${safeVerse}', '${drawerId}')"
+                             onmouseleave="handleVerseMouseLeave()">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                                <span class="verse-num-badge">${vLabel} ${v.verse}</span>
+                                <div class="d-flex align-items-center gap-2">
+                                    ${commBtnHtml}
+                                    <button type="button" class="result-ai-code-btn py-1 px-2" style="font-size: 0.78rem;" onclick="openAutomatedCodeFinderByIdx(${idx})">
+                                        <i class="bi bi-stars"></i> ניתוח AI
+                                    </button>
+                                    <button type="button" class="result-action-btn py-1 px-2" style="font-size: 0.78rem;" onclick="copySingleResult(${idx})">
+                                        <i class="bi bi-clipboard"></i> העתק
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="fs-3 lh-lg text-dark verse-hoverable" style="font-family: 'Frank Ruhl Libre', serif;">${v.text}</div>
+                            <div id="${drawerId}" class="commentary-inline-drawer"></div>
+                        </div>
+                    `;
+                });
+
+                html += `</div>`;
+                resultsArea.innerHTML = html;
+            })
+            .catch(() => {
+                resultsArea.innerHTML = `<div class="alert alert-danger">שגיאה בטעינת הפרק המבוקש.</div>`;
+            });
+    };
 
     function stripHtmlTags(str) {
         const tmp = document.createElement('div');
@@ -1443,7 +1448,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.copySingleResult = function(idx) {
         const res = lastFetchedResults[idx];
         if (!res) return;
-        const chDisplay = formatChapterTitle(res.chapter);
+        const chDisplay = formatChapterTitle(res.chapter, res.book);
         const verseLabel = res.verse_label || 'פסוק';
         const cleanTxt = stripHtmlTags(res.text);
         const formatted = `"${cleanTxt}" (${res.book}, ${chDisplay}, ${verseLabel} ${res.verse})`;
@@ -1455,7 +1460,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.shareSingleResult = function(idx) {
         const res = lastFetchedResults[idx];
         if (!res) return;
-        const chDisplay = formatChapterTitle(res.chapter);
+        const chDisplay = formatChapterTitle(res.chapter, res.book);
         const verseLabel = res.verse_label || 'פסוק';
         const cleanTxt = stripHtmlTags(res.text);
         const shareUrl = `${window.location.origin}${window.location.pathname}?q=${encodeURIComponent(lastSearchMeta.query)}`;
@@ -1473,7 +1478,7 @@ document.addEventListener('DOMContentLoaded', function() {
         lines.push(`חיפוש: "${lastSearchMeta.query}" (${lastSearchMeta.actionTitle}) | נמצאו ${lastSearchMeta.total} תוצאות:`);
         lines.push(`--------------------------------------------------`);
         lastFetchedResults.forEach((res, i) => {
-            const chDisplay = formatChapterTitle(res.chapter);
+            const chDisplay = formatChapterTitle(res.chapter, res.book);
             const verseLabel = res.verse_label || 'פסוק';
             const cleanTxt = stripHtmlTags(res.text);
             const note = res.match_type ? ` [${res.match_type}]` : '';
@@ -1489,7 +1494,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!lastFetchedResults.length) return;
         const previewLines = [];
         lastFetchedResults.slice(0, 5).forEach((res, i) => {
-            const chDisplay = formatChapterTitle(res.chapter);
+            const chDisplay = formatChapterTitle(res.chapter, res.book);
             const verseLabel = res.verse_label || 'פסוק';
             const cleanTxt = stripHtmlTags(res.text);
             previewLines.push(`${i + 1}. ${res.book} (${chDisplay}, ${verseLabel} ${res.verse}): "${cleanTxt}"`);
@@ -1509,7 +1514,7 @@ document.addEventListener('DOMContentLoaded', function() {
         lines.push(`חיפוש: "${lastSearchMeta.query}" (${lastSearchMeta.actionTitle})`);
         lines.push(`==================================================\n`);
         lastFetchedResults.forEach((res, i) => {
-            const chDisplay = formatChapterTitle(res.chapter);
+            const chDisplay = formatChapterTitle(res.chapter, res.book);
             const verseLabel = res.verse_label || 'פסוק';
             const cleanTxt = stripHtmlTags(res.text);
             lines.push(`${i + 1}. ${res.book} | ${chDisplay} | ${verseLabel} ${res.verse} (${res.match_type || ''}):`);
@@ -1526,7 +1531,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const modalEl = document.getElementById('chapterContextModal');
         const titleEl = document.getElementById('chapterModalTitle');
         const bodyEl = document.getElementById('chapterModalBody');
-        const chDisplay = formatChapterTitle(chapterName);
+        const chDisplay = formatChapterTitle(chapterName, bookName);
 
         titleEl.innerHTML = `<i class="bi bi-book-fill ms-2"></i>${bookName} — ${chDisplay}`;
         bodyEl.innerHTML = `
@@ -1544,19 +1549,36 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(r => r.json())
             .then(data => {
                 const verses = data.verses || [];
+                const vLbl = data.verse_label || verseLabel || 'פסוק';
                 if (!verses.length) {
                     bodyEl.innerHTML = `<div class="alert alert-warning">לא נמצאו פסוקים נוספים לפרק זה.</div>`;
                     return;
                 }
 
+                const safeBook = escapeJsAndHtml(bookName);
+                const safeChapter = escapeJsAndHtml(chapterName);
+                const commLabel = getCommentatorLabelForBook(bookName, chapterName);
+
                 let html = '';
-                verses.forEach(v => {
+                verses.forEach((v, idx) => {
                     const isTarget = String(v.verse).trim() === String(targetVerse).trim();
                     const rowId = isTarget ? 'id="modalTargetVerseRow"' : '';
+                    const safeVerse = escapeJsAndHtml(v.verse);
+                    const drawerId = `commDrawer_modal_${idx}`;
+                    const commBtn = commLabel ? `
+                        <button type="button" class="commentary-badge-trigger float-start" onclick="loadVerseCommentary('${safeBook}', '${safeChapter}', '${safeVerse}', '${drawerId}', true)">
+                            <i class="bi bi-chat-right-text"></i> ${commLabel}
+                        </button>
+                    ` : '';
+
                     html += `
-                        <div ${rowId} class="chapter-context-verse ${isTarget ? 'target-highlight' : ''}">
-                            <span class="verse-num-badge">${verseLabel} ${v.verse}</span>
+                        <div ${rowId} class="chapter-context-verse ${isTarget ? 'target-highlight' : ''}"
+                             onmouseenter="handleVerseMouseEnter('${safeBook}', '${safeChapter}', '${safeVerse}', '${drawerId}')"
+                             onmouseleave="handleVerseMouseLeave()">
+                            ${commBtn}
+                            <span class="verse-num-badge">${vLbl} ${v.verse}</span>
                             <span class="fs-4 lh-lg text-dark" style="font-family: 'Frank Ruhl Libre', serif;">${v.text}</span>
+                            <div id="${drawerId}" class="commentary-inline-drawer"></div>
                         </div>
                     `;
                 });
@@ -1596,7 +1618,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const bodyEl = document.getElementById('codeFinderModalBody');
         const titleEl = document.getElementById('codeFinderModalTitle');
 
-        titleEl.innerHTML = `<i class="bi bi-stars ms-2"></i>ניתוח AI של הנתונים: ${bookName} (${formatChapterTitle(chapterName)}, ${verseNum})`;
+        titleEl.innerHTML = `<i class="bi bi-stars ms-2"></i>ניתוח AI של הנתונים: ${bookName} (${formatChapterTitle(chapterName, bookName)}, ${verseNum})`;
         bodyEl.innerHTML = `
             <div class="text-center py-5">
                 <div class="spinner-border text-warning" role="status"></div>
@@ -1811,7 +1833,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     ? `<div class="mt-3 pt-3 border-top"><a href="${data.article_link}" target="_blank" class="fw-bold text-decoration-none" style="color: #8c6239;"><i class="bi bi-box-arrow-up-left ms-1"></i>קרא עוד במאמר המקיף באתר ספריית לייבוביץ: "${data.article_title}"</a></div>`
                     : '';
 
-                const safeTopic = String(data.topic || '').replace(/'/g, "\\'");
+                const safeTopic = escapeJsAndHtml(data.topic || '');
                 const bodyContent = data.sermon_html || data.sermon || '';
 
                 outEl.innerHTML = `

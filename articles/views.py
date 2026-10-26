@@ -164,6 +164,7 @@ def get_base_schema_json():
         ]
     }, ensure_ascii=False)
 
+
 def ratelimit(rate=30, timeout=60):
     def decorator(view_func):
         @wraps(view_func)
@@ -954,6 +955,7 @@ def contact(request):
 
     return render(request, 'articles/contact.html', {'current_page': 'contact'})
 
+
 def calculator(request):
     mida_book = Book.objects.filter(title__icontains='מידה').first()
     return render(request, 'articles/calculator.html', {'current_page': 'calculator', 'mida_book': mida_book})
@@ -1631,8 +1633,9 @@ def or_hacarmel_view(request):
     return render(request, 'articles/or_hacarmel.html')
 
 
-def get_book_order(book_name):
-    name = book_name.strip()
+def get_book_order(book_name, chapter_name=""):
+    name = str(book_name or '').strip()
+    chap = str(chapter_name or '').strip()
     BOOK_ORDER = {
         'בראשית': 1, 'שמות': 2, 'ויקרא': 3, 'במדבר': 4, 'דברים': 5,
         'יהושע': 6, 'שופטים': 7, 'שמואל א': 8, 'שמואל ב': 9, 'מלכים א': 10, 'מלכים ב': 11,
@@ -1650,14 +1653,21 @@ def get_book_order(book_name):
     if name.startswith('תוספתא '):
         base = name.replace('תוספתא ', '', 1).strip()
         return 120 + BOOK_ORDER.get(base, 90)
+    if chap.startswith('דף') and not name.startswith('ירושלמי '):
+        return 230 + BOOK_ORDER.get(name, 90)
     if name.startswith('ירושלמי '):
         base = name.replace('ירושלמי ', '', 1).strip()
-        return 250 + BOOK_ORDER.get(base, 90)
-    if name.startswith('רמב"ם '):
-        return 400
+        return 350 + BOOK_ORDER.get(base, 90)
+    if name.startswith('רמב"ם ') or name.startswith('רמב״ם '):
+        return 500
     if name.startswith('שולחן ערוך '):
-        sa_order = {'שולחן ערוך אורח חיים': 501, 'שולחן ערוך יורה דעה': 502, 'שולחן ערוך אבן העזר': 503, 'שולחן ערוך חושן משפט': 504}
-        return sa_order.get(name, 510)
+        sa_order = {
+            'שולחן ערוך אורח חיים': 601,
+            'שולחן ערוך יורה דעה': 602,
+            'שולחן ערוך אבן העזר': 603,
+            'שולחן ערוך חושן משפט': 604
+        }
+        return sa_order.get(name, 610)
     return BOOK_ORDER.get(name, 999)
 
 
@@ -1671,10 +1681,97 @@ def safe_int(v):
     s_clean = re.sub(r'^(פרק|סימן|דף|הלכה|משנה|סעיף)\s+', '', s)
     parts = s_clean.split()
     if parts:
-        heb_num = sum(HEBREW_GEMATRIA.get(c, 0) for c in parts[0])
-        amud = 2 if 'עמוד ב' in s else 1
+        heb_num = sum(HEBREW_GEMATRIA.get(c, 0) for c in re.sub(r'[^א-ת]', '', parts[0]))
+        amud = 2 if ('עמוד ב' in s or ':' in s) else 1
         return heb_num * 10 + amud
     return 0
+
+
+def _resolve_torah_book_in_db(book_name):
+    b = str(book_name or '').strip()
+    if not b:
+        return b
+    if TorahText.objects.filter(book=b).exists():
+        return b
+    alt_b = b.replace('"', '״') if '"' in b else b.replace('״', '"')
+    if TorahText.objects.filter(book=alt_b).exists():
+        return alt_b
+    return b
+
+
+def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
+    b_str = str(book_name or '').strip().replace('״', '"')
+    c_str = str(chapter_name or '').strip()
+    v_str = str(verse_num or '').strip()
+
+    cache_key = f"torah_comm_v2_{b_str}_{c_str}_{v_str}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    ch_clean = re.sub(r'^(פרק|סימן|דף)\s+', '', c_str).strip()
+    ch_clean = re.sub(r'["\'׳״]', '', ch_clean)
+    v_clean = int_to_hebrew(int(v_str)) if v_str.isdigit() else re.sub(r'["\'׳״]', '', v_str)
+
+    target_commentator = 'רש"י'
+    he_refs_to_try = []
+
+    if b_str.startswith('רמב"ם '):
+        target_commentator = 'מגיד משנה'
+        hilchot = b_str.replace('רמב"ם ', '', 1).strip()
+        he_refs_to_try.append(f"מגיד משנה על משנה תורה, {hilchot} {ch_clean}:{v_clean}")
+        he_refs_to_try.append(f"כסף משנה על משנה תורה, {hilchot} {ch_clean}:{v_clean}")
+    elif b_str.startswith('שולחן ערוך '):
+        target_commentator = 'באר היטב'
+        chelek = b_str.replace('שולחן ערוך ', '', 1).strip()
+        he_refs_to_try.append(f"באר היטב על שולחן ערוך, {chelek} {ch_clean}:{v_clean}")
+    elif c_str.startswith('דף') and not b_str.startswith('ירושלמי '):
+        target_commentator = 'רש"י'
+        daf_parts = ch_clean.split()
+        daf_let = daf_parts[0] if daf_parts else ch_clean
+        amud_let = 'ב' if ('עמוד ב' in c_str or ':' in c_str) else 'א'
+        he_refs_to_try.append(f'רש"י על {b_str} {daf_let} {amud_let}:{v_str}')
+        he_refs_to_try.append(f'רש"י על {b_str} {daf_let} {amud_let}')
+    elif b_str in TANAKH_NAMES:
+        target_commentator = 'רש"י'
+        he_refs_to_try.append(f'רש"י על {b_str} {ch_clean}:{v_clean}')
+    elif b_str in MISHNAH_BOOKS:
+        target_commentator = 'רבינו עובדיה מברטנורא'
+        he_refs_to_try.append(f'ברטנורא על משנה {b_str} {ch_clean}:{v_clean}')
+
+    comments_out = []
+    used_commentator = target_commentator
+
+    for ref_try in he_refs_to_try:
+        try:
+            url = f"https://www.sefaria.org/api/texts/{urllib.parse.quote(ref_try)}?context=0&pad=0"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=4) as resp:
+                data = json.loads(resp.read().decode('utf-8'))
+                he_data = data.get('he', [])
+                if isinstance(he_data, str) and he_data.strip():
+                    comments_out = [format_divine_name(he_data.strip())]
+                elif isinstance(he_data, list):
+                    flat = []
+                    for item in he_data:
+                        if isinstance(item, str) and item.strip():
+                            flat.append(format_divine_name(item.strip()))
+                        elif isinstance(item, list):
+                            for sub in item:
+                                if isinstance(sub, str) and sub.strip():
+                                    flat.append(format_divine_name(sub.strip()))
+                    if flat:
+                        comments_out = flat[:6]
+                if comments_out:
+                    if 'כסף משנה' in ref_try:
+                        used_commentator = 'כסף משנה (לא נמצא מגיד משנה להלכה זו)'
+                    break
+        except Exception:
+            continue
+
+    payload = {'commentator': used_commentator, 'comments': comments_out}
+    cache.set(cache_key, payload, 3600 * 24)
+    return payload
 
 
 @ratelimit(rate=30, timeout=60)
@@ -1695,7 +1792,7 @@ def tanakh_advanced_search_api(request):
         c_str = str(chapter_name)
         if b_str.startswith('שולחן ערוך '):
             return 'סעיף'
-        elif b_str.startswith('רמב"ם ') or b_str.startswith('ירושלמי ') or b_str.startswith('תוספתא '):
+        elif b_str.startswith('רמב"ם ') or b_str.startswith('רמב״ם ') or b_str.startswith('ירושלמי ') or b_str.startswith('תוספתא '):
             return 'הלכה'
         elif c_str.startswith('דף'):
             return 'שורה'
@@ -1703,8 +1800,17 @@ def tanakh_advanced_search_api(request):
             return 'משנה'
         return 'פסוק'
 
+    if query_type == 'commentary':
+        t_book = request.GET.get('target_book', '').strip()
+        t_chap = request.GET.get('target_chapter', '').strip()
+        t_verse = request.GET.get('target_verse', '').strip()
+        if t_book and t_chap and t_verse:
+            comm_data = _fetch_commentary_for_source(t_book, t_chap, t_verse)
+            return JsonResponse(comm_data, json_dumps_params={'ensure_ascii': False})
+        return JsonResponse({'commentator': '', 'comments': []})
+
     if query_type == 'chapter_context':
-        target_book = request.GET.get('target_book', '').strip()
+        target_book = _resolve_torah_book_in_db(request.GET.get('target_book', '').strip())
         target_chapter = request.GET.get('target_chapter', '').strip()
         if target_book and target_chapter:
             ch_verses = list(
@@ -1726,6 +1832,133 @@ def tanakh_advanced_search_api(request):
             }, json_dumps_params={'ensure_ascii': False})
         return JsonResponse({'verses': []})
 
+    if query_type == 'quick_open':
+        explicit_book = request.GET.get('target_book', '').strip()
+        explicit_chapter = request.GET.get('target_chapter', '').strip()
+        ref_str = request.GET.get('ref', '').strip()
+
+        all_books = cache.get('torah_all_distinct_books_v2')
+        if not all_books:
+            all_books = list(TorahText.objects.values_list('book', flat=True).distinct())
+            cache.set('torah_all_distinct_books_v2', all_books, 3600 * 24)
+
+        def norm_quotes(s):
+            return re.sub(r'[״”″]', '"', re.sub(r"[׳’']", "", str(s or ''))).strip()
+
+        matched_book = None
+        want_bavli = False
+        want_mishnah = False
+        chapter_hint = explicit_chapter
+
+        if explicit_book:
+            matched_book = _resolve_torah_book_in_db(explicit_book)
+            if explicit_chapter.startswith('דף'):
+                want_bavli = True
+        elif ref_str:
+            q_work = norm_quotes(ref_str)
+            q_work = re.sub(r'^שו"ע\s+', 'שולחן ערוך ', q_work)
+            q_work = re.sub(r'^רמבם\s+', 'רמב"ם ', q_work)
+            if q_work.startswith('הלכות '):
+                q_work = 'רמב"ם ' + q_work
+
+            if re.match(r'^(תלמוד בבלי|בבלי|גמרא)\s+', q_work):
+                want_bavli = True
+                q_work = re.sub(r'^(תלמוד בבלי|בבלי|גמרא)\s+', '', q_work).strip()
+            elif q_work.startswith('משנה '):
+                want_mishnah = True
+                q_work = q_work.replace('משנה ', '', 1).strip()
+
+            sorted_books = sorted(all_books, key=lambda b: len(str(b)), reverse=True)
+            for b_candidate in sorted_books:
+                b_norm = norm_quotes(b_candidate)
+                if q_work == b_norm or q_work.startswith(b_norm + ' '):
+                    matched_book = b_candidate
+                    chapter_hint = q_work[len(b_norm):].strip()
+                    break
+
+            if not matched_book:
+                for b_candidate in sorted_books:
+                    b_norm = norm_quotes(b_candidate)
+                    if b_norm in q_work:
+                        matched_book = b_candidate
+                        chapter_hint = q_work.replace(b_norm, '', 1).strip()
+                        break
+
+            if 'דף ' in ref_str and not str(matched_book or '').startswith('ירושלמי '):
+                want_bavli = True
+
+        if not matched_book:
+            return JsonResponse({'error': 'לא זוהה שם הספר במאגר. נסה לכתוב למשל: רמב"ם הלכות ברכות פרק ג'})
+
+        ch_qs = TorahText.objects.filter(book=matched_book)
+        if matched_book in MISHNAH_BOOKS:
+            if want_bavli:
+                ch_qs = ch_qs.filter(chapter__startswith='דף')
+            elif want_mishnah or not str(chapter_hint).startswith('דף'):
+                ch_qs = ch_qs.exclude(chapter__startswith='דף')
+
+        raw_chapters = list(ch_qs.values_list('chapter', flat=True).distinct())
+        if not raw_chapters:
+            raw_chapters = list(TorahText.objects.filter(book=matched_book).values_list('chapter', flat=True).distinct())
+
+        raw_chapters.sort(key=safe_int)
+        if not raw_chapters:
+            return JsonResponse({'error': f'לא נמצאו פרקים עבור "{matched_book}".'})
+
+        chosen_chapter = raw_chapters[0]
+        if chapter_hint:
+            h_clean = re.sub(r'^(פרק|סימן|הלכה)\s+', '', chapter_hint).strip()
+            h_no_daf = re.sub(r'^דף\s+', '', h_clean).strip()
+
+            found_ch = None
+            for c_opt in raw_chapters:
+                c_str = str(c_opt).strip()
+                c_stripped = re.sub(r'^(פרק|סימן|דף)\s+', '', c_str).strip()
+                if c_str == chapter_hint or c_str == h_clean or c_stripped == h_clean or c_stripped == h_no_daf:
+                    found_ch = c_opt
+                    break
+            if not found_ch:
+                for c_opt in raw_chapters:
+                    c_str = str(c_opt).strip()
+                    if h_no_daf and (c_str.startswith(f"דף {h_no_daf} ") or c_str == f"דף {h_no_daf}"):
+                        found_ch = c_opt
+                        break
+            if not found_ch:
+                target_num = safe_int(chapter_hint)
+                if target_num > 0:
+                    for c_opt in raw_chapters:
+                        if safe_int(c_opt) == target_num:
+                            found_ch = c_opt
+                            break
+            if found_ch:
+                chosen_chapter = found_ch
+
+        ch_verses = list(
+            TorahText.objects.filter(book=matched_book, chapter=chosen_chapter)
+            .values('verse', 'text_with_nikkud', 'clean_text')
+        )
+        ch_verses.sort(key=lambda x: safe_int(x['verse']))
+
+        curr_idx = raw_chapters.index(chosen_chapter) if chosen_chapter in raw_chapters else 0
+        prev_ch = raw_chapters[curr_idx - 1] if curr_idx > 0 else None
+        next_ch = raw_chapters[curr_idx + 1] if curr_idx < len(raw_chapters) - 1 else None
+
+        return JsonResponse({
+            'book': matched_book,
+            'chapter': chosen_chapter,
+            'all_chapters': raw_chapters,
+            'prev_chapter': prev_ch,
+            'next_chapter': next_ch,
+            'verse_label': get_verse_label(matched_book, chosen_chapter),
+            'verses': [
+                {
+                    'verse': v['verse'],
+                    'text': format_divine_name(v['text_with_nikkud'] or v['clean_text'] or '')
+                }
+                for v in ch_verses
+            ]
+        }, json_dumps_params={'ensure_ascii': False})
+
     try:
         per_page = int(request.GET.get('per_page', 10))
         if per_page not in [10, 20, 50, 100]:
@@ -1733,7 +1966,7 @@ def tanakh_advanced_search_api(request):
     except ValueError:
         per_page = 10
 
-    search_cache_key = f"tanakh_srch_v3_{query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
+    search_cache_key = f"tanakh_srch_v4_{query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
     cached_search_data = cache.get(search_cache_key)
     if cached_search_data:
         return JsonResponse(cached_search_data, json_dumps_params={'ensure_ascii': False})
@@ -1825,7 +2058,7 @@ def tanakh_advanced_search_api(request):
                     text_query &= (Q(clean_text__icontains=target_w) | Q(text_with_nikkud__icontains=target_w))
 
                 qs = qs.filter(text_query)
-                all_verses = qs.values('book', 'chapter', 'verse','text_with_nikkud').iterator(chunk_size=2000)
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2000)
 
                 for m in all_verses:
                     raw_text = m.get('text_with_nikkud') or ""
@@ -1943,8 +2176,8 @@ def tanakh_advanced_search_api(request):
 
             if target_acr:
                 acr_len = len(target_acr)
-                all_verses = qs.values('book', 'chapter', 'verse','text_with_nikkud').iterator(chunk_size=2000)
-                                       
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2000)
+
                 for m in all_verses:
                     raw_text = m.get('text_with_nikkud') or ""
                     if not raw_text:
@@ -2024,7 +2257,7 @@ def tanakh_advanced_search_api(request):
                         Q(text_with_nikkud__icontains=rw)
                     )
                 qs = qs.filter(text_query)
-                all_verses = qs.values('book', 'chapter', 'verse','text_with_nikkud').iterator(chunk_size=2000)
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2000)
 
                 for m in all_verses:
                     raw_text = m.get('text_with_nikkud') or ""
@@ -2084,7 +2317,7 @@ def tanakh_advanced_search_api(request):
             target_els = norm_heb(re.sub(r'[^א-ת]', '', query_val))
             k = len(target_els)
             if k >= 2:
-                all_verses = qs.values('book', 'chapter', 'verse','text_with_nikkud').iterator(chunk_size=2000)
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2000)
                 skip_counts = {}
 
                 for m in all_verses:
@@ -2191,7 +2424,7 @@ def tanakh_advanced_search_api(request):
                 max_skip_limit = 25
                 NON_HEB_RE = re.compile(r'[^א-ת]+')
 
-                all_verses = qs.values('book', 'chapter', 'verse','text_with_nikkud').iterator(chunk_size=2000)
+                all_verses = qs.values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2000)
                 skip_counts = {}
 
                 for m in all_verses:
@@ -2295,7 +2528,7 @@ def tanakh_advanced_search_api(request):
                     for s_d in sorted(skip_counts.keys())
                 ]
 
-        results.sort(key=lambda x: (get_book_order(x['book']), safe_int(x['chapter']), safe_int(x['verse'])))
+        results.sort(key=lambda x: (get_book_order(x['book'], x.get('chapter', '')), safe_int(x['chapter']), safe_int(x['verse'])))
 
         total_results = len(results)
         total_pages = (total_results + per_page - 1) // per_page if total_results > 0 else 1
@@ -2328,11 +2561,11 @@ def tanakh_advanced_search_api(request):
 def torah_ai_insights_api(request):
     mode = request.GET.get('mode', 'code_finder').strip()
     query = request.GET.get('q', '').strip()
-    book = request.GET.get('book', '').strip()
+    book = _resolve_torah_book_in_db(request.GET.get('book', '').strip())
     chapter = request.GET.get('chapter', '').strip()
     verse = request.GET.get('verse', '').strip()
 
-    cache_key = f"torah_ai_v6_{mode}_{book}_{chapter}_{verse}_{query}"
+    cache_key = f"torah_ai_v7_{mode}_{book}_{chapter}_{verse}_{query}"
     cached_resp = cache.get(cache_key)
     if cached_resp:
         return JsonResponse(cached_resp, json_dumps_params={'ensure_ascii': False})
@@ -3107,6 +3340,7 @@ def torah_ai_insights_api(request):
         return JsonResponse({'error': 'מצב פעולה לא חוקי.'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
+
 
 from .aramaic_engine import aramaic_translator_view as _get_aramaic_context, execute_aramaic_translation
 
