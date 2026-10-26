@@ -77,59 +77,156 @@
     .share-luxury-btn { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 1.5px solid #d4af37; color: #f7e199 !important; border-radius: 8px; padding: 6px 14px; font-size: 0.88rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 6px; }
     .share-luxury-btn:hover { background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 100%); color: #0f172a !important; }
 
-    /* סרגל פתיחה מהירה של מקור */
-    .quick-open-luxury-bar {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        border: 2px solid #d4af37;
-        border-radius: 16px;
-        padding: 16px 20px;
-        margin-bottom: 18px;
-        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.14);
-        direction: rtl;
-    }
-    .quick-open-input {
-        border: 1.5px solid #d4af37;
-        border-radius: 10px;
-        background: #ffffff;
-        color: #1e293b;
-        font-weight: 600;
-        padding: 9px 14px;
-        font-size: 0.95rem;
-    }
-    .quick-open-input:focus {
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.35);
-    }
-    .quick-open-btn {
-        background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 100%);
-        color: #0f172a;
+    /* כפתור ניקוי מסך בצד שמאל */
+    .clear-screen-luxury-btn {
+        background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
+        border: 1.5px solid #e11d48;
+        color: #9f1239;
+        border-radius: 8px;
+        padding: 6px 14px;
+        font-size: 0.88rem;
         font-weight: 800;
-        border: 1px solid #fff;
-        border-radius: 10px;
-        padding: 9px 18px;
-        white-space: nowrap;
-        transition: all 0.2s ease;
-    }
-    .quick-open-btn:hover {
-        background: linear-gradient(135deg, #f59e0b 0%, #d4af37 100%);
-        transform: translateY(-1px);
-    }
-    .quick-preset-chip {
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(212, 175, 55, 0.45);
-        color: #f3e5ab;
-        border-radius: 20px;
-        padding: 2px 10px;
-        font-size: 0.76rem;
         cursor: pointer;
-        transition: all 0.15s ease;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 2px 6px rgba(225, 29, 72, 0.12);
     }
-    .quick-preset-chip:hover {
-        background: #d4af37;
-        color: #0f172a;
+    .clear-screen-luxury-btn:hover {
+        background: #e11d48;
+        color: #ffffff;
+        box-shadow: 0 4px 10px rgba(225, 29, 72, 0.28);
     }
 
-    /* עיצוב מפרשים במעבר עכבר (Hover / Click) */
+    /* חלונית העיון המלכותית החדשה */
+    .quick-open-luxury-bar {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        border: 2px solid #d4af37;
+        border-radius: 18px;
+        padding: 20px 22px;
+        margin-bottom: 20px;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+        direction: rtl;
+    }
+    .browse-corpus-pills {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+        gap: 8px;
+        margin-top: 14px;
+    }
+    .browse-corpus-btn {
+        background: rgba(255, 255, 255, 0.07);
+        border: 1.5px solid rgba(212, 175, 55, 0.45);
+        color: #f8fafc;
+        border-radius: 11px;
+        padding: 9px 10px;
+        font-size: 0.88rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+    .browse-corpus-btn:hover {
+        background: rgba(212, 175, 55, 0.2);
+        border-color: #d4af37;
+        color: #f7e199;
+        transform: translateY(-1px);
+    }
+    .browse-corpus-btn.active {
+        background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 100%);
+        border-color: #ffffff;
+        color: #0f172a;
+        font-weight: 800;
+        box-shadow: 0 4px 14px rgba(212, 175, 55, 0.4);
+    }
+    .browse-subgroups-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+    }
+    .browse-subgroup-tab {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(212, 175, 55, 0.4);
+        color: #cbd5e1;
+        border-radius: 20px;
+        padding: 4px 13px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.18s ease;
+    }
+    .browse-subgroup-tab:hover {
+        border-color: #f7e199;
+        color: #f7e199;
+    }
+    .browse-subgroup-tab.active {
+        background: #f7e199;
+        color: #0f172a;
+        border-color: #f7e199;
+        font-weight: 800;
+    }
+    .browse-books-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-top: 10px;
+        max-height: 155px;
+        overflow-y: auto;
+        padding: 4px 2px;
+    }
+    .browse-book-pill {
+        background: #ffffff;
+        border: 1.5px solid #d4af37;
+        color: #1e293b;
+        border-radius: 9px;
+        padding: 6px 13px;
+        font-size: 0.86rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.16s ease;
+    }
+    .browse-book-pill:hover {
+        background: #fcf3cf;
+        border-color: #b8860b;
+        transform: translateY(-1px);
+    }
+    .browse-book-pill.active {
+        background: linear-gradient(135deg, #d4af37 0%, #b8860b 100%);
+        color: #ffffff;
+        border-color: #ffffff;
+        box-shadow: 0 3px 10px rgba(212, 175, 55, 0.35);
+    }
+    .browse-white-select-row {
+        margin-top: 14px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(212, 175, 55, 0.4);
+        border-radius: 12px;
+        padding: 12px 14px;
+    }
+    .luxury-white-select {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border: 2px solid #d4af37 !important;
+        border-radius: 10px !important;
+        font-weight: 700 !important;
+        font-size: 0.96rem !important;
+        padding: 9px 36px 9px 14px !important;
+        cursor: pointer;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+    }
+    .luxury-white-select:focus {
+        box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.4) !important;
+    }
+
+    /* עיצוב מפרשים */
     .commentary-badge-trigger {
         background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
         border: 1px solid #d97706;
@@ -357,33 +454,56 @@
         </div>
 
         <div class="col-lg-8">
-            <!-- סרגל יוקרתי לפתיחה מהירה של מקור / פרק / דף -->
+            <!-- חלונית העיון המלכותית החדשה -->
             <div class="quick-open-luxury-bar">
-                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                     <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-book-half fs-4" style="color: #d4af37;"></i>
+                        <i class="bi bi-book-half fs-3" style="color: #d4af37;"></i>
                         <div>
-                            <h5 class="mb-0 fw-bold" style="color: #f7e199; font-family: 'Frank Ruhl Libre', serif;">פתיחה מהירה של מקור (עיון ישיר בפרק / דף / סימן)</h5>
-                            <div style="font-size: 0.8rem; color: #cbd5e1;">הקלד שם ספר ופרק לעיון רציף בכל הפרק עם פירוש רש"י, ברטנורא, מגיד משנה ובאר היטב</div>
+                            <h4 class="mb-0 fw-bold" style="color: #f7e199; font-family: 'Frank Ruhl Libre', serif; font-size: 1.35rem;">
+                                עיון בתנ"ך, במשנה, בתוספתא, בתלמודים, ברמב"ם ובשו"ע
+                            </h4>
+                            <div style="font-size: 0.82rem; color: #cbd5e1;">
+                                בחר מאגר וספר כדי לפתוח כל פרק, דף או סימן לעיון מלא עם המפרשים
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="d-flex flex-wrap gap-2 mt-2">
-                    <div class="flex-grow-1 position-relative">
-                        <input type="text" id="quickSourceRefInput" list="quickSourceBooksList" class="form-control quick-open-input" placeholder='לדוגמה: רמב"ם הלכות ברכות פרק ג | בראשית פרק א | ברכות דף ב | שולחן ערוך אורח חיים סימן א'>
-                        <datalist id="quickSourceBooksList"></datalist>
-                    </div>
-                    <button type="button" class="quick-open-btn" onclick="openQuickSourceReader()">
-                        <i class="bi bi-journal-arrow-up ms-1"></i>פתח פרק מלא
+                    <button type="button" id="resetBrowseBoxBtn" class="btn btn-sm btn-outline-warning fw-bold rounded-pill px-3" style="display: none;" onclick="resetBrowseSelection()">
+                        סגור בחירת פרק ✕
                     </button>
                 </div>
-                <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
-                    <span style="font-size: 0.76rem; color: #94a3b8;">דוגמאות מהירות:</span>
-                    <span class="quick-preset-chip" onclick="quickOpenExample('רמב&quot;ם הלכות ברכות פרק ג')">רמב"ם הלכות ברכות פרק ג</span>
-                    <span class="quick-preset-chip" onclick="quickOpenExample('בראשית פרק א')">בראשית פרק א</span>
-                    <span class="quick-preset-chip" onclick="quickOpenExample('משנה ברכות פרק א')">משנה ברכות פרק א</span>
-                    <span class="quick-preset-chip" onclick="quickOpenExample('בבלי ברכות דף ב')">בבלי ברכות דף ב</span>
-                    <span class="quick-preset-chip" onclick="quickOpenExample('שולחן ערוך אורח חיים סימן א')">שו"ע אורח חיים סימן א</span>
+
+                <!-- שלב 1: כפתורי בחירת המאגר -->
+                <div class="browse-corpus-pills" id="browseCorpusBar">
+                    <button type="button" class="browse-corpus-btn" data-bcorpus="tanakh" onclick="selectBrowseCorpus('tanakh', this)">📖 תנ"ך</button>
+                    <button type="button" class="browse-corpus-btn" data-bcorpus="mishnah" onclick="selectBrowseCorpus('mishnah', this)">⚖️ משנה</button>
+                    <button type="button" class="browse-corpus-btn" data-bcorpus="tosefta" onclick="selectBrowseCorpus('tosefta', this)">🏺 תוספתא</button>
+                    <button type="button" class="browse-corpus-btn" data-bcorpus="talmud" onclick="selectBrowseCorpus('talmud', this)">🏛️ תלמוד בבלי</button>
+                    <button type="button" class="browse-corpus-btn" data-bcorpus="yerushalmi" onclick="selectBrowseCorpus('yerushalmi', this)">🕍 תלמוד ירושלמי</button>
+                    <button type="button" class="browse-corpus-btn" data-bcorpus="rambam" onclick="selectBrowseCorpus('rambam', this)">👑 רמב"ם</button>
+                    <button type="button" class="browse-corpus-btn" data-bcorpus="shulchan_aruch" onclick="selectBrowseCorpus('shulchan_aruch', this)">📚 שולחן ערוך</button>
+                </div>
+
+                <!-- שלב 2: כפתורי בחירת הספר / ההלכות -->
+                <div id="browseBooksArea" style="display: none;">
+                    <div id="browseSubgroupsBar" class="browse-subgroups-bar"></div>
+                    <div id="browseBooksGrid" class="browse-books-grid"></div>
+                </div>
+
+                <!-- שלב 3: שורה לבנה עם חץ בחירה לבחירת הלכות (ברמב"ם) ופרק/דף/סימן -->
+                <div id="browseSelectorsRow" class="browse-white-select-row" style="display: none;">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-6" id="browseBookSelectCol">
+                            <label id="browseBookSelectLabel" class="form-label fw-bold mb-1" style="color: #f7e199; font-size: 0.85rem;">ספר / מסכת שנבחרו:</label>
+                            <select id="browseBookSelect" class="form-select luxury-white-select" onchange="onBrowseBookDropdownChange(this.value)"></select>
+                        </div>
+                        <div class="col-md-6" id="browseChapterSelectCol">
+                            <label id="browseChapterSelectLabel" class="form-label fw-bold mb-1" style="color: #f7e199; font-size: 0.85rem;">בחר פרק / דף / סימן לעיון:</label>
+                            <select id="browseChapterSelect" class="form-select luxury-white-select" onchange="onBrowseChapterDropdownChange(this.value)">
+                                <option value="">טוען פרקים...</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -392,7 +512,8 @@
                     <h4 class="mb-0 fw-bold" id="mainResultsPanelTitle" style="color: #1e293b;">
                         <i class="bi bi-journal-richtext ms-2" style="color: #d4af37;"></i>תוצאות הסריקה במאגר
                     </h4>
-                    <div id="exportToolbar" style="display: none; gap: 8px; flex-wrap: wrap;">
+                    <!-- סרגל הכלים בצד שמאל כולל כפתור "נקה מסך" בצד שמאל הקיצוני -->
+                    <div id="exportToolbar" style="display: none; gap: 8px; flex-wrap: wrap; align-items: center;">
                         <button type="button" class="export-toolbar-btn" onclick="copyAllResultsToClipboard()">
                             <i class="bi bi-clipboard-check"></i> העתק הכל
                         </button>
@@ -402,6 +523,9 @@
                         <button type="button" class="result-action-btn" onclick="downloadResultsAsText()">
                             <i class="bi bi-download"></i> הורד כקובץ TXT
                         </button>
+                        <button type="button" class="clear-screen-luxury-btn" onclick="clearResultsScreen()" title="נקה את התוצאות והחזר את המסך למצבו ההתחלתי">
+                            <i class="bi bi-trash3-fill"></i> נקה מסך
+                        </button>
                     </div>
                 </div>
 
@@ -409,7 +533,7 @@
                     <div id="resultsPlaceholder" class="text-center py-5">
                         <i class="bi bi-book-half" style="font-size: 4.5rem; color: #d4af37; opacity: 0.55;"></i>
                         <h4 class="mt-3 fw-bold" style="color: #334155;">מאגר החיפוש והעיון מוכן לפעולה</h4>
-                        <p class="text-muted fs-6 mb-1">בחר מאגר וסוג פעולה מימין לחיפוש, או הקלד שם ספר ופרק בסרגל העליון לעיון ישיר.</p>
+                        <p class="text-muted fs-6 mb-1">בחר מאגר וסוג פעולה מימין לחיפוש, או בחר ספר ופרק בחלונית העיון העליונה.</p>
                         <p class="small text-secondary mb-0"><i class="bi bi-chat-square-quote ms-1" style="color: #b8860b;"></i>עמוד עם העכבר על כל פסוק/הלכה (או לחץ על כפתור המפרש) לצפייה בפירוש רש"י, ברטנורא, מגיד משנה ובאר היטב.</p>
                     </div>
 
@@ -443,7 +567,7 @@
         <div id="aiLabMapPanel">
             <div class="row g-2 justify-content-center mb-3">
                 <div class="col-md-7">
-                    <input type="text" id="conceptMapInput" class="form-control form-control-lg text-center fw-bold" placeholder="הקלד מושג למיפוי מוקדי סוגיות ומגמות (לדוגמה: ציצית, שבת, תשובה, שופר)..." style="border-radius: 12px; border: 1.5px solid #d4af37;">
+                    <input type="text" id="conceptMapInput" class="form-control form-control-lg text-center fw-bold" placeholder="הקלד המושג שברצונך לחפש" style="border-radius: 12px; border: 1.5px solid #d4af37;">
                 </div>
                 <div class="col-md-3">
                     <button type="button" class="btn w-100 h-100 fw-bold py-2" onclick="buildConceptMap()" style="background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 100%); color: #0f172a; border-radius: 12px; font-size: 1.05rem;">
@@ -461,7 +585,7 @@
         <div id="aiLabSermonPanel" style="display: none;">
             <div class="row g-2 justify-content-center mb-3">
                 <div class="col-md-7">
-                    <input type="text" id="sermonTopicInput" class="form-control form-control-lg text-center fw-bold" placeholder="הקלד מושג או נושא לניתוח עומק וחיבור הנתונים (לדוגמה: ציצית, שבת, ברית מילה)..." style="border-radius: 12px; border: 1.5px solid #d4af37;">
+                    <input type="text" id="sermonTopicInput" class="form-control form-control-lg text-center fw-bold" placeholder="הקלד המושג שברצונך לחפש" style="border-radius: 12px; border: 1.5px solid #d4af37;">
                 </div>
                 <div class="col-md-3">
                     <button type="button" class="btn w-100 h-100 fw-bold py-2" onclick="generateTorahSermon()" style="background: linear-gradient(135deg, #d4af37 0%, #f3e5ab 100%); color: #0f172a; border-radius: 12px; font-size: 1.05rem;">
@@ -655,6 +779,67 @@ document.addEventListener('DOMContentLoaded', function() {
     const finalToReg = {'ך':'כ', 'ם':'מ', 'ן':'נ', 'ף':'פ', 'ץ':'צ'};
     const regToFinal = {'כ':'ך', 'מ':'ם', 'נ':'ן', 'פ':'ף', 'צ':'ץ'};
 
+    // המרת כל מספר (כמו 1, 6, 15) לאותיות עבריות (א, ו, טו) בכל מקום במערכת
+    function intToHebrew(num) {
+        let n = parseInt(num, 10);
+        if (isNaN(n) || n <= 0) return String(num);
+        const letters = [
+            [400, 'ת'], [300, 'ש'], [200, 'ר'], [100, 'ק'],
+            [90, 'צ'], [80, 'פ'], [70, 'ע'], [60, 'ס'], [50, 'נ'], [40, 'מ'], [30, 'ל'], [20, 'כ'], [10, 'י'],
+            [9, 'ט'], [8, 'ח'], [7, 'ז'], [6, 'ו'], [5, 'ה'], [4, 'ד'], [3, 'ג'], [2, 'ב'], [1, 'א']
+        ];
+        let res = '';
+        while (n >= 400) {
+            res += 'ת';
+            n -= 400;
+        }
+        for (let i = 0; i < letters.length; i++) {
+            if (n === 15) { res += 'טו'; n = 0; break; }
+            if (n === 16) { res += 'טז'; n = 0; break; }
+            const val = letters[i][0];
+            const ch = letters[i][1];
+            if (n >= val) {
+                res += ch;
+                n -= val;
+            }
+        }
+        return res;
+    }
+
+    function toHebrewLetters(val) {
+        const s = String(val || '').trim();
+        if (!s) return '';
+        if (/^\d+$/.test(s)) {
+            return intToHebrew(parseInt(s, 10));
+        }
+        return s.replace(/\b(\d+)\b/g, (m, d) => intToHebrew(parseInt(d, 10)));
+    }
+
+    function parseHebrewOrInt(val) {
+        const s = String(val || '').trim();
+        if (!s) return 0;
+        const m = s.match(/\d+/);
+        if (m) return parseInt(m[0], 10);
+        const clean = s
+            .replace(/^(פרק|סימן|דף|הלכה|משנה|סעיף|שורה)\s+/g, '')
+            .replace(/(עמוד\s+[אב])/g, '')
+            .trim();
+        const firstToken = (clean.split(/\s+/)[0] || '').replace(/[^א-ת]/g, '');
+        let sum = 0;
+        for (const ch of firstToken) {
+            sum += (gematriaMap[ch] || 0);
+        }
+        return sum;
+    }
+
+    function formatDivineNameJS(text) {
+        if (!text) return '';
+        return String(text).replace(
+            /(י[\u0591-\u05C7]*(?:<\/?(?:strong|mark)[^>]*>)*)(ה[\u0591-\u05C7]*(?:<\/?(?:strong|mark)[^>]*>)*)(ו[\u0591-\u05C7]*(?:<\/?(?:strong|mark)[^>]*>)*)(ה[\u0591-\u05C7]*)/gu,
+            '$1-$2-$3-$4'
+        );
+    }
+
     const BOOKS_CATALOG = {
         torah: [
             { group: 'תורה (חמשה חומשי תורה)', prefix: 'torah', books: ['בראשית', 'שמות', 'ויקרא', 'במדבר', 'דברים'] }
@@ -665,67 +850,44 @@ document.addEventListener('DOMContentLoaded', function() {
             { group: 'כתובים', prefix: 'tanakh', books: ['תהילים', 'משלי', 'איוב', 'שיר השירים', 'רות', 'איכה', 'קהלת', 'אסתר', 'דניאל', 'עזרא', 'נחמיה', 'דברי הימים א', 'דברי הימים ב'] }
         ],
         mishnah: [
-            { group: 'משנה - סדר זרעים', prefix: 'mishnah', books: ['ברכות', 'פאה', 'דמאי', 'כלאים', 'שביעית', 'תרומות', 'מעשרות', 'מעשר שני', 'חלה', 'ערלה', 'ביכורים'] },
-            { group: 'משנה - סדר מועד', prefix: 'mishnah', books: ['שבת', 'עירובין', 'פסחים', 'שקלים', 'יומא', 'סוכה', 'ביצה', 'ראש השנה', 'תענית', 'מגילה', 'מועד קטן', 'חגיגה'] },
-            { group: 'משנה - סדר נשים', prefix: 'mishnah', books: ['יבמות', 'כתובות', 'נדרים', 'נזיר', 'סוטה', 'גיטין', 'קידושין'] },
-            { group: 'משנה - סדר נזיקין', prefix: 'mishnah', books: ['בבא קמא', 'בבא מציעא', 'בבא בתרא', 'סנהדרין', 'מכות', 'שבועות', 'עדיות', 'עבודה זרה', 'אבות', 'הוריות'] },
-            { group: 'משנה - סדר קדשים', prefix: 'mishnah', books: ['זבחים', 'מנחות', 'חולין', 'בכורות', 'ערכין', 'תמורה', 'כריתות', 'מעילה', 'תמיד', 'מדות', 'קינים'] },
-            { group: 'משנה - סדר טהרות', prefix: 'mishnah', books: ['כלים', 'אהלות', 'נגעים', 'פרה', 'טהרות', 'מקואות', 'נדה', 'מכשירין', 'זבים', 'טבול יום', 'ידים', 'עוקצין'] }
+            { group: 'סדר זרעים', prefix: 'mishnah', books: ['ברכות', 'פאה', 'דמאי', 'כלאים', 'שביעית', 'תרומות', 'מעשרות', 'מעשר שני', 'חלה', 'ערלה', 'ביכורים'] },
+            { group: 'סדר מועד', prefix: 'mishnah', books: ['שבת', 'עירובין', 'פסחים', 'שקלים', 'יומא', 'סוכה', 'ביצה', 'ראש השנה', 'תענית', 'מגילה', 'מועד קטן', 'חגיגה'] },
+            { group: 'סדר נשים', prefix: 'mishnah', books: ['יבמות', 'כתובות', 'נדרים', 'נזיר', 'סוטה', 'גיטין', 'קידושין'] },
+            { group: 'סדר נזיקין', prefix: 'mishnah', books: ['בבא קמא', 'בבא מציעא', 'בבא בתרא', 'סנהדרין', 'מכות', 'שבועות', 'עדיות', 'עבודה זרה', 'אבות', 'הוריות'] },
+            { group: 'סדר קדשים', prefix: 'mishnah', books: ['זבחים', 'מנחות', 'חולין', 'בכורות', 'ערכין', 'תמורה', 'כריתות', 'מעילה', 'תמיד', 'מדות', 'קינים'] },
+            { group: 'סדר טהרות', prefix: 'mishnah', books: ['כלים', 'אהלות', 'נגעים', 'פרה', 'טהרות', 'מקואות', 'נדה', 'מכשירין', 'זבים', 'טבול יום', 'ידים', 'עוקצין'] }
         ],
         tosefta: [
-            { group: 'תוספתא - סדר זרעים', prefix: 'tosefta', books: ['תוספתא ברכות', 'תוספתא פאה', 'תוספתא דמאי', 'תוספתא כלאים', 'תוספתא שביעית', 'תוספתא תרומות', 'תוספתא מעשרות', 'תוספתא מעשר שני', 'תוספתא חלה', 'תוספתא ערלה', 'תוספתא ביכורים'] },
-            { group: 'תוספתא - סדר מועד', prefix: 'tosefta', books: ['תוספתא שבת', 'תוספתא עירובין', 'תוספתא פסחים', 'תוספתא שקלים', 'תוספתא כיפורים', 'תוספתא סוכה', 'תוספתא ביצה', 'תוספתא ראש השנה', 'תוספתא תענית', 'תוספתא מגילה', 'תוספתא מועד קטן', 'תוספתא חגיגה'] },
-            { group: 'תוספתא - סדר נשים', prefix: 'tosefta', books: ['תוספתא יבמות', 'תוספתא כתובות', 'תוספתא נדרים', 'תוספתא נזיר', 'תוספתא סוטה', 'תוספתא גיטין', 'תוספתא קידושין'] },
-            { group: 'תוספתא - סדר נזיקין', prefix: 'tosefta', books: ['תוספתא בבא קמא', 'תוספתא בבא מציעא', 'תוספתא בבא בתרא', 'תוספתא סנהדרין', 'תוספתא מכות', 'תוספתא שבועות', 'תוספתא עדיות', 'תוספתא עבודה זרה', 'תוספתא הוריות'] },
-            { group: 'תוספתא - סדר קדשים', prefix: 'tosefta', books: ['תוספתא זבחים', 'תוספתא מנחות', 'תוספתא חולין', 'תוספתא בכורות', 'תוספתא ערכין', 'תוספתא תמורה', 'תוספתא כריתות', 'תוספתא מעילה', 'תוספתא קינים'] },
-            { group: 'תוספתא - סדר טהרות', prefix: 'tosefta', books: ['תוספתא כלים קמא', 'תוספתא כלים מציעא', 'תוספתא כלים בתרא', 'תוספתא אהלות', 'תוספתא נגעים', 'תוספתא פרה', 'תוספתא טהרות', 'תוספתא מקואות', 'תוספתא נידה', 'תוספתא מכשירין', 'תוספתא זבים', 'תוספתא טבול יום', 'תוספתא ידיים', 'תוספתא עוקצין'] }
+            { group: 'סדר זרעים', prefix: 'tosefta', books: ['תוספתא ברכות', 'תוספתא פאה', 'תוספתא דמאי', 'תוספתא כלאים', 'תוספתא שביעית', 'תוספתא תרומות', 'תוספתא מעשרות', 'תוספתא מעשר שני', 'תוספתא חלה', 'תוספתא ערלה', 'תוספתא ביכורים'] },
+            { group: 'סדר מועד', prefix: 'tosefta', books: ['תוספתא שבת', 'תוספתא עירובין', 'תוספתא פסחים', 'תוספתא שקלים', 'תוספתא כיפורים', 'תוספתא סוכה', 'תוספתא ביצה', 'תוספתא ראש השנה', 'תוספתא תענית', 'תוספתא מגילה', 'תוספתא מועד קטן', 'תוספתא חגיגה'] },
+            { group: 'סדר נשים', prefix: 'tosefta', books: ['תוספתא יבמות', 'תוספתא כתובות', 'תוספתא נדרים', 'תוספתא נזיר', 'תוספתא סוטה', 'תוספתא גיטין', 'תוספתא קידושין'] },
+            { group: 'סדר נזיקין', prefix: 'tosefta', books: ['תוספתא בבא קמא', 'תוספתא בבא מציעא', 'תוספתא בבא בתרא', 'תוספתא סנהדרין', 'תוספתא מכות', 'תוספתא שבועות', 'תוספתא עדיות', 'תוספתא עבודה זרה', 'תוספתא הוריות'] },
+            { group: 'סדר קדשים', prefix: 'tosefta', books: ['תוספתא זבחים', 'תוספתא מנחות', 'תוספתא חולין', 'תוספתא בכורות', 'תוספתא ערכין', 'תוספתא תמורה', 'תוספתא כריתות', 'תוספתא מעילה', 'תוספתא קינים'] },
+            { group: 'סדר טהרות', prefix: 'tosefta', books: ['תוספתא כלים קמא', 'תוספתא כלים מציעא', 'תוספתא כלים בתרא', 'תוספתא אהלות', 'תוספתא נגעים', 'תוספתא פרה', 'תוספתא טהרות', 'תוספתא מקואות', 'תוספתא נידה', 'תוספתא מכשירין', 'תוספתא זבים', 'תוספתא טבול יום', 'תוספתא ידיים', 'תוספתא עוקצין'] }
         ],
         talmud: [
-            { group: 'תלמוד בבלי - זרעים ומועד', prefix: 'talmud', books: ['ברכות', 'שבת', 'עירובין', 'פסחים', 'שקלים', 'יומא', 'סוכה', 'ביצה', 'ראש השנה', 'תענית', 'מגילה', 'מועד קטן', 'חגיגה'] },
-            { group: 'תלמוד בבלי - סדר נשים', prefix: 'talmud', books: ['יבמות', 'כתובות', 'נדרים', 'נזיר', 'סוטה', 'גיטין', 'קידושין'] },
-            { group: 'תלמוד בבלי - סדר נזיקין', prefix: 'talmud', books: ['בבא קמא', 'בבא מציעא', 'בבא בתרא', 'סנהדרין', 'מכות', 'שבועות', 'עבודה זרה', 'הוריות'] },
-            { group: 'תלמוד בבלי - קדשים וטהרות', prefix: 'talmud', books: ['זבחים', 'מנחות', 'חולין', 'בכורות', 'ערכין', 'תמורה', 'כריתות', 'מעילה', 'תמיד', 'נדה'] }
+            { group: 'זרעים ומועד', prefix: 'talmud', books: ['ברכות', 'שבת', 'עירובין', 'פסחים', 'שקלים', 'יומא', 'סוכה', 'ביצה', 'ראש השנה', 'תענית', 'מגילה', 'מועד קטן', 'חגיגה'] },
+            { group: 'סדר נשים', prefix: 'talmud', books: ['יבמות', 'כתובות', 'נדרים', 'נזיר', 'סוטה', 'גיטין', 'קידושין'] },
+            { group: 'סדר נזיקין', prefix: 'talmud', books: ['בבא קמא', 'בבא מציעא', 'בבא בתרא', 'סנהדרין', 'מכות', 'שבועות', 'עבודה זרה', 'הוריות'] },
+            { group: 'קדשים וטהרות', prefix: 'talmud', books: ['זבחים', 'מנחות', 'חולין', 'בכורות', 'ערכין', 'תמורה', 'כריתות', 'מעילה', 'תמיד', 'נדה'] }
         ],
         yerushalmi: [
-            { group: 'תלמוד ירושלמי - סדר זרעים', prefix: 'yerushalmi', books: ['ירושלמי ברכות', 'ירושלמי פאה', 'ירושלמי דמאי', 'ירושלמי כלאים', 'ירושלמי שביעית', 'ירושלמי תרומות', 'ירושלמי מעשרות', 'ירושלמי מעשר שני', 'ירושלמי חלה', 'ירושלמי ערלה', 'ירושלמי ביכורים'] },
-            { group: 'תלמוד ירושלמי - סדר מועד', prefix: 'yerushalmi', books: ['ירושלמי שבת', 'ירושלמי עירובין', 'ירושלמי פסחים', 'ירושלמי יומא', 'ירושלמי שקלים', 'ירושלמי סוכה', 'ירושלמי ראש השנה', 'ירושלמי ביצה', 'ירושלמי תענית', 'ירושלמי מגילה', 'ירושלמי חגיגה', 'ירושלמי מועד קטן'] },
-            { group: 'תלמוד ירושלמי - סדר נשים', prefix: 'yerushalmi', books: ['ירושלמי יבמות', 'ירושלמי סוטה', 'ירושלמי כתובות', 'ירושלמי נדרים', 'ירושלמי נזיר', 'ירושלמי גיטין', 'ירושלמי קידושין'] },
-            { group: 'תלמוד ירושלמי - נזיקין וטהרות', prefix: 'yerushalmi', books: ['ירושלמי בבא קמא', 'ירושלמי בבא מציעא', 'ירושלמי בבא בתרא', 'ירושלמי סנהדרין', 'ירושלמי שבועות', 'ירושלמי עבודה זרה', 'ירושלמי מכות', 'ירושלמי הוריות', 'ירושלמי נדה'] }
+            { group: 'סדר זרעים', prefix: 'yerushalmi', books: ['ירושלמי ברכות', 'ירושלמי פאה', 'ירושלמי דמאי', 'ירושלמי כלאים', 'ירושלמי שביעית', 'ירושלמי תרומות', 'ירושלמי מעשרות', 'ירושלמי מעשר שני', 'ירושלמי חלה', 'ירושלמי ערלה', 'ירושלמי ביכורים'] },
+            { group: 'סדר מועד', prefix: 'yerushalmi', books: ['ירושלמי שבת', 'ירושלמי עירובין', 'ירושלמי פסחים', 'ירושלמי יומא', 'ירושלמי שקלים', 'ירושלמי סוכה', 'ירושלמי ראש השנה', 'ירושלמי ביצה', 'ירושלמי תענית', 'ירושלמי מגילה', 'ירושלמי חגיגה', 'ירושלמי מועד קטן'] },
+            { group: 'סדר נשים', prefix: 'yerushalmi', books: ['ירושלמי יבמות', 'ירושלמי סוטה', 'ירושלמי כתובות', 'ירושלמי נדרים', 'ירושלמי נזיר', 'ירושלמי גיטין', 'ירושלמי קידושין'] },
+            { group: 'נזיקין וטהרות', prefix: 'yerushalmi', books: ['ירושלמי בבא קמא', 'ירושלמי בבא מציעא', 'ירושלמי בבא בתרא', 'ירושלמי סנהדרין', 'ירושלמי שבועות', 'ירושלמי עבודה זרה', 'ירושלמי מכות', 'ירושלמי הוריות', 'ירושלמי נדה'] }
         ],
         rambam: [
-            { group: 'רמב"ם - מדע, אהבה וזמנים', prefix: 'rambam', books: ['רמב"ם הלכות יסודי התורה', 'רמב"ם הלכות דעות', 'רמב"ם הלכות תלמוד תורה', 'רמב"ם הלכות עבודה זרה וחוקות הגויים', 'רמב"ם הלכות תשובה', 'רמב"ם הלכות קריאת שמע', 'רמב"ם הלכות תפילה וברכת כהנים', 'רמב"ם הלכות תפילין ומזוזה וספר תורה', 'רמב"ם הלכות ציצית', 'רמב"ם הלכות ברכות', 'רמב"ם הלכות מילה', 'רמב"ם הלכות סדר תפילות', 'רמב"ם הלכות שבת', 'רמב"ם הלכות עירובין', 'רמב"ם הלכות שביתת עשור', 'רמב"ם הלכות שביתת יום טוב', 'רמב"ם הלכות חמץ ומצה', 'רמב"ם הלכות שופר וסוכה ולולב', 'רמב"ם הלכות שקלים', 'רמב"ם הלכות קידוש החודש', 'רמב"ם הלכות תעניות', 'רמב"ם הלכות מגילה וחנוכה'] },
-            { group: 'רמב"ם - נשים, קדושה והפלאה', prefix: 'rambam', books: ['רמב"ם הלכות אישות', 'רמב"ם הלכות גירושין', 'רמב"ם הלכות ייבום וחליצה', 'רמב"ם הלכות נערה בתולה', 'רמב"ם הלכות סוטה', 'רמב"ם הלכות איסורי ביאה', 'רמב"ם הלכות מאכלות אסורות', 'רמב"ם הלכות שחיטה', 'רמב"ם הלכות שבועות', 'רמב"ם הלכות נדרים', 'רמב"ם הלכות נזירות', 'רמב"ם הלכות ערכין וחרמין'] },
-            { group: 'רמב"ם - זרעים, עבודה, קורבנות וטהרה', prefix: 'rambam', books: ['רמב"ם הלכות כלאיים', 'רמב"ם הלכות מתנות עניים', 'רמב"ם הלכות תרומות', 'רמב"ם הלכות מעשרות', 'רמב"ם הלכות מעשר שני ונטע רבעי', 'רמב"ם הלכות ביכורים ושאר מתנות כהונה שבגבולין', 'רמב"ם הלכות שמיטה ויובל', 'רמב"ם הלכות בית הבחירה', 'רמב"ם הלכות כלי המקדש והעובדין בו', 'רמב"ם הלכות ביאת מקדש', 'רמב"ם הלכות איסורי המזבח', 'רמב"ם הלכות מעשה הקורבנות', 'רמב"ם הלכות תמידין ומוספין', 'רמב"ם הלכות פסולי המוקדשין', 'רמב"ם הלכות עבודת יום הכיפורים', 'רמב"ם הלכות מעילה', 'רמב"ם הלכות קורבן פסח', 'רמב"ם הלכות חגיגה', 'רמב"ם הלכות בכורות', 'רמב"ם הלכות שגגות', 'רמב"ם הלכות מחוסרי כפרה', 'רמב"ם הלכות תמורה', 'רמב"ם הלכות טומאת מת', 'רמב"ם הלכות פרה אדומה', 'רמב"ם הלכות טומאת צרעת', 'רמב"ם הלכות מטמאי משכב ומושב', 'רמב"ם הלכות שאר אבות הטומאות', 'רמב"ם הלכות טומאת אוכלין', 'רמב"ם הלכות כלים', 'רמב"ם הלכות מקוואות'] },
-            { group: 'רמב"ם - נזיקין, קניין, משפטים ושופטים', prefix: 'rambam', books: ['רמב"ם הלכות נזקי ממון', 'רמב"ם הלכות גניבה', 'רמב"ם הלכות גזילה ואבידה', 'רמב"ם הלכות חובל ומזיק', 'רמב"ם הלכות רוצח ושמירת נפש', 'רמב"ם הלכות מכירה', 'רמב"ם הלכות זכייה ומתנה', 'רמב"ם הלכות שכנים', 'רמב"ם הלכות שלוחין ושותפין', 'רמב"ם הלכות עבדים', 'רמב"ם הלכות שכירות', 'רמב"ם הלכות שאלה ופיקדון', 'רמב"ם הלכות מלווה ולווה', 'רמב"ם הלכות טוען ונטען', 'רמב"ם הלכות נחלות', 'רמב"ם הלכות סנהדרין והעונשין המסורין להם', 'רמב"ם הלכות עדות', 'רמב"ם הלכות ממרים', 'רמב"ם הלכות אבל', 'רמב"ם הלכות מלכים ומלחמות'] }
+            { group: 'מדע, אהבה וזמנים', prefix: 'rambam', books: ['רמב"ם הלכות יסודי התורה', 'רמב"ם הלכות דעות', 'רמב"ם הלכות תלמוד תורה', 'רמב"ם הלכות עבודה זרה וחוקות הגויים', 'רמב"ם הלכות תשובה', 'רמב"ם הלכות קריאת שמע', 'רמב"ם הלכות תפילה וברכת כהנים', 'רמב"ם הלכות תפילין ומזוזה וספר תורה', 'רמב"ם הלכות ציצית', 'רמב"ם הלכות ברכות', 'רמב"ם הלכות מילה', 'רמב"ם הלכות סדר תפילות', 'רמב"ם הלכות שבת', 'רמב"ם הלכות עירובין', 'רמב"ם הלכות שביתת עשור', 'רמב"ם הלכות שביתת יום טוב', 'רמב"ם הלכות חמץ ומצה', 'רמב"ם הלכות שופר וסוכה ולולב', 'רמב"ם הלכות שקלים', 'רמב"ם הלכות קידוש החודש', 'רמב"ם הלכות תעניות', 'רמב"ם הלכות מגילה וחנוכה'] },
+            { group: 'נשים, קדושה והפלאה', prefix: 'rambam', books: ['רמב"ם הלכות אישות', 'רמב"ם הלכות גירושין', 'רמב"ם הלכות ייבום וחליצה', 'רמב"ם הלכות נערה בתולה', 'רמב"ם הלכות סוטה', 'רמב"ם הלכות איסורי ביאה', 'רמב"ם הלכות מאכלות אסורות', 'רמב"ם הלכות שחיטה', 'רמב"ם הלכות שבועות', 'רמב"ם הלכות נדרים', 'רמב"ם הלכות נזירות', 'רמב"ם הלכות ערכין וחרמין'] },
+            { group: 'זרעים, עבודה, קורבנות וטהרה', prefix: 'rambam', books: ['רמב"ם הלכות כלאיים', 'רמב"ם הלכות מתנות עניים', 'רמב"ם הלכות תרומות', 'רמב"ם הלכות מעשרות', 'רמב"ם הלכות מעשר שני ונטע רבעי', 'רמב"ם הלכות ביכורים ושאר מתנות כהונה שבגבולין', 'רמב"ם הלכות שמיטה ויובל', 'רמב"ם הלכות בית הבחירה', 'רמב"ם הלכות כלי המקדש והעובדין בו', 'רמב"ם הלכות ביאת מקדש', 'רמב"ם הלכות איסורי המזבח', 'רמב"ם הלכות מעשה הקורבנות', 'רמב"ם הלכות תמידין ומוספין', 'רמב"ם הלכות פסולי המוקדשין', 'רמב"ם הלכות עבודת יום הכיפורים', 'רמב"ם הלכות מעילה', 'רמב"ם הלכות קורבן פסח', 'רמב"ם הלכות חגיגה', 'רמב"ם הלכות בכורות', 'רמב"ם הלכות שגגות', 'רמב"ם הלכות מחוסרי כפרה', 'רמב"ם הלכות תמורה', 'רמב"ם הלכות טומאת מת', 'רמב"ם הלכות פרה אדומה', 'רמב"ם הלכות טומאת צרעת', 'רמב"ם הלכות מטמאי משכב ומושב', 'רמב"ם הלכות שאר אבות הטומאות', 'רמב"ם הלכות טומאת אוכלין', 'רמב"ם הלכות כלים', 'רמב"ם הלכות מקוואות'] },
+            { group: 'נזיקין, קניין, משפטים ושופטים', prefix: 'rambam', books: ['רמב"ם הלכות נזקי ממון', 'רמב"ם הלכות גניבה', 'רמב"ם הלכות גזילה ואבידה', 'רמב"ם הלכות חובל ומזיק', 'רמב"ם הלכות רוצח ושמירת נפש', 'רמב"ם הלכות מכירה', 'רמב"ם הלכות זכייה ומתנה', 'רמב"ם הלכות שכנים', 'רמב"ם הלכות שלוחין ושותפין', 'רמב"ם הלכות עבדים', 'רמב"ם הלכות שכירות', 'רמב"ם הלכות שאלה ופיקדון', 'רמב"ם הלכות מלווה ולווה', 'רמב"ם הלכות טוען ונטען', 'רמב"ם הלכות נחלות', 'רמב"ם הלכות סנהדרין והעונשין המסורין להם', 'רמב"ם הלכות עדות', 'רמב"ם הלכות ממרים', 'רמב"ם הלכות אבל', 'רמב"ם הלכות מלכים ומלחמות'] }
         ],
         shulchan_aruch: [
-            { group: 'שולחן ערוך (ארבעת הטורים)', prefix: 'shulchan_aruch', books: ['שולחן ערוך אורח חיים', 'שולחן ערוך יורה דעה', 'שולחן ערוך אבן העזר', 'שולחן ערוך חושן משפט'] }
+            { group: 'ארבעת חלקי השולחן ערוך', prefix: 'shulchan_aruch', books: ['שולחן ערוך אורח חיים', 'שולחן ערוך יורה דעה', 'שולחן ערוך אבן העזר', 'שולחן ערוך חושן משפט'] }
         ]
     };
 
-    // מילוי אוטומטי של רשימת הספרים לפתיחה מהירה
-    const quickDatalist = document.getElementById('quickSourceBooksList');
-    if (quickDatalist) {
-        const seenQuick = new Set();
-        Object.keys(BOOKS_CATALOG).forEach(catKey => {
-            BOOKS_CATALOG[catKey].forEach(groupObj => {
-                groupObj.books.forEach(bName => {
-                    let sampleSuffix = ' פרק א';
-                    if (catKey === 'talmud') sampleSuffix = ' דף ב';
-                    else if (catKey === 'shulchan_aruch') sampleSuffix = ' סימן א';
-                    const sug = (catKey === 'talmud' ? 'בבלי ' + bName : bName) + sampleSuffix;
-                    if (!seenQuick.has(sug)) {
-                        seenQuick.add(sug);
-                        const opt = document.createElement('option');
-                        opt.value = sug;
-                        quickDatalist.appendChild(opt);
-                    }
-                });
-            });
-        });
-    }
-
-    // פונקציית מילוט בטוחה לחלוטין מפני גרשיים בשמות ספרי הרמב"ם
     function escapeJsAndHtml(str) {
         return String(str || '')
             .replace(/\\/g, "\\\\")
@@ -744,6 +906,190 @@ document.addEventListener('DOMContentLoaded', function() {
         if (tanakhSet.has(b)) return 'רש"י';
         return 'ברטנורא';
     }
+
+    // ========= לוגיקת חלונית העיון המלכותית (בחירת מאגר -> ספר/הלכות -> שורה לבנה עם חץ לפרקים) =========
+    let activeBrowseCorpus = '';
+    let activeBrowseSubgroupIdx = 0;
+    let activeBrowseBook = '';
+
+    function shortBookDisplayName(bookName, corpusKey) {
+        let s = String(bookName || '');
+        if (corpusKey === 'rambam') return s.replace(/^רמב"ם\s+/, '');
+        if (corpusKey === 'tosefta') return s.replace(/^תוספתא\s+/, '');
+        if (corpusKey === 'yerushalmi') return s.replace(/^ירושלמי\s+/, '');
+        if (corpusKey === 'shulchan_aruch') return s.replace(/^שולחן ערוך\s+/, '');
+        return s;
+    }
+
+    window.resetBrowseSelection = function() {
+        activeBrowseCorpus = '';
+        activeBrowseBook = '';
+        document.querySelectorAll('#browseCorpusBar .browse-corpus-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('browseBooksArea').style.display = 'none';
+        document.getElementById('browseSelectorsRow').style.display = 'none';
+        document.getElementById('resetBrowseBoxBtn').style.display = 'none';
+    };
+
+    window.selectBrowseCorpus = function(corpusKey, btnEl) {
+        activeBrowseCorpus = corpusKey;
+        activeBrowseSubgroupIdx = 0;
+        document.querySelectorAll('#browseCorpusBar .browse-corpus-btn').forEach(b => b.classList.remove('active'));
+        if (btnEl) btnEl.classList.add('active');
+        document.getElementById('resetBrowseBoxBtn').style.display = 'inline-block';
+
+        const groups = BOOKS_CATALOG[corpusKey] || [];
+        const subgroupsBar = document.getElementById('browseSubgroupsBar');
+        const booksArea = document.getElementById('browseBooksArea');
+        booksArea.style.display = 'block';
+
+        if (groups.length > 1) {
+            subgroupsBar.style.display = 'flex';
+            subgroupsBar.innerHTML = '';
+            groups.forEach((g, idx) => {
+                const tab = document.createElement('button');
+                tab.type = 'button';
+                tab.className = 'browse-subgroup-tab' + (idx === 0 ? ' active' : '');
+                tab.textContent = g.group;
+                tab.onclick = () => {
+                    activeBrowseSubgroupIdx = idx;
+                    Array.from(subgroupsBar.children).forEach((c, i) => c.classList.toggle('active', i === idx));
+                    renderBrowseBooksPills(corpusKey, idx);
+                };
+                subgroupsBar.appendChild(tab);
+            });
+        } else {
+            subgroupsBar.style.display = 'none';
+        }
+
+        // מילוי תיבת הבחירה הלבנה של כלל הספרים/ההלכות באותו מאגר
+        const bookSelect = document.getElementById('browseBookSelect');
+        const bookSelectLabel = document.getElementById('browseBookSelectLabel');
+        bookSelect.innerHTML = '';
+
+        if (corpusKey === 'rambam') {
+            bookSelectLabel.textContent = '1. בחר הלכות ברמב"ם:';
+        } else if (corpusKey === 'shulchan_aruch') {
+            bookSelectLabel.textContent = '1. בחר חלק בשולחן ערוך:';
+        } else if (corpusKey === 'talmud' || corpusKey === 'yerushalmi' || corpusKey === 'mishnah' || corpusKey === 'tosefta') {
+            bookSelectLabel.textContent = '1. בחר מסכת:';
+        } else {
+            bookSelectLabel.textContent = '1. בחר ספר:';
+        }
+
+        groups.forEach(g => {
+            const optGroup = document.createElement('optgroup');
+            optGroup.label = g.group;
+            g.books.forEach(bName => {
+                const opt = document.createElement('option');
+                opt.value = bName;
+                opt.textContent = shortBookDisplayName(bName, corpusKey);
+                optGroup.appendChild(opt);
+            });
+            bookSelect.appendChild(optGroup);
+        });
+
+        renderBrowseBooksPills(corpusKey, 0);
+
+        const firstBook = (groups[0] && groups[0].books[0]) ? groups[0].books[0] : '';
+        if (firstBook) {
+            selectBrowseBook(firstBook, false);
+        }
+    };
+
+    function renderBrowseBooksPills(corpusKey, groupIdx) {
+        const groups = BOOKS_CATALOG[corpusKey] || [];
+        const groupObj = groups[groupIdx] || groups[0];
+        const grid = document.getElementById('browseBooksGrid');
+        grid.innerHTML = '';
+        if (!groupObj) return;
+
+        groupObj.books.forEach(bName => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'browse-book-pill' + (activeBrowseBook === bName ? ' active' : '');
+            btn.setAttribute('data-bname', bName);
+            btn.textContent = shortBookDisplayName(bName, corpusKey);
+            btn.onclick = () => selectBrowseBook(bName, false);
+            grid.appendChild(btn);
+        });
+    }
+
+    window.onBrowseBookDropdownChange = function(bookName) {
+        if (!bookName) return;
+        selectBrowseBook(bookName, false);
+    };
+
+    window.selectBrowseBook = function(bookName, autoOpenFirstChapter) {
+        activeBrowseBook = bookName;
+        document.querySelectorAll('#browseBooksGrid .browse-book-pill').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-bname') === bookName);
+        });
+
+        const bookSelect = document.getElementById('browseBookSelect');
+        if (bookSelect && bookSelect.value !== bookName) {
+            bookSelect.value = bookName;
+        }
+
+        const selectorsRow = document.getElementById('browseSelectorsRow');
+        const chapterSelect = document.getElementById('browseChapterSelect');
+        const chapterLabel = document.getElementById('browseChapterSelectLabel');
+        selectorsRow.style.display = 'block';
+
+        if (activeBrowseCorpus === 'talmud') {
+            chapterLabel.textContent = `2. בחר דף ועמוד במסכת ${shortBookDisplayName(bookName, activeBrowseCorpus)}:`;
+        } else if (activeBrowseCorpus === 'shulchan_aruch') {
+            chapterLabel.textContent = `2. בחר סימן ב${shortBookDisplayName(bookName, activeBrowseCorpus)}:`;
+        } else {
+            chapterLabel.textContent = `2. בחר פרק ב${shortBookDisplayName(bookName, activeBrowseCorpus)}:`;
+        }
+
+        chapterSelect.innerHTML = `<option value="">טוען רשימת פרקים...</option>`;
+
+        const url = `/api/tanakh-search/?type=book_chapters&target_book=${encodeURIComponent(bookName)}&corpus=${encodeURIComponent(activeBrowseCorpus)}`;
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                const chapters = data.chapters || [];
+                if (!chapters.length) {
+                    chapterSelect.innerHTML = `<option value="">לא נמצאו פרקים</option>`;
+                    return;
+                }
+                let html = `<option value="">-- בחר מרשימת הפרקים (${chapters.length}) לפתיחה מיידית --</option>`;
+                chapters.forEach(ch => {
+                    html += `<option value="${escapeJsAndHtml(ch)}">${formatChapterTitle(ch, bookName)}</option>`;
+                });
+                chapterSelect.innerHTML = html;
+
+                if (autoOpenFirstChapter && chapters[0]) {
+                    chapterSelect.value = chapters[0];
+                    openQuickSourceReader(bookName, chapters[0], activeBrowseCorpus);
+                }
+            })
+            .catch(() => {
+                chapterSelect.innerHTML = `<option value="">שגיאה בטעינת הפרקים</option>`;
+            });
+    };
+
+    window.onBrowseChapterDropdownChange = function(chapterVal) {
+        if (!chapterVal || !activeBrowseBook) return;
+        openQuickSourceReader(activeBrowseBook, chapterVal, activeBrowseCorpus);
+    };
+
+    // ========= כפתור ניקוי מסך התוצאות בצד שמאל =========
+    window.clearResultsScreen = function() {
+        const placeholder = document.getElementById('resultsPlaceholder');
+        const resultsArea = document.getElementById('resultsArea');
+        const exportToolbar = document.getElementById('exportToolbar');
+        const panelTitle = document.getElementById('mainResultsPanelTitle');
+
+        resultsArea.innerHTML = '';
+        resultsArea.style.display = 'none';
+        exportToolbar.style.display = 'none';
+        elsSkipsBar.style.display = 'none';
+        placeholder.style.display = 'block';
+        panelTitle.innerHTML = `<i class="bi bi-journal-richtext ms-2" style="color: #d4af37;"></i>תוצאות הסריקה במאגר`;
+        lastFetchedResults = [];
+    };
 
     const ALL_CORPORA_KEYS = ['torah', 'tanakh', 'mishnah', 'tosefta', 'talmud', 'yerushalmi', 'rambam', 'shulchan_aruch'];
     let selectedCorpora = new Set(['torah']);
@@ -958,7 +1304,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     function formatChapterTitle(chapterStr, bookStr) {
-        const c = String(chapterStr || '').trim();
+        const c = toHebrewLetters(String(chapterStr || '').trim());
         const b = String(bookStr || '').trim();
         if (c.startsWith('דף') || c.startsWith('פרק') || c.startsWith('סימן')) {
             return c;
@@ -1006,12 +1352,158 @@ document.addEventListener('DOMContentLoaded', function() {
         elsSkipsBar.style.display = 'flex';
     }
 
-    // שליפת מפרשים במעבר עכבר (Hover) או לחיצה
-    window.loadVerseCommentary = function(bookName, chapterName, verseNum, drawerId, forceToggle) {
+    // ========= מנוע שליפת מפרשים חכם (כולל גיבוי ישיר מול Sefaria API אם השרת החזיר ריק) =========
+    function flattenSefariaHe(heData) {
+        const out = [];
+        if (typeof heData === 'string') {
+            if (heData.trim()) out.push(formatDivineNameJS(heData.trim()));
+        } else if (Array.isArray(heData)) {
+            heData.forEach(item => {
+                out.push(...flattenSefariaHe(item));
+            });
+        }
+        return out;
+    }
+
+    function generateBookSpellingVariantsJS(titleStr) {
+        const variants = [titleStr];
+        const pairs = [
+            ['ייבום', 'יבום'],
+            ['כלאיים', 'כלאים'],
+            ['מעשה הקורבנות', 'מעשה הקרבנות'],
+            ['קורבן פסח', 'קרבן פסח'],
+            ['מלווה ולווה', 'מלוה ולוה'],
+            ['גזילה ואבידה', 'גזלה ואבדה'],
+            ['זכייה ומתנה', 'זכיה ומתנה'],
+            ['שאלה ופיקדון', 'שאלה ופקדון'],
+            ['מקוואות', 'מקואות'],
+            ['מקואות', 'מקוואות'],
+            ['ידים', 'ידיים'],
+            ['מדות', 'מידות'],
+            ['עדיות', 'עדויות'],
+            ['ביכורים ושאר מתנות כהונה שבגבולין', 'ביכורים'],
+            ['סנהדרין והעונשין המסורין להם', 'סנהדרין'],
+            ['עבודה זרה וחוקות הגויים', 'עבודה זרה']
+        ];
+        pairs.forEach(([a, b]) => {
+            if (titleStr.includes(a)) {
+                const v = titleStr.replace(a, b);
+                if (!variants.includes(v)) variants.push(v);
+            }
+        });
+        return variants;
+    }
+
+    async function fetchCommentaryFallbackJS(bookName, chapterName, verseVal) {
+        const b = String(bookName || '').trim().replace(/״/g, '"');
+        const c = String(chapterName || '').trim();
+        const chapInt = parseHebrewOrInt(c);
+        const verseInt = parseHebrewOrInt(verseVal);
+        const commLabel = getCommentatorLabelForBook(b, c);
+        if (!commLabel || chapInt <= 0 || verseInt <= 0) {
+            return { commentator: commLabel, comments: [] };
+        }
+
+        const baseRefs = [];
+        const directRefs = [];
+        let matchKeywords = [];
+
+        if (b.startsWith('רמב"ם ')) {
+            matchKeywords = ['מגיד משנה', 'Maggid Mishneh'];
+            const hilchot = b.replace(/^רמב"ם\s+/, '').trim();
+            generateBookSpellingVariantsJS(hilchot).forEach(hVar => {
+                baseRefs.push(`משנה תורה, ${hVar}.${chapInt}.${verseInt}`);
+                directRefs.push(`מגיד משנה על משנה תורה, ${hVar}.${chapInt}.${verseInt}`);
+            });
+        } else if (b.startsWith('שולחן ערוך ')) {
+            matchKeywords = ['באר היטב', "Be'er Heitev"];
+            const chelek = b.replace(/^שולחן ערוך\s+/, '').trim();
+            baseRefs.push(`שולחן ערוך, ${chelek}.${chapInt}.${verseInt}`);
+            directRefs.push(`באר היטב על שולחן ערוך, ${chelek}.${chapInt}.${verseInt}`);
+            directRefs.push(`באר היטב על שולחן ערוך, ${chelek}.${chapInt}`);
+        } else if (c.startsWith('דף') && !b.startsWith('ירושלמי ')) {
+            matchKeywords = ['רש"י', 'Rashi'];
+            const amud = (c.includes('עמוד ב') || c.includes(':')) ? 'b' : 'a';
+            baseRefs.push(`${b}.${chapInt}${amud}.${verseInt}`);
+            directRefs.push(`רש"י על ${b}.${chapInt}${amud}.${verseInt}`);
+        } else if (BOOKS_CATALOG.tanakh.flatMap(g => g.books).includes(b)) {
+            matchKeywords = ['רש"י', 'Rashi'];
+            baseRefs.push(`${b}.${chapInt}.${verseInt}`);
+            directRefs.push(`רש"י על ${b}.${chapInt}.${verseInt}`);
+        } else {
+            matchKeywords = ['ברטנורא', 'Bartenura'];
+            generateBookSpellingVariantsJS(b).forEach(mVar => {
+                baseRefs.push(`משנה ${mVar}.${chapInt}.${verseInt}`);
+                directRefs.push(`ברטנורא על משנה ${mVar}.${chapInt}.${verseInt}`);
+            });
+        }
+
+        for (const bRef of baseRefs) {
+            try {
+                const resp = await fetch(`https://www.sefaria.org/api/texts/${encodeURIComponent(bRef)}?commentary=1&context=0&pad=0`);
+                if (!resp.ok) continue;
+                const data = await resp.json();
+                const commList = Array.isArray(data.commentary) ? data.commentary : [];
+                const collected = [];
+                commList.forEach(item => {
+                    const colTitle = typeof item.collectiveTitle === 'object' && item.collectiveTitle
+                        ? (item.collectiveTitle.he || item.collectiveTitle.en || '')
+                        : String(item.collectiveTitle || '');
+                    const heRef = String(item.sourceHeRef || item.heRef || '');
+                    const commentatorStr = String(item.commentator || '');
+                    const combinedTitle = `${colTitle} ${heRef} ${commentatorStr}`;
+                    if (matchKeywords.some(k => combinedTitle.includes(k))) {
+                        flattenSefariaHe(item.he).forEach(line => {
+                            if (!collected.includes(line)) collected.push(line);
+                        });
+                    }
+                });
+                if (collected.length > 0) {
+                    return { commentator: commLabel, comments: collected.slice(0, 8) };
+                }
+            } catch (e) {}
+        }
+
+        for (const dRef of directRefs) {
+            try {
+                const resp = await fetch(`https://www.sefaria.org/api/texts/${encodeURIComponent(dRef)}?context=0&pad=0`);
+                if (!resp.ok) continue;
+                const data = await resp.json();
+                const lines = flattenSefariaHe(data.he);
+                if (lines.length > 0) {
+                    return { commentator: commLabel, comments: lines.slice(0, 8) };
+                }
+            } catch (e) {}
+        }
+
+        return { commentator: commLabel, comments: [] };
+    }
+
+    function buildCommentsDrawerHtml(commName, commentsArr, drawerId) {
+        let html = `<div class="d-flex justify-content-between align-items-center mb-2 pb-1" style="border-bottom: 1px solid #e2d9c5;">
+            <strong style="color: #8c6239; font-size: 0.95rem;"><i class="bi bi-chat-right-quote-fill ms-1" style="color: #d4af37;"></i>פירוש ${commName}:</strong>
+            <button type="button" class="btn-close" style="font-size: 0.65rem;" onclick="document.getElementById('${drawerId}').style.display='none'"></button>
+        </div>`;
+        commentsArr.forEach(cText => {
+            html += `<div class="mb-2" style="font-family: 'Frank Ruhl Libre', serif;">${cText}</div>`;
+        });
+        return html;
+    }
+
+    function buildEmptyCommentsHtml(commName, drawerId) {
+        return `<div class="d-flex justify-content-between align-items-center text-muted small">
+            <span>לא נמצא דיבור המתחיל של ${commName} על הלכה/פסוק זה.</span>
+            <button type="button" class="btn-close" style="font-size: 0.65rem;" onclick="document.getElementById('${drawerId}').style.display='none'"></button>
+        </div>`;
+    }
+
+    // forceClick === true: המשתמש לחץ על הכפתור (נציג הודעה אם אין פירוש)
+    // forceClick === false: המשתמש רק ריחף עם העכבר (אם אין פירוש - לא פותחים כלום ולא מציגים "לא נמצא"!)
+    window.loadVerseCommentary = async function(bookName, chapterName, verseNum, drawerId, forceClick) {
         const drawerEl = document.getElementById(drawerId);
         if (!drawerEl) return;
 
-        if (forceToggle && drawerEl.style.display === 'block' && drawerEl.getAttribute('data-loaded') === 'true') {
+        if (forceClick && drawerEl.style.display === 'block' && drawerEl.getAttribute('data-loaded') === 'true') {
             drawerEl.style.display = 'none';
             return;
         }
@@ -1019,48 +1511,62 @@ document.addEventListener('DOMContentLoaded', function() {
         const commLabel = getCommentatorLabelForBook(bookName, chapterName);
         if (!commLabel) return;
 
-        drawerEl.style.display = 'block';
         const cacheKey = `${bookName}|${chapterName}|${verseNum}`;
 
         if (commentaryMemoryCache[cacheKey]) {
-            drawerEl.innerHTML = commentaryMemoryCache[cacheKey];
-            drawerEl.setAttribute('data-loaded', 'true');
+            const cachedObj = commentaryMemoryCache[cacheKey];
+            if (cachedObj.comments && cachedObj.comments.length > 0) {
+                drawerEl.innerHTML = buildCommentsDrawerHtml(cachedObj.commentator || commLabel, cachedObj.comments, drawerId);
+                drawerEl.style.display = 'block';
+                drawerEl.setAttribute('data-loaded', 'true');
+            } else if (forceClick) {
+                drawerEl.innerHTML = buildEmptyCommentsHtml(cachedObj.commentator || commLabel, drawerId);
+                drawerEl.style.display = 'block';
+                drawerEl.setAttribute('data-loaded', 'true');
+            }
             return;
         }
 
-        drawerEl.innerHTML = `
-            <div class="d-flex align-items-center gap-2 text-muted small">
-                <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
-                <span>טוען פירוש <b>${commLabel}</b> על המקור...</span>
-            </div>
-        `;
+        if (forceClick) {
+            drawerEl.style.display = 'block';
+            drawerEl.innerHTML = `
+                <div class="d-flex align-items-center gap-2 text-muted small">
+                    <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
+                    <span>טוען פירוש <b>${commLabel}</b> על המקור...</span>
+                </div>
+            `;
+        }
 
-        const url = `/api/tanakh-search/?type=commentary&target_book=${encodeURIComponent(bookName)}&target_chapter=${encodeURIComponent(chapterName)}&target_verse=${encodeURIComponent(verseNum)}`;
-        fetch(url)
-            .then(r => r.json())
-            .then(data => {
-                let html = '';
-                if (data.comments && data.comments.length > 0) {
-                    html += `<div class="d-flex justify-content-between align-items-center mb-2 pb-1" style="border-bottom: 1px solid #e2d9c5;">
-                        <strong style="color: #8c6239; font-size: 0.95rem;"><i class="bi bi-chat-right-quote-fill ms-1" style="color: #d4af37;"></i>פירוש ${data.commentator || commLabel}:</strong>
-                        <button type="button" class="btn-close" style="font-size: 0.65rem;" onclick="document.getElementById('${drawerId}').style.display='none'"></button>
-                    </div>`;
-                    data.comments.forEach(cText => {
-                        html += `<div class="mb-2" style="font-family: 'Frank Ruhl Libre', serif;">${cText}</div>`;
-                    });
-                } else {
-                    html = `<div class="d-flex justify-content-between align-items-center text-muted small">
-                        <span>לא נמצא דיבור המתחיל של ${data.commentator || commLabel} על סעיף/פסוק זה.</span>
-                        <button type="button" class="btn-close" style="font-size: 0.65rem;" onclick="document.getElementById('${drawerId}').style.display='none'"></button>
-                    </div>`;
+        let finalData = { commentator: commLabel, comments: [] };
+        try {
+            const url = `/api/tanakh-search/?type=commentary&target_book=${encodeURIComponent(bookName)}&target_chapter=${encodeURIComponent(chapterName)}&target_verse=${encodeURIComponent(verseNum)}`;
+            const resp = await fetch(url);
+            if (resp.ok) {
+                const serverData = await resp.json();
+                if (serverData && Array.isArray(serverData.comments) && serverData.comments.length > 0) {
+                    finalData = serverData;
                 }
-                commentaryMemoryCache[cacheKey] = html;
-                drawerEl.innerHTML = html;
-                drawerEl.setAttribute('data-loaded', 'true');
-            })
-            .catch(() => {
-                drawerEl.innerHTML = `<div class="text-danger small">שגיאה בטעינת הפירוש.</div>`;
-            });
+            }
+        } catch (e) {}
+
+        // אם השרת החזיר ריק - מבצעים שליפת גיבוי ישירה כדי שהפירוש תמיד יימצא אם קיים
+        if (!finalData.comments || finalData.comments.length === 0) {
+            finalData = await fetchCommentaryFallbackJS(bookName, chapterName, verseNum);
+        }
+
+        commentaryMemoryCache[cacheKey] = finalData;
+
+        if (finalData.comments && finalData.comments.length > 0) {
+            drawerEl.innerHTML = buildCommentsDrawerHtml(finalData.commentator || commLabel, finalData.comments, drawerId);
+            drawerEl.style.display = 'block';
+            drawerEl.setAttribute('data-loaded', 'true');
+        } else if (forceClick) {
+            drawerEl.innerHTML = buildEmptyCommentsHtml(finalData.commentator || commLabel, drawerId);
+            drawerEl.style.display = 'block';
+            drawerEl.setAttribute('data-loaded', 'true');
+        } else {
+            drawerEl.style.display = 'none';
+        }
     };
 
     window.handleVerseMouseEnter = function(bookName, chapterName, verseNum, drawerId) {
@@ -1077,11 +1583,10 @@ document.addEventListener('DOMContentLoaded', function() {
         clearTimeout(hoverTimer);
     };
 
-    // פתיחת כפתורי AI ופרק מלא לפי אינדקס התוצאה (מונע ב-100% שבירה בגלל גרשיים ברמב"ם)
     window.openAutomatedCodeFinderByIdx = function(idx) {
         const res = lastFetchedResults[idx];
         if (!res) return;
-        openAutomatedCodeFinder(res.book, res.chapter, res.verse);
+        openAutomatedCodeFinder(res.book, res.chapter, res.raw_verse || res.verse);
     };
 
     window.openFullChapterModalByIdx = function(idx) {
@@ -1146,7 +1651,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 renderSkipsButtons(data.available_skips || [], data.active_skip);
 
-                const results = data.results || [];
+                const results = (data.results || []).map(r => ({
+                    ...r,
+                    raw_verse: r.raw_verse || r.verse,
+                    verse: toHebrewLetters(r.verse)
+                }));
                 lastFetchedResults = results;
                 const activeCard = document.querySelector('#actionGrid .action-luxury-card.active .action-card-header');
                 lastSearchMeta = {
@@ -1156,7 +1665,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 };
 
                 if (results.length === 0 || data.total === 0) {
-                    exportToolbar.style.display = 'none';
+                    exportToolbar.style.display = 'flex';
                     resultsArea.innerHTML = `<div class="alert alert-info shadow-sm rounded-3 fs-5"><i class="bi bi-info-circle-fill ms-2"></i>לא נמצאו תוצאות התואמות לחיפוש במאגרים שסומנו.</div>`;
                     return;
                 }
@@ -1185,26 +1694,27 @@ document.addEventListener('DOMContentLoaded', function() {
                     const matchBadge = res.match_type ? `<span class="badge bg-light text-dark border shadow-sm px-3 py-2">${res.match_type}</span>` : '';
                     const verseLabel = res.verse_label || 'פסוק';
                     const chDisplay = formatChapterTitle(res.chapter, res.book);
+                    const hebVerse = toHebrewLetters(res.verse);
                     const safeBook = escapeJsAndHtml(res.book);
                     const safeChapter = escapeJsAndHtml(res.chapter);
-                    const safeVerse = escapeJsAndHtml(res.verse);
+                    const safeRawVerse = escapeJsAndHtml(res.raw_verse || res.verse);
                     const commLabel = getCommentatorLabelForBook(res.book, res.chapter);
                     const drawerId = `commDrawer_res_${idx}`;
 
                     const commBtnHtml = commLabel ? `
-                        <button type="button" class="commentary-badge-trigger" onclick="loadVerseCommentary('${safeBook}', '${safeChapter}', '${safeVerse}', '${drawerId}', true)">
+                        <button type="button" class="commentary-badge-trigger" onclick="loadVerseCommentary('${safeBook}', '${safeChapter}', '${safeRawVerse}', '${drawerId}', true)">
                             <i class="bi bi-chat-right-text"></i> פירוש ${commLabel}
                         </button>
                     ` : '';
 
                     html += `
                         <div class="list-group-item p-4 mb-3 border-0 rounded-4 shadow-sm" style="background-color: #fcfbf8; border-right: 5px solid #d4af37 !important;"
-                             onmouseenter="handleVerseMouseEnter('${safeBook}', '${safeChapter}', '${safeVerse}', '${drawerId}')"
+                             onmouseenter="handleVerseMouseEnter('${safeBook}', '${safeChapter}', '${safeRawVerse}', '${drawerId}')"
                              onmouseleave="handleVerseMouseLeave()">
                             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
                                 <strong class="fs-5" style="color: #1e293b;">
                                     <i class="bi bi-book ms-2" style="color: #d4af37;"></i>
-                                    ${res.book} | ${chDisplay} | ${verseLabel} ${res.verse}
+                                    ${res.book} | ${chDisplay} | ${verseLabel} ${hebVerse}
                                 </strong>
                                 <div class="d-flex align-items-center flex-wrap gap-2">
                                     ${matchBadge}
@@ -1259,46 +1769,23 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    // פתיחה מהירה של מקור / פרק מלא ישירות בלוח המרכזי
-    window.quickOpenExample = function(refStr) {
-        const inp = document.getElementById('quickSourceRefInput');
-        inp.value = refStr;
-        openQuickSourceReader();
-    };
-
-    const quickInpEl = document.getElementById('quickSourceRefInput');
-    if (quickInpEl) {
-        quickInpEl.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                openQuickSourceReader();
-            }
-        });
-    }
-
-    window.openQuickSourceReader = function(explicitBook, explicitChapter) {
-        const refInput = document.getElementById('quickSourceRefInput');
+    // ========= פתיחת פרק שלם לעיון ישירות בלוח המרכזי =========
+    window.openQuickSourceReader = function(explicitBook, explicitChapter, corpusHint) {
+        if (!explicitBook) return;
         const placeholder = document.getElementById('resultsPlaceholder');
         const resultsArea = document.getElementById('resultsArea');
         const exportToolbar = document.getElementById('exportToolbar');
         const panelTitle = document.getElementById('mainResultsPanelTitle');
+        const cHint = corpusHint || activeBrowseCorpus || '';
 
-        let url = `/api/tanakh-search/?type=quick_open`;
-        if (explicitBook && explicitChapter) {
-            url += `&target_book=${encodeURIComponent(explicitBook)}&target_chapter=${encodeURIComponent(explicitChapter)}`;
-            refInput.value = `${explicitBook} ${formatChapterTitle(explicitChapter, explicitBook)}`;
-        } else {
-            const qRef = refInput.value.trim();
-            if (!qRef) return;
-            url += `&ref=${encodeURIComponent(qRef)}`;
-        }
+        let url = `/api/tanakh-search/?type=quick_open&target_book=${encodeURIComponent(explicitBook)}&target_chapter=${encodeURIComponent(explicitChapter || '')}&corpus=${encodeURIComponent(cHint)}`;
 
         placeholder.style.display = 'none';
         resultsArea.style.display = 'block';
         resultsArea.innerHTML = `
             <div class="text-center py-5">
                 <div class="spinner-border text-warning" style="width: 3rem; height: 3rem;" role="status"></div>
-                <h5 class="mt-3 fw-bold" style="color: #1e293b;">פותח את המקור המבוקש...</h5>
+                <h5 class="mt-3 fw-bold" style="color: #1e293b;">פותח את הפרק לעיון...</h5>
             </div>
         `;
 
@@ -1306,8 +1793,8 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(r => r.json())
             .then(data => {
                 if (data.error || !data.verses || !data.verses.length) {
-                    exportToolbar.style.display = 'none';
-                    resultsArea.innerHTML = `<div class="alert alert-warning shadow-sm rounded-3 fs-6"><i class="bi bi-exclamation-triangle-fill ms-2"></i>${data.error || 'לא נמצא המקור המבוקש. נסה לכתוב למשל: רמב"ם הלכות ברכות פרק ג'}</div>`;
+                    exportToolbar.style.display = 'flex';
+                    resultsArea.innerHTML = `<div class="alert alert-warning shadow-sm rounded-3 fs-6"><i class="bi bi-exclamation-triangle-fill ms-2"></i>${data.error || 'לא נמצא הפרק המבוקש.'}</div>`;
                     return;
                 }
 
@@ -1319,12 +1806,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 const safeChapter = escapeJsAndHtml(chName);
                 const commLabel = getCommentatorLabelForBook(bName, chName);
 
+                const chapterSelectEl = document.getElementById('browseChapterSelect');
+                if (chapterSelectEl && activeBrowseBook === bName) {
+                    chapterSelectEl.value = chName;
+                }
+
                 panelTitle.innerHTML = `<i class="bi bi-book-half ms-2" style="color: #d4af37;"></i>עיון במקור: ${bName} — ${chDisplay}`;
 
                 lastFetchedResults = data.verses.map(v => ({
                     book: bName,
                     chapter: chName,
-                    verse: v.verse,
+                    raw_verse: v.raw_verse || v.verse,
+                    verse: toHebrewLetters(v.verse),
                     verse_label: vLabel,
                     text: v.text,
                     match_type: 'עיון בפרק מלא'
@@ -1338,7 +1831,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 let chapterSelectHtml = '';
                 if (Array.isArray(data.all_chapters) && data.all_chapters.length > 1) {
-                    chapterSelectHtml = `<select class="form-select form-select-sm fw-bold border-warning" style="width: auto; min-width: 130px;" onchange="openQuickSourceReader('${safeBook}', this.value)">`;
+                    chapterSelectHtml = `<select class="form-select form-select-sm fw-bold border-warning" style="width: auto; min-width: 140px; background-color: #fff;" onchange="openQuickSourceReader('${safeBook}', this.value, '${escapeJsAndHtml(cHint)}')">`;
                     data.all_chapters.forEach(chOpt => {
                         const sel = (String(chOpt) === String(chName)) ? 'selected' : '';
                         chapterSelectHtml += `<option value="${escapeJsAndHtml(chOpt)}" ${sel}>${formatChapterTitle(chOpt, bName)}</option>`;
@@ -1347,10 +1840,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 const prevBtn = data.prev_chapter
-                    ? `<button type="button" class="btn btn-sm btn-outline-dark fw-bold rounded-pill px-3" onclick="openQuickSourceReader('${safeBook}', '${escapeJsAndHtml(data.prev_chapter)}')"><i class="bi bi-arrow-right ms-1"></i>${formatChapterTitle(data.prev_chapter, bName)}</button>`
+                    ? `<button type="button" class="btn btn-sm btn-outline-dark fw-bold rounded-pill px-3" onclick="openQuickSourceReader('${safeBook}', '${escapeJsAndHtml(data.prev_chapter)}', '${escapeJsAndHtml(cHint)}')"><i class="bi bi-arrow-right ms-1"></i>${formatChapterTitle(data.prev_chapter, bName)}</button>`
                     : `<span></span>`;
                 const nextBtn = data.next_chapter
-                    ? `<button type="button" class="btn btn-sm btn-outline-dark fw-bold rounded-pill px-3" onclick="openQuickSourceReader('${safeBook}', '${escapeJsAndHtml(data.next_chapter)}')">${formatChapterTitle(data.next_chapter, bName)}<i class="bi bi-arrow-left me-1"></i></button>`
+                    ? `<button type="button" class="btn btn-sm btn-outline-dark fw-bold rounded-pill px-3" onclick="openQuickSourceReader('${safeBook}', '${escapeJsAndHtml(data.next_chapter)}', '${escapeJsAndHtml(cHint)}')">${formatChapterTitle(data.next_chapter, bName)}<i class="bi bi-arrow-left me-1"></i></button>`
                     : `<span></span>`;
 
                 let html = `
@@ -1366,20 +1859,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
 
                 data.verses.forEach((v, idx) => {
-                    const safeVerse = escapeJsAndHtml(v.verse);
+                    const hebVerse = toHebrewLetters(v.verse);
+                    const safeRawVerse = escapeJsAndHtml(v.raw_verse || v.verse);
                     const drawerId = `commDrawer_quick_${idx}`;
                     const commBtnHtml = commLabel ? `
-                        <button type="button" class="commentary-badge-trigger" onclick="loadVerseCommentary('${safeBook}', '${safeChapter}', '${safeVerse}', '${drawerId}', true)">
+                        <button type="button" class="commentary-badge-trigger" onclick="loadVerseCommentary('${safeBook}', '${safeChapter}', '${safeRawVerse}', '${drawerId}', true)">
                             <i class="bi bi-chat-right-text"></i> פירוש ${commLabel}
                         </button>
                     ` : '';
 
                     html += `
                         <div class="list-group-item p-3 mb-2 border-0 rounded-3 shadow-sm" style="background-color: #fcfbf8; border-right: 4px solid #d4af37 !important;"
-                             onmouseenter="handleVerseMouseEnter('${safeBook}', '${safeChapter}', '${safeVerse}', '${drawerId}')"
+                             onmouseenter="handleVerseMouseEnter('${safeBook}', '${safeChapter}', '${safeRawVerse}', '${drawerId}')"
                              onmouseleave="handleVerseMouseLeave()">
                             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                                <span class="verse-num-badge">${vLabel} ${v.verse}</span>
+                                <span class="verse-num-badge">${vLabel} ${hebVerse}</span>
                                 <div class="d-flex align-items-center gap-2">
                                     ${commBtnHtml}
                                     <button type="button" class="result-ai-code-btn py-1 px-2" style="font-size: 0.78rem;" onclick="openAutomatedCodeFinderByIdx(${idx})">
@@ -1450,8 +1944,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!res) return;
         const chDisplay = formatChapterTitle(res.chapter, res.book);
         const verseLabel = res.verse_label || 'פסוק';
+        const hebVerse = toHebrewLetters(res.verse);
         const cleanTxt = stripHtmlTags(res.text);
-        const formatted = `"${cleanTxt}" (${res.book}, ${chDisplay}, ${verseLabel} ${res.verse})`;
+        const formatted = `"${cleanTxt}" (${res.book}, ${chDisplay}, ${verseLabel} ${hebVerse})`;
         navigator.clipboard.writeText(formatted).then(() => {
             showToast(`המקור (${res.book} ${chDisplay}) הועתק ללוח!`);
         });
@@ -1462,10 +1957,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!res) return;
         const chDisplay = formatChapterTitle(res.chapter, res.book);
         const verseLabel = res.verse_label || 'פסוק';
+        const hebVerse = toHebrewLetters(res.verse);
         const cleanTxt = stripHtmlTags(res.text);
         const shareUrl = `${window.location.origin}${window.location.pathname}?q=${encodeURIComponent(lastSearchMeta.query)}`;
         triggerUniversalShare(
-            `${res.book} | ${chDisplay} | ${verseLabel} ${res.verse}`,
+            `${res.book} | ${chDisplay} | ${verseLabel} ${hebVerse}`,
             `"${cleanTxt}"`,
             shareUrl
         );
@@ -1480,9 +1976,10 @@ document.addEventListener('DOMContentLoaded', function() {
         lastFetchedResults.forEach((res, i) => {
             const chDisplay = formatChapterTitle(res.chapter, res.book);
             const verseLabel = res.verse_label || 'פסוק';
+            const hebVerse = toHebrewLetters(res.verse);
             const cleanTxt = stripHtmlTags(res.text);
             const note = res.match_type ? ` [${res.match_type}]` : '';
-            lines.push(`${i + 1}. ${res.book}, ${chDisplay}, ${verseLabel} ${res.verse}${note}:`);
+            lines.push(`${i + 1}. ${res.book}, ${chDisplay}, ${verseLabel} ${hebVerse}${note}:`);
             lines.push(`"${cleanTxt}"\n`);
         });
         navigator.clipboard.writeText(lines.join('\n')).then(() => {
@@ -1496,8 +1993,9 @@ document.addEventListener('DOMContentLoaded', function() {
         lastFetchedResults.slice(0, 5).forEach((res, i) => {
             const chDisplay = formatChapterTitle(res.chapter, res.book);
             const verseLabel = res.verse_label || 'פסוק';
+            const hebVerse = toHebrewLetters(res.verse);
             const cleanTxt = stripHtmlTags(res.text);
-            previewLines.push(`${i + 1}. ${res.book} (${chDisplay}, ${verseLabel} ${res.verse}): "${cleanTxt}"`);
+            previewLines.push(`${i + 1}. ${res.book} (${chDisplay}, ${verseLabel} ${hebVerse}): "${cleanTxt}"`);
         });
         const shareUrl = `${window.location.origin}${window.location.pathname}?q=${encodeURIComponent(lastSearchMeta.query)}`;
         triggerUniversalShare(
@@ -1516,8 +2014,9 @@ document.addEventListener('DOMContentLoaded', function() {
         lastFetchedResults.forEach((res, i) => {
             const chDisplay = formatChapterTitle(res.chapter, res.book);
             const verseLabel = res.verse_label || 'פסוק';
+            const hebVerse = toHebrewLetters(res.verse);
             const cleanTxt = stripHtmlTags(res.text);
-            lines.push(`${i + 1}. ${res.book} | ${chDisplay} | ${verseLabel} ${res.verse} (${res.match_type || ''}):`);
+            lines.push(`${i + 1}. ${res.book} | ${chDisplay} | ${verseLabel} ${hebVerse} (${res.match_type || ''}):`);
             lines.push(`${cleanTxt}\n`);
         });
         const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
@@ -1558,25 +2057,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 const safeBook = escapeJsAndHtml(bookName);
                 const safeChapter = escapeJsAndHtml(chapterName);
                 const commLabel = getCommentatorLabelForBook(bookName, chapterName);
+                const targetHeb = toHebrewLetters(targetVerse);
 
                 let html = '';
                 verses.forEach((v, idx) => {
-                    const isTarget = String(v.verse).trim() === String(targetVerse).trim();
+                    const vHeb = toHebrewLetters(v.verse);
+                    const isTarget = vHeb === targetHeb || String(v.raw_verse || v.verse).trim() === String(targetVerse).trim();
                     const rowId = isTarget ? 'id="modalTargetVerseRow"' : '';
-                    const safeVerse = escapeJsAndHtml(v.verse);
+                    const safeRawVerse = escapeJsAndHtml(v.raw_verse || v.verse);
                     const drawerId = `commDrawer_modal_${idx}`;
                     const commBtn = commLabel ? `
-                        <button type="button" class="commentary-badge-trigger float-start" onclick="loadVerseCommentary('${safeBook}', '${safeChapter}', '${safeVerse}', '${drawerId}', true)">
-                            <i class="bi bi-chat-right-text"></i> ${commLabel}
+                        <button type="button" class="commentary-badge-trigger float-start" onclick="loadVerseCommentary('${safeBook}', '${safeChapter}', '${safeRawVerse}', '${drawerId}', true)">
+                            <i class="bi bi-chat-right-text"></i> פירוש ${commLabel}
                         </button>
                     ` : '';
 
                     html += `
                         <div ${rowId} class="chapter-context-verse ${isTarget ? 'target-highlight' : ''}"
-                             onmouseenter="handleVerseMouseEnter('${safeBook}', '${safeChapter}', '${safeVerse}', '${drawerId}')"
+                             onmouseenter="handleVerseMouseEnter('${safeBook}', '${safeChapter}', '${safeRawVerse}', '${drawerId}')"
                              onmouseleave="handleVerseMouseLeave()">
                             ${commBtn}
-                            <span class="verse-num-badge">${vLbl} ${v.verse}</span>
+                            <span class="verse-num-badge">${vLbl} ${vHeb}</span>
                             <span class="fs-4 lh-lg text-dark" style="font-family: 'Frank Ruhl Libre', serif;">${v.text}</span>
                             <div id="${drawerId}" class="commentary-inline-drawer"></div>
                         </div>
@@ -1617,8 +2118,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const modalEl = document.getElementById('codeFinderModal');
         const bodyEl = document.getElementById('codeFinderModalBody');
         const titleEl = document.getElementById('codeFinderModalTitle');
+        const hebVerse = toHebrewLetters(verseNum);
 
-        titleEl.innerHTML = `<i class="bi bi-stars ms-2"></i>ניתוח AI של הנתונים: ${bookName} (${formatChapterTitle(chapterName, bookName)}, ${verseNum})`;
+        titleEl.innerHTML = `<i class="bi bi-stars ms-2"></i>ניתוח AI של הנתונים: ${bookName} (${formatChapterTitle(chapterName, bookName)}, ${hebVerse})`;
         bodyEl.innerHTML = `
             <div class="text-center py-5">
                 <div class="spinner-border text-warning" role="status"></div>
@@ -1640,7 +2142,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 let html = `
                     <div class="p-3 mb-3 rounded-3" style="background: #fff8dc; border: 1.5px solid #d4af37;">
-                        <div class="fw-bold text-muted small mb-1">${data.source_ref} | גימטריה כוללת של המקור: <span class="text-dark fw-bold">${data.verse_gematria}</span></div>
+                        <div class="fw-bold text-muted small mb-1">${toHebrewLetters(data.source_ref)} | גימטריה כוללת של המקור: <span class="text-dark fw-bold">${data.verse_gematria}</span></div>
                         <div class="fs-4 lh-lg text-dark" style="font-family: 'Frank Ruhl Libre', serif;">${data.text}</div>
                     </div>
                 `;
@@ -1680,7 +2182,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 if (data.equal_verses && data.equal_verses.length) {
                     data.equal_verses.forEach(ev => {
-                        html += `<li>פסוק מקביל בגימטריה (${data.verse_gematria}): <b>${ev.ref}</b> — "${ev.text}"</li>`;
+                        html += `<li>פסוק מקביל בגימטריה (${data.verse_gematria}): <b>${toHebrewLetters(ev.ref)}</b> — "${ev.text}"</li>`;
                     });
                 }
                 html += `</ul></div></div></div>`;

@@ -199,22 +199,57 @@ def ratelimit(rate=30, timeout=60):
 def int_to_hebrew(num):
     if num <= 0:
         return str(num)
-    hebrew_letters = {
-        400: 'ת', 300: 'ש', 200: 'ר', 100: 'ק',
-        90: 'צ', 80: 'פ', 70: 'ע', 60: 'ס', 50: 'נ', 40: 'מ', 30: 'ל', 20: 'כ', 10: 'י',
-        9: 'ט', 8: 'ח', 7: 'ז', 6: 'ו', 5: 'ה', 4: 'ד', 3: 'ג', 2: 'ב', 1: 'א'
-    }
+    hebrew_letters = [
+        (400, 'ת'), (300, 'ש'), (200, 'ר'), (100, 'ק'),
+        (90, 'צ'), (80, 'פ'), (70, 'ע'), (60, 'ס'), (50, 'נ'), (40, 'מ'), (30, 'ל'), (20, 'כ'), (10, 'י'),
+        (9, 'ט'), (8, 'ח'), (7, 'ז'), (6, 'ו'), (5, 'ה'), (4, 'ד'), (3, 'ג'), (2, 'ב'), (1, 'א')
+    ]
     result = ""
-    rem = num % 100
-    if rem in (15, 16):
-        result += 'טו' if rem == 15 else 'טז'
-        num -= rem
-
-    for val in hebrew_letters.keys():
-        while num >= val:
-            result += hebrew_letters[val]
+    while num >= 400:
+        result += 'ת'
+        num -= 400
+    for val, letter in hebrew_letters:
+        if num in (15, 16):
+            result += 'טו' if num == 15 else 'טז'
+            num = 0
+            break
+        if num >= val:
+            result += letter
             num -= val
     return result
+
+
+def format_verse_hebrew(val):
+    """ממיר מספר פסוק/הלכה/משנה/סעיף לאותיות עבריות (למשל 6 -> ו, 15 -> טו)"""
+    s = str(val or '').strip()
+    if not s:
+        return ''
+    if s.isdigit():
+        return int_to_hebrew(int(s))
+    m = re.match(r'^(\d+)$', s)
+    if m:
+        return int_to_hebrew(int(m.group(1)))
+    return s
+
+
+def parse_hebrew_number(val):
+    """ממיר מספר פרק או פסוק (בעברית או במספרים, כגון 'פרק ב' או '6' או 'טו') למספר שלם מדויק"""
+    s = str(val or '').strip()
+    if not s:
+        return 0
+    if s.isdigit():
+        return int(s)
+    m = re.search(r'\d+', s)
+    if m:
+        return int(m.group(0))
+    s_clean = re.sub(r'^(פרק|סימן|דף|הלכה|משנה|סעיף)\s+', '', s).strip()
+    s_clean = re.sub(r'(עמוד\s+[אב])', '', s_clean).strip()
+    parts = s_clean.split()
+    if parts:
+        heb_token = re.sub(r'[^א-ת]', '', parts[0])
+        if heb_token:
+            return sum(HEBREW_GEMATRIA.get(c, 0) for c in heb_token)
+    return 0
 
 
 def translate_haftarah(text):
@@ -1699,82 +1734,184 @@ def _resolve_torah_book_in_db(book_name):
     return b
 
 
+def _resolve_torah_verse_obj(book_name, chapter_name, verse_val):
+    b = _resolve_torah_book_in_db(book_name)
+    c = str(chapter_name or '').strip()
+    v_raw = str(verse_val or '').strip()
+    if not (b and c and v_raw):
+        return None
+    v_int = parse_hebrew_number(v_raw)
+    v_heb = int_to_hebrew(v_int) if v_int > 0 else v_raw
+    candidates = [v_raw, str(v_int), v_heb, f"{v_heb}'"]
+    return TorahText.objects.filter(book=b, chapter=c, verse__in=candidates).first()
+
+
+def _generate_spelling_variants(title_str):
+    variants = [title_str]
+    replacements = [
+        ('ייבום', 'יבום'),
+        ('כלאיים', 'כלאים'),
+        ('מעשה הקורבנות', 'מעשה הקרבנות'),
+        ('קורבן פסח', 'קרבן פסח'),
+        ('מלווה ולווה', 'מלוה ולוה'),
+        ('גזילה ואבידה', 'גזלה ואבדה'),
+        ('זכייה ומתנה', 'זכיה ומתנה'),
+        ('שאלה ופיקדון', 'שאלה ופקדון'),
+        ('מקוואות', 'מקואות'),
+        ('מקואות', 'מקוואות'),
+        ('ידים', 'ידיים'),
+        ('מדות', 'מידות'),
+        ('עדיות', 'עדויות'),
+        ('ביכורים ושאר מתנות כהונה שבגבולין', 'ביכורים'),
+        ('סנהדרין והעונשין המסורין להם', 'סנהדרין'),
+        ('תפילה וברכת כהנים', 'תפילה וברכות כהנים'),
+        ('תפילין ומזוזה וספר תורה', 'תפילין ומזוזה וספר תורה'),
+        ('עבודה זרה וחוקות הגויים', 'עבודה זרה'),
+    ]
+    for old_w, new_w in replacements:
+        if old_w in title_str:
+            v_new = title_str.replace(old_w, new_w)
+            if v_new not in variants:
+                variants.append(v_new)
+    return variants
+
+
+def _extract_sefaria_he_list(he_data):
+    flat = []
+    if isinstance(he_data, str):
+        if he_data.strip():
+            flat.append(format_divine_name(he_data.strip()))
+    elif isinstance(he_data, list):
+        for item in he_data:
+            flat.extend(_extract_sefaria_he_list(item))
+    return flat
+
+
 def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
-    b_str = str(book_name or '').strip().replace('״', '"')
+    b_str = _resolve_torah_book_in_db(book_name).replace('״', '"')
     c_str = str(chapter_name or '').strip()
     v_str = str(verse_num or '').strip()
 
-    cache_key = f"torah_comm_v2_{b_str}_{c_str}_{v_str}"
+    chap_int = parse_hebrew_number(c_str)
+    verse_int = parse_hebrew_number(v_str)
+
+    cache_key = f"torah_comm_v5_{b_str}_{c_str}_{verse_int}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
 
-    ch_clean = re.sub(r'^(פרק|סימן|דף)\s+', '', c_str).strip()
-    ch_clean = re.sub(r'["\'׳״]', '', ch_clean)
-    v_clean = int_to_hebrew(int(v_str)) if v_str.isdigit() else re.sub(r'["\'׳״]', '', v_str)
-
     target_commentator = 'רש"י'
-    he_refs_to_try = []
+    direct_refs = []
+    base_refs_with_comm = []
+    preferred_comm_names = []
 
     if b_str.startswith('רמב"ם '):
         target_commentator = 'מגיד משנה'
-        hilchot = b_str.replace('רמב"ם ', '', 1).strip()
-        he_refs_to_try.append(f"מגיד משנה על משנה תורה, {hilchot} {ch_clean}:{v_clean}")
-        he_refs_to_try.append(f"כסף משנה על משנה תורה, {hilchot} {ch_clean}:{v_clean}")
+        preferred_comm_names = ['מגיד משנה']
+        hilchot_base = b_str.replace('רמב"ם ', '', 1).strip()
+        for h_var in _generate_spelling_variants(hilchot_base):
+            direct_refs.append(f"מגיד משנה על משנה תורה, {h_var}.{chap_int}.{verse_int}")
+            base_refs_with_comm.append(f"משנה תורה, {h_var}.{chap_int}.{verse_int}")
     elif b_str.startswith('שולחן ערוך '):
         target_commentator = 'באר היטב'
+        preferred_comm_names = ['באר היטב']
         chelek = b_str.replace('שולחן ערוך ', '', 1).strip()
-        he_refs_to_try.append(f"באר היטב על שולחן ערוך, {chelek} {ch_clean}:{v_clean}")
+        direct_refs.append(f"באר היטב על שולחן ערוך, {chelek}.{chap_int}.{verse_int}")
+        base_refs_with_comm.append(f"שולחן ערוך, {chelek}.{chap_int}.{verse_int}")
+        direct_refs.append(f"באר היטב על שולחן ערוך, {chelek}.{chap_int}")
     elif c_str.startswith('דף') and not b_str.startswith('ירושלמי '):
         target_commentator = 'רש"י'
-        daf_parts = ch_clean.split()
-        daf_let = daf_parts[0] if daf_parts else ch_clean
-        amud_let = 'ב' if ('עמוד ב' in c_str or ':' in c_str) else 'א'
-        he_refs_to_try.append(f'רש"י על {b_str} {daf_let} {amud_let}:{v_str}')
-        he_refs_to_try.append(f'רש"י על {b_str} {daf_let} {amud_let}')
+        preferred_comm_names = ['רש"י']
+        amud_eng = 'b' if ('עמוד ב' in c_str or ':' in c_str) else 'a'
+        direct_refs.append(f'רש"י על {b_str}.{chap_int}{amud_eng}.{verse_int}')
+        base_refs_with_comm.append(f'{b_str}.{chap_int}{amud_eng}.{verse_int}')
+        direct_refs.append(f'רש"י על {b_str}.{chap_int}{amud_eng}')
     elif b_str in TANAKH_NAMES:
         target_commentator = 'רש"י'
-        he_refs_to_try.append(f'רש"י על {b_str} {ch_clean}:{v_clean}')
+        preferred_comm_names = ['רש"י']
+        direct_refs.append(f'רש"י על {b_str}.{chap_int}.{verse_int}')
+        base_refs_with_comm.append(f'{b_str}.{chap_int}.{verse_int}')
     elif b_str in MISHNAH_BOOKS:
         target_commentator = 'רבינו עובדיה מברטנורא'
-        he_refs_to_try.append(f'ברטנורא על משנה {b_str} {ch_clean}:{v_clean}')
+        preferred_comm_names = ['ברטנורא', 'רבינו עובדיה מברטנורא']
+        for m_var in _generate_spelling_variants(b_str):
+            direct_refs.append(f'ברטנורא על משנה {m_var}.{chap_int}.{verse_int}')
+            base_refs_with_comm.append(f'משנה {m_var}.{chap_int}.{verse_int}')
 
     comments_out = []
     used_commentator = target_commentator
 
-    for ref_try in he_refs_to_try:
+    # ניסיון א': שליפה דרך מערך המפרשים של המקור (הדרך המדויקת ביותר להתאמת סעיף/פסוק)
+    for b_ref in base_refs_with_comm:
+        if comments_out:
+            break
         try:
-            url = f"https://www.sefaria.org/api/texts/{urllib.parse.quote(ref_try)}?context=0&pad=0"
+            url = f"https://www.sefaria.org/api/texts/{urllib.parse.quote(b_ref)}?commentary=1&context=0&pad=0"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=4) as resp:
+            with urllib.request.urlopen(req, timeout=5) as resp:
                 data = json.loads(resp.read().decode('utf-8'))
-                he_data = data.get('he', [])
-                if isinstance(he_data, str) and he_data.strip():
-                    comments_out = [format_divine_name(he_data.strip())]
-                elif isinstance(he_data, list):
-                    flat = []
-                    for item in he_data:
-                        if isinstance(item, str) and item.strip():
-                            flat.append(format_divine_name(item.strip()))
-                        elif isinstance(item, list):
-                            for sub in item:
-                                if isinstance(sub, str) and sub.strip():
-                                    flat.append(format_divine_name(sub.strip()))
-                    if flat:
-                        comments_out = flat[:6]
-                if comments_out:
-                    if 'כסף משנה' in ref_try:
-                        used_commentator = 'כסף משנה (לא נמצא מגיד משנה להלכה זו)'
+                comm_list = data.get('commentary', [])
+                matched_comms = []
+                for c_item in comm_list:
+                    c_title_he = (c_item.get('collectiveTitle', {}) or {}).get('he', '') or c_item.get(' sourceHeRef', '')
+                    if any(p_name in c_title_he for p_name in preferred_comm_names):
+                        extracted = _extract_sefaria_he_list(c_item.get('he', []))
+                        for ex in extracted:
+                            if ex not in matched_comms:
+                                matched_comms.append(ex)
+                if matched_comms:
+                    comments_out = matched_comms[:8]
                     break
         except Exception:
             continue
 
+    # ניסיון ב': שליפה ישירה של טקסט המפרש
+    if not comments_out:
+        for d_ref in direct_refs:
+            try:
+                is_whole_chapter_fallback = (
+                    (c_str.startswith('דף') and d_ref.endswith(('a', 'b'))) or
+                    (b_str.startswith('שולחן ערוך ') and d_ref.count('.') == 1)
+                )
+                url = f"https://www.sefaria.org/api/texts/{urllib.parse.quote(d_ref)}?context=0&pad=0"
+                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    data = json.loads(resp.read().decode('utf-8'))
+                    he_data = data.get('he', [])
+
+                    if is_whole_chapter_fallback and isinstance(he_data, list):
+                        v_obj = _resolve_torah_verse_obj(b_str, c_str, v_str)
+                        source_words = set(re.findall(r'[א-ת]{2,}', (v_obj.clean_text if v_obj else '') or ''))
+                        all_lines = _extract_sefaria_he_list(he_data)
+                        filtered_lines = []
+                        if source_words:
+                            for line_txt in all_lines:
+                                head_part = re.sub(r'<[^>]+>', '', line_txt[:90])
+                                head_words = set(re.findall(r'[א-ת]{2,}', head_part))
+                                if len(source_words.intersection(head_words)) >= 2:
+                                    filtered_lines.append(line_txt)
+                        if filtered_lines:
+                            comments_out = filtered_lines[:6]
+                        elif 1 <= verse_int <= len(he_data):
+                            seg_extracted = _extract_sefaria_he_list(he_data[verse_int - 1])
+                            if seg_extracted:
+                                comments_out = seg_extracted[:6]
+                    else:
+                        extracted = _extract_sefaria_he_list(he_data)
+                        if extracted:
+                            comments_out = extracted[:8]
+
+                    if comments_out:
+                        break
+            except Exception:
+                continue
+
     payload = {'commentator': used_commentator, 'comments': comments_out}
-    cache.set(cache_key, payload, 3600 * 24)
+    cache.set(cache_key, payload, 3600 * 12)
     return payload
 
 
-@ratelimit(rate=30, timeout=60)
+@ratelimit(rate=45, timeout=60)
 def tanakh_advanced_search_api(request):
     query_type = request.GET.get('type', 'text').strip()
     query_val = request.GET.get('q', '').strip()
@@ -1800,6 +1937,28 @@ def tanakh_advanced_search_api(request):
             return 'משנה'
         return 'פסוק'
 
+    # 1. שליפת רשימת הפרקים/דפים/סימנים של ספר מסוים עבור תיבת הבחירה הלבנה (עם חץ)
+    if query_type == 'book_chapters':
+        target_book = _resolve_torah_book_in_db(request.GET.get('target_book', '').strip())
+        corpus_hint = request.GET.get('corpus', '').strip()
+        if not target_book:
+            return JsonResponse({'chapters': []})
+
+        ch_qs = TorahText.objects.filter(book=target_book)
+        if target_book in MISHNAH_BOOKS:
+            if corpus_hint == 'talmud':
+                ch_qs = ch_qs.filter(chapter__startswith='דף')
+            elif corpus_hint == 'mishnah':
+                ch_qs = ch_qs.exclude(chapter__startswith='דף')
+
+        chapters_list = list(ch_qs.values_list('chapter', flat=True).distinct())
+        chapters_list.sort(key=safe_int)
+        return JsonResponse({
+            'book': target_book,
+            'chapters': chapters_list
+        }, json_dumps_params={'ensure_ascii': False})
+
+    # 2. שליפת מפרשים (רש"י, ברטנורא, מגיד משנה, באר היטב)
     if query_type == 'commentary':
         t_book = request.GET.get('target_book', '').strip()
         t_chap = request.GET.get('target_chapter', '').strip()
@@ -1809,6 +1968,7 @@ def tanakh_advanced_search_api(request):
             return JsonResponse(comm_data, json_dumps_params={'ensure_ascii': False})
         return JsonResponse({'commentator': '', 'comments': []})
 
+    # 3. פתיחת פרק מלא במודאל מתוך תוצאות החיפוש
     if query_type == 'chapter_context':
         target_book = _resolve_torah_book_in_db(request.GET.get('target_book', '').strip())
         target_chapter = request.GET.get('target_chapter', '').strip()
@@ -1824,7 +1984,8 @@ def tanakh_advanced_search_api(request):
                 'verse_label': get_verse_label(target_book, target_chapter),
                 'verses': [
                     {
-                        'verse': v['verse'],
+                        'verse': format_verse_hebrew(v['verse']),
+                        'raw_verse': v['verse'],
                         'text': format_divine_name(v['text_with_nikkud'] or v['clean_text'] or '')
                     }
                     for v in ch_verses
@@ -1832,69 +1993,21 @@ def tanakh_advanced_search_api(request):
             }, json_dumps_params={'ensure_ascii': False})
         return JsonResponse({'verses': []})
 
+    # 4. פתיחה מהירה לעיון בפרק/דף/סימן מתוך חלונית העיון העליונה
     if query_type == 'quick_open':
         explicit_book = request.GET.get('target_book', '').strip()
         explicit_chapter = request.GET.get('target_chapter', '').strip()
-        ref_str = request.GET.get('ref', '').strip()
+        corpus_hint = request.GET.get('corpus', '').strip()
 
-        all_books = cache.get('torah_all_distinct_books_v2')
-        if not all_books:
-            all_books = list(TorahText.objects.values_list('book', flat=True).distinct())
-            cache.set('torah_all_distinct_books_v2', all_books, 3600 * 24)
-
-        def norm_quotes(s):
-            return re.sub(r'[״”″]', '"', re.sub(r"[׳’']", "", str(s or ''))).strip()
-
-        matched_book = None
-        want_bavli = False
-        want_mishnah = False
-        chapter_hint = explicit_chapter
-
-        if explicit_book:
-            matched_book = _resolve_torah_book_in_db(explicit_book)
-            if explicit_chapter.startswith('דף'):
-                want_bavli = True
-        elif ref_str:
-            q_work = norm_quotes(ref_str)
-            q_work = re.sub(r'^שו"ע\s+', 'שולחן ערוך ', q_work)
-            q_work = re.sub(r'^רמבם\s+', 'רמב"ם ', q_work)
-            if q_work.startswith('הלכות '):
-                q_work = 'רמב"ם ' + q_work
-
-            if re.match(r'^(תלמוד בבלי|בבלי|גמרא)\s+', q_work):
-                want_bavli = True
-                q_work = re.sub(r'^(תלמוד בבלי|בבלי|גמרא)\s+', '', q_work).strip()
-            elif q_work.startswith('משנה '):
-                want_mishnah = True
-                q_work = q_work.replace('משנה ', '', 1).strip()
-
-            sorted_books = sorted(all_books, key=lambda b: len(str(b)), reverse=True)
-            for b_candidate in sorted_books:
-                b_norm = norm_quotes(b_candidate)
-                if q_work == b_norm or q_work.startswith(b_norm + ' '):
-                    matched_book = b_candidate
-                    chapter_hint = q_work[len(b_norm):].strip()
-                    break
-
-            if not matched_book:
-                for b_candidate in sorted_books:
-                    b_norm = norm_quotes(b_candidate)
-                    if b_norm in q_work:
-                        matched_book = b_candidate
-                        chapter_hint = q_work.replace(b_norm, '', 1).strip()
-                        break
-
-            if 'דף ' in ref_str and not str(matched_book or '').startswith('ירושלמי '):
-                want_bavli = True
-
+        matched_book = _resolve_torah_book_in_db(explicit_book)
         if not matched_book:
-            return JsonResponse({'error': 'לא זוהה שם הספר במאגר. נסה לכתוב למשל: רמב"ם הלכות ברכות פרק ג'})
+            return JsonResponse({'error': 'נא לבחור ספר ופרק לעיון.'})
 
         ch_qs = TorahText.objects.filter(book=matched_book)
         if matched_book in MISHNAH_BOOKS:
-            if want_bavli:
+            if corpus_hint == 'talmud' or explicit_chapter.startswith('דף'):
                 ch_qs = ch_qs.filter(chapter__startswith='דף')
-            elif want_mishnah or not str(chapter_hint).startswith('דף'):
+            elif corpus_hint == 'mishnah' or not explicit_chapter.startswith('דף'):
                 ch_qs = ch_qs.exclude(chapter__startswith='דף')
 
         raw_chapters = list(ch_qs.values_list('chapter', flat=True).distinct())
@@ -1905,33 +2018,7 @@ def tanakh_advanced_search_api(request):
         if not raw_chapters:
             return JsonResponse({'error': f'לא נמצאו פרקים עבור "{matched_book}".'})
 
-        chosen_chapter = raw_chapters[0]
-        if chapter_hint:
-            h_clean = re.sub(r'^(פרק|סימן|הלכה)\s+', '', chapter_hint).strip()
-            h_no_daf = re.sub(r'^דף\s+', '', h_clean).strip()
-
-            found_ch = None
-            for c_opt in raw_chapters:
-                c_str = str(c_opt).strip()
-                c_stripped = re.sub(r'^(פרק|סימן|דף)\s+', '', c_str).strip()
-                if c_str == chapter_hint or c_str == h_clean or c_stripped == h_clean or c_stripped == h_no_daf:
-                    found_ch = c_opt
-                    break
-            if not found_ch:
-                for c_opt in raw_chapters:
-                    c_str = str(c_opt).strip()
-                    if h_no_daf and (c_str.startswith(f"דף {h_no_daf} ") or c_str == f"דף {h_no_daf}"):
-                        found_ch = c_opt
-                        break
-            if not found_ch:
-                target_num = safe_int(chapter_hint)
-                if target_num > 0:
-                    for c_opt in raw_chapters:
-                        if safe_int(c_opt) == target_num:
-                            found_ch = c_opt
-                            break
-            if found_ch:
-                chosen_chapter = found_ch
+        chosen_chapter = explicit_chapter if explicit_chapter in raw_chapters else raw_chapters[0]
 
         ch_verses = list(
             TorahText.objects.filter(book=matched_book, chapter=chosen_chapter)
@@ -1952,7 +2039,8 @@ def tanakh_advanced_search_api(request):
             'verse_label': get_verse_label(matched_book, chosen_chapter),
             'verses': [
                 {
-                    'verse': v['verse'],
+                    'verse': format_verse_hebrew(v['verse']),
+                    'raw_verse': v['verse'],
                     'text': format_divine_name(v['text_with_nikkud'] or v['clean_text'] or '')
                 }
                 for v in ch_verses
@@ -1966,7 +2054,7 @@ def tanakh_advanced_search_api(request):
     except ValueError:
         per_page = 10
 
-    search_cache_key = f"tanakh_srch_v4_{query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
+    search_cache_key = f"tanakh_srch_v6_{query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
     cached_search_data = cache.get(search_cache_key)
     if cached_search_data:
         return JsonResponse(cached_search_data, json_dumps_params={'ensure_ascii': False})
@@ -2122,7 +2210,8 @@ def tanakh_advanced_search_api(request):
                         results.append({
                             'book': m['book'],
                             'chapter': m['chapter'],
-                            'verse': m['verse'],
+                            'verse': format_verse_hebrew(m['verse']),
+                            'raw_verse': m['verse'],
                             'verse_label': get_verse_label(m['book'], m['chapter']),
                             'text': highlighted_text,
                             'match_type': 'חיפוש מדויק' if is_exact else 'חיפוש חופשי (רחב)'
@@ -2164,7 +2253,8 @@ def tanakh_advanced_search_api(request):
                     results.append({
                         'book': m['book'],
                         'chapter': m['chapter'],
-                        'verse': m['verse'],
+                        'verse': format_verse_hebrew(m['verse']),
+                        'raw_verse': m['verse'],
                         'verse_label': get_verse_label(m['book'], m['chapter']),
                         'text': final_text,
                         'match_type': m_type
@@ -2225,7 +2315,8 @@ def tanakh_advanced_search_api(request):
                         results.append({
                             'book': m['book'],
                             'chapter': m['chapter'],
-                            'verse': m['verse'],
+                            'verse': format_verse_hebrew(m['verse']),
+                            'raw_verse': m['verse'],
                             'verse_label': get_verse_label(m['book'], m['chapter']),
                             'text': final_text,
                             'match_type': f'סופי תיבות ({query_val})' if is_sofei else f'ראשי תיבות ({query_val})'
@@ -2307,7 +2398,8 @@ def tanakh_advanced_search_api(request):
                         results.append({
                             'book': m['book'],
                             'chapter': m['chapter'],
-                            'verse': m['verse'],
+                            'verse': format_verse_hebrew(m['verse']),
+                            'raw_verse': m['verse'],
                             'verse_label': get_verse_label(m['book'], m['chapter']),
                             'text': final_text,
                             'match_type': m_label
@@ -2403,7 +2495,8 @@ def tanakh_advanced_search_api(request):
                         results.append({
                             'book': m['book'],
                             'chapter': m['chapter'],
-                            'verse': m['verse'],
+                            'verse': format_verse_hebrew(m['verse']),
+                            'raw_verse': m['verse'],
                             'verse_label': get_verse_label(m['book'], m['chapter']),
                             'text': final_text,
                             'match_type': m_type,
@@ -2516,7 +2609,8 @@ def tanakh_advanced_search_api(request):
                         results.append({
                             'book': m['book'],
                             'chapter': m['chapter'],
-                            'verse': m['verse'],
+                            'verse': format_verse_hebrew(m['verse']),
+                            'raw_verse': m['verse'],
                             'verse_label': get_verse_label(m['book'], m['chapter']),
                             'text': final_text,
                             'match_type': m_type,
@@ -2528,7 +2622,7 @@ def tanakh_advanced_search_api(request):
                     for s_d in sorted(skip_counts.keys())
                 ]
 
-        results.sort(key=lambda x: (get_book_order(x['book'], x.get('chapter', '')), safe_int(x['chapter']), safe_int(x['verse'])))
+        results.sort(key=lambda x: (get_book_order(x['book'], x.get('chapter', '')), safe_int(x['chapter']), safe_int(x.get('raw_verse') or x['verse'])))
 
         total_results = len(results)
         total_pages = (total_results + per_page - 1) // per_page if total_results > 0 else 1
@@ -2565,7 +2659,7 @@ def torah_ai_insights_api(request):
     chapter = request.GET.get('chapter', '').strip()
     verse = request.GET.get('verse', '').strip()
 
-    cache_key = f"torah_ai_v7_{mode}_{book}_{chapter}_{verse}_{query}"
+    cache_key = f"torah_ai_v8_{mode}_{book}_{chapter}_{verse}_{query}"
     cached_resp = cache.get(cache_key)
     if cached_resp:
         return JsonResponse(cached_resp, json_dumps_params={'ensure_ascii': False})
@@ -2777,11 +2871,12 @@ def torah_ai_insights_api(request):
                 key = (r['book'], r['chapter'])
                 if key not in seen_ch:
                     seen_ch.add(key)
+                    v_heb_str = format_verse_hebrew(r['verse'])
                     picked.append({
                         'book': r['book'],
                         'chapter': r['chapter'],
-                        'verse': r['verse'],
-                        'ref': f"{r['book']} {r['chapter']}:{r['verse']}",
+                        'verse': v_heb_str,
+                        'ref': f"{r['book']} {r['chapter']}:{v_heb_str}",
                         'text': extract_highlighted_snippet(r['_raw_txt'], r['_spans']),
                         'is_exact': r['_exact_count'] > 0,
                         'chapter_hits': chapter_freq.get(key, 1),
@@ -2810,7 +2905,7 @@ def torah_ai_insights_api(request):
             )
             for gv in gem_v_qs:
                 gem_tanakh_verses.append({
-                    'ref': f"{gv['book']} {gv['chapter']}:{gv['verse']}",
+                    'ref': f"{gv['book']} {gv['chapter']}:{format_verse_hebrew(gv['verse'])}",
                     'text': format_divine_name(gv['text_with_nikkud'] or gv['clean_text'])
                 })
 
@@ -2832,7 +2927,7 @@ def torah_ai_insights_api(request):
                             seen_gem_words.add(w_clean)
                             gem_word_verses.append({
                                 'word': w_clean,
-                                'ref': f"{gw['book']} {gw['chapter']}:{gw['verse']}",
+                                'ref': f"{gw['book']} {gw['chapter']}:{format_verse_hebrew(gw['verse'])}",
                                 'text': extract_highlighted_snippet(raw_t, [tok.span()])
                             })
 
@@ -2851,7 +2946,7 @@ def torah_ai_insights_api(request):
                 if hit_spans:
                     rev_matches.append({
                         'word': rev_str,
-                        'ref': f"{rm['book']} {rm['chapter']}:{rm['verse']}",
+                        'ref': f"{rm['book']} {rm['chapter']}:{format_verse_hebrew(rm['verse'])}",
                         'text': extract_highlighted_snippet(raw_t, hit_spans)
                     })
                     if len(rev_matches) >= 2:
@@ -2879,6 +2974,7 @@ def torah_ai_insights_api(request):
                         t_words.append(norm_heb(wh))
                         t_spans.append(t.span())
 
+                v_heb_item = format_verse_hebrew(item['verse'])
                 if len(t_words) >= k_len:
                     if len(rashei_matches) < 2:
                         r_seq = "".join([w[0] for w in t_words])
@@ -2887,7 +2983,7 @@ def torah_ai_insights_api(request):
                             spans_r = t_spans[pos_r:pos_r + k_len]
                             phrase_r = " ".join([NON_HEB_RE.sub('', raw_t[s:e]) for s, e in spans_r])
                             rashei_matches.append({
-                                'ref': f"{item['book']} {item['chapter']}:{item['verse']}",
+                                'ref': f"{item['book']} {item['chapter']}:{v_heb_item}",
                                 'phrase': phrase_r,
                                 'text': extract_highlighted_snippet(raw_t, spans_r)
                             })
@@ -2898,7 +2994,7 @@ def torah_ai_insights_api(request):
                             spans_s = t_spans[pos_s:pos_s + k_len]
                             phrase_s = " ".join([NON_HEB_RE.sub('', raw_t[s:e]) for s, e in spans_s])
                             sofei_matches.append({
-                                'ref': f"{item['book']} {item['chapter']}:{item['verse']}",
+                                'ref': f"{item['book']} {item['chapter']}:{v_heb_item}",
                                 'phrase': phrase_s,
                                 'text': extract_highlighted_snippet(raw_t, spans_s)
                             })
@@ -2924,7 +3020,7 @@ def torah_ai_insights_api(request):
                                         return cl
                                     marked_verse = format_divine_name(HEB_LETTER_CLUSTER_RE.sub(mark_els_char, raw_t))
                                     els_matches.append({
-                                        'ref': f"{item['book']} {item['chapter']}:{item['verse']}",
+                                        'ref': f"{item['book']} {item['chapter']}:{v_heb_item}",
                                         'skip': st - 1,
                                         'text': marked_verse
                                     })
@@ -2984,7 +3080,7 @@ def torah_ai_insights_api(request):
         if mode == 'code_finder':
             verse_obj = None
             if book and chapter and verse:
-                verse_obj = TorahText.objects.filter(book=book, chapter=chapter, verse=verse).first()
+                verse_obj = _resolve_torah_verse_obj(book, chapter, verse)
             elif query:
                 clean_q = re.sub(r'[^א-ת\s]', '', query).strip()
                 verse_obj = TorahText.objects.filter(clean_text__icontains=clean_q).first()
@@ -2992,6 +3088,7 @@ def torah_ai_insights_api(request):
             if not verse_obj:
                 return JsonResponse({'error': 'לא נמצא פסוק או מקור לניתוח.'}, status=404)
 
+            v_heb_disp = format_verse_hebrew(verse_obj.verse)
             raw_text = format_divine_name(verse_obj.text_with_nikkud or verse_obj.clean_text)
             toks_v = [NON_HEB_RE.sub('', m.group(0)) for m in WORD_TOKEN_RE.finditer(raw_text)]
             clean_words = [w for w in toks_v if len(w) >= 2]
@@ -3000,7 +3097,7 @@ def torah_ai_insights_api(request):
             equal_verses_qs = TorahText.objects.filter(book__in=TANAKH_NAMES, verse_gematria=v_gem).exclude(id=verse_obj.id).exclude(chapter__startswith='דף')[:4]
             equal_verses = [
                 {
-                    'ref': f"{ev.book} {ev.chapter}:{ev.verse}",
+                    'ref': f"{ev.book} {ev.chapter}:{format_verse_hebrew(ev.verse)}",
                     'text': format_divine_name(ev.text_with_nikkud or ev.clean_text)
                 }
                 for ev in equal_verses_qs
@@ -3058,7 +3155,7 @@ def torah_ai_insights_api(request):
                         phrase = " ".join(clean_words[idx_s:idx_s+len(c_norm)])
                         acronym_findings.append({'type': 'סופי תיבות', 'word': concept, 'phrase': phrase})
 
-            summary_parts = [f"המקור ב{verse_obj.book} ({verse_obj.chapter}, {verse_obj.verse}) מחזיק {len(clean_words)} תיבות וערכו הגימטרי הכולל הוא {v_gem}."]
+            summary_parts = [f"המקור ב{verse_obj.book} ({verse_obj.chapter}, {v_heb_disp}) מחזיק {len(clean_words)} תיבות וערכו הגימטרי הכולל הוא {v_gem}."]
             if equal_verses:
                 summary_parts.append(f"במאגר התנ\"ך נמצאה הקבלה גימטרית מדויקת ({v_gem}) לפסוק ב{equal_verses[0]['ref']}: \"{equal_verses[0]['text']}\".")
             if word_gem_matches:
@@ -3072,7 +3169,7 @@ def torah_ai_insights_api(request):
                 summary_parts.append(f"ממצאי ראשי וסופי תיבות: {ac_str}.")
 
             resp_payload = {
-                'source_ref': f"{verse_obj.book} | {verse_obj.chapter} | {verse_obj.verse}",
+                'source_ref': f"{verse_obj.book} | {verse_obj.chapter} | {v_heb_disp}",
                 'text': raw_text,
                 'verse_gematria': v_gem,
                 'equal_verses': equal_verses,
