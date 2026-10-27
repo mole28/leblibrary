@@ -362,7 +362,7 @@
                         <i class="bi bi-book-half" style="font-size: 4.5rem; color: #d4af37; opacity: 0.55;"></i>
                         <h4 class="mt-3 fw-bold" style="color: #334155;">מאגר החיפוש והעיון מוכן לפעולה</h4>
                         <p class="text-muted fs-6 mb-1">בחר מאגר וסוג פעולה מימין לחיפוש, או בחר ספר ופרק בחלונית העיון העליונה.</p>
-                        <p class="small text-secondary mb-0"><i class="bi bi-chat-square-quote ms-1" style="color: #b8860b;"></i>עמוד עם העכבר על כל פסוק/הלכה (או לחץ על כפתור המפרש) לצפייה בפירוש רש"י, ברטנורא, פני משה, מגיד משנה ובאר היטב.</p>
+                        <p class="small text-secondary mb-0"><i class="bi bi-chat-square-quote ms-1" style="color: #b8860b;"></i>לחץ על כפתור המפרש בכל פסוק או הלכה לצפייה בפירוש רש"י, ברטנורא, פני משה, מגיד משנה ובאר היטב.</p>
                     </div>
 
                     <div id="resultsArea" style="display: none;"></div>
@@ -596,7 +596,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let lastSearchMeta = { query: '', actionTitle: '', total: 0 };
     let preparedSharePayload = { title: '', text: '', url: window.location.href };
     const commentaryMemoryCache = {};
-    let hoverTimer = null;
     const SEFARIA_API_BASE = 'https://www.sefaria.org/api/texts/';
 
     const gematriaMap = {
@@ -1439,10 +1438,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     window.loadVerseCommentary = async function(bookName, chapterName, verseNum, drawerId, forceClick) {
+        if (!forceClick) return;
         const drawerEl = document.getElementById(drawerId);
         if (!drawerEl) return;
 
-        if (forceClick && drawerEl.style.display === 'block' && drawerEl.getAttribute('data-loaded') === 'true') {
+        if (drawerEl.style.display === 'block' && drawerEl.getAttribute('data-loaded') === 'true') {
             drawerEl.style.display = 'none';
             return;
         }
@@ -1456,25 +1456,21 @@ document.addEventListener('DOMContentLoaded', function() {
             const cachedObj = commentaryMemoryCache[cacheKey];
             if (cachedObj.comments && cachedObj.comments.length > 0) {
                 drawerEl.innerHTML = buildCommentsDrawerHtml(cachedObj.commentator || commLabel, cachedObj.comments, drawerId);
-                drawerEl.style.display = 'block';
-                drawerEl.setAttribute('data-loaded', 'true');
-            } else if (forceClick) {
+            } else {
                 drawerEl.innerHTML = buildEmptyCommentsHtml(cachedObj.commentator || commLabel, drawerId);
-                drawerEl.style.display = 'block';
-                drawerEl.setAttribute('data-loaded', 'true');
             }
+            drawerEl.style.display = 'block';
+            drawerEl.setAttribute('data-loaded', 'true');
             return;
         }
 
-        if (forceClick) {
-            drawerEl.style.display = 'block';
-            drawerEl.innerHTML = `
-                <div class="d-flex align-items-center gap-2 text-muted small">
-                    <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
-                    <span>טוען פירוש <b>${commLabel}</b> על המקור...</span>
-                </div>
-            `;
-        }
+        drawerEl.style.display = 'block';
+        drawerEl.innerHTML = `
+            <div class="d-flex align-items-center gap-2 text-muted small">
+                <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
+                <span>טוען פירוש <b>${commLabel}</b> על המקור...</span>
+            </div>
+        `;
 
         const parentCard = drawerEl.parentElement;
         const verseEl = parentCard ? (parentCard.querySelector('.verse-hoverable') || parentCard) : null;
@@ -1500,29 +1496,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (finalData.comments && finalData.comments.length > 0) {
             drawerEl.innerHTML = buildCommentsDrawerHtml(finalData.commentator || commLabel, finalData.comments, drawerId);
-            drawerEl.style.display = 'block';
-            drawerEl.setAttribute('data-loaded', 'true');
-        } else if (forceClick) {
-            drawerEl.innerHTML = buildEmptyCommentsHtml(finalData.commentator || commLabel, drawerId);
-            drawerEl.style.display = 'block';
-            drawerEl.setAttribute('data-loaded', 'true');
         } else {
-            drawerEl.style.display = 'none';
+            drawerEl.innerHTML = buildEmptyCommentsHtml(finalData.commentator || commLabel, drawerId);
         }
-    };
-
-    window.handleVerseMouseEnter = function(bookName, chapterName, verseNum, drawerId) {
-        clearTimeout(hoverTimer);
-        hoverTimer = setTimeout(() => {
-            const drawerEl = document.getElementById(drawerId);
-            if (drawerEl && drawerEl.style.display !== 'block') {
-                loadVerseCommentary(bookName, chapterName, verseNum, drawerId, false);
-            }
-        }, 420);
-    };
-
-    window.handleVerseMouseLeave = function() {
-        clearTimeout(hoverTimer);
+        drawerEl.style.display = 'block';
+        drawerEl.setAttribute('data-loaded', 'true');
     };
 
     window.openAutomatedCodeFinderByIdx = function(idx) {
@@ -1650,9 +1628,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     ` : '';
 
                     html += `
-                        <div class="list-group-item p-4 mb-3 border-0 rounded-4 shadow-sm" style="background-color: #fcfbf8; border-right: 5px solid #d4af37 !important;"
-                             onmouseenter="handleVerseMouseEnter('${safeBook}', '${safeChapter}', '${safeRawVerse}', '${drawerId}')"
-                             onmouseleave="handleVerseMouseLeave()">
+                        <div class="list-group-item p-4 mb-3 border-0 rounded-4 shadow-sm" style="background-color: #fcfbf8; border-right: 5px solid #d4af37 !important;">
                             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
                                 <strong class="fs-5" style="color: #1e293b;">
                                     <i class="bi bi-book ms-2" style="color: #d4af37;"></i>
@@ -1810,9 +1786,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     ` : '';
 
                     html += `
-                        <div class="list-group-item p-3 mb-2 border-0 rounded-3 shadow-sm" style="background-color: #fcfbf8; border-right: 4px solid #d4af37 !important;"
-                             onmouseenter="handleVerseMouseEnter('${safeBook}', '${safeChapter}', '${safeRawVerse}', '${drawerId}')"
-                             onmouseleave="handleVerseMouseLeave()">
+                        <div class="list-group-item p-3 mb-2 border-0 rounded-3 shadow-sm" style="background-color: #fcfbf8; border-right: 4px solid #d4af37 !important;">
                             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
                                 <span class="verse-num-badge">${vLabel} ${hebVerse}</span>
                                 <div class="d-flex align-items-center gap-2">
@@ -2014,9 +1988,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     ` : '';
 
                     html += `
-                        <div ${rowId} class="chapter-context-verse ${isTarget ? 'target-highlight' : ''}"
-                             onmouseenter="handleVerseMouseEnter('${safeBook}', '${safeChapter}', '${safeRawVerse}', '${drawerId}')"
-                             onmouseleave="handleVerseMouseLeave()">
+                        <div ${rowId} class="chapter-context-verse ${isTarget ? 'target-highlight' : ''}">
                             ${commBtn}
                             <span class="verse-num-badge">${vLbl} ${vHeb}</span>
                             <span class="fs-4 lh-lg text-dark verse-hoverable" style="font-family: 'Frank Ruhl Libre', serif;">${v.text}</span>
