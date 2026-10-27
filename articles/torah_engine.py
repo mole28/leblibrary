@@ -13,7 +13,6 @@ from django.utils.html import strip_tags
 from .models import TorahText
 
 
-# ========= חיבור HTTPS מהיר ב-IPv4 בלבד (מונע תקיעות של 6-12 שניות בשרת האובונטו) =========
 class _HTTPSConnectionIPv4(http.client.HTTPSConnection):
     def connect(self):
         addrs = socket.getaddrinfo(self.host, self.port or 443, socket.AF_INET, socket.SOCK_STREAM)
@@ -373,7 +372,7 @@ def _match_comments_by_dibbur_hamatchil(all_comments_list, source_clean_text):
 
 
 def _fetch_sefaria_json_cached(sefaria_ref, extra_params="context=0&pad=0"):
-    c_key = f"sefaria_ipv4_v12_{sefaria_ref}_{extra_params}"
+    c_key = f"sefaria_ipv4_v14_{sefaria_ref}_{extra_params}"
     cached = cache.get(c_key)
     if cached is not None:
         return cached
@@ -390,32 +389,13 @@ def _fetch_sefaria_json_cached(sefaria_ref, extra_params="context=0&pad=0"):
     return None
 
 
-def _pick_verse_from_chapter_2d(he_2d, verse_int, source_clean_txt):
-    """
-    שולף את פירושי הפסוק/ההלכה מתוך מערך 2D של הפרק כולו,
-    ומוודא התאמה מול מילות הפסוק (כך שלעולם לא יזוז פירוש מפסוק א' לפסוק ב')!
-    """
+def _pick_exact_verse_from_chapter_2d(he_2d, verse_int):
+    """שולף ישירות ובמדויק את פירושי הפסוק/ההלכה מתוך מערך הפרק (ללא זליגה לפסוק שכן)"""
     if not isinstance(he_2d, list) or not he_2d:
         return []
-
-    direct_bucket = _extract_sefaria_he_list(he_2d[verse_int - 1]) if 1 <= verse_int <= len(he_2d) else []
-    if not source_clean_txt:
-        return direct_bucket[:8]
-
-    # בדיקה אם הסל הישיר מתאים למילות הפסוק שלנו
-    if direct_bucket:
-        dh_direct = _match_comments_by_dibbur_hamatchil(direct_bucket, source_clean_txt)
-        if dh_direct:
-            return direct_bucket[:8]
-
-    # בדיקה אם בגלל היסט במספור הפסוקים הפירוש נמצא באינדקס שכן (verse_int - 2 או verse_int)
-    for neighbor_idx in [verse_int - 2, verse_int]:
-        if 0 <= neighbor_idx < len(he_2d):
-            neighbor_bucket = _extract_sefaria_he_list(he_2d[neighbor_idx])
-            if neighbor_bucket and _match_comments_by_dibbur_hamatchil(neighbor_bucket, source_clean_txt):
-                return neighbor_bucket[:8]
-
-    return direct_bucket[:8]
+    if 1 <= verse_int <= len(he_2d):
+        return _extract_sefaria_he_list(he_2d[verse_int - 1])[:8]
+    return []
 
 
 def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
@@ -426,7 +406,7 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
     chap_int = max(1, parse_hebrew_number(c_str))
     verse_int = max(1, parse_hebrew_number(v_str))
 
-    cache_key = f"torah_comm_v12_{b_str}_{c_str}_{verse_int}"
+    cache_key = f"torah_comm_v14_{b_str}_{c_str}_{verse_int}"
     cached = cache.get(cache_key)
     if cached and cached.get('comments'):
         return cached
@@ -437,25 +417,26 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
     comments_out = []
     target_commentator = 'רש"י'
 
-    # 1. תנ"ך -> רש"י (שליפת הפרק כולו ב-IPv4 מהיר + אימות דיבור המתחיל)
+    # 1. תנ"ך -> רש"י
     if b_str in TANAKH_NAMES and not c_str.startswith('דף'):
         target_commentator = 'רש"י'
         book_en = TANAKH_BOOKS_EN.get(b_str, '')
-        ch_refs = [f'רש"י על {b_str}.{chap_int}']
+
         if book_en:
-            ch_refs.insert(0, f'Rashi on {book_en}.{chap_int}')
-
-        for ch_ref in ch_refs:
-            ch_data = _fetch_sefaria_json_cached(ch_ref)
-            if ch_data and isinstance(ch_data.get('he'), list):
-                comments_out = _pick_verse_from_chapter_2d(ch_data['he'], verse_int, source_clean_txt)
-                if comments_out:
-                    break
-
-        if not comments_out and book_en:
             v_data = _fetch_sefaria_json_cached(f'Rashi on {book_en}.{chap_int}.{verse_int}')
             if v_data and v_data.get('he'):
                 comments_out = _extract_sefaria_he_list(v_data['he'])[:8]
+
+        if not comments_out:
+            ch_refs = [f'רש"י על {b_str}.{chap_int}']
+            if book_en:
+                ch_refs.insert(0, f'Rashi on {book_en}.{chap_int}')
+            for ch_ref in ch_refs:
+                ch_data = _fetch_sefaria_json_cached(ch_ref)
+                if ch_data and isinstance(ch_data.get('he'), list):
+                    comments_out = _pick_exact_verse_from_chapter_2d(ch_data['he'], verse_int)
+                    if comments_out:
+                        break
 
     # 2. תלמוד בבלי -> רש"י
     elif c_str.startswith('דף') and not b_str.startswith('ירושלמי '):
@@ -477,14 +458,8 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
                 dh_matches = _match_comments_by_dibbur_hamatchil(all_daf_rashi, source_clean_txt)
                 if dh_matches:
                     comments_out = dh_matches[:8]
-                elif isinstance(he_2d, list):
-                    for offset in [0, -1, 1]:
-                        idx_try = (verse_int - 1) + offset
-                        if 0 <= idx_try < len(he_2d):
-                            seg_comms = _extract_sefaria_he_list(he_2d[idx_try])
-                            if seg_comms:
-                                comments_out = seg_comms[:8]
-                                break
+                elif isinstance(he_2d, list) and 1 <= verse_int <= len(he_2d):
+                    comments_out = _extract_sefaria_he_list(he_2d[verse_int - 1])[:8]
                 if not comments_out and all_daf_rashi:
                     comments_out = all_daf_rashi[:6]
             if comments_out:
@@ -502,7 +477,7 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
         for ch_ref in ch_refs:
             pm_data = _fetch_sefaria_json_cached(ch_ref)
             if pm_data and isinstance(pm_data.get('he'), list):
-                comments_out = _pick_verse_from_chapter_2d(pm_data['he'], verse_int, source_clean_txt)
+                comments_out = _pick_exact_verse_from_chapter_2d(pm_data['he'], verse_int)
                 if not comments_out:
                     all_ch_pm = _extract_sefaria_he_list(pm_data['he'])
                     comments_out = _match_comments_by_dibbur_hamatchil(all_ch_pm, source_clean_txt)[:8] or all_ch_pm[:6]
@@ -549,7 +524,7 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
         for h_var in _generate_spelling_variants(hilchot_base):
             mm_chap = _fetch_sefaria_json_cached(f"מגיד משנה על משנה תורה, {h_var}.{chap_int}")
             if mm_chap and isinstance(mm_chap.get('he'), list):
-                comments_out = _pick_verse_from_chapter_2d(mm_chap['he'], verse_int, source_clean_txt)
+                comments_out = _pick_exact_verse_from_chapter_2d(mm_chap['he'], verse_int)
                 if comments_out:
                     break
             mm_direct = _fetch_sefaria_json_cached(f"מגיד משנה על משנה תורה, {h_var}.{chap_int}.{verse_int}")
@@ -564,12 +539,11 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
         for m_var in _generate_spelling_variants(b_str):
             bart_chap = _fetch_sefaria_json_cached(f'ברטנורא על משנה {m_var}.{chap_int}')
             if bart_chap and isinstance(bart_chap.get('he'), list):
-                comments_out = _pick_verse_from_chapter_2d(bart_chap['he'], verse_int, source_clean_txt)
+                comments_out = _pick_exact_verse_from_chapter_2d(bart_chap['he'], verse_int)
                 if comments_out:
                     break
 
     payload = {'commentator': target_commentator, 'comments': comments_out[:8]}
-    # שומרים ב-Cache רק אם נמצאו פירושים כדי שלעולם לא תישמר תשובה ריקה במקרה של תקלת רשת
     if comments_out:
         cache.set(cache_key, payload, 3600 * 24)
     return payload
