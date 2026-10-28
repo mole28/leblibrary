@@ -575,16 +575,16 @@ def _extract_sefaria_verse_comments(data, verse_int, chap_int=0):
 
     return []
 
-
-def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
+def _fetch_commentary_for_source(book_name, chapter_name, verse_num, requested_commentator=''):
     b_str = _resolve_torah_book_in_db(book_name).replace('״', '"').replace('׳', "'")
     c_str = str(chapter_name or '').strip()
     v_str = str(verse_num or '').strip()
+    req_comm = str(requested_commentator or '').strip()
 
     chap_int = max(1, parse_hebrew_number(c_str))
     verse_int = max(1, parse_hebrew_number(v_str))
 
-    cache_key = f"torah_comm_v50_{b_str}_{chap_int}_{verse_int}"
+    cache_key = f"torah_comm_v55_{b_str}_{chap_int}_{verse_int}_{req_comm}"
     cached = cache.get(cache_key)
     if cached and cached.get('comments'):
         return cached
@@ -683,18 +683,30 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
                         break
 
     elif b_str.startswith('רמב"ם ') or b_str.startswith('רמב״ם '):
-        target_commentator = 'מגיד משנה'
+        is_kesef = ('כסף משנה' in req_comm or 'kesef' in req_comm.lower() or 'kessef' in req_comm.lower())
+        if is_kesef:
+            target_commentator = 'כסף משנה'
+            comm_en_prefixes = ['Kessef Mishneh', 'Kesef Mishneh']
+            comm_he_prefix = 'כסף משנה'
+            match_keywords = ('Kessef Mishneh', 'Kesef Mishneh', 'כסף משנה')
+        else:
+            target_commentator = 'מגיד משנה'
+            comm_en_prefixes = ['Maggid Mishneh']
+            comm_he_prefix = 'מגיד משנה'
+            match_keywords = ('Maggid Mishneh', 'Magid Mishneh', 'מגיד משנה')
+
         en_rambam = RAMBAM_BOOKS_EN.get(b_str, '')
         hilchot = b_str.replace('רמב"ם ', '', 1).replace('רמב״ם ', '', 1).strip()
         direct_refs = []
         base_refs = []
         if en_rambam:
-            direct_refs.append(f"Maggid Mishneh on {en_rambam}.{chap_int}.{verse_int}")
-            direct_refs.append(f"Maggid Mishneh on {en_rambam}.{chap_int}")
+            for c_pref in comm_en_prefixes:
+                direct_refs.append(f"{c_pref} on {en_rambam}.{chap_int}.{verse_int}")
+                direct_refs.append(f"{c_pref} on {en_rambam}.{chap_int}")
             base_refs.append(f"{en_rambam}.{chap_int}.{verse_int}")
         for h_var in _generate_spelling_variants(hilchot):
-            direct_refs.append(f'מגיד משנה על משנה תורה, {h_var}.{chap_int}.{verse_int}')
-            direct_refs.append(f'מגיד משנה על משנה תורה, {h_var}.{chap_int}')
+            direct_refs.append(f'{comm_he_prefix} על משנה תורה, {h_var}.{chap_int}.{verse_int}')
+            direct_refs.append(f'{comm_he_prefix} על משנה תורה, {h_var}.{chap_int}')
             base_refs.append(f'משנה תורה, {h_var}.{chap_int}.{verse_int}')
 
         for r in direct_refs:
@@ -712,7 +724,7 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
                         if not _is_commentary_item_for_verse(c_item, chap_int, verse_int):
                             continue
                         c_ident = f"{c_item.get('commentator', '')} {c_item.get('collectiveTitle', '')} {c_item.get('sourceHeRef', '')} {c_item.get('ref', '')}"
-                        if 'Maggid Mishneh' in c_ident or 'מגיד משנה' in c_ident:
+                        if any(k in c_ident for k in match_keywords):
                             for ex in _extract_sefaria_he_list(c_item.get('he', [])):
                                 if ex not in comments_out:
                                     comments_out.append(ex)
@@ -845,8 +857,9 @@ def tanakh_advanced_search_api(request):
         t_book = request.GET.get('target_book', '').strip()
         t_chap = request.GET.get('target_chapter', '').strip()
         t_verse = request.GET.get('target_verse', '').strip()
+        t_comm = request.GET.get('target_commentator', '').strip()
         if t_book and t_chap and t_verse:
-            return JsonResponse(_fetch_commentary_for_source(t_book, t_chap, t_verse), json_dumps_params={'ensure_ascii': False})
+            return JsonResponse(_fetch_commentary_for_source(t_book, t_chap, t_verse, t_comm), json_dumps_params={'ensure_ascii': False})
         return JsonResponse({'commentator': '', 'comments': []})
 
     if query_type == 'chapter_context':

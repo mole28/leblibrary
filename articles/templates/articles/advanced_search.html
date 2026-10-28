@@ -98,6 +98,19 @@
     .luxury-white-select:focus { box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.4) !important; }
 
     .commentary-badge-trigger { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1px solid #d97706; color: #92400e; border-radius: 8px; padding: 4px 10px; font-size: 0.82rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.18s ease; }
+    .commentary-badge-kesef {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        border: 1px solid #64748b;
+        color: #1e293b;
+        box-shadow: 0 2px 6px rgba(100, 116, 139, 0.14);
+    }
+    .commentary-badge-kesef:hover {
+        background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+        border-color: #334155;
+        color: #0f172a;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(71, 85, 105, 0.22);
+    }
     .commentary-badge-trigger:hover { background: #d97706; color: #ffffff; }
     .verse-hoverable { position: relative; transition: background-color 0.18s ease; border-radius: 8px; padding: 4px 6px; }
     .verse-hoverable:hover { background-color: rgba(212, 175, 55, 0.08); }
@@ -1391,30 +1404,105 @@ document.addEventListener('DOMContentLoaded', function() {
         return [];
     }
 
-    function isCommentaryItemForVerseJS(item, chapInt, verseInt) {
-        if (!item || typeof item !== 'object') return false;
-        if (item.anchorVerse !== undefined && item.anchorVerse !== null) {
-            const av = parseInt(item.anchorVerse, 10);
-            if (!isNaN(av) && av !== verseInt) return false;
+    function buildCommentaryButtonsHtml(bookName, chapterName, safeBook, safeChapter, safeRawVerse, drawerId, extraClass = '') {
+        const b = String(bookName || '').trim();
+        const commLabel = getCommentatorLabelForBook(b, chapterName);
+        if (!commLabel) return '';
+
+        const cls = extraClass ? `commentary-badge-trigger ${extraClass}` : 'commentary-badge-trigger';
+        if (b.startsWith('רמב"ם ') || b.startsWith('רמב״ם ')) {
+            const kesefCls = extraClass ? `commentary-badge-trigger commentary-badge-kesef ${extraClass}` : 'commentary-badge-trigger commentary-badge-kesef';
+            return `
+                <button type="button" class="${cls}" onclick="loadVerseCommentary('${safeBook}', '${safeChapter}', '${safeRawVerse}', '${drawerId}', true, 'מגיד משנה')">
+                    <i class="bi bi-chat-right-text"></i> פירוש מגיד משנה
+                </button>
+                <button type="button" class="${kesefCls}" onclick="loadVerseCommentary('${safeBook}', '${safeChapter}', '${safeRawVerse}', '${drawerId}', true, 'כסף משנה')">
+                    <i class="bi bi-gem"></i> פירוש כסף משנה
+                </button>
+            `;
         }
-        const anchorRef = String(item.anchorRef || item.sourceRef || '');
-        const m = anchorRef.match(/(\d+)[:.](\d+)\s*$/);
-        if (m) {
-            const cNum = parseInt(m[1], 10);
-            const vNum = parseInt(m[2], 10);
-            if ((chapInt > 0 && cNum !== chapInt) || (verseInt > 0 && vNum !== verseInt)) {
-                return false;
-            }
-        }
-        return true;
+
+        return `
+            <button type="button" class="${cls}" onclick="loadVerseCommentary('${safeBook}', '${safeChapter}', '${safeRawVerse}', '${drawerId}', true, '${commLabel}')">
+                <i class="bi bi-chat-right-text"></i> פירוש ${commLabel}
+            </button>
+        `;
     }
 
-    async function fetchCommentaryFallbackJS(bookName, chapterName, verseVal, sourceDomText) {
+    window.loadVerseCommentary = async function(bookName, chapterName, verseNum, drawerId, forceClick, requestedCommentator = '') {
+        if (!forceClick) return;
+        const drawerEl = document.getElementById(drawerId);
+        if (!drawerEl) return;
+
+        const commLabel = requestedCommentator || getCommentatorLabelForBook(bookName, chapterName);
+        if (!commLabel) return;
+
+        const currentActiveComm = drawerEl.getAttribute('data-active-comm') || '';
+        if (drawerEl.style.display === 'block' && drawerEl.getAttribute('data-loaded') === 'true' && currentActiveComm === commLabel) {
+            drawerEl.style.display = 'none';
+            return;
+        }
+
+        drawerEl.setAttribute('data-active-comm', commLabel);
+        const cacheKey = `${bookName}|${chapterName}|${verseNum}|${commLabel}`;
+
+        if (commentaryMemoryCache[cacheKey]) {
+            const cachedObj = commentaryMemoryCache[cacheKey];
+            if (cachedObj.comments && cachedObj.comments.length > 0) {
+                drawerEl.innerHTML = buildCommentsDrawerHtml(cachedObj.commentator || commLabel, cachedObj.comments, drawerId);
+            } else {
+                drawerEl.innerHTML = buildEmptyCommentsHtml(cachedObj.commentator || commLabel, drawerId);
+            }
+            drawerEl.style.display = 'block';
+            drawerEl.setAttribute('data-loaded', 'true');
+            return;
+        }
+
+        drawerEl.style.display = 'block';
+        drawerEl.innerHTML = `
+            <div class="d-flex align-items-center gap-2 text-muted small">
+                <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
+                <span>טוען פירוש <b>${commLabel}</b> על המקור...</span>
+            </div>
+        `;
+
+        const parentCard = drawerEl.parentElement;
+        const verseEl = parentCard ? (parentCard.querySelector('.verse-hoverable') || parentCard) : null;
+        const sourceDomText = verseEl ? verseEl.innerText : '';
+
+        let finalData = { commentator: commLabel, comments: [] };
+        try {
+            const url = `/api/tanakh-search/?type=commentary&target_book=${encodeURIComponent(bookName)}&target_chapter=${encodeURIComponent(chapterName)}&target_verse=${encodeURIComponent(verseNum)}&target_commentator=${encodeURIComponent(commLabel)}`;
+            const resp = await fetch(url);
+            if (resp.ok) {
+                const serverData = await resp.json();
+                if (serverData && Array.isArray(serverData.comments) && serverData.comments.length > 0) {
+                    finalData = serverData;
+                }
+            }
+        } catch (e) {}
+
+        if (!finalData.comments || finalData.comments.length === 0) {
+            finalData = await fetchCommentaryFallbackJS(bookName, chapterName, verseNum, sourceDomText, commLabel);
+        }
+
+        commentaryMemoryCache[cacheKey] = finalData;
+
+        if (finalData.comments && finalData.comments.length > 0) {
+            drawerEl.innerHTML = buildCommentsDrawerHtml(finalData.commentator || commLabel, finalData.comments, drawerId);
+        } else {
+            drawerEl.innerHTML = buildEmptyCommentsHtml(finalData.commentator || commLabel, drawerId);
+        }
+        drawerEl.style.display = 'block';
+        drawerEl.setAttribute('data-loaded', 'true');
+    };
+
+    async function fetchCommentaryFallbackJS(bookName, chapterName, verseVal, sourceDomText, requestedCommentator = '') {
         const b = String(bookName || '').trim().replace(/״/g, '"').replace(/׳/g, "'");
         const c = String(chapterName || '').trim();
         const chapInt = parseHebrewOrInt(c);
         const verseInt = parseHebrewOrInt(verseVal);
-        const commLabel = getCommentatorLabelForBook(b, c);
+        const commLabel = requestedCommentator || getCommentatorLabelForBook(b, c);
         if (!commLabel || chapInt <= 0 || verseInt <= 0) {
             return { commentator: commLabel, comments: [] };
         }
@@ -1512,15 +1600,23 @@ document.addEventListener('DOMContentLoaded', function() {
         let matchKeywords = [];
 
         if (b.startsWith('רמב"ם ')) {
-            matchKeywords = ['מגיד משנה', 'Maggid Mishneh'];
+            const isKesef = commLabel.includes('כסף משנה');
+            matchKeywords = isKesef ? ['כסף משנה', 'Kessef Mishneh', 'Kesef Mishneh'] : ['מגיד משנה', 'Maggid Mishneh', 'Magid Mishneh'];
+            const enPrefixes = isKesef ? ['Kessef Mishneh', 'Kesef Mishneh'] : ['Maggid Mishneh'];
+            const hePrefix = isKesef ? 'כסף משנה' : 'מגיד משנה';
+
             const enRambam = RAMBAM_BOOKS_EN_JS[b] || '';
             if (enRambam) {
-                directRefs.push(`Maggid Mishneh on ${enRambam}.${chapInt}.${verseInt}`);
+                enPrefixes.forEach(pref => {
+                    directRefs.push(`${pref} on ${enRambam}.${chapInt}.${verseInt}`);
+                    directRefs.push(`${pref} on ${enRambam}.{chapInt}`);
+                });
                 baseRefs.push(`${enRambam}.${chapInt}.${verseInt}`);
             }
             const hilchot = b.replace(/^רמב"ם\s+/, '').trim();
             generateBookSpellingVariantsJS(hilchot).forEach(hVar => {
-                directRefs.push(`מגיד משנה על משנה תורה, ${hVar}.${chapInt}.${verseInt}`);
+                directRefs.push(`${hePrefix} על משנה תורה, ${hVar}.${chapInt}.${verseInt}`);
+                directRefs.push(`${hePrefix} על משנה תורה, ${hVar}.${chapInt}`);
                 baseRefs.push(`משנה תורה, ${hVar}.${chapInt}.${verseInt}`);
             });
         } else if (BOOKS_CATALOG.tanakh.flatMap(g => g.books).includes(b)) {
@@ -1572,6 +1668,24 @@ document.addEventListener('DOMContentLoaded', function() {
         return { commentator: commLabel, comments: [] };
     }
 
+    function isCommentaryItemForVerseJS(item, chapInt, verseInt) {
+        if (!item || typeof item !== 'object') return false;
+        if (item.anchorVerse !== undefined && item.anchorVerse !== null) {
+            const av = parseInt(item.anchorVerse, 10);
+            if (!isNaN(av) && av !== verseInt) return false;
+        }
+        const anchorRef = String(item.anchorRef || item.sourceRef || '');
+        const m = anchorRef.match(/(\d+)[:.](\d+)\s*$/);
+        if (m) {
+            const cNum = parseInt(m[1], 10);
+            const vNum = parseInt(m[2], 10);
+            if ((chapInt > 0 && cNum !== chapInt) || (verseInt > 0 && vNum !== verseInt)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     function buildCommentsDrawerHtml(commName, commentsArr, drawerId) {
         let html = `<div class="d-flex justify-content-between align-items-center mb-2 pb-1" style="border-bottom: 1px solid #e2d9c5;">
             <strong style="color: #8c6239; font-size: 0.95rem;"><i class="bi bi-chat-right-quote-fill ms-1" style="color: #d4af37;"></i>פירוש ${commName}:</strong>
@@ -1589,71 +1703,6 @@ document.addEventListener('DOMContentLoaded', function() {
             <button type="button" class="btn-close" style="font-size: 0.65rem;" onclick="document.getElementById('${drawerId}').style.display='none'"></button>
         </div>`;
     }
-
-    window.loadVerseCommentary = async function(bookName, chapterName, verseNum, drawerId, forceClick) {
-        if (!forceClick) return;
-        const drawerEl = document.getElementById(drawerId);
-        if (!drawerEl) return;
-
-        if (drawerEl.style.display === 'block' && drawerEl.getAttribute('data-loaded') === 'true') {
-            drawerEl.style.display = 'none';
-            return;
-        }
-
-        const commLabel = getCommentatorLabelForBook(bookName, chapterName);
-        if (!commLabel) return;
-
-        const cacheKey = `${bookName}|${chapterName}|${verseNum}`;
-
-        if (commentaryMemoryCache[cacheKey]) {
-            const cachedObj = commentaryMemoryCache[cacheKey];
-            if (cachedObj.comments && cachedObj.comments.length > 0) {
-                drawerEl.innerHTML = buildCommentsDrawerHtml(cachedObj.commentator || commLabel, cachedObj.comments, drawerId);
-            } else {
-                drawerEl.innerHTML = buildEmptyCommentsHtml(cachedObj.commentator || commLabel, drawerId);
-            }
-            drawerEl.style.display = 'block';
-            drawerEl.setAttribute('data-loaded', 'true');
-            return;
-        }
-
-        drawerEl.style.display = 'block';
-        drawerEl.innerHTML = `
-            <div class="d-flex align-items-center gap-2 text-muted small">
-                <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
-                <span>טוען פירוש <b>${commLabel}</b> על המקור...</span>
-            </div>
-        `;
-
-        const parentCard = drawerEl.parentElement;
-        const verseEl = parentCard ? (parentCard.querySelector('.verse-hoverable') || parentCard) : null;
-        const sourceDomText = verseEl ? verseEl.innerText : '';
-
-        let finalData = { commentator: commLabel, comments: [] };
-        try {
-            const url = `/api/tanakh-search/?type=commentary&target_book=${encodeURIComponent(bookName)}&target_chapter=${encodeURIComponent(chapterName)}&target_verse=${encodeURIComponent(verseNum)}`;
-            const resp = await fetch(url);
-            if (resp.ok) {
-                const serverData = await resp.json();
-                if (serverData && Array.isArray(serverData.comments) && serverData.comments.length > 0) {
-                    finalData = serverData;
-                }
-            }
-        } catch (e) {}
-
-        if (!finalData.comments || finalData.comments.length === 0) {
-            finalData = await fetchCommentaryFallbackJS(bookName, chapterName, verseNum, sourceDomText);
-        }
-
-        if (finalData.comments && finalData.comments.length > 0) {
-            commentaryMemoryCache[cacheKey] = finalData;
-            drawerEl.innerHTML = buildCommentsDrawerHtml(finalData.commentator || commLabel, finalData.comments, drawerId);
-        } else {
-            drawerEl.innerHTML = buildEmptyCommentsHtml(finalData.commentator || commLabel, drawerId);
-        }
-        drawerEl.style.display = 'block';
-        drawerEl.setAttribute('data-loaded', 'true');
-    };
 
     window.openAutomatedCodeFinderByIdx = function(idx) {
         const res = lastFetchedResults[idx];
@@ -1773,11 +1822,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const commLabel = getCommentatorLabelForBook(res.book, res.chapter);
                     const drawerId = `commDrawer_res_${idx}`;
 
-                    const commBtnHtml = commLabel ? `
-                        <button type="button" class="commentary-badge-trigger" onclick="loadVerseCommentary('${safeBook}', '${safeChapter}', '${safeRawVerse}', '${drawerId}', true)">
-                            <i class="bi bi-chat-right-text"></i> פירוש ${commLabel}
-                        </button>
-                    ` : '';
+                    const commBtnHtml = buildCommentaryButtonsHtml(res.book, res.chapter, safeBook, safeChapter, safeRawVerse, drawerId);
 
                     html += `
                         <div class="list-group-item p-4 mb-3 border-0 rounded-4 shadow-sm" style="background-color: #fcfbf8; border-right: 5px solid #d4af37 !important;">
@@ -1931,11 +1976,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const hebVerse = toHebrewLetters(v.verse);
                     const safeRawVerse = escapeJsAndHtml(v.raw_verse || v.verse);
                     const drawerId = `commDrawer_quick_${idx}`;
-                    const commBtnHtml = commLabel ? `
-                        <button type="button" class="commentary-badge-trigger" onclick="loadVerseCommentary('${safeBook}', '${safeChapter}', '${safeRawVerse}', '${drawerId}', true)">
-                            <i class="bi bi-chat-right-text"></i> פירוש ${commLabel}
-                        </button>
-                    ` : '';
+                    const commBtnHtml = buildCommentaryButtonsHtml(bName, chName, safeBook, safeChapter, safeRawVerse, drawerId);
 
                     html += `
                         <div class="list-group-item p-3 mb-2 border-0 rounded-3 shadow-sm" style="background-color: #fcfbf8; border-right: 4px solid #d4af37 !important;">
@@ -2133,11 +2174,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const rowId = isTarget ? 'id="modalTargetVerseRow"' : '';
                     const safeRawVerse = escapeJsAndHtml(v.raw_verse || v.verse);
                     const drawerId = `commDrawer_modal_${idx}`;
-                    const commBtn = commLabel ? `
-                        <button type="button" class="commentary-badge-trigger float-start" onclick="loadVerseCommentary('${safeBook}', '${safeChapter}', '${safeRawVerse}', '${drawerId}', true)">
-                            <i class="bi bi-chat-right-text"></i> פירוש ${commLabel}
-                        </button>
-                    ` : '';
+                    const commBtn = buildCommentaryButtonsHtml(bookName, chapterName, safeBook, safeChapter, safeRawVerse, drawerId, 'float-start ms-1');
 
                     html += `
                         <div ${rowId} class="chapter-context-verse ${isTarget ? 'target-highlight' : ''}">
