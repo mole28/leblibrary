@@ -69,15 +69,49 @@ MISHNAH_BOOKS = [
 ]
 
 TANAKH_BOOKS_EN = {
-    'בראשית': 'Genesis', 'שמות': 'Exodus', 'ויקרא': 'Leviticus', 'במדבר': 'Numbers', 'דברים': 'Deuteronomy',
-    'יהושע': 'Joshua', 'שופטים': 'Judges', 'שמואל א': 'I Samuel', 'שמואל ב': 'II Samuel',
-    'מלכים א': 'I Kings', 'מלכים ב': 'II Kings', 'ישעיהו': 'Isaiah', 'ירמיהו': 'Jeremiah',
-    'יחזקאל': 'Ezekiel', 'הושע': 'Hosea', 'יואל': 'Joel', 'עמוס': 'Amos', 'עובדיה': 'Obadiah',
-    'יונה': 'Jonah', 'מיכה': 'Micah', 'נחום': 'Nahum', 'חבקוק': 'Habakkuk', 'צפניה': 'Zephaniah',
-    'חגי': 'Haggai', 'זכריה': 'Zechariah', 'מלאכי': 'Malachi', 'תהילים': 'Psalms', 'משלי': 'Proverbs',
-    'איוב': 'Job', 'שיר השירים': 'Song of Songs', 'רות': 'Ruth', 'איכה': 'Lamentations',
-    'קהלת': 'Ecclesiastes', 'אסתר': 'Esther', 'דניאל': 'Daniel', 'עזרא': 'Ezra', 'נחמיה': 'Nehemiah',
-    'דברי הימים א': 'I Chronicles', 'דברי הימים ב': 'II Chronicles'
+    'בראשית': 'Genesis',
+    'שמות': 'Exodus',
+    'ויקרא': 'Leviticus',
+    'במדבר': 'Numbers',
+    'דברים': 'Deuteronomy',
+    'יהושע': 'Joshua',
+    'שופטים': 'Judges',
+    'שמואל א': 'I Samuel',
+    'שמואל ב': 'II Samuel',
+    'מלכים א': 'I Kings',
+    'מלכים ב': 'II Kings',
+    'ישעיהו': 'Isaiah',
+    'ישעיה': 'Isaiah',
+    'ירמיהו': 'Jeremiah',
+    'ירמיה': 'Jeremiah',
+    'יחזקאל': 'Ezekiel',
+    'הושע': 'Hosea',
+    'יואל': 'Joel',
+    'עמוס': 'Amos',
+    'עובדיה': 'Obadiah',
+    'יונה': 'Jonah',
+    'מיכה': 'Micah',
+    'נחום': 'Nahum',
+    'חבקוק': 'Habakkuk',
+    'צפניה': 'Zephaniah',
+    'חגי': 'Haggai',
+    'זכריה': 'Zechariah',
+    'מלאכי': 'Malachi',
+    'תהלים': 'Psalms',
+    'תהילים': 'Psalms',
+    'משלי': 'Proverbs',
+    'איוב': 'Job',
+    'שיר השירים': 'Song of Songs',
+    'רות': 'Ruth',
+    'איכה': 'Lamentations',
+    'קהלת': 'Ecclesiastes',
+    'קוהלת': 'Ecclesiastes',
+    'אסתר': 'Esther',
+    'דניאל': 'Daniel',
+    'עזרא': 'Ezra',
+    'נחמיה': 'Nehemiah',
+    'דברי הימים א': 'I Chronicles',
+    'דברי הימים ב': 'II Chronicles',
 }
 
 MISHNAH_BOOKS_EN = {
@@ -220,14 +254,22 @@ def parse_hebrew_number(val):
         return 0
     if s.isdigit():
         return int(s)
-    m = re.search(r'\d+', s)
-    if m:
-        return int(m.group(0))
-    s_clean = re.sub(r'^(פרק|סימן|דף|הלכה|משנה|סעיף|שורה|פסוק)\s+', '', s).strip()
-    s_clean = re.sub(r'(עמוד\s+[אב])', '', s_clean).strip()
-    parts = s_clean.split()
+
+    if ':' in s and not re.search(r'דף\s+[א-ת]+:', s):
+        colon_parts = [p.strip() for p in s.split(':') if p.strip()]
+        if len(colon_parts) >= 2:
+            s = colon_parts[-1]
+        elif len(colon_parts) == 1:
+            s = colon_parts[0]
+
+    nums = re.findall(r'\d+', s)
+    if nums:
+        return int(nums[-1])
+
+    s_clean = re.sub(r'(פרק|סימן|דף|הלכה|משנה|סעיף|שורה|פסוק|עמוד\s+[אב]|ע"א|ע"ב|ע״א|ע״ב)\s*[:\-]?\s*', ' ', s).strip()
+    parts = [p for p in s_clean.split() if re.sub(r'[^א-ת]', '', p)]
     if parts:
-        heb_token = re.sub(r'[^א-ת]', '', parts[0])
+        heb_token = re.sub(r'[^א-ת]', '', parts[-1])
         if heb_token:
             return sum(HEBREW_GEMATRIA.get(c, 0) for c in heb_token)
     return 0
@@ -268,8 +310,12 @@ def get_book_order(book_name, chapter_name=""):
     return BOOK_ORDER.get(name, 999)
 
 
-def safe_int(v):
-    s = str(v).strip()
+def safe_int(v, default=0):
+    if isinstance(v, int):
+        return v
+    s = str(v or '').strip()
+    if not s:
+        return default
     if s.isdigit():
         return int(s)
     m = re.search(r'\d+', s)
@@ -281,13 +327,14 @@ def safe_int(v):
         heb_num = sum(HEBREW_GEMATRIA.get(c, 0) for c in re.sub(r'[^א-ת]', '', parts[0]))
         amud = 2 if ('עמוד ב' in s or ':' in s) else 1
         return heb_num * 10 + amud
-    return 0
+    return default
 
 
 def _resolve_torah_book_in_db(book_name):
     b = str(book_name or '').strip()
     if not b:
         return b
+    b = re.sub(r"\s+", " ", b)
     if TorahText.objects.filter(book=b).exists():
         return b
     alt_b = b.replace('"', '״') if '"' in b else b.replace('״', '"')
@@ -339,6 +386,18 @@ def _generate_spelling_variants(title_str):
     return variants
 
 
+def _get_tanakh_en_book(book_str):
+    b_clean = str(book_str or '').strip()
+    b_clean = re.sub(r"['\"׳״]", "", b_clean)
+    b_clean = re.sub(r"\s+", " ", b_clean).strip()
+    if b_clean in TANAKH_BOOKS_EN:
+        return TANAKH_BOOKS_EN[b_clean]
+    for heb_name, en_name in TANAKH_BOOKS_EN.items():
+        if b_clean.endswith(heb_name):
+            return en_name
+    return ''
+
+
 def _extract_sefaria_he_list(he_data):
     flat = []
     if isinstance(he_data, str):
@@ -348,6 +407,61 @@ def _extract_sefaria_he_list(he_data):
         for item in he_data:
             flat.extend(_extract_sefaria_he_list(item))
     return flat
+
+
+def _extract_sefaria_verse_comments(data, verse_int, chap_int=0):
+    if not isinstance(data, dict):
+        return []
+    he_data = data.get('he')
+    if not he_data:
+        return []
+
+    sections = data.get('sections') or []
+    try:
+        text_depth = int(data.get('textDepth') or 3)
+    except (ValueError, TypeError):
+        text_depth = 3
+
+    if len(sections) >= 1 and chap_int > 0:
+        try:
+            sec_chap_str = re.sub(r'[^0-9]', '', str(sections[0]))
+            if sec_chap_str and int(sec_chap_str) != chap_int:
+                return []
+        except (ValueError, TypeError):
+            pass
+
+    if isinstance(he_data, list):
+        has_sublists = any(isinstance(x, list) for x in he_data)
+        if has_sublists:
+            is_3d = any(
+                isinstance(sub, list) and any(isinstance(inner, list) for inner in sub)
+                for sub in he_data
+            )
+            if is_3d:
+                if chap_int <= 0 or chap_int > len(he_data):
+                    return []
+                chap_entry = he_data[chap_int - 1]
+                if not isinstance(chap_entry, list) or verse_int <= 0 or verse_int > len(chap_entry):
+                    return []
+                return _extract_sefaria_he_list(chap_entry[verse_int - 1])
+
+            if verse_int <= 0 or verse_int > len(he_data):
+                return []
+            return _extract_sefaria_he_list(he_data[verse_int - 1])
+
+        if (text_depth == 3 and len(sections) == 1) or (len(sections) < text_depth - 1):
+            if verse_int <= 0 or verse_int > len(he_data):
+                return []
+            return _extract_sefaria_he_list(he_data[verse_int - 1])
+
+    if len(sections) >= 2 and verse_int > 0:
+        try:
+            if int(sections[1]) != verse_int:
+                return []
+        except (ValueError, TypeError):
+            pass
+
+    return _extract_sefaria_he_list(he_data)
 
 
 def _match_comments_by_dibbur_hamatchil(all_comments_list, source_clean_text):
@@ -388,15 +502,15 @@ def _match_comments_by_dibbur_hamatchil(all_comments_list, source_clean_text):
     return matched
 
 
-def _fetch_sefaria_json_cached(sefaria_ref, extra_params="context=0&pad=0"):
-    c_key = f"sefaria_ipv4_v35_{sefaria_ref}_{extra_params}"
+def _fetch_sefaria_json_cached(sefaria_ref, extra_params="context=0&commentary=0&pad=0"):
+    c_key = f"sefaria_ipv4_v40_{sefaria_ref}_{extra_params}"
     cached = cache.get(c_key)
     if cached is not None:
         return cached
     url = f"https://www.sefaria.org/api/texts/{urllib.parse.quote(sefaria_ref)}?{extra_params}"
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     try:
-        with _IPV4_OPENER.open(req, timeout=2.5) as resp:
+        with _IPV4_OPENER.open(req, timeout=5.0) as resp:
             data = json.loads(resp.read().decode('utf-8'))
             if isinstance(data, dict) and not data.get('error') and (data.get('he') or data.get('commentary')):
                 cache.set(c_key, data, 3600 * 24)
@@ -407,14 +521,14 @@ def _fetch_sefaria_json_cached(sefaria_ref, extra_params="context=0&pad=0"):
 
 
 def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
-    b_str = _resolve_torah_book_in_db(book_name).replace('״', '"')
+    b_str = _resolve_torah_book_in_db(book_name).replace('״', '"').replace('׳', "'")
     c_str = str(chapter_name or '').strip()
     v_str = str(verse_num or '').strip()
 
     chap_int = max(1, parse_hebrew_number(c_str))
     verse_int = max(1, parse_hebrew_number(v_str))
 
-    cache_key = f"torah_comm_v35_{b_str}_{c_str}_{verse_int}"
+    cache_key = f"torah_comm_v40_{b_str}_{chap_int}_{verse_int}"
     cached = cache.get(cache_key)
     if cached and cached.get('comments'):
         return cached
@@ -425,39 +539,50 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
     comments_out = []
     target_commentator = 'רש"י'
 
-    # 1. תנ"ך -> רש"י (פנייה ישירה לפסוק המדויק chap_int.verse_int מחזירה את כל דיבורי המתחיל על הפסוק)
-    if b_str in TANAKH_NAMES and not c_str.startswith('דף'):
+    en_tanakh = _get_tanakh_en_book(b_str)
+
+    if (b_str in TANAKH_NAMES or en_tanakh) and not c_str.startswith('דף'):
         target_commentator = 'רש"י'
-        en_book = TANAKH_BOOKS_EN.get(b_str)
         refs = []
-        if en_book:
-            refs.append(f"Rashi on {en_book}.{chap_int}.{verse_int}")
+        if en_tanakh:
+            refs.append(f"Rashi on {en_tanakh}.{chap_int}.{verse_int}")
         refs.append(f'רש"י על {b_str}.{chap_int}.{verse_int}')
         for r in refs:
-            d = _fetch_sefaria_json_cached(r)
+            d = _fetch_sefaria_json_cached(r, "context=0&commentary=0&pad=0")
             if d and d.get('he'):
-                comments_out = _extract_sefaria_he_list(d['he'])
+                comments_out = _extract_sefaria_verse_comments(d, verse_int, chap_int)
                 if comments_out:
                     break
 
-    # 2. תלמוד בבלי -> רש"י
+        if not comments_out and en_tanakh:
+            v_data = _fetch_sefaria_json_cached(f"{en_tanakh}.{chap_int}.{verse_int}", "commentary=1&context=0&pad=0")
+            if v_data and isinstance(v_data.get('commentary'), list):
+                for c_item in v_data['commentary']:
+                    c_ident = f"{c_item.get('commentator', '')} {c_item.get('collectiveTitle', '')} {c_item.get('sourceHeRef', '')}"
+                    if 'Rashi' in c_ident or 'רש"י' in c_ident:
+                        anchor_v = c_item.get('anchorVerse')
+                        if anchor_v is not None and safe_int(anchor_v, verse_int) != verse_int:
+                            continue
+                        for ex in _extract_sefaria_he_list(c_item.get('he', [])):
+                            if ex not in comments_out:
+                                comments_out.append(ex)
+
     elif c_str.startswith('דף') and not b_str.startswith('ירושלמי '):
         target_commentator = 'רש"י'
         en_book = BAVLI_TRACTATES_EN.get(b_str, b_str)
         daf_num = max(2, chap_int)
-        amud = 'b' if ('עמוד ב' in c_str or ':' in c_str) else 'a'
+        amud = 'b' if ('עמוד ב' in c_str or ':' in c_str or 'ע"ב' in c_str or 'ע״ב' in c_str) else 'a'
 
-        d_seg = _fetch_sefaria_json_cached(f"Rashi on {en_book}.{daf_num}{amud}.{verse_int}")
+        d_seg = _fetch_sefaria_json_cached(f"Rashi on {en_book}.{daf_num}{amud}.{verse_int}", "context=0&commentary=0&pad=0")
         if d_seg and d_seg.get('he'):
-            comments_out = _extract_sefaria_he_list(d_seg['he'])
+            comments_out = _extract_sefaria_verse_comments(d_seg, verse_int)
 
         if not comments_out:
-            d_daf = _fetch_sefaria_json_cached(f"Rashi on {en_book}.{daf_num}{amud}.1-150")
+            d_daf = _fetch_sefaria_json_cached(f"Rashi on {en_book}.{daf_num}{amud}.1-150", "context=0&commentary=0&pad=0")
             if d_daf and d_daf.get('he'):
                 all_daf = _extract_sefaria_he_list(d_daf['he'])
                 comments_out = _match_comments_by_dibbur_hamatchil(all_daf, source_clean_txt)
 
-    # 3. תלמוד ירושלמי -> פני משה
     elif b_str.startswith('ירושלמי '):
         target_commentator = 'פני משה'
         masechet = b_str.replace('ירושלמי ', '', 1).strip()
@@ -468,13 +593,12 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
         for m_var in _generate_spelling_variants(masechet):
             refs.append(f'פני משה על תלמוד ירושלמי {m_var}.{chap_int}.{verse_int}')
         for r in refs:
-            d = _fetch_sefaria_json_cached(r)
+            d = _fetch_sefaria_json_cached(r, "context=0&commentary=0&pad=0")
             if d and d.get('he'):
-                comments_out = _extract_sefaria_he_list(d['he'])
+                comments_out = _extract_sefaria_verse_comments(d, verse_int, chap_int)
                 if comments_out:
                     break
 
-    # 4. שולחן ערוך -> באר היטב
     elif b_str.startswith('שולחן ערוך '):
         target_commentator = 'באר היטב'
         sa_en = SHULCHAN_ARUCH_EN.get(b_str, '')
@@ -493,25 +617,23 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
             if sa_en:
                 bh_refs.insert(0, f"Ba'er Hetev on {sa_en}.{chap_int}")
             for r in bh_refs:
-                d = _fetch_sefaria_json_cached(r)
+                d = _fetch_sefaria_json_cached(r, "context=0&commentary=0&pad=0")
                 if d and d.get('he'):
                     all_bh = _extract_sefaria_he_list(d['he'])
                     comments_out = _match_comments_by_dibbur_hamatchil(all_bh, source_clean_txt) or all_bh[:8]
                     if comments_out:
                         break
 
-    # 5. רמב"ם -> מגיד משנה
-    elif b_str.startswith('רמב"ם '):
+    elif b_str.startswith('רמב"ם ') or b_str.startswith('רמב״ם '):
         target_commentator = 'מגיד משנה'
-        hilchot = b_str.replace('רמב"ם ', '', 1).strip()
+        hilchot = b_str.replace('רמב"ם ', '', 1).replace('רמב״ם ', '', 1).strip()
         for h_var in _generate_spelling_variants(hilchot):
-            d = _fetch_sefaria_json_cached(f'מגיד משנה על משנה תורה, {h_var}.{chap_int}.{verse_int}')
+            d = _fetch_sefaria_json_cached(f'מגיד משנה על משנה תורה, {h_var}.{chap_int}.{verse_int}', "context=0&commentary=0&pad=0")
             if d and d.get('he'):
-                comments_out = _extract_sefaria_he_list(d['he'])
+                comments_out = _extract_sefaria_verse_comments(d, verse_int, chap_int)
                 if comments_out:
                     break
 
-    # 6. משנה -> רבינו עובדיה מברטנורא
     elif b_str in MISHNAH_BOOKS:
         target_commentator = 'רבינו עובדיה מברטנורא'
         en_book = MISHNAH_BOOKS_EN.get(b_str)
@@ -521,9 +643,9 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
         for m_var in _generate_spelling_variants(b_str):
             refs.append(f'ברטנורא על משנה {m_var}.{chap_int}.{verse_int}')
         for r in refs:
-            d = _fetch_sefaria_json_cached(r)
+            d = _fetch_sefaria_json_cached(r, "context=0&commentary=0&pad=0")
             if d and d.get('he'):
-                comments_out = _extract_sefaria_he_list(d['he'])
+                comments_out = _extract_sefaria_verse_comments(d, verse_int, chap_int)
                 if comments_out:
                     break
 
@@ -640,7 +762,7 @@ def tanakh_advanced_search_api(request):
     except ValueError:
         per_page = 10
 
-    search_cache_key = f"tanakh_srch_v35_{query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
+    search_cache_key = f"tanakh_srch_v40_{query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
     cached_search_data = cache.get(search_cache_key)
     if cached_search_data:
         return JsonResponse(cached_search_data, json_dumps_params={'ensure_ascii': False})
