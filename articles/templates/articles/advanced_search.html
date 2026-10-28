@@ -1256,8 +1256,161 @@ document.addEventListener('DOMContentLoaded', function() {
         return variants;
     }
 
+    const RAMBAM_BOOKS_EN_JS = {
+        'רמב"ם הלכות יסודי התורה': 'Mishneh Torah, Foundations of the Torah',
+        'רמב"ם הלכות דעות': 'Mishneh Torah, Human Dispositions',
+        'רמב"ם הלכות תלמוד תורה': 'Mishneh Torah, Torah Study',
+        'רמב"ם הלכות עבודה זרה וחוקות הגויים': 'Mishneh Torah, Foreign Worship and Customs of the Nations',
+        'רמב"ם הלכות תשובה': 'Mishneh Torah, Repentance',
+        'רמב"ם הלכות קריאת שמע': 'Mishneh Torah, Reading the Shema',
+        'רמב"ם הלכות תפילה וברכת כהנים': 'Mishneh Torah, Prayer and the Priestly Blessing',
+        'רמב"ם הלכות תפילין ומזוזה וספר תורה': 'Mishneh Torah, Tefillin, Mezuzah and the Torah Scroll',
+        'רמב"ם הלכות ציצית': 'Mishneh Torah, Fringes',
+        'רמב"ם הלכות ברכות': 'Mishneh Torah, Blessings',
+        'רמב"ם הלכות מילה': 'Mishneh Torah, Circumcision',
+        'רמב"ם הלכות סדר תפילות': 'Mishneh Torah, Order of Prayer',
+        'רמב"ם הלכות שבת': 'Mishneh Torah, Sabbath',
+        'רמב"ם הלכות עירובין': 'Mishneh Torah, Eruvin',
+        'רמב"ם הלכות שביתת עשור': 'Mishneh Torah, Rest on the Tenth of Tishrei',
+        'רמב"ם הלכות שביתת יום טוב': 'Mishneh Torah, Rest on a Holiday',
+        'רמב"ם הלכות חמץ ומצה': 'Mishneh Torah, Leavened and Unleavened Bread',
+        'רמב"ם הלכות שופר וסוכה ולולב': 'Mishneh Torah, Shofar, Sukkah and Lulav',
+        'רמב"ם הלכות שקלים': 'Mishneh Torah, Sheqel Dues',
+        'רמב"ם הלכות קידוש החודש': 'Mishneh Torah, Sanctification of the New Month',
+        'רמב"ם הלכות תעניות': 'Mishneh Torah, Fasts',
+        'רמב"ם הלכות מגילה וחנוכה': 'Mishneh Torah, Scroll of Esther and Hanukkah',
+        'רמב"ם הלכות אישות': 'Mishneh Torah, Marriage',
+        'רמב"ם הלכות גירושין': 'Mishneh Torah, Divorce',
+        'רמב"ם הלכות ייבום וחליצה': 'Mishneh Torah, Levirate Marriage and Release',
+        'רמב"ם הלכות נערה בתולה': 'Mishneh Torah, Virgin Maiden',
+        'רמב"ם הלכות סוטה': 'Mishneh Torah, Woman Suspected of Infidelity',
+        'רמב"ם הלכות איסורי ביאה': 'Mishneh Torah, Forbidden Intercourse',
+        'רמב"ם הלכות מאכלות אסורות': 'Mishneh Torah, Forbidden Foods',
+        'רמב"ם הלכות שחיטה': 'Mishneh Torah, Ritual Slaughter',
+        'רמב"ם הלכות שבועות': 'Mishneh Torah, Oaths',
+        'רמב"ם הלכות נדרים': 'Mishneh Torah, Vows',
+        'רמב"ם הלכות נזירות': 'Mishneh Torah, Nazariteship',
+        'רמב"ם הלכות ערכין וחרמין': 'Mishneh Torah, Appraisals and Devoted Property',
+        'רמב"ם הלכות כלאיים': 'Mishneh Torah, Diverse Species',
+        'רמב"ם הלכות מתנות עניים': 'Mishneh Torah, Gifts to the Poor',
+        'רמב"ם הלכות תרומות': 'Mishneh Torah, Heave Offerings',
+        'רמב"ם הלכות מעשרות': 'Mishneh Torah, Tithes',
+        'רמב"ם הלכות מעשר שני ונטע רבעי': "Mishneh Torah, Second Tithes and Fourth Year's Fruit",
+        'רמב"ם הלכות ביכורים ושאר מתנות כהונה שבגבולין': 'Mishneh Torah, First Fruits and other Gifts to Priests Outside the Sanctuary',
+        'רמב"ם הלכות שמיטה ויובל': 'Mishneh Torah, Sabbatical Year and the Jubilee',
+        'רמב"ם הלכות בית הבחירה': 'Mishneh Torah, The Chosen Temple',
+        'רמב"ם הלכות כלי המקדש והעובדין בו': 'Mishneh Torah, Vessels of the Sanctuary and Those Who Serve Therein',
+        'רמב"ם הלכות ביאת מקדש': 'Mishneh Torah, Admission into the Sanctuary',
+        'רמב"ם הלכות איסורי המזבח': 'Mishneh Torah, Things Forbidden on the Altar',
+        'רמב"ם הלכות מעשה הקורבנות': 'Mishneh Torah, Sacrificial Procedure',
+        'רמב"ם הלכות תמידין ומוספין': 'Mishneh Torah, Daily Offerings and Additional Offerings',
+        'רמב"ם הלכות פסולי המוקדשין': 'Mishneh Torah, Sacrifices Rendered Unfit',
+        'רמב"ם הלכות עבודת יום הכיפורים': 'Mishneh Torah, Service on the Day of Atonement',
+        'רמב"ם הלכות מעילה': 'Mishneh Torah, Trespass',
+        'רמב"ם הלכות קורבן פסח': 'Mishneh Torah, Paschal Offering',
+        'רמב"ם הלכות חגיגה': 'Mishneh Torah, Festival Offering',
+        'רמב"ם הלכות בכורות': 'Mishneh Torah, Firstlings',
+        'רמב"ם הלכות שגגות': 'Mishneh Torah, Offerings for Unintentional Transgressions',
+        'רמב"ם הלכות מחוסרי כפרה': 'Mishneh Torah, Offerings for Those with Incomplete Atonement',
+        'רמב"ם הלכות תמורה': 'Mishneh Torah, Substituted Offerings',
+        'רמב"ם הלכות טומאת מת': 'Mishneh Torah, Defilement by a Corpse',
+        'רמב"ם הלכות פרה אדומה': 'Mishneh Torah, Red Heifer',
+        'רמב"ם הלכות טומאת צרעת': 'Mishneh Torah, Defilement by Leprosy',
+        'רמב"ם הלכות מטמאי משכב ומושב': 'Mishneh Torah, Those Who Defile Bed or Seat',
+        'רמב"ם הלכות שאר אבות הטומאות': 'Mishneh Torah, Other Sources of Defilement',
+        'רמב"ם הלכות טומאת אוכלין': 'Mishneh Torah, Defilement of Foods',
+        'רמב"ם הלכות כלים': 'Mishneh Torah, Vessels',
+        'רמב"ם הלכות מקוואות': 'Mishneh Torah, Immersion Pools',
+        'רמב"ם הלכות נזקי ממון': 'Mishneh Torah, Property Damages',
+        'רמב"ם הלכות גניבה': 'Mishneh Torah, Theft',
+        'רמב"ם הלכות גזילה ואבידה': 'Mishneh Torah, Robbery and Lost Property',
+        'רמב"ם הלכות חובל ומזיק': 'Mishneh Torah, One Who Injures a Person or Property',
+        'רמב"ם הלכות רוצח ושמירת נפש': 'Mishneh Torah, Murderer and the Preservation of Life',
+        'רמב"ם הלכות מכירה': 'Mishneh Torah, Sales',
+        'רמב"ם הלכות זכייה ומתנה': 'Mishneh Torah, Ownerless Property and Gifts',
+        'רמב"ם הלכות שכנים': 'Mishneh Torah, Neighbors',
+        'רמב"ם הלכות שלוחין ושותפין': 'Mishneh Torah, Agents and Partners',
+        'רמב"ם הלכות עבדים': 'Mishneh Torah, Slaves',
+        'רמב"ם הלכות שכירות': 'Mishneh Torah, Hiring',
+        'רמב"ם הלכות שאלה ופיקדון': 'Mishneh Torah, Borrowing and Deposit',
+        'רמב"ם הלכות מלווה ולווה': 'Mishneh Torah, Creditor and Debtor',
+        'רמב"ם הלכות טוען ונטען': 'Mishneh Torah, Plaintiff and Defendant',
+        'רמב"ם הלכות נחלות': 'Mishneh Torah, Inheritances',
+        'רמב"ם הלכות סנהדרין והעונשין המסורין להם': 'Mishneh Torah, The Sanhedrin and the Penalties within their Jurisdiction',
+        'רמב"ם הלכות עדות': 'Mishneh Torah, Testimony',
+        'רמב"ם הלכות ממרים': 'Mishneh Torah, Rebels',
+        'רמב"ם הלכות אבל': 'Mishneh Torah, Mourning',
+        'רמב"ם הלכות מלכים ומלחמות': 'Mishneh Torah, Kings and Wars'
+    };
+
+    function extractSefariaVerseCommentsJS(data, verseInt, chapInt) {
+        if (!data || typeof data !== 'object' || !data.he) return [];
+        const heData = data.he;
+        const sections = Array.isArray(data.sections) ? data.sections : [];
+        const textDepth = parseInt(data.textDepth || 3, 10) || 3;
+
+        if (sections.length >= 1 && chapInt > 0) {
+            const secC = parseInt(String(sections[0]).replace(/[^0-9]/g, ''), 10);
+            if (secC && secC !== chapInt) return [];
+        }
+
+        if (typeof heData === 'string') {
+            if (sections.length >= 2 && verseInt > 0) {
+                const secV = parseInt(String(sections[1]).replace(/[^0-9]/g, ''), 10);
+                if (secV && secV !== verseInt) return [];
+            }
+            return flattenSefariaHe(heData);
+        }
+
+        if (Array.isArray(heData)) {
+            const hasSublists = heData.some(x => Array.isArray(x));
+            if (hasSublists) {
+                const is3D = heData.some(sub => Array.isArray(sub) && sub.some(inner => Array.isArray(inner)));
+                if (is3D || textDepth === 2) {
+                    if (chapInt <= 0 || chapInt > heData.length) return [];
+                    const chapEntry = heData[chapInt - 1];
+                    if (!Array.isArray(chapEntry) || verseInt <= 0 || verseInt > chapEntry.length) return [];
+                    return flattenSefariaHe(chapEntry[verseInt - 1]);
+                }
+                if (verseInt <= 0 || verseInt > heData.length) return [];
+                return flattenSefariaHe(heData[verseInt - 1]);
+            }
+
+            if (textDepth === 2) {
+                if (verseInt <= 0 || verseInt > heData.length) return [];
+                return flattenSefariaHe(heData[verseInt - 1]);
+            }
+
+            if (sections.length >= 2 && verseInt > 0) {
+                const secV = parseInt(String(sections[1]).replace(/[^0-9]/g, ''), 10);
+                if (secV && secV !== verseInt) return [];
+                return flattenSefariaHe(heData);
+            }
+            return [];
+        }
+        return [];
+    }
+
+    function isCommentaryItemForVerseJS(item, chapInt, verseInt) {
+        if (!item || typeof item !== 'object') return false;
+        if (item.anchorVerse !== undefined && item.anchorVerse !== null) {
+            const av = parseInt(item.anchorVerse, 10);
+            if (!isNaN(av) && av !== verseInt) return false;
+        }
+        const anchorRef = String(item.anchorRef || item.sourceRef || '');
+        const m = anchorRef.match(/(\d+)[:.](\d+)\s*$/);
+        if (m) {
+            const cNum = parseInt(m[1], 10);
+            const vNum = parseInt(m[2], 10);
+            if ((chapInt > 0 && cNum !== chapInt) || (verseInt > 0 && vNum !== verseInt)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     async function fetchCommentaryFallbackJS(bookName, chapterName, verseVal, sourceDomText) {
-        const b = String(bookName || '').trim().replace(/״/g, '"');
+        const b = String(bookName || '').trim().replace(/״/g, '"').replace(/׳/g, "'");
         const c = String(chapterName || '').trim();
         const chapInt = parseHebrewOrInt(c);
         const verseInt = parseHebrewOrInt(verseVal);
@@ -1273,7 +1426,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             for (const amud of amudList) {
                 try {
-                    const resp = await fetch(SEFARIA_API_BASE + encodeURIComponent(`Rashi on ${tractateEn}.${dafNum}${amud}`) + '?context=0&pad=0');
+                    const resp = await fetch(SEFARIA_API_BASE + encodeURIComponent(`Rashi on ${tractateEn}.${dafNum}${amud}`) + '?context=0&commentary=0');
                     if (!resp.ok) continue;
                     const data = await resp.json();
                     if (Array.isArray(data.he)) {
@@ -1298,24 +1451,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const masechetBase = b.replace(/^ירושלמי\s+/, '').trim();
             for (const mVar of generateBookSpellingVariantsJS(masechetBase)) {
                 try {
-                    const r1 = await fetch(SEFARIA_API_BASE + encodeURIComponent(`פני משה על תלמוד ירושלמי ${mVar}.${chapInt}.${verseInt}`) + '?context=0&pad=0');
+                    const r1 = await fetch(SEFARIA_API_BASE + encodeURIComponent(`פני משה על תלמוד ירושלמי ${mVar}.${chapInt}.${verseInt}`) + '?context=0&commentary=0');
                     if (r1.ok) {
                         const d1 = await r1.json();
-                        const lines1 = flattenSefariaHe(d1.he);
+                        const lines1 = extractSefariaVerseCommentsJS(d1, verseInt, chapInt);
                         if (lines1.length > 0) return { commentator: 'פני משה', comments: lines1.slice(0, 8) };
                     }
-                    const r2 = await fetch(SEFARIA_API_BASE + encodeURIComponent(`פני משה על תלמוד ירושלמי ${mVar}.${chapInt}`) + '?context=0&pad=0');
+                    const r2 = await fetch(SEFARIA_API_BASE + encodeURIComponent(`פני משה על תלמוד ירושלמי ${mVar}.${chapInt}`) + '?context=0&commentary=0');
                     if (r2.ok) {
                         const d2 = await r2.json();
-                        if (Array.isArray(d2.he)) {
-                            if (verseInt >= 1 && verseInt <= d2.he.length) {
-                                const segPm = flattenSefariaHe(d2.he[verseInt - 1]);
-                                if (segPm.length > 0) return { commentator: 'פני משה', comments: segPm.slice(0, 8) };
-                            }
-                            const allPm = flattenSefariaHe(d2.he);
-                            const dhPm = matchDibburHaMatchilJS(allPm, sourceDomText);
-                            if (dhPm.length > 0) return { commentator: 'פני משה', comments: dhPm.slice(0, 8) };
-                        }
+                        const segPm = extractSefariaVerseCommentsJS(d2, verseInt, chapInt);
+                        if (segPm.length > 0) return { commentator: 'פני משה', comments: segPm.slice(0, 8) };
                     }
                 } catch (e) {}
             }
@@ -1329,12 +1475,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             for (const bRef of baseTry) {
                 try {
-                    const resp = await fetch(SEFARIA_API_BASE + encodeURIComponent(bRef) + '?commentary=1&context=0&pad=0');
+                    const resp = await fetch(SEFARIA_API_BASE + encodeURIComponent(bRef) + '?commentary=1&context=0');
                     if (!resp.ok) continue;
                     const data = await resp.json();
                     const commList = Array.isArray(data.commentary) ? data.commentary : [];
                     const collected = [];
                     commList.forEach(item => {
+                        if (!isCommentaryItemForVerseJS(item, chapInt, verseInt)) return;
                         const ident = `${JSON.stringify(item.collectiveTitle || '')} ${item.sourceHeRef || ''} ${item.commentator || ''} ${item.ref || ''}`;
                         if (ident.includes('באר היטב') || ident.includes('Hetev') || ident.includes('Heitev')) {
                             flattenSefariaHe(item.he).forEach(line => {
@@ -1349,7 +1496,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const simanTry = saEn ? [`Ba'er Hetev on ${saEn}.${chapInt}`, `באר היטב על שולחן ערוך, ${chelekHe}.${chapInt}`] : [`באר היטב על שולחן ערוך, ${chelekHe}.${chapInt}`];
             for (const sRef of simanTry) {
                 try {
-                    const resp = await fetch(SEFARIA_API_BASE + encodeURIComponent(sRef) + '?context=0&pad=0');
+                    const resp = await fetch(SEFARIA_API_BASE + encodeURIComponent(sRef) + '?context=0&commentary=0');
                     if (!resp.ok) continue;
                     const data = await resp.json();
                     const allSimanBh = flattenSefariaHe(data.he);
@@ -1366,6 +1513,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (b.startsWith('רמב"ם ')) {
             matchKeywords = ['מגיד משנה', 'Maggid Mishneh'];
+            const enRambam = RAMBAM_BOOKS_EN_JS[b] || '';
+            if (enRambam) {
+                directRefs.push(`Maggid Mishneh on ${enRambam}.${chapInt}.${verseInt}`);
+                baseRefs.push(`${enRambam}.${chapInt}.${verseInt}`);
+            }
             const hilchot = b.replace(/^רמב"ם\s+/, '').trim();
             generateBookSpellingVariantsJS(hilchot).forEach(hVar => {
                 directRefs.push(`מגיד משנה על משנה תורה, ${hVar}.${chapInt}.${verseInt}`);
@@ -1385,25 +1537,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
         for (const dRef of directRefs) {
             try {
-                const resp = await fetch(SEFARIA_API_BASE + encodeURIComponent(dRef) + '?context=0&pad=0');
+                const resp = await fetch(SEFARIA_API_BASE + encodeURIComponent(dRef) + '?context=0&commentary=0');
                 if (!resp.ok) continue;
                 const data = await resp.json();
-                const lines = flattenSefariaHe(data.he);
+                const lines = extractSefariaVerseCommentsJS(data, verseInt, chapInt);
                 if (lines.length > 0) {
-                    return { commentator: commLabel, comments: lines.slice(0, 8) };
+                    return { commentator: commLabel, comments: lines.slice(0, 15) };
                 }
             } catch (e) {}
         }
 
         for (const bRef of baseRefs) {
             try {
-                const resp = await fetch(SEFARIA_API_BASE + encodeURIComponent(bRef) + '?commentary=1&context=0&pad=0');
+                const resp = await fetch(SEFARIA_API_BASE + encodeURIComponent(bRef) + '?commentary=1&context=0');
                 if (!resp.ok) continue;
                 const data = await resp.json();
                 const commList = Array.isArray(data.commentary) ? data.commentary : [];
                 const collected = [];
                 commList.forEach(item => {
-                    const ident = `${JSON.stringify(item.collectiveTitle || '')} ${item.sourceHeRef || ''} ${item.commentator || ''}`;
+                    if (!isCommentaryItemForVerseJS(item, chapInt, verseInt)) return;
+                    const ident = `${JSON.stringify(item.collectiveTitle || '')} ${item.sourceHeRef || ''} ${item.commentator || ''} ${item.ref || ''}`;
                     if (matchKeywords.some(k => ident.includes(k))) {
                         flattenSefariaHe(item.he).forEach(line => {
                             if (!collected.includes(line)) collected.push(line);
@@ -1411,7 +1564,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
                 if (collected.length > 0) {
-                    return { commentator: commLabel, comments: collected.slice(0, 8) };
+                    return { commentator: commLabel, comments: collected.slice(0, 15) };
                 }
             } catch (e) {}
         }
