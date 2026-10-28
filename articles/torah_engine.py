@@ -1,8 +1,6 @@
 import json
 import urllib.request
 import urllib.parse
-import http.client
-import socket
 import re
 import time
 from functools import wraps
@@ -11,35 +9,6 @@ from django.core.cache import cache
 from django.db.models import Q
 from django.utils.html import strip_tags
 from .models import TorahText
-
-
-# ========= חיבור HTTPS מהיר ב-IPv4 בלבד (מונע תקיעות של 6-12 שניות בשרת האובונטו) =========
-class _HTTPSConnectionIPv4(http.client.HTTPSConnection):
-    def connect(self):
-        addrs = socket.getaddrinfo(self.host, self.port or 443, socket.AF_INET, socket.SOCK_STREAM)
-        sock = None
-        last_err = None
-        for family, socktype, proto, canonname, sockaddr in addrs:
-            try:
-                s = socket.socket(family, socktype, proto)
-                if self.timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
-                    s.settimeout(self.timeout)
-                s.connect(sockaddr)
-                sock = s
-                break
-            except Exception as e:
-                last_err = e
-        if sock is None:
-            raise last_err or OSError("IPv4 connection failed")
-        self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
-
-
-class _HTTPSHandlerIPv4(urllib.request.HTTPSHandler):
-    def https_open(self, req):
-        return self.do_open(_HTTPSConnectionIPv4, req, context=self._context)
-
-
-_IPV4_OPENER = urllib.request.build_opener(_HTTPSHandlerIPv4())
 
 
 HEBREW_GEMATRIA = {
@@ -234,7 +203,6 @@ def parse_hebrew_number(val):
     return 0
 
 
-# החזרת הפונקציה שחסרונה גרם לשגיאת ה-500!
 def generate_word_variations(word):
     variations = {word}
     if len(word) > 3 and word[0] in 'הבוכשמל':
@@ -353,16 +321,16 @@ def _extract_sefaria_he_list(he_data):
 
 
 def _fetch_sefaria_json_cached(sefaria_ref, extra_params="context=0&pad=0"):
-    c_key = f"sefaria_ipv4_v26_{sefaria_ref}_{extra_params}"
+    c_key = f"sefaria_v31_{sefaria_ref}_{extra_params}"
     cached = cache.get(c_key)
     if cached is not None:
         return cached
     url = f"https://www.sefaria.org/api/texts/{urllib.parse.quote(sefaria_ref)}?{extra_params}"
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     try:
-        with _IPV4_OPENER.open(req, timeout=3.0) as resp:
+        with urllib.request.urlopen(req, timeout=2.5) as resp:
             data = json.loads(resp.read().decode('utf-8'))
-            if isinstance(data, dict) and not data.get('error') and (data.get('he') or data.get('commentary')):
+            if isinstance(data, dict) and not data.get('error') and data.get('he'):
                 cache.set(c_key, data, 3600 * 24)
                 return data
     except Exception:
@@ -371,12 +339,6 @@ def _fetch_sefaria_json_cached(sefaria_ref, extra_params="context=0&pad=0"):
 
 
 def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
-    """
-    מנוע שליפת המפרשים המחודש והמהיר:
-    1. מתחבר לספריא אך ורק באנגלית (מהיר ונתמך ב-100%).
-    2. פונה ישירות לפסוק/לשורה הספציפית (`Genesis 1:1` או `Berakhot 2a:1`) ושואב את כל המפרשים (`commentary=1`).
-    3. מחלץ את *כל* הפירושים של אותו מפרש לפסוק בלי לסנן אותם (פותר את הבעיה של "מוצג רק רש"י הראשון").
-    """
     b_str = _resolve_torah_book_in_db(book_name).replace('״', '"')
     c_str = str(chapter_name or '').strip()
     v_str = str(verse_num or '').strip()
@@ -384,87 +346,66 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
     chap_int = max(1, parse_hebrew_number(c_str))
     verse_int = max(1, parse_hebrew_number(v_str))
 
-    cache_key = f"torah_comm_v26_{b_str}_{c_str}_{verse_int}"
+    cache_key = f"torah_comm_v31_{b_str}_{c_str}_{verse_int}"
     cached = cache.get(cache_key)
     if cached and cached.get('comments'):
         return cached
 
     comments_out = []
     target_commentator = 'רש"י'
-    pref_commentator_he = 'רש"י'
 
     if b_str.startswith('ירושלמי '):
         target_commentator = 'פני משה'
-        pref_commentator_he = 'פני משה'
     elif b_str.startswith('שולחן ערוך '):
         target_commentator = 'באר היטב'
-        pref_commentator_he = 'באר היטב'
     elif b_str.startswith('רמב"ם '):
         target_commentator = 'מגיד משנה'
-        pref_commentator_he = 'מגיד משנה'
     elif b_str in MISHNAH_BOOKS:
         target_commentator = 'רבינו עובדיה מברטנורא'
-        pref_commentator_he = 'ברטנורא'
 
-    # בניית הפנייה לספריא באנגלית לקבלת כלל הפירושים המחוברים לאותו סעיף בדיוק:
-    base_ref_en = ""
-    if b_str in TANAKH_BOOKS_EN and not c_str.startswith('דף'):
-        base_ref_en = f"{TANAKH_BOOKS_EN[b_str]} {chap_int}:{verse_int}"
+    direct_refs = []
+    
+    if b_str in TANAKH_NAMES and not c_str.startswith('דף'):
+        en_book = TANAKH_BOOKS_EN.get(b_str)
+        if en_book:
+            direct_refs.append(f"Rashi on {en_book} {chap_int}:{verse_int}")
+        direct_refs.append(f'רש"י על {b_str} {int_to_hebrew(chap_int)}:{int_to_hebrew(verse_int)}')
+        
     elif c_str.startswith('דף') and not b_str.startswith('ירושלמי '):
+        en_book = BAVLI_TRACTATES_EN.get(b_str)
         daf_num = max(2, chap_int)
         amud = 'b' if ('עמוד ב' in c_str or ':' in c_str) else 'a'
-        if b_str in BAVLI_TRACTATES_EN:
-            base_ref_en = f"{BAVLI_TRACTATES_EN[b_str]} {daf_num}{amud}:{verse_int}"
-    elif b_str.startswith('ירושלמי '):
-        masechet_base = b_str.replace('ירושלמי ', '', 1).strip()
-        if masechet_base in YERUSHALMI_TRACTATES_EN:
-            base_ref_en = f"Jerusalem Talmud {YERUSHALMI_TRACTATES_EN[masechet_base]} {chap_int}:{verse_int}"
-    elif b_str.startswith('שולחן ערוך '):
-        if b_str in SHULCHAN_ARUCH_EN:
-            base_ref_en = f"{SHULCHAN_ARUCH_EN[b_str]} {chap_int}:{verse_int}"
-    elif b_str in MISHNAH_BOOKS_EN:
-        base_ref_en = f"Mishnah {MISHNAH_BOOKS_EN[b_str]} {chap_int}:{verse_int}"
+        amud_heb = 'ב' if amud == 'b' else 'א'
+        if en_book:
+            direct_refs.append(f"Rashi on {en_book} {daf_num}{amud}:{verse_int}")
+        direct_refs.append(f'רש"י על {b_str} {int_to_hebrew(daf_num)}{amud_heb}:{int_to_hebrew(verse_int)}')
+        direct_refs.append(f'רש"י על {b_str} {int_to_hebrew(daf_num)} {amud_heb}:{int_to_hebrew(verse_int)}')
 
-    # שליפה חכמה ומקיפה (ללא פילטור מילים!)
-    if base_ref_en:
-        data = _fetch_sefaria_json_cached(base_ref_en, "commentary=1&context=0&pad=0")
-        if data and isinstance(data.get('commentary'), list):
-            for c_item in data['commentary']:
-                c_title = c_item.get('collectiveTitle', {})
-                c_title_he = c_title.get('he', '') if isinstance(c_title, dict) else str(c_title)
-                c_name_he = str(c_item.get('commentator', ''))
-                
-                # אם זה המפרש המבוקש - נוסיף את הפירושים שלו במלואם.
-                if pref_commentator_he in c_title_he or pref_commentator_he in c_name_he:
-                    extracted = _extract_sefaria_he_list(c_item.get('he', []))
-                    for ex in extracted:
-                        if ex not in comments_out:
-                            comments_out.append(ex)
-            
-            if comments_out:
-                payload = {'commentator': target_commentator, 'comments': comments_out}
-                cache.set(cache_key, payload, 3600 * 24)
-                return payload
-
-    # שיטת גיבוי דרך עברית במידה וזה לא נמצא באנגלית
-    direct_refs = []
-    if b_str in TANAKH_NAMES:
-        direct_refs.append(f'רש"י על {b_str} {int_to_hebrew(chap_int)}:{int_to_hebrew(verse_int)}')
-    elif c_str.startswith('דף') and not b_str.startswith('ירושלמי '):
-        amud_heb = 'ב' if ('עמוד ב' in c_str or ':' in c_str) else 'א'
-        direct_refs.append(f'רש"י על {b_str} {int_to_hebrew(max(2, chap_int))} {amud_heb}:{int_to_hebrew(verse_int)}')
     elif b_str.startswith('ירושלמי '):
         masechet = b_str.replace('ירושלמי ', '', 1).strip()
+        en_book = YERUSHALMI_TRACTATES_EN.get(masechet)
+        if en_book:
+            direct_refs.append(f"Penei Moshe on Jerusalem Talmud {en_book} {chap_int}:{verse_int}")
         for m_var in _generate_spelling_variants(masechet):
             direct_refs.append(f'פני משה על תלמוד ירושלמי {m_var} {int_to_hebrew(chap_int)}:{int_to_hebrew(verse_int)}')
+
     elif b_str.startswith('שולחן ערוך '):
+        en_book = SHULCHAN_ARUCH_EN.get(b_str)
+        if en_book:
+            direct_refs.append(f"Ba'er Hetev on {en_book} {chap_int}:{verse_int}")
+            direct_refs.append(f"Be'er Heitev on {en_book} {chap_int}:{verse_int}")
         chelek = b_str.replace('שולחן ערוך ', '', 1).strip()
         direct_refs.append(f'באר היטב על שולחן ערוך, {chelek} {int_to_hebrew(chap_int)}:{int_to_hebrew(verse_int)}')
+
     elif b_str.startswith('רמב"ם '):
         hilchot = b_str.replace('רמב"ם ', '', 1).strip()
         for h_var in _generate_spelling_variants(hilchot):
             direct_refs.append(f'מגיד משנה על משנה תורה, {h_var} {int_to_hebrew(chap_int)}:{int_to_hebrew(verse_int)}')
+            
     elif b_str in MISHNAH_BOOKS:
+        en_book = MISHNAH_BOOKS_EN.get(b_str)
+        if en_book:
+            direct_refs.append(f"Bartenura on Mishnah {en_book} {chap_int}:{verse_int}")
         for m_var in _generate_spelling_variants(b_str):
             direct_refs.append(f'ברטנורא על משנה {m_var} {int_to_hebrew(chap_int)}:{int_to_hebrew(verse_int)}')
 
@@ -475,8 +416,8 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
             if extracted:
                 comments_out = extracted
                 break
-
-    payload = {'commentator': target_commentator, 'comments': comments_out}
+                
+    payload = {'commentator': target_commentator, 'comments': comments_out[:15]}
     if comments_out:
         cache.set(cache_key, payload, 3600 * 24)
     return payload
@@ -589,7 +530,7 @@ def tanakh_advanced_search_api(request):
     except ValueError:
         per_page = 10
 
-    search_cache_key = f"tanakh_srch_v22_{query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
+    search_cache_key = f"tanakh_srch_v31_{query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
     cached_search_data = cache.get(search_cache_key)
     if cached_search_data:
         return JsonResponse(cached_search_data, json_dumps_params={'ensure_ascii': False})
