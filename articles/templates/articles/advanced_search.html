@@ -1423,7 +1423,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         return `
-            <button type="button" class="${cls}" onclick="loadVerseCommentary('${safeBook}', '${safeChapter}', '${safeRawVerse}', '${drawerId}', true, '${commLabel}')">
+            <button type="button" class="${cls}" onclick="loadVerseCommentary('${safeBook}', '${safeChapter}', '${safeRawVerse}', '${drawerId}', true)">
                 <i class="bi bi-chat-right-text"></i> פירוש ${commLabel}
             </button>
         `;
@@ -1609,7 +1609,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (enRambam) {
                 enPrefixes.forEach(pref => {
                     directRefs.push(`${pref} on ${enRambam}.${chapInt}.${verseInt}`);
-                    directRefs.push(`${pref} on ${enRambam}.{chapInt}`);
+                    directRefs.push(`${pref} on ${enRambam}.${chapInt}`);
                 });
                 baseRefs.push(`${enRambam}.${chapInt}.${verseInt}`);
             }
