@@ -666,15 +666,15 @@ document.addEventListener('DOMContentLoaded', function() {
     function parseHebrewOrInt(val) {
         const s = String(val || '').trim();
         if (!s) return 0;
-        const m = s.match(/\d+/);
-        if (m) return parseInt(m[0], 10);
+        const nums = s.match(/\d+/g);
+        if (nums) return parseInt(nums[nums.length - 1], 10);
         const clean = s
-            .replace(/^(פרק|סימן|דף|הלכה|משנה|סעיף|שורה)\s+/g, '')
-            .replace(/(עמוד\s+[אב])/g, '')
+            .replace(/(פרק|סימן|דף|הלכה|משנה|סעיף|שורה|פסוק|עמוד\s+[אב])\s*[:\-]?\s*/g, ' ')
             .trim();
-        const firstToken = (clean.split(/\s+/)[0] || '').replace(/[^א-ת]/g, '');
+        const parts = clean.split(/\s+/).filter(Boolean);
+        const lastToken = (parts[parts.length - 1] || '').replace(/[^א-ת]/g, '');
         let sum = 0;
-        for (const ch of firstToken) {
+        for (const ch of lastToken) {
             sum += (gematriaMap[ch] || 0);
         }
         return sum;

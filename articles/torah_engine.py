@@ -417,18 +417,17 @@ def _extract_sefaria_verse_comments(data, verse_int, chap_int=0):
         return []
 
     sections = data.get('sections') or []
-    try:
-        text_depth = int(data.get('textDepth') or 3)
-    except (ValueError, TypeError):
-        text_depth = 3
-
     if len(sections) >= 1 and chap_int > 0:
-        try:
-            sec_chap_str = re.sub(r'[^0-9]', '', str(sections[0]))
-            if sec_chap_str and int(sec_chap_str) != chap_int:
+        sec_c = re.sub(r'[^0-9]', '', str(sections[0]))
+        if sec_c and int(sec_c) != chap_int:
+            return []
+
+    if isinstance(he_data, str):
+        if len(sections) >= 2 and verse_int > 0:
+            sec_v = re.sub(r'[^0-9]', '', str(sections[1]))
+            if sec_v and int(sec_v) != verse_int:
                 return []
-        except (ValueError, TypeError):
-            pass
+        return _extract_sefaria_he_list(he_data)
 
     if isinstance(he_data, list):
         has_sublists = any(isinstance(x, list) for x in he_data)
@@ -449,19 +448,16 @@ def _extract_sefaria_verse_comments(data, verse_int, chap_int=0):
                 return []
             return _extract_sefaria_he_list(he_data[verse_int - 1])
 
-        if (text_depth == 3 and len(sections) == 1) or (len(sections) < text_depth - 1):
-            if verse_int <= 0 or verse_int > len(he_data):
+        if len(sections) >= 2 and verse_int > 0:
+            sec_v = re.sub(r'[^0-9]', '', str(sections[1]))
+            if sec_v and int(sec_v) != verse_int:
                 return []
-            return _extract_sefaria_he_list(he_data[verse_int - 1])
+        elif len(sections) == 1 and verse_int > 1:
+            return []
 
-    if len(sections) >= 2 and verse_int > 0:
-        try:
-            if int(sections[1]) != verse_int:
-                return []
-        except (ValueError, TypeError):
-            pass
+        return _extract_sefaria_he_list(he_data)
 
-    return _extract_sefaria_he_list(he_data)
+    return []
 
 
 def _match_comments_by_dibbur_hamatchil(all_comments_list, source_clean_text):
@@ -502,21 +498,26 @@ def _match_comments_by_dibbur_hamatchil(all_comments_list, source_clean_text):
     return matched
 
 
-def _fetch_sefaria_json_cached(sefaria_ref, extra_params="context=0&commentary=0&pad=0"):
-    c_key = f"sefaria_ipv4_v40_{sefaria_ref}_{extra_params}"
+def _fetch_sefaria_json_cached(sefaria_ref, extra_params="context=0&commentary=0"):
+    c_key = f"sefaria_ipv4_v45_{ urllib.parse.quote(sefaria_ref) }_{extra_params}"
     cached = cache.get(c_key)
     if cached is not None:
         return cached
     url = f"https://www.sefaria.org/api/texts/{urllib.parse.quote(sefaria_ref)}?{extra_params}"
-    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-    try:
-        with _IPV4_OPENER.open(req, timeout=5.0) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
-            if isinstance(data, dict) and not data.get('error') and (data.get('he') or data.get('commentary')):
-                cache.set(c_key, data, 3600 * 24)
-                return data
-    except Exception:
-        pass
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+    }
+    for opener_fn in (_IPV4_OPENER.open, urllib.request.urlopen):
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with opener_fn(req, timeout=5.0) as resp:
+                data = json.loads(resp.read().decode('utf-8'))
+                if isinstance(data, dict) and not data.get('error') and (data.get('he') or data.get('commentary')):
+                    cache.set(c_key, data, 3600 * 24)
+                    return data
+        except Exception:
+            continue
     return None
 
 
@@ -528,7 +529,7 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
     chap_int = max(1, parse_hebrew_number(c_str))
     verse_int = max(1, parse_hebrew_number(v_str))
 
-    cache_key = f"torah_comm_v40_{b_str}_{chap_int}_{verse_int}"
+    cache_key = f"torah_comm_v45_{b_str}_{chap_int}_{verse_int}"
     cached = cache.get(cache_key)
     if cached and cached.get('comments'):
         return cached
@@ -546,16 +547,17 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
         refs = []
         if en_tanakh:
             refs.append(f"Rashi on {en_tanakh}.{chap_int}.{verse_int}")
+            refs.append(f"Rashi on {en_tanakh}.{chap_int}")
         refs.append(f'רש"י על {b_str}.{chap_int}.{verse_int}')
         for r in refs:
-            d = _fetch_sefaria_json_cached(r, "context=0&commentary=0&pad=0")
+            d = _fetch_sefaria_json_cached(r, "context=0&commentary=0")
             if d and d.get('he'):
                 comments_out = _extract_sefaria_verse_comments(d, verse_int, chap_int)
                 if comments_out:
                     break
 
         if not comments_out and en_tanakh:
-            v_data = _fetch_sefaria_json_cached(f"{en_tanakh}.{chap_int}.{verse_int}", "commentary=1&context=0&pad=0")
+            v_data = _fetch_sefaria_json_cached(f"{en_tanakh}.{chap_int}.{verse_int}", "commentary=1&context=0")
             if v_data and isinstance(v_data.get('commentary'), list):
                 for c_item in v_data['commentary']:
                     c_ident = f"{c_item.get('commentator', '')} {c_item.get('collectiveTitle', '')} {c_item.get('sourceHeRef', '')}"
@@ -573,12 +575,12 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
         daf_num = max(2, chap_int)
         amud = 'b' if ('עמוד ב' in c_str or ':' in c_str or 'ע"ב' in c_str or 'ע״ב' in c_str) else 'a'
 
-        d_seg = _fetch_sefaria_json_cached(f"Rashi on {en_book}.{daf_num}{amud}.{verse_int}", "context=0&commentary=0&pad=0")
+        d_seg = _fetch_sefaria_json_cached(f"Rashi on {en_book}.{daf_num}{amud}.{verse_int}", "context=0&commentary=0")
         if d_seg and d_seg.get('he'):
             comments_out = _extract_sefaria_verse_comments(d_seg, verse_int)
 
         if not comments_out:
-            d_daf = _fetch_sefaria_json_cached(f"Rashi on {en_book}.{daf_num}{amud}.1-150", "context=0&commentary=0&pad=0")
+            d_daf = _fetch_sefaria_json_cached(f"Rashi on {en_book}.{daf_num}{amud}.1-150", "context=0&commentary=0")
             if d_daf and d_daf.get('he'):
                 all_daf = _extract_sefaria_he_list(d_daf['he'])
                 comments_out = _match_comments_by_dibbur_hamatchil(all_daf, source_clean_txt)
@@ -593,7 +595,7 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
         for m_var in _generate_spelling_variants(masechet):
             refs.append(f'פני משה על תלמוד ירושלמי {m_var}.{chap_int}.{verse_int}')
         for r in refs:
-            d = _fetch_sefaria_json_cached(r, "context=0&commentary=0&pad=0")
+            d = _fetch_sefaria_json_cached(r, "context=0&commentary=0")
             if d and d.get('he'):
                 comments_out = _extract_sefaria_verse_comments(d, verse_int, chap_int)
                 if comments_out:
@@ -604,7 +606,7 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
         sa_en = SHULCHAN_ARUCH_EN.get(b_str, '')
         chelek_he = b_str.replace('שולחן ערוך ', '', 1).strip()
         if sa_en:
-            sa_data = _fetch_sefaria_json_cached(f"{sa_en}.{chap_int}.{verse_int}", "commentary=1&context=0&pad=0")
+            sa_data = _fetch_sefaria_json_cached(f"{sa_en}.{chap_int}.{verse_int}", "commentary=1&context=0")
             if sa_data and isinstance(sa_data.get('commentary'), list):
                 for c_item in sa_data['commentary']:
                     c_ident = f"{c_item.get('collectiveTitle', '')} {c_item.get('sourceHeRef', '')} {c_item.get('commentator', '')}"
@@ -617,7 +619,7 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
             if sa_en:
                 bh_refs.insert(0, f"Ba'er Hetev on {sa_en}.{chap_int}")
             for r in bh_refs:
-                d = _fetch_sefaria_json_cached(r, "context=0&commentary=0&pad=0")
+                d = _fetch_sefaria_json_cached(r, "context=0&commentary=0")
                 if d and d.get('he'):
                     all_bh = _extract_sefaria_he_list(d['he'])
                     comments_out = _match_comments_by_dibbur_hamatchil(all_bh, source_clean_txt) or all_bh[:8]
@@ -628,7 +630,7 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
         target_commentator = 'מגיד משנה'
         hilchot = b_str.replace('רמב"ם ', '', 1).replace('רמב״ם ', '', 1).strip()
         for h_var in _generate_spelling_variants(hilchot):
-            d = _fetch_sefaria_json_cached(f'מגיד משנה על משנה תורה, {h_var}.{chap_int}.{verse_int}', "context=0&commentary=0&pad=0")
+            d = _fetch_sefaria_json_cached(f'מגיד משנה על משנה תורה, {h_var}.{chap_int}.{verse_int}', "context=0&commentary=0")
             if d and d.get('he'):
                 comments_out = _extract_sefaria_verse_comments(d, verse_int, chap_int)
                 if comments_out:
@@ -640,10 +642,11 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num):
         refs = []
         if en_book:
             refs.append(f"Bartenura on Mishnah {en_book}.{chap_int}.{verse_int}")
+            refs.append(f"Bartenura on Mishnah {en_book}.{chap_int}")
         for m_var in _generate_spelling_variants(b_str):
             refs.append(f'ברטנורא על משנה {m_var}.{chap_int}.{verse_int}')
         for r in refs:
-            d = _fetch_sefaria_json_cached(r, "context=0&commentary=0&pad=0")
+            d = _fetch_sefaria_json_cached(r, "context=0&commentary=0")
             if d and d.get('he'):
                 comments_out = _extract_sefaria_verse_comments(d, verse_int, chap_int)
                 if comments_out:
@@ -762,7 +765,7 @@ def tanakh_advanced_search_api(request):
     except ValueError:
         per_page = 10
 
-    search_cache_key = f"tanakh_srch_v40_{query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
+    search_cache_key = f"tanakh_srch_v45_{query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
     cached_search_data = cache.get(search_cache_key)
     if cached_search_data:
         return JsonResponse(cached_search_data, json_dumps_params={'ensure_ascii': False})
