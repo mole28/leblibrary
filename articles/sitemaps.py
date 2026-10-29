@@ -25,11 +25,11 @@ class BaseSitemap(Sitemap):
 
 class StaticViewSitemap(BaseSitemap):
     """מפת אתר לעמודים רגילים שאין להם מודל במסד הנתונים"""
-    priority = 0.8
+    priority = 0.9  
     changefreq = 'weekly'
 
     def items(self):
-        return ['about', 'contact', 'terms', 'calculator', 'volume_calculator', 'weight_calculator']
+        return ['advanced_search', 'about', 'contact', 'terms', 'calculator', 'volume_calculator', 'weight_calculator']
 
     def location(self, item):
         try:
