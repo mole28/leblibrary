@@ -814,50 +814,51 @@ def _fetch_sefaria_json_cached(sefaria_ref, extra_params="context=0&commentary=0
 
 def build_hebrew_fuzzy_patterns(word: str):
     """
-    בונה תבניות חיפוש לכתיב מלא/חסר ותחיליות (ו' החיבור ואותיות מש"ה וכל"ב) בעברית.
-    תומך בכל כיוון: כתיב חסר -> מלא, כתיב מלא -> חסר, עם או בלי תחיליות.
+    בונה תבניות Regex מדויקות לחיפוש כתיב מלא/חסר ותחיליות (ו' החיבור ואותיות מש"ה וכל"ב).
+    שומר באופן מוחלט על כל אותיות השורש שהוקלדו (מונע זליגה ממילה כמו 'בתיה' ל-'שתה' או 'הביתה').
     מחזיר: (mandatory_db_chars, clean_word_regex)
     """
     clean_w = re.sub(r'[^א-ת]', '', word)
     if not clean_w:
         return [], None
 
-    if len(clean_w) <= 2:
-        body = r'[וי]{0,2}'.join(re.escape(ch) for ch in clean_w)
-        return list(set(clean_w)), re.compile(rf'^[והבכלמש]{{0,3}}{body}[וי]?$')
+    valid_prefix_rx = r'(?:ו?[הבכלמש]|ו|[בכלמש]ה|ש[בכלמ])?'
 
-    stem_candidates = {clean_w}
-    if len(clean_w) > 3 and clean_w[0] in 'והבכלמש':
-        stem_candidates.add(clean_w[1:])
-        if len(clean_w) > 4 and clean_w[:2] in (
-            'וה', 'וב', 'וכ', 'ול', 'ומ', 'וש',
-            'בה', 'כה', 'לה', 'מה', 'שה', 'שב', 'שכ', 'של', 'שמ'
-        ):
-            stem_candidates.add(clean_w[2:])
+    stems = [clean_w]
+    if clean_w.startswith('ו') and len(clean_w) >= 4:
+        without_vav = clean_w[1:]
+        consonants_after = [c for c in without_vav if c not in ('ו', 'י')]
+        if len(consonants_after) >= 3:
+            stems.append(without_vav)
 
     regex_branches = []
     mandatory_sets = []
 
-    for stem in stem_candidates:
-        non_vowel_chars = [ch for ch in stem if ch not in ('ו', 'י')]
-        if non_vowel_chars:
-            mandatory_sets.append(set(non_vowel_chars))
-        else:
-            mandatory_sets.append(set(stem))
+    for stem in stems:
+        stem_mandatory = {stem[0], stem[-1]} | {c for c in stem if c not in ('ו', 'י')}
+        mandatory_sets.append(stem_mandatory)
+
+        n = len(stem)
+        has_internal_matres = any(ch in ('ו', 'י') for ch in stem[1:-1])
 
         parts = []
         for idx, ch in enumerate(stem):
-            if ch in ('ו', 'י'):
-                parts.append(r'[וי]{0,2}')
+            is_first = (idx == 0)
+            is_last = (idx == n - 1)
+
+            if not is_first and not is_last and ch in ('ו', 'י'):
+                parts.append(f'{re.escape(ch)}?')
             else:
                 parts.append(re.escape(ch))
-                if idx + 1 < len(stem) and stem[idx + 1] not in ('ו', 'י'):
-                    parts.append(r'[וי]{0,2}')
+                next_is_matres = (idx + 1 < n - 1) and (stem[idx + 1] in ('ו', 'י'))
+                if not is_last and not next_is_matres:
+                    if not has_internal_matres or n >= 5:
+                        parts.append(r'[וי]?')
 
         branch_body = "".join(parts)
-        regex_branches.append(rf'[והבכלמש]{{0,3}}{branch_body}')
+        regex_branches.append(rf'{valid_prefix_rx}{branch_body}')
 
-    common_mandatory = set.intersection(*mandatory_sets) if mandatory_sets else set()
+    common_mandatory = set.intersection(*mandatory_sets) if mandatory_sets else set(clean_w)
     combined_pattern = rf'^(?:{"|".join(regex_branches)})$'
 
     return list(common_mandatory), re.compile(combined_pattern)
@@ -1133,7 +1134,7 @@ def tanakh_advanced_search_api(request):
                                 'text': "".join(out_parts),
                                 'match_type': 'כתיב מלא / חסר ותחיליות'
                             })
-                            
+
         elif query_type == 'gematria' and query_val:
             calc_word_gem = lambda w: sum(HEBREW_GEMATRIA.get(c, 0) for c in re.sub(r'[^א-ת]', '', w))
             target_val = int(query_val) if query_val.isdigit() else calc_word_gem(query_val)
