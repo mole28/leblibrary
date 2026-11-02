@@ -812,6 +812,36 @@ def _fetch_sefaria_json_cached(sefaria_ref, extra_params="context=0&commentary=0
             continue
     return None
 
+def build_hebrew_fuzzy_patterns(word: str):
+    """
+    בונה תבניות Regex למילה בעברית עבור חיפוש כתיב מלא/חסר ותחיליות (ו' החיבור ואותיות מש"ה וכל"ב).
+    תומך הן במצב שבו המשתמש הקליד כתיב חסר והן במצב שהקליד כתיב מלא או תחילית .
+    מחזיר: (skeleton_chars, clean_word_regex, nikkud_word_regex)
+    """
+    clean_w = re.sub(r'[^א-ת]', '', word)
+    if not clean_w:
+        return [], None, None
+
+    nikkud_marks = r'[\u0591-\u05C7]*'
+
+    core = clean_w[1:] if (len(clean_w) > 2 and clean_w.startswith('ו')) else clean_w
+
+    if len(core) <= 2:
+        skeleton = list(core)
+    else:
+        middle_consonants = [ch for ch in core[1:-1] if ch not in ('ו', 'י')]
+        skeleton = [core[0]] + middle_consonants + [core[-1]]
+
+    clean_between = r'[וי]{0,2}'
+    clean_body = clean_between.join(re.escape(ch) for ch in skeleton)
+    clean_pattern = rf'^[והבכלמש]{{0,2}}{clean_body}$'
+
+    nikkud_prefix = rf'(?:[והבכלמש]{nikkud_marks}){{0,2}}'
+    nikkud_between = rf'{nikkud_marks}(?:[וי]{nikkud_marks}){{0,2}}'
+    nikkud_body = nikkud_between.join(re.escape(ch) for ch in skeleton)
+    nikkud_pattern = rf'(?<![א-ת\u0591-\u05C7]){nikkud_prefix}{nikkud_body}{nikkud_marks}(?![א-ת])'
+
+    return list(set(skeleton)), re.compile(clean_pattern), re.compile(nikkud_pattern)
 
 @ratelimit(rate=45, timeout=60)
 def tanakh_advanced_search_api(request):
@@ -1026,6 +1056,75 @@ def tanakh_advanced_search_api(request):
                             'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], m['chapter']),
                             'text': "".join(out_parts), 'match_type': 'חיפוש מדויק' if is_exact else 'חיפוש חופשי (רחב)'
                         })
+                    elif query_type == 'text_fuzzy' and query_val:
+                        q_words = re.sub(r'[^א-ת\s]', '', query_val.replace('י-ה-ו-ה', 'יהוה')).strip().split()
+                        if q_words:
+                            num_q_words = len(q_words)
+                            word_patterns = [build_hebrew_fuzzy_patterns(w) for w in q_words]
+                            word_patterns = [wp for wp in word_patterns if wp[1] is not None]
+
+                            if word_patterns:
+                                num_q_words = len(word_patterns)
+                                text_query = Q()
+                                for skeleton_chars, _, _ in word_patterns:
+                                    for ch in skeleton_chars:
+                                        text_query &= Q(clean_text__icontains=ch)
+
+                                for m in qs.filter(text_query).values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text').iterator(chunk_size=2000):
+                                    raw_text = m.get('text_with_nikkud') or ""
+                                    if not raw_text:
+                                        continue
+
+                                    clean_verse = m.get('clean_text') or re.sub(r'[^א-ת\s]', '', raw_text)
+                                    verse_tokens = clean_verse.split()
+                                    if len(verse_tokens) < num_q_words:
+                                        continue
+
+                                    matched = False
+                                    if num_q_words == 1:
+                                        _, clean_rx, _ = word_patterns[0]
+                                        if any(clean_rx.match(tok) for tok in verse_tokens):
+                                            matched = True
+                                    else:
+                                        for idx in range(len(verse_tokens) - num_q_words + 1):
+                                            if all(word_patterns[j][1].match(verse_tokens[idx + j]) for j in range(num_q_words)):
+                                                matched = True
+                                                break
+                                    if not matched:
+                                        continue
+
+                                    highlighted_text = raw_text
+                                    spans = []
+                                    for _, _, nikkud_rx in word_patterns:
+                                        for match_obj in nikkud_rx.finditer(raw_text):
+                                            spans.append((match_obj.start(), match_obj.end()))
+
+                                    if spans:
+                                        spans.sort(key=lambda x: (x[0], -x[1]))
+                                        merged_spans = []
+                                        for cur_start, cur_end in spans:
+                                            if not merged_spans or cur_start >= merged_spans[-1][1]:
+                                                merged_spans.append([cur_start, cur_end])
+                                            else:
+                                                merged_spans[-1][1] = max(merged_spans[-1][1], cur_end)
+
+                                    parts = []
+                                    last_idx = 0
+                                    for s_start, s_end in merged_spans:
+                                        parts.append(raw_text[last_idx:s_start])
+                                        parts.append(f'<mark>{raw_text[s_start:s_end]}</mark>')
+                                        last_idx = s_end
+                                    parts.append(raw_text[last_idx:])
+                                    highlighted_text = "".join(parts)
+
+                                results.append({
+                                    'book': m['book'],
+                                    'chapter': m['chapter'],
+                                    'verse': m['verse'],
+                                    'verse_label': get_verse_label(m['book'], m['chapter']),
+                                    'text': highlighted_text,
+                                    'match_type': 'כתיב מלא / חסר ותחיליות'
+                            })
 
         elif query_type == 'gematria' and query_val:
             calc_word_gem = lambda w: sum(HEBREW_GEMATRIA.get(c, 0) for c in re.sub(r'[^א-ת]', '', w))
