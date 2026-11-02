@@ -814,34 +814,53 @@ def _fetch_sefaria_json_cached(sefaria_ref, extra_params="context=0&commentary=0
 
 def build_hebrew_fuzzy_patterns(word: str):
     """
-    בונה תבניות Regex למילה בעברית עבור חיפוש כתיב מלא/חסר ותחיליות (ו' החיבור ואותיות מש"ה וכל"ב).
-    תומך הן במצב שבו המשתמש הקליד כתיב חסר והן במצב שהקליד כתיב מלא או תחילית .
-    מחזיר: (skeleton_chars, clean_word_regex, nikkud_word_regex)
+    בונה תבניות חיפוש לכתיב מלא/חסר ותחיליות (ו' החיבור ואותיות מש"ה וכל"ב) בעברית.
+    תומך בכל כיוון: כתיב חסר -> מלא, כתיב מלא -> חסר, עם או בלי תחיליות.
+    מחזיר: (mandatory_db_chars, clean_word_regex)
     """
     clean_w = re.sub(r'[^א-ת]', '', word)
     if not clean_w:
-        return [], None, None
+        return [], None
 
-    nikkud_marks = r'[\u0591-\u05C7]*'
+    if len(clean_w) <= 2:
+        body = r'[וי]{0,2}'.join(re.escape(ch) for ch in clean_w)
+        return list(set(clean_w)), re.compile(rf'^[והבכלמש]{{0,3}}{body}[וי]?$')
 
-    core = clean_w[1:] if (len(clean_w) > 2 and clean_w.startswith('ו')) else clean_w
+    stem_candidates = {clean_w}
+    if len(clean_w) > 3 and clean_w[0] in 'והבכלמש':
+        stem_candidates.add(clean_w[1:])
+        if len(clean_w) > 4 and clean_w[:2] in (
+            'וה', 'וב', 'וכ', 'ול', 'ומ', 'וש',
+            'בה', 'כה', 'לה', 'מה', 'שה', 'שב', 'שכ', 'של', 'שמ'
+        ):
+            stem_candidates.add(clean_w[2:])
 
-    if len(core) <= 2:
-        skeleton = list(core)
-    else:
-        middle_consonants = [ch for ch in core[1:-1] if ch not in ('ו', 'י')]
-        skeleton = [core[0]] + middle_consonants + [core[-1]]
+    regex_branches = []
+    mandatory_sets = []
 
-    clean_between = r'[וי]{0,2}'
-    clean_body = clean_between.join(re.escape(ch) for ch in skeleton)
-    clean_pattern = rf'^[והבכלמש]{{0,2}}{clean_body}$'
+    for stem in stem_candidates:
+        non_vowel_chars = [ch for ch in stem if ch not in ('ו', 'י')]
+        if non_vowel_chars:
+            mandatory_sets.append(set(non_vowel_chars))
+        else:
+            mandatory_sets.append(set(stem))
 
-    nikkud_prefix = rf'(?:[והבכלמש]{nikkud_marks}){{0,2}}'
-    nikkud_between = rf'{nikkud_marks}(?:[וי]{nikkud_marks}){{0,2}}'
-    nikkud_body = nikkud_between.join(re.escape(ch) for ch in skeleton)
-    nikkud_pattern = rf'(?<![א-ת\u0591-\u05C7]){nikkud_prefix}{nikkud_body}{nikkud_marks}(?![א-ת])'
+        parts = []
+        for idx, ch in enumerate(stem):
+            if ch in ('ו', 'י'):
+                parts.append(r'[וי]{0,2}')
+            else:
+                parts.append(re.escape(ch))
+                if idx + 1 < len(stem) and stem[idx + 1] not in ('ו', 'י'):
+                    parts.append(r'[וי]{0,2}')
 
-    return list(set(skeleton)), re.compile(clean_pattern), re.compile(nikkud_pattern)
+        branch_body = "".join(parts)
+        regex_branches.append(rf'[והבכלמש]{{0,3}}{branch_body}')
+
+    common_mandatory = set.intersection(*mandatory_sets) if mandatory_sets else set()
+    combined_pattern = rf'^(?:{"|".join(regex_branches)})$'
+
+    return list(common_mandatory), re.compile(combined_pattern)
 
 @ratelimit(rate=45, timeout=60)
 def tanakh_advanced_search_api(request):
@@ -1056,76 +1075,65 @@ def tanakh_advanced_search_api(request):
                             'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], m['chapter']),
                             'text': "".join(out_parts), 'match_type': 'חיפוש מדויק' if is_exact else 'חיפוש חופשי (רחב)'
                         })
-                    elif query_type == 'text_fuzzy' and query_val:
-                        q_words = re.sub(r'[^א-ת\s]', '', query_val.replace('י-ה-ו-ה', 'יהוה')).strip().split()
-                        if q_words:
-                            num_q_words = len(q_words)
-                            word_patterns = [build_hebrew_fuzzy_patterns(w) for w in q_words]
-                            word_patterns = [wp for wp in word_patterns if wp[1] is not None]
 
-                            if word_patterns:
-                                num_q_words = len(word_patterns)
-                                text_query = Q()
-                                for skeleton_chars, _, _ in word_patterns:
-                                    for ch in skeleton_chars:
-                                        text_query &= Q(clean_text__icontains=ch)
+        elif query_type == 'text_fuzzy' and query_val:
+            q_words = re.sub(r'[^א-ת\s]', '', query_val.replace('י-ה-ו-ה', 'יהוה')).strip().split()
+            if q_words:
+                word_patterns = [build_hebrew_fuzzy_patterns(w) for w in q_words]
+                word_patterns = [wp for wp in word_patterns if wp[1] is not None]
 
-                                for m in qs.filter(text_query).values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text').iterator(chunk_size=2000):
-                                    raw_text = m.get('text_with_nikkud') or ""
-                                    if not raw_text:
-                                        continue
+                if word_patterns:
+                    num_q_words = len(word_patterns)
+                    text_query = Q()
+                    for mandatory_chars, _ in word_patterns:
+                        for ch in mandatory_chars:
+                            text_query &= Q(clean_text__icontains=ch)
 
-                                    clean_verse = m.get('clean_text') or re.sub(r'[^א-ת\s]', '', raw_text)
-                                    verse_tokens = clean_verse.split()
-                                    if len(verse_tokens) < num_q_words:
-                                        continue
+                    for m in qs.filter(text_query).values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2000):
+                        raw_text = m.get('text_with_nikkud') or ""
+                        if not raw_text:
+                            continue
 
-                                    matched = False
-                                    if num_q_words == 1:
-                                        _, clean_rx, _ = word_patterns[0]
-                                        if any(clean_rx.match(tok) for tok in verse_tokens):
-                                            matched = True
-                                    else:
-                                        for idx in range(len(verse_tokens) - num_q_words + 1):
-                                            if all(word_patterns[j][1].match(verse_tokens[idx + j]) for j in range(num_q_words)):
-                                                matched = True
-                                                break
-                                    if not matched:
-                                        continue
+                        tokens = list(WORD_TOKEN_RE.finditer(raw_text))
+                        clean_words, valid_spans = [], []
+                        for tok in tokens:
+                            w_heb = re.sub(r'[^א-ת]', '', tok.group(0))
+                            if w_heb:
+                                clean_words.append(w_heb)
+                                valid_spans.append(tok.span())
 
-                                    highlighted_text = raw_text
-                                    spans = []
-                                    for _, _, nikkud_rx in word_patterns:
-                                        for match_obj in nikkud_rx.finditer(raw_text):
-                                            spans.append((match_obj.start(), match_obj.end()))
+                        if len(clean_words) < num_q_words:
+                            continue
 
-                                    if spans:
-                                        spans.sort(key=lambda x: (x[0], -x[1]))
-                                        merged_spans = []
-                                        for cur_start, cur_end in spans:
-                                            if not merged_spans or cur_start >= merged_spans[-1][1]:
-                                                merged_spans.append([cur_start, cur_end])
-                                            else:
-                                                merged_spans[-1][1] = max(merged_spans[-1][1], cur_end)
+                        matched_indices = set()
+                        if num_q_words == 1:
+                            _, clean_rx = word_patterns[0]
+                            for idx, vw_clean in enumerate(clean_words):
+                                if clean_rx.match(vw_clean):
+                                    matched_indices.add(idx)
+                        else:
+                            for i in range(len(clean_words) - num_q_words + 1):
+                                if all(word_patterns[j][1].match(clean_words[i + j]) for j in range(num_q_words)):
+                                    matched_indices.update(range(i, i + num_q_words))
 
-                                    parts = []
-                                    last_idx = 0
-                                    for s_start, s_end in merged_spans:
-                                        parts.append(raw_text[last_idx:s_start])
-                                        parts.append(f'<mark>{raw_text[s_start:s_end]}</mark>')
-                                        last_idx = s_end
-                                    parts.append(raw_text[last_idx:])
-                                    highlighted_text = "".join(parts)
-
-                                results.append({
-                                    'book': m['book'],
-                                    'chapter': m['chapter'],
-                                    'verse': m['verse'],
-                                    'verse_label': get_verse_label(m['book'], m['chapter']),
-                                    'text': highlighted_text,
-                                    'match_type': 'כתיב מלא / חסר ותחיליות'
+                        if matched_indices:
+                            out_parts, last_idx = [], 0
+                            for w_i, (s_idx, e_idx) in enumerate(valid_spans):
+                                out_parts.append(raw_text[last_idx:s_idx])
+                                word_str = raw_text[s_idx:e_idx]
+                                out_parts.append(f'<mark style="background-color: rgba(255, 235, 59, 0.45); padding: 0 4px; border-radius: 4px; font-weight: bold;">{word_str}</mark>' if w_i in matched_indices else word_str)
+                                last_idx = e_idx
+                            out_parts.append(raw_text[last_idx:])
+                            results.append({
+                                'book': m['book'],
+                                'chapter': m['chapter'],
+                                'verse': format_verse_hebrew(m['verse']),
+                                'raw_verse': m['verse'],
+                                'verse_label': get_verse_label(m['book'], m['chapter']),
+                                'text': "".join(out_parts),
+                                'match_type': 'כתיב מלא / חסר ותחיליות'
                             })
-
+                            
         elif query_type == 'gematria' and query_val:
             calc_word_gem = lambda w: sum(HEBREW_GEMATRIA.get(c, 0) for c in re.sub(r'[^א-ת]', '', w))
             target_val = int(query_val) if query_val.isdigit() else calc_word_gem(query_val)

@@ -49,6 +49,7 @@
 
     .action-luxury-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; direction: rtl; }
     .action-luxury-card { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 9px 11px; background: #ffffff; border: 1.5px solid #e2d9c5; border-radius: 10px; cursor: pointer; transition: all 0.18s ease; user-select: none; text-align: right; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    .action-luxury-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
     .action-luxury-card:hover { border-color: #d4af37; background: #fdfaf2; transform: translateY(-1px); }
     .action-luxury-card.active { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border-color: #d4af37; color: #ffffff; box-shadow: 0 4px 10px rgba(30, 41, 59, 0.22); }
     .action-card-header { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.9rem; color: #1e293b; width: 100%; }
@@ -224,6 +225,10 @@
                             <div class="action-luxury-card" data-action="text_broad" data-placeholder="הזן אותיות לחיפוש רחב (למשל: משה -> חמשה)...">
                                 <div class="action-card-header"><span>🔍</span><span>חיפוש חופשי</span></div>
                                 <div class="action-card-sub">כולל חלק ממילה</div>
+                            </div>
+                            <div class="action-luxury-card" data-action="text_fuzzy" data-placeholder="הזן מילה לחיפוש כתיב מלא/חסר ותחיליות (למשל: הנחלתי -> והינחלתי)...">
+                                <div class="action-card-header"><span>📝</span><span>כתיב מלא / חסר</span></div>
+                                <div class="action-card-sub">כולל ו' החיבור ואותיות שימוש</div>
                             </div>
                             <div class="action-luxury-card" data-action="gematria" data-placeholder="הזן מילה, משפט או מספר לחישוב גימטריה...">
                                 <div class="action-card-header"><span>🔢</span><span>גימטריה</span></div>
@@ -1093,6 +1098,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (!text) {
             smartHelperBox.style.display = 'none';
+            return;
+        }
+        
+        if (mode === 'text_fuzzy') {
+            const cleanHeb = text.replace(/[^א-ת\s]/g, '').trim();
+            if (cleanHeb) {
+                const firstWord = cleanHeb.split(/\s+/)[0];
+                const base = (firstWord.length > 2 && firstWord.startsWith('ו')) ? firstWord.slice(1) : firstWord;
+                const defSample = base.length > 2 ? base[0] + base.slice(1, -1).replace(/[וי]/g, '') + base.slice(-1) : base;
+                const fullSample = defSample.length >= 2 ? defSample[0] + 'י' + defSample.slice(1) : defSample;
+                const variantsPreview = Array.from(new Set([defSample, fullSample, 'ו' + defSample, 'ו' + fullSample])).join(' • ');
+                smartHelperBox.innerHTML = `סורק כתיב מלא/חסר ותחיליות (למשל: <span style="color: #b8860b;">${variantsPreview}</span> וכו')`;
+                smartHelperBox.style.display = 'block';
+            } else {
+                smartHelperBox.style.display = 'none';
+            }
             return;
         }
 
