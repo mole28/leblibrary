@@ -1,68 +1,63 @@
 from django.urls import path
-from . import views
 from django.http import HttpResponse
+from django.shortcuts import redirect
+from django.views.generic.base import RedirectView
+from . import views
+from .models import Article, Book
 
-# השם הזה חשוב, בגלל שאנחנו קוראים לקישורים בתבניות בצורה כזו: 'articles:about'
 app_name = 'articles'
 
+
+def legacy_article_id_redirect(request, pk):
+    article = Article.objects.filter(pk=pk).first()
+    if article and getattr(article, 'slug', None):
+        return redirect('articles:detail', slug=article.slug, permanent=True)
+    return redirect('articles:list', permanent=True)
+
+
+def safe_book_detail(request, pk):
+    if not Book.objects.filter(pk=pk).exists():
+        return redirect('articles:books', permanent=True)
+    return views.book_detail(request, pk=pk)
+
+
 urlpatterns = [
-    # ==========================
-    # עמודי מאמרים (הליבה)
-    # ==========================
     path('', views.article_list, name='list'),
     path('index/', views.article_index, name='articles_index'),
-    
-    # חובה: נתיב ה-new חייב להיות מעל הנתיב עם הסלאג, אחרת הוא ייחשב בטעות כשם של מאמר
+
     path('article/new/', views.article_create, name='create'),
-    
-    # שינוי מ-ID לטקסט (slug) התומך בעברית מלאה
+    path('article/<int:pk>/', legacy_article_id_redirect, name='legacy_article_detail'),
     path('article/<str:slug>/', views.article_detail, name='detail'),
     path('article/<str:slug>/edit/', views.article_edit, name='edit'),
     path('article/<str:slug>/delete/', views.article_delete, name='delete'),
-    
-    # ==========================
-    # ספרים
-    # ==========================
+
     path('books/', views.books, name='books'),
-    path('book/<int:pk>/', views.book_detail, name='book_detail'),
-    
-    # ==========================
-    # שאלות ותשובות + פרשת שבוע
-    # ==========================
+    path('book/<int:pk>/', safe_book_detail, name='book_detail'),
+
     path('qa/', views.qa_list, name='qa'),
     path('parasha/', views.parasha_list, name='parasha'),
-    
-    # ==========================
-    # מחשבוני חז"ל
-    # ==========================
+
     path('calculator/', views.calculator, name='calculator'),
     path('volume-calculator/', views.volume_calculator, name='volume_calculator'),
     path('weight-calculator/', views.weight_calculator, name='weight_calculator'),
-    
-    # ==========================
-    # יצירת קשר ושירותי API
-    # ==========================
+
+    path('acronyms/', RedirectView.as_view(url='/advanced-search/', permanent=True), name='acronyms_redirect'),
+    path('acronyms', RedirectView.as_view(url='/advanced-search/', permanent=True)),
+
     path('contact/', views.contact, name='contact'),
     path('api/ai-chat/', views.ai_chat_endpoint, name='ai_chat'),
     path('api/live-search/', views.live_search, name='live_search'),
-    path('api/ai-search/', views.ai_open_search, name='ai_open_search'), 
+    path('api/ai-search/', views.ai_open_search, name='ai_open_search'),
     path('api/search-acronyms/', views.search_acronyms_api, name='search_acronyms_api'),
-    
-    # API הקראה קולית (נשאר עם ID לטובת מניעת שבירת נגני שמע ב-JS)
+
     path('api/audio/article/<str:identifier>/', views.get_article_audio, name='get_article_audio'),
     path('api/audio/book/<int:book_id>/', views.get_book_audio, name='get_book_audio'),
-    
-    # ==========================
-    # חנות ועגלת קניות (E-commerce)
-    # ==========================
+
     path('cart/', views.cart_detail, name='cart_detail'),
     path('cart/add/<int:book_id>/', views.add_to_cart, name='add_to_cart'),
     path('cart/remove/<int:item_id>/', views.remove_from_cart, name='remove_from_cart'),
     path('checkout/', views.checkout, name='checkout'),
-    
-    # ==========================
-    # עמודי פוטר (Footer)
-    # ==========================
+
     path('about/', views.about, name='about'),
     path('terms/', views.terms, name='terms'),
     path('recently-added/', views.recently_added, name='recently_added'),

@@ -13,9 +13,13 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="לייבוביץ">
 
-    <meta name="description" content="ספריית לייבוביץ - ספרייה תורנית, ספרי הלכה, מאמרים, שו״ת, מילון ראשי תיבות, מחשבוני מידות חז״ל ומנוע חיפוש תורני מתקדם (גימטריאות, ראשי וסופי תיבות ודילוגי אותיות בתנ״ך, במשנה, בתלמודים ובפוסקים) מאת הרב משה לייבוביץ.">
-    <meta name="keywords" content="משה לייבוביץ, משה ליבוביץ, ספריית לייבוביץ, חיפוש תורני מתקדם, חיפוש גימטריה בתנך, דילוגי אותיות בתורה, חיפוש ראשי תיבות, סופי תיבות, מילון ראשי תיבות, מחשבון מידות חזל, מאמרים תורניים">
+    <meta name="description" content="{% block meta_description %}ספריית לייבוביץ - ספרייה תורנית, ספרי הלכה, מאמרים, שו״ת, מילון ראשי תיבות, מתרגם ארמי-עברי, מחשבוני מידות חז״ל (אורך, נפח ומשקל) ומנוע חיפוש תורני מתקדם (כתיב מלא וחסר, גימטריאות, ראשי וסופי תיבות ודילוגי אותיות בתנ״ך, במשנה, בתלמודים ובפוסקים) מאת הרב משה לייבוביץ.{% endblock %}">
+    <meta name="keywords" content="משה לייבוביץ, משה ליבוביץ, ספריית לייבוביץ, חיפוש תורני מתקדם, חיפוש כתיב מלא וחסר, חיפוש גימטריה בתנך, דילוגי אותיות בתורה, חיפוש ראשי תיבות, סופי תיבות, מילון ראשי תיבות, מחשבון מידות חזל, מידות אורך בתורה, שנת מעשר תשפז, ברכה על קשת בענן, מאמרים תורניים">
+    {% if request.GET.q or request.GET.type or request.GET.page %}
+    <meta name="robots" content="noindex, follow">
+    {% else %}
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    {% endif %}
     <meta name="author" content="משה לייבוביץ">
     
     <meta name="language" content="Hebrew">
@@ -28,7 +32,7 @@
     
     <meta property="og:title" content="{% block og_title %}ספריית לייבוביץ | משה לייבוביץ{% endblock %}">
     <meta property="og:description" content="{% block og_description %}ספרייה תורנית, ספרי הלכה, מאמרים, שו״ת ומנוע חיפוש תורני מתקדם בתנ״ך, במשנה, בתלמודים ובפוסקים.{% endblock %}">
-    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
     <meta property="og:type" content="website">
     <meta property="og:image" content="https://leblibrary.co.il/static/images/icon-512x512.png">
     <meta name="msvalidate.01" content="4F414ADD88881F3E5922BC3D6B34104C" />
@@ -49,7 +53,7 @@
       "alternateName": "LebLibrary",
       "url": "https://leblibrary.co.il/",
       "inLanguage": "he",
-      "description": "ספרייה תורנית מתקדמת המרכזת מאמרים, ספרים, מנוע חיפוש תורני (גימטריאות, ראשי וסופי תיבות ודילוגי אותיות), מילון ראשי תיבות ומחשבוני מידות חז\"ל.",
+      "description": "ספרייה תורנית מתקדמת המרכזת מאמרים, ספרים, מנוע חיפוש תורני (כתיב מלא וחסר, גימטריאות, ראשי וסופי תיבות ודילוגי אותיות), מילון ראשי תיבות, מתרגם ארמי-עברי ומחשבוני מידות חז\"ל.",
       "potentialAction": [
         {
           "@type": "SearchAction",
@@ -66,16 +70,16 @@
       "hasPart": [
         {
           "@type": "WebApplication",
-          "name": "מנוע חיפוש תורני מתקדם - ספריית לייבוביץ",
+          "name": "מאגר החיפוש התורני - ספריית לייבוביץ",
           "url": "https://leblibrary.co.il/advanced-search/",
           "applicationCategory": "ReferenceApplication",
           "operatingSystem": "All",
-          "description": "מנוע חיפוש תורני בתנ\"ך, משנה, תוספתא, תלמוד בבלי, תלמוד ירושלמי, רמב\"ם ושולחן ערוך. כולל חיפוש מדויק וחופשי, גימטריאות, ראשי וסופי תיבות, פלינדרום ודילוגי אותיות (ELS)."
+          "description": "מנוע חיפוש תורני בתנ\"ך, משנה, תוספתא, תלמוד בבלי, תלמוד ירושלמי, רמב\"ם ושולחן ערוך. כולל חיפוש מדויק וחופשי, כתיב מלא וחסר ותחיליות, גימטריאות, ראשי וסופי תיבות, פלינדרום, דילוגי אותיות (ELS) וניתוח AI."
         },
         {
           "@type": "DefinedTermSet",
-          "name": "מילון ראשי תיבות תורני",
-          "url": "https://leblibrary.co.il/acronyms/",
+          "name": "מילון ראשי תיבות תורני ומתרגם ארמי-עברי",
+          "url": "https://leblibrary.co.il/advanced-search/",
           "description": "מילון ראשי תיבות תורני אינטראקטיבי עם פענוח אוטומטי בגוף המאמרים והספרים."
         }
       ],
