@@ -307,7 +307,7 @@ def article_detail(request, slug):
     article = Article.objects.filter(slug=slug_str).first()
 
     if not article and slug_str.isdigit():
-        article = Article.objects.filter(pk=int(slug_str)).first()
+        article = Article.objects.only('id', 'slug').filter(pk=int(slug_str)).first()
         if article and article.slug:
             return redirect('articles:detail', slug=article.slug, permanent=True)
 
@@ -315,8 +315,7 @@ def article_detail(request, slug):
         if article.slug and article.slug != slug_str:
             return redirect('articles:detail', slug=article.slug, permanent=True)
 
-        all_published = list(Article.objects.filter(is_published=True))
-        learning_ctx = ClusterEngine.get_learning_context(article, all_published)
+        learning_ctx = ClusterEngine.get_learning_context(article)
 
         return render(request, 'articles/article_detail.html', {
             'article': article,
@@ -583,7 +582,7 @@ def acronyms_view(request):
 
 
 def article_index(request):
-    published_articles = Article.objects.filter(is_published=True).order_by('title')
+    published_articles = Article.objects.filter(is_published=True).only('id', 'title', 'slug', 'created_at').order_by('title')
     articles_count = published_articles.count()
     grouped_articles = {}
     for article in published_articles:
@@ -816,12 +815,11 @@ def ping_indexnow(article_url):
     except Exception:
         pass
 
-
 @receiver([post_save, post_delete], sender=Article)
 @receiver([post_save, post_delete], sender=Book)
 def clear_cache_on_db_change(sender, instance, **kwargs):
     cache.clear()
-
+    ClusterEngine.clear_memory_cache()
 
 def load_tts_dictionary():
     dict_path = os.path.join(settings.BASE_DIR, 'tts_dictionary.json')

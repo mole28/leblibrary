@@ -4,21 +4,20 @@ import re
 from django.conf import settings
 from django.core.cache import cache
 from django.utils.html import strip_tags
-from .models import Article, Book, Chapter, Section, QA
+from .models import Article, Book, Chapter, QA
 
 DEFAULT_MIN_CONNECTION_SCORE = 24
 TITLE_WEIGHT = 10
 BODY_WEIGHT = 1
-MAX_BODY_HITS = 6
-CACHE_TIMEOUT = 60 * 60 * 24
-ENGINE_VERSION = "v8_controlled"
+MAX_BODY_HITS = 5
+ENGINE_VERSION = "v9_fast"
 
 RUNTIME_CONFIG_PATH = os.path.join(settings.BASE_DIR, 'clusters_runtime_config.json')
 
-MANUAL_ARTICLE_OVERRIDES = {
-    # Optional manual overrides by article.slug or article.id:
-    # 'example-slug': {'cluster_id': 'brachot'}
-}
+# זיכרון מטמון פנימי מהיר בתוך תהליך הפייתון (מונע חישוב מחדש בכל בקשה)
+_MEM_CACHE = {}
+
+MANUAL_ARTICLE_OVERRIDES = {}
 
 GRAVITY_CLUSTERS = [
     {
@@ -138,22 +137,29 @@ GENERIC_NOISE_WORDS = {
 
 
 class ClusterEngine:
-    _regex_cache = {}
+
+    @classmethod
+    def clear_memory_cache(cls):
+        _MEM_CACHE.clear()
 
     @classmethod
     def get_runtime_config(cls):
+        if 'runtime_cfg' in _MEM_CACHE:
+            return _MEM_CACHE['runtime_cfg']
+
         default_cfg = {
-            'min_connection_score': getattr(settings, 'CLUSTER_MIN_CONNECTION_SCORE', DEFAULT_MIN_CONNECTION_SCORE),
+            'min_connection_score': DEFAULT_MIN_CONNECTION_SCORE,
             'public_enabled': False,
         }
         if os.path.exists(RUNTIME_CONFIG_PATH):
             try:
                 with open(RUNTIME_CONFIG_PATH, 'r', encoding='utf-8') as f:
                     saved = json.load(f)
-                    default_cfg['min_connection_score'] = int(saved.get('min_connection_score', default_cfg['min_connection_score']))
+                    default_cfg['min_connection_score'] = int(saved.get('min_connection_score', DEFAULT_MIN_CONNECTION_SCORE))
                     default_cfg['public_enabled'] = bool(saved.get('public_enabled', False))
             except Exception:
                 pass
+        _MEM_CACHE['runtime_cfg'] = default_cfg
         return default_cfg
 
     @classmethod
@@ -167,35 +173,21 @@ class ClusterEngine:
                 json.dump(cfg, f, ensure_ascii=False, indent=2)
         except Exception:
             pass
-        cache.clear()
+        _MEM_CACHE.clear()
         return cfg
 
-    @classmethod
-    def _get_kw_regex(cls, keyword: str):
-        kw_lower = keyword.lower().strip()
-        if kw_lower not in cls._regex_cache:
-            pattern = rf'(?<![א-תa-z0-9])(?:ו?[הבכלמש])?{re.escape(kw_lower)}(?![א-תa-z0-9])'
-            cls._regex_cache[kw_lower] = re.compile(pattern)
-        return cls._regex_cache[kw_lower]
-
     @staticmethod
-    def clean_text(html_content: str) -> str:
+    def clean_text_fast(html_content: str, max_len: int = 1200) -> str:
         if not html_content:
             return ""
-        txt = strip_tags(str(html_content))
-        txt = re.sub(r'הערות שוליים.*$', '', txt, flags=re.DOTALL)
-        return re.sub(r'\s+', ' ', txt).strip()
+        raw_slice = str(html_content)[:max_len * 3]
+        txt = re.sub(r'<[^>]+>', ' ', raw_slice)
+        return re.sub(r'\s+', ' ', txt).strip()[:max_len]
 
     @classmethod
-    def _count_matches(cls, text_lower: str, keyword: str) -> int:
-        if not text_lower or not keyword:
-            return 0
-        return len(cls._get_kw_regex(keyword).findall(text_lower))
-
-    @classmethod
-    def _extract_distinctive_signature(cls, title: str, body: str):
-        title_clean = cls.clean_text(title).lower()
-        body_clean = cls.clean_text(body).lower()
+    def _extract_distinctive_signature(cls, title: str, body_snippet: str):
+        title_clean = cls.clean_text_fast(title, 300).lower()
+        body_clean = cls.clean_text_fast(body_snippet, 1000).lower()
 
         matched_phrases = set()
         matched_keywords = set()
@@ -205,8 +197,8 @@ class ClusterEngine:
         for cluster in GRAVITY_CLUSTERS:
             c_score = 0
             for phrase in cluster['phrases']:
-                t_hits = cls._count_matches(title_clean, phrase)
-                b_hits = min(MAX_BODY_HITS, cls._count_matches(body_clean, phrase))
+                t_hits = 1 if phrase in title_clean else 0
+                b_hits = min(MAX_BODY_HITS, body_clean.count(phrase)) if phrase in body_clean else 0
                 if t_hits > 0 or b_hits > 0:
                     pts = (t_hits * TITLE_WEIGHT * 1.8) + (b_hits * BODY_WEIGHT * 2.5)
                     c_score += pts
@@ -214,8 +206,8 @@ class ClusterEngine:
                     keyword_breakdown[phrase] = keyword_breakdown.get(phrase, 0) + round(pts, 1)
 
             for kw in cluster['keywords']:
-                t_hits = cls._count_matches(title_clean, kw)
-                b_hits = min(MAX_BODY_HITS, cls._count_matches(body_clean, kw))
+                t_hits = 1 if kw in title_clean else 0
+                b_hits = min(MAX_BODY_HITS, body_clean.count(kw)) if kw in body_clean else 0
                 if t_hits > 0 or b_hits >= 2:
                     pts = (t_hits * TITLE_WEIGHT) + (b_hits * BODY_WEIGHT)
                     c_score += pts
@@ -233,7 +225,7 @@ class ClusterEngine:
             if stem not in GENERIC_NOISE_WORDS and len(stem) >= 3:
                 title_specific_stems.add(stem)
 
-        raw_body_words = re.findall(r'[א-ת]{4,}', body_clean[:2500])
+        raw_body_words = re.findall(r'[א-ת]{4,}', body_clean)
         body_freq = {}
         for w in raw_body_words:
             if w in GENERIC_NOISE_WORDS:
@@ -301,34 +293,121 @@ class ClusterEngine:
         return score, reasons[:3]
 
     @classmethod
-    def classify(cls, article):
-        cache_key = f"bm_classify_{ENGINE_VERSION}_{article.pk}"
-        cached = cache.get(cache_key)
-        if cached:
-            return cached
+    def _get_all_indexed_articles(cls):
+        if 'indexed_articles' in _MEM_CACHE:
+            return _MEM_CACHE['indexed_articles']
 
-        override = MANUAL_ARTICLE_OVERRIDES.get(article.slug) or MANUAL_ARTICLE_OVERRIDES.get(article.pk) or {}
-        sig = cls._extract_distinctive_signature(article.title or '', article.content or '')
-        cluster_obj = sig['cluster']
+        articles_Index = []
+        qs = Article.objects.filter(is_published=True).only('id', 'title', 'slug', 'parasha', 'content')
+        for art in qs:
+            snippet = cls.clean_text_fast(art.content or '', 900)
+            sig = cls._extract_distinctive_signature(art.title or '', snippet)
+            override = MANUAL_ARTICLE_OVERRIDES.get(art.slug) or MANUAL_ARTICLE_OVERRIDES.get(art.pk) or {}
+            cluster_obj = sig['cluster']
+            if override.get('cluster_id'):
+                cluster_obj = next((c for c in GRAVITY_CLUSTERS if c['id'] == override['cluster_id']), cluster_obj)
 
-        if override.get('cluster_id'):
-            cluster_obj = next((c for c in GRAVITY_CLUSTERS if c['id'] == override['cluster_id']), cluster_obj)
+            title_str = art.title or ''
+            foundational = ('גדר', 'גדרי', 'יסוד', 'יסודות', 'מהות', 'כלל', 'כללי', 'מבוא', 'מקור', 'חיוב', 'מצוות')
+            specific = ('ספק', 'בדיעבד', 'האם', 'מתי', 'כיצד', 'איך', 'מנהג', 'בזמן הזה')
+            stage = 1 if any(t in title_str for t in foundational) else (3 if any(t in title_str for t in specific) else 2)
 
-        result = {
-            'cluster_id': cluster_obj['id'],
-            'cluster_title': cluster_obj['title'],
-            'icon': cluster_obj['icon'],
-            'description': cluster_obj['description'],
-            'score': sig['cluster_score'],
-            'breakdown': sig['breakdown'],
-            'signature': sig,
-        }
-        cache.set(cache_key, result, CACHE_TIMEOUT)
-        return result
+            articles_Index.append({
+                'pk': art.pk,
+                'title': title_str,
+                'slug': art.slug,
+                'parasha': art.parasha or '',
+                'snippet': snippet,
+                'cluster_id': cluster_obj['id'],
+                'cluster_title': cluster_obj['title'],
+                'icon': cluster_obj['icon'],
+                'description': cluster_obj['description'],
+                'score': sig['cluster_score'],
+                'breakdown': sig['breakdown'],
+                'signature': sig,
+                'stage': stage,
+                'sort_key': (stage, -sig['cluster_score'], art.pk),
+            })
+
+        _MEM_CACHE['indexed_articles'] = articles_Index
+        return articles_Index
 
     @classmethod
-    def get_smart_tools_for_article(cls, article, sig):
-        text_combined = f"{article.title or ''} {cls.clean_text(article.content or '')[:1500]}"
+    def _get_indexed_book_units(cls):
+        if 'book_units' in _MEM_CACHE:
+            return _MEM_CACHE['book_units']
+
+        units = []
+        books = {b.pk: b for b in Book.objects.only('id', 'title', 'summary').all()}
+        chapters = list(Chapter.objects.only('id', 'book_id', 'title', 'order').order_by('book_id', 'order', 'id'))
+
+        books_with_chapters = set()
+        for ch in chapters:
+            book = books.get(ch.book_id)
+            if not book:
+                continue
+            books_with_chapters.add(book.pk)
+            full_title = f"{book.title} {ch.title}"
+            b_summary = cls.clean_text_fast(book.summary or '', 300)
+            sig = cls._extract_distinctive_signature(full_title, b_summary)
+            units.append({
+                'unit_type': 'chapter',
+                'book_id': book.pk,
+                'book_title': book.title,
+                'chapter_id': ch.pk,
+                'chapter_title': ch.title,
+                'title': ch.title,
+                'badge': f'מתוך הספר "{book.title}"',
+                'preview': b_summary[:130],
+                'url': f"/book/{book.pk}/?chapter={ch.pk}#chapter-{ch.pk}",
+                'signature': sig,
+            })
+
+        for b_id, book in books.items():
+            if b_id in books_with_chapters:
+                continue
+            b_summary = cls.clean_text_fast(book.summary or '', 400)
+            sig = cls._extract_distinctive_signature(book.title or '', b_summary)
+            units.append({
+                'unit_type': 'book',
+                'book_id': book.pk,
+                'book_title': book.title,
+                'chapter_id': None,
+                'chapter_title': '',
+                'title': f'הספר "{book.title}"',
+                'badge': 'ספר שלם בספרייה',
+                'preview': b_summary[:140],
+                'url': f"/book/{book.pk}/",
+                'signature': sig,
+            })
+
+        _MEM_CACHE['book_units'] = units
+        return units
+
+    @classmethod
+    def _get_indexed_qa_units(cls):
+        if 'qa_units' in _MEM_CACHE:
+            return _MEM_CACHE['qa_units']
+
+        qa_units = []
+        for qa in QA.objects.only('id', 'question', 'answer', 'category').all():
+            ans_clean = cls.clean_text_fast(qa.answer or '', 500)
+            sig = cls._extract_distinctive_signature(f"{qa.question or ''} {qa.category or ''}", ans_clean)
+            qa_units.append({
+                'qa_id': qa.pk,
+                'question': qa.question,
+                'category': qa.category or 'שו"ת הלכתי',
+                'preview': ans_clean[:130],
+                'url': f"/qa/?open={qa.pk}#qa-{qa.pk}",
+                'signature': sig,
+            })
+
+        _MEM_CACHE['qa_units'] = qa_units
+        return qa_units
+
+    @classmethod
+    def get_smart_tools_for_article(cls, title: str, snippet: str, sig):
+        text_combined = f"{title} {snippet}"
         tools = []
 
         if any(w in text_combined for w in ('אמה', 'טפח', 'טפחים', 'אצבע', 'זרת', 'מיל', 'תחום שבת', 'גובה')):
@@ -368,7 +447,7 @@ class ClusterEngine:
         elif sig['title_stems']:
             search_term = list(sig['title_stems'])[0]
         else:
-            clean_t = re.sub(r'[^א-ת\s]', '', article.title or '').strip()
+            clean_t = re.sub(r'[^א-ת\s]', '', title).strip()
             search_term = " ".join(clean_t.split()[:2])
 
         tools.append({
@@ -383,144 +462,41 @@ class ClusterEngine:
         return tools[:2]
 
     @classmethod
-    def _get_indexed_book_units(cls):
-        cache_key = f"bm_book_units_{ENGINE_VERSION}"
-        cached = cache.get(cache_key)
-        if cached is not None:
-            return cached
-
-        units = []
-        books = Book.objects.prefetch_related('chapters__sections').all()
-
-        for book in books:
-            chapters = list(book.chapters.all().order_by('order', 'id'))
-            if chapters:
-                for ch in chapters:
-                    sections = list(ch.sections.all().order_by('order', 'id'))
-                    if sections:
-                        for sec in sections:
-                            full_title = f"{book.title} {ch.title} {sec.title}"
-                            sig = cls._extract_distinctive_signature(full_title, sec.content or '')
-                            preview = cls.clean_text(sec.content or '')[:150]
-                            if len(preview) == 150:
-                                preview = preview.rsplit(' ', 1)[0] + '...'
-                            units.append({
-                                'unit_type': 'section',
-                                'book_id': book.pk,
-                                'book_title': book.title,
-                                'chapter_id': ch.pk,
-                                'chapter_title': ch.title,
-                                'section_id': sec.pk,
-                                'title': f"{ch.title} – {sec.title}",
-                                'badge': f'מתוך הספר "{book.title}"',
-                                'preview': preview,
-                                'url': f"/book/{book.pk}/?chapter={ch.pk}&section={sec.pk}#section-{sec.pk}",
-                                'signature': sig,
-                            })
-                    else:
-                        full_title = f"{book.title} {ch.title}"
-                        sig = cls._extract_distinctive_signature(full_title, book.summary or '')
-                        units.append({
-                            'unit_type': 'chapter',
-                            'book_id': book.pk,
-                            'book_title': book.title,
-                            'chapter_id': ch.pk,
-                            'chapter_title': ch.title,
-                            'section_id': None,
-                            'title': ch.title,
-                            'badge': f'מתוך הספר "{book.title}"',
-                            'preview': cls.clean_text(book.summary or '')[:140],
-                            'url': f"/book/{book.pk}/?chapter={ch.pk}#chapter-{ch.pk}",
-                            'signature': sig,
-                        })
-            else:
-                sig = cls._extract_distinctive_signature(book.title or '', book.summary or '')
-                preview = cls.clean_text(book.summary or '')[:150]
-                if len(preview) == 150:
-                    preview = preview.rsplit(' ', 1)[0] + '...'
-                units.append({
-                    'unit_type': 'book',
-                    'book_id': book.pk,
-                    'book_title': book.title,
-                    'chapter_id': None,
-                    'chapter_title': '',
-                    'section_id': None,
-                    'title': f'הספר "{book.title}"',
-                    'badge': 'ספר שלם בספרייה',
-                    'preview': preview,
-                    'url': f"/book/{book.pk}/",
-                    'signature': sig,
-                })
-
-        cache.set(cache_key, units, CACHE_TIMEOUT)
-        return units
-
-    @classmethod
-    def _get_indexed_qa_units(cls):
-        cache_key = f"bm_qa_units_{ENGINE_VERSION}"
-        cached = cache.get(cache_key)
-        if cached is not None:
-            return cached
-
-        qa_units = []
-        for qa in QA.objects.all():
-            sig = cls._extract_distinctive_signature(
-                f"{qa.question or ''} {qa.category or ''}",
-                qa.answer or ''
-            )
-            preview = cls.clean_text(qa.answer or '')[:140]
-            if len(preview) == 140:
-                preview = preview.rsplit(' ', 1)[0] + '...'
-            qa_units.append({
-                'qa_id': qa.pk,
-                'question': qa.question,
-                'category': qa.category or 'שו"ת הלכתי',
-                'preview': preview,
-                'url': f"/qa/?open={qa.pk}#qa-{qa.pk}",
-                'signature': sig,
-            })
-
-        cache.set(cache_key, qa_units, CACHE_TIMEOUT)
-        return qa_units
-
-    @classmethod
-    def _pedagogical_sort_key(cls, article):
-        title = str(getattr(article, 'title', '') or '')
-        info = cls.classify(article)
-        foundational = ('גדר', 'גדרי', 'יסוד', 'יסודות', 'מהות', 'כלל', 'כללי', 'מבוא', 'מקור', 'חיוב', 'מצוות')
-        specific = ('ספק', 'בדיעבד', 'האם', 'מתי', 'כיצד', 'איך', 'מנהג', 'בזמן הזה')
-
-        if any(t in title for t in foundational):
-            stage = 1
-        elif any(t in title for t in specific):
-            stage = 3
-        else:
-            stage = 2
-        return (stage, -info['score'], article.pk)
-
-    @classmethod
-    def get_cluster_path_articles(cls, cluster_id: str, all_articles):
-        filtered = [art for art in all_articles if cls.classify(art)['cluster_id'] == cluster_id]
-        filtered.sort(key=cls._pedagogical_sort_key)
-        return filtered
-
-    @classmethod
     def get_learning_context(cls, article, all_articles=None, min_score_override=None):
-        if all_articles is None:
-            all_articles = list(Article.objects.filter(is_published=True))
-
         runtime_cfg = cls.get_runtime_config()
         active_min_score = int(min_score_override) if min_score_override is not None else runtime_cfg['min_connection_score']
         public_enabled = runtime_cfg['public_enabled']
 
-        cache_key = f"bm_learning_ctx_{ENGINE_VERSION}_{article.pk}_{len(all_articles)}_{active_min_score}_{public_enabled}"
-        cached = cache.get(cache_key)
-        if cached:
-            return cached
+        mem_key = f"ctx_{article.pk}_{active_min_score}_{public_enabled}"
+        if mem_key in _MEM_CACHE:
+            return _MEM_CACHE[mem_key]
 
-        curr_info = cls.classify(article)
-        curr_sig = curr_info['signature']
-        path_articles = cls.get_cluster_path_articles(curr_info['cluster_id'], all_articles)
+        indexed_articles = cls._get_all_indexed_articles()
+        curr_entry = next((item for item in indexed_articles if item['pk'] == article.pk), None)
+
+        if not curr_entry:
+            snippet = cls.clean_text_fast(article.content or '', 900)
+            sig = cls._extract_distinctive_signature(article.title or '', snippet)
+            curr_entry = {
+                'pk': article.pk,
+                'title': article.title or '',
+                'slug': article.slug,
+                'parasha': article.parasha or '',
+                'snippet': snippet,
+                'cluster_id': sig['cluster']['id'],
+                'cluster_title': sig['cluster']['title'],
+                'icon': sig['cluster']['icon'],
+                'description': sig['cluster']['description'],
+                'score': sig['cluster_score'],
+                'breakdown': sig['breakdown'],
+                'signature': sig,
+                'stage': 2,
+                'sort_key': (2, -sig['cluster_score'], article.pk),
+            }
+
+        curr_sig = curr_entry['signature']
+        path_articles = [a for a in indexed_articles if a['cluster_id'] == curr_entry['cluster_id']]
+        path_articles.sort(key=lambda x: x['sort_key'])
 
         total_in_path = len(path_articles)
         position = 1
@@ -528,7 +504,7 @@ class ClusterEngine:
         next_article = None
 
         for idx, item in enumerate(path_articles):
-            if item.pk == article.pk:
+            if item['pk'] == article.pk:
                 position = idx + 1
                 if idx > 0:
                     prev_article = path_articles[idx - 1]
@@ -536,7 +512,6 @@ class ClusterEngine:
                     next_article = path_articles[idx + 1]
                 break
 
-        stage_num, _, _ = cls._pedagogical_sort_key(article)
         stage_labels = {
             1: 'שלב א׳: יסודות וגדרים',
             2: 'שלב ב׳: עיקרי ההלכה',
@@ -544,45 +519,44 @@ class ClusterEngine:
         }
 
         scored_articles = []
-        for cand in all_articles:
-            if cand.pk == article.pk:
+        for cand in indexed_articles:
+            if cand['pk'] == article.pk:
                 continue
-            cand_info = cls.classify(cand)
             sim_score, reasons = cls._calculate_pair_similarity(
-                curr_sig, cand_info['signature'],
-                getattr(article, 'parasha', ''), getattr(cand, 'parasha', '')
+                curr_sig, cand['signature'],
+                curr_entry['parasha'], cand['parasha']
             )
             if sim_score >= active_min_score:
                 scored_articles.append({
-                    'article': cand,
+                    'article': {'pk': cand['pk'], 'title': cand['title'], 'slug': cand['slug']},
                     'score': sim_score,
                     'reasons': reasons,
                 })
 
-        scored_articles.sort(key=lambda x: (-x['score'], -x['article'].pk))
+        scored_articles.sort(key=lambda x: (-x['score'], -x['article']['pk']))
         strong_related_articles = scored_articles[:3]
         has_strong_article_match = len(strong_related_articles) > 0
 
         if not strong_related_articles:
             for p_art in path_articles:
-                if p_art.pk != article.pk:
+                if p_art['pk'] != article.pk:
                     strong_related_articles.append({
-                        'article': p_art,
+                        'article': {'pk': p_art['pk'], 'title': p_art['title'], 'slug': p_art['slug']},
                         'score': 10,
-                        'reasons': [curr_info['cluster_title']],
+                        'reasons': [curr_entry['cluster_title']],
                     })
                 if len(strong_related_articles) >= 2:
                     break
 
         scored_books = []
-        seen_book_chapters = set()
+        seen_books = set()
         for b_unit in cls._get_indexed_book_units():
             sim_score, reasons = cls._calculate_pair_similarity(curr_sig, b_unit['signature'])
             if sim_score >= active_min_score:
                 dedup_key = (b_unit['book_id'], b_unit['chapter_id'] or 0)
-                if dedup_key not in seen_book_chapters:
-                    seen_book_chapters.add(dedup_key)
-                    unit_copy = dict(b_unit)
+                if dedup_key not in seen_books:
+                    seen_books.add(dedup_key)
+                    unit_copy = {k: v for k, v in b_unit.items() if k != 'signature'}
                     unit_copy['match_score'] = sim_score
                     unit_copy['reasons'] = reasons
                     scored_books.append(unit_copy)
@@ -594,7 +568,7 @@ class ClusterEngine:
         for q_unit in cls._get_indexed_qa_units():
             sim_score, reasons = cls._calculate_pair_similarity(curr_sig, q_unit['signature'])
             if sim_score >= active_min_score:
-                q_copy = dict(q_unit)
+                q_copy = {k: v for k, v in q_unit.items() if k != 'signature'}
                 q_copy['match_score'] = sim_score
                 q_copy['reasons'] = reasons
                 scored_qas.append(q_copy)
@@ -602,10 +576,10 @@ class ClusterEngine:
         scored_qas.sort(key=lambda x: -x['match_score'])
         matched_qas = scored_qas[:3]
 
-        smart_tools = cls.get_smart_tools_for_article(article, curr_sig)
+        smart_tools = cls.get_smart_tools_for_article(curr_entry['title'], curr_entry['snippet'], curr_sig)
 
         is_orphan_or_weak = (
-            curr_info['score'] < 15 and
+            curr_entry['score'] < 15 and
             not has_strong_article_match and
             not matched_book_units and
             not matched_qas
@@ -615,17 +589,17 @@ class ClusterEngine:
             'public_enabled': public_enabled,
             'min_connection_score': active_min_score,
             'cluster': {
-                'cluster_id': curr_info['cluster_id'],
-                'cluster_title': curr_info['cluster_title'],
-                'icon': curr_info['icon'],
-                'description': curr_info['description'],
-                'score': curr_info['score'],
-                'breakdown': curr_info['breakdown'],
+                'cluster_id': curr_entry['cluster_id'],
+                'cluster_title': curr_entry['cluster_title'],
+                'icon': curr_entry['icon'],
+                'description': curr_entry['description'],
+                'score': curr_entry['score'],
+                'breakdown': curr_entry['breakdown'],
             },
             'navigation': {
                 'position': position,
                 'total_in_path': total_in_path,
-                'stage_label': stage_labels.get(stage_num, 'עיונים בסוגיה'),
+                'stage_label': stage_labels.get(curr_entry['stage'], 'עיונים בסוגיה'),
                 'prev_article': prev_article,
                 'next_article': next_article,
             },
@@ -636,7 +610,7 @@ class ClusterEngine:
             'has_strong_matches': has_strong_article_match or bool(matched_book_units) or bool(matched_qas),
             'is_orphan_or_weak': is_orphan_or_weak,
         }
-        cache.set(cache_key, payload, CACHE_TIMEOUT)
+        _MEM_CACHE[mem_key] = payload
         return payload
 
     @classmethod
@@ -644,14 +618,23 @@ class ClusterEngine:
         runtime_cfg = cls.get_runtime_config()
         active_min_score = int(min_score_override) if min_score_override is not None else runtime_cfg['min_connection_score']
 
-        all_articles = list(Article.objects.filter(is_published=True).order_by('title'))
+        indexed_articles = sorted(cls._get_all_indexed_articles(), key=lambda x: x['title'])
         rows = []
         weak_articles = []
 
-        for art in all_articles:
-            ctx = cls.get_learning_context(art, all_articles, min_score_override=active_min_score)
+        class _LightArticleObj:
+            def __init__(self, pk, title, slug, parasha):
+                self.pk = pk
+                self.title = title
+                self.slug = slug
+                self.parasha = parasha
+                self.content = ""
+
+        for item in indexed_articles:
+            light_art = _LightArticleObj(item['pk'], item['title'], item['slug'], item['parasha'])
+            ctx = cls.get_learning_context(light_art, min_score_override=active_min_score)
             row = {
-                'article': art,
+                'article': light_art,
                 'cluster_title': ctx['cluster']['cluster_title'],
                 'cluster_score': ctx['cluster']['score'],
                 'breakdown': ctx['cluster']['breakdown'],
@@ -671,9 +654,9 @@ class ClusterEngine:
             cluster_summary[c_name] = cluster_summary.get(c_name, 0) + 1
 
         return {
-            'total_articles': len(all_articles),
+            'total_articles': len(indexed_articles),
             'weak_count': len(weak_articles),
-            'strong_count': len(all_articles) - len(weak_articles),
+            'strong_count': len(indexed_articles) - len(weak_articles),
             'weak_articles': weak_articles,
             'rows': rows,
             'cluster_summary': cluster_summary,
