@@ -1,0 +1,183 @@
+{% extends 'articles/base.html' %}
+
+{% block title %}דו"ח בקרת קשרים ואשכולות | ניהול ספריית לייבוביץ{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4" style="max-width: 1450px;" dir="rtl">
+
+    <!-- סרגל שליטה למנהל: הפעלה/הסתרה לגולשים וכוונון סף הרגישות (MIN_CONNECTION_SCORE) -->
+    <div class="p-4 mb-4 rounded-4 shadow-sm" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 2px solid #d4af37; color: #f8fafc;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3 pb-3" style="border-bottom: 1px solid rgba(212,175,55,0.3);">
+            <div>
+                <h2 class="fw-bold mb-1" style="color: #f7e199; font-family: 'Frank Ruhl Libre', serif;">
+                    <i class="bi bi-diagram-3-fill ms-2" style="color: #d4af37;"></i>תחנת בקרה למנהל: דו"ח קשרים ומסלולי לימוד
+                </h2>
+                <p class="mb-0 text-light opacity-75">
+                    בדוק את החיבורים שנוצרו עבור {{ report.total_articles }} המאמרים, כוון את סף הרגישות, והפעל את התצוגה לגולשים כשתהיה מרוצה.
+                </p>
+            </div>
+
+            <div class="d-flex gap-3">
+                <div class="px-3 py-2 rounded-3 text-center" style="background: rgba(34, 197, 94, 0.18); border: 1px solid #22c55e;">
+                    <div class="fs-4 fw-bold text-white">{{ report.strong_count }}</div>
+                    <div class="small text-light">מאמרים מקושרים היטב</div>
+                </div>
+                <div class="px-3 py-2 rounded-3 text-center" style="background: rgba(245, 158, 11, 0.2); border: 1px solid #f59e0b;">
+                    <div class="fs-4 fw-bold text-warning">{{ report.weak_count }}</div>
+                    <div class="small text-light">מאמרים ייחודיים / לבדיקה</div>
+                </div>
+            </div>
+        </div>
+
+        <form method="post" class="row g-3 align-items-center bg-dark bg-opacity-50 p-3 rounded-3 border border-secondary">
+            {% csrf_token %}
+            <div class="col-md-5">
+                <label class="form-label fw-bold mb-1" style="color: #f7e199;">
+                    <i class="bi bi-sliders ms-1"></i>סף רגישות לקשרים (`MIN_CONNECTION_SCORE`):
+                </label>
+                <div class="d-flex align-items-center gap-2">
+                    <input type="number" name="min_connection_score" value="{{ report.active_min_score }}" min="10" max="70" step="2" class="form-control form-control-sm fw-bold text-center" style="max-width: 90px; font-size: 1.05rem;">
+                    <span class="small text-light opacity-75">
+                        (נמוך יותר = יותר קשרים | גבוה יותר = קשרים הדוקים בלבד. מומלץ: 20–28)
+                    </span>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label fw-bold mb-1" style="color: #f7e199;">
+                    <i class="bi bi-eye-fill ms-1"></i>סטטוס חשיפה לגולשים באתר:
+                </label>
+                <div>
+                    {% if report.public_enabled %}
+                        <span class="badge bg-success px-3 py-2 fs-6">פעיל ומוצג לכל הגולשים ✓</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark px-3 py-2 fs-6">בדיקת מנהל בלבד (מוסתר מגולשים) 🔒</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="col-md-3 d-flex flex-column gap-2">
+                <button type="submit" name="action" value="save_score" class="btn btn-outline-warning btn-sm fw-bold">
+                    <i class="bi bi-arrow-repeat ms-1"></i>עדכן ובדוק סף רגישות
+                </button>
+                {% if report.public_enabled %}
+                <button type="submit" name="action" value="disable_public" class="btn btn-danger btn-sm fw-bold">
+                    <i class="bi bi-eye-slash ms-1"></i>החזר למצב בדיקת מנהל בלבד
+                </button>
+                {% else %}
+                <button type="submit" name="action" value="enable_public" class="btn btn-success btn-sm fw-bold">
+                    <i class="bi bi-check2-circle ms-1"></i>אשר והפעל לכלל הגולשים באתר!
+                </button>
+                {% endif %}
+            </div>
+        </form>
+
+        <div class="d-flex flex-wrap gap-2 mt-3">
+            {% for c_name, count in report.cluster_summary.items %}
+            <span class="badge px-3 py-2" style="background: rgba(255,255,255,0.08); border: 1px solid #d4af37; color: #f7e199; font-size: 0.9rem;">
+                {{ c_name }}: {{ count }} מאמרים
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% if report.weak_articles %}
+    <div class="alert p-4 mb-4 rounded-4 shadow-sm" style="background: #fffbeb; border: 2px solid #f59e0b; color: #1e293b;">
+        <h5 class="fw-bold mb-2" style="color: #b45309;">
+            <i class="bi bi-exclamation-triangle-fill ms-2"></i>מאמרים ייחודיים שלא נמצא להם קשר ישיר חזק בסף הנוכחי ({{ report.weak_count }}):
+        </h5>
+        <p class="small text-muted mb-3">
+            מאמרים אלו מקושרים כעת למסלול הלימוד הכללי ולחיפוש אוטומטי במאגר התורני. לחיצה על שם המאמר תקפיץ אותך לשורה שלו בטבלה:
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+            {% for w in report.weak_articles %}
+            <a href="#audit-art-{{ w.article.pk }}" class="btn btn-sm fw-bold rounded-pill px-3" style="background: #ffffff; border: 1px solid #d97706; color: #92400e;">
+                {{ w.article.title }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead style="background: #1e293b; color: #f7e199;">
+                    <tr>
+                        <th class="py-3 px-3">מאמר</th>
+                        <th class="py-3">אשכול ומונחים שזוהו</th>
+                        <th class="py-3">פרקים בספרים שחוברו</th>
+                        <th class="py-3">שו"ת שחובר</th>
+                        <th class="py-3">מאמרים קשורים שחוברו</th>
+                        <th class="py-3 text-center">סטטוס</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in report.rows %}
+                    <tr id="audit-art-{{ row.article.pk }}" {% if row.is_weak %}style="background-color: #fffbeb;"{% endif %}>
+                        <td class="px-3 py-3" style="min-width: 220px;">
+                            <a href="{% url 'articles:detail' slug=row.article.slug %}" target="_blank" class="fw-bold text-decoration-none text-dark d-block">
+                                {{ row.article.title }} <i class="bi bi-box-arrow-up-left small text-muted"></i>
+                            </a>
+                            <span class="small text-muted">ID: {{ row.article.pk }}</span>
+                        </td>
+                        <td style="min-width: 200px;">
+                            <span class="badge bg-dark text-warning mb-1">{{ row.cluster_title }} (ציון: {{ row.cluster_score }})</span>
+                            <div class="small text-muted">
+                                {% for kw, pts in row.breakdown %}
+                                    <span class="d-inline-block me-1">{{ kw }} ({{ pts }}),</span>
+                                {% empty %}
+                                    <span class="text-danger">ללא מילות מפתח מובהקות</span>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td style="min-width: 220px;">
+                            {% for b in row.book_units %}
+                                <div class="small mb-1">
+                                    <a href="{{ b.url }}" target="_blank" class="text-decoration-none fw-semibold" style="color: #8c6239;">
+                                        📖 {{ b.book_title }} – {{ b.title }}
+                                    </a>
+                                    <span class="text-muted">({{ b.match_score }})</span>
+                                </div>
+                            {% empty %}
+                                <span class="small text-muted">—</span>
+                            {% endfor %}
+                        </td>
+                        <td style="min-width: 200px;">
+                            {% for q in row.related_qas %}
+                                <div class="small mb-1">
+                                    <a href="{{ q.url }}" target="_blank" class="text-decoration-none fw-semibold text-primary">
+                                        ⚖️ {{ q.question|truncatechars:42 }}
+                                    </a>
+                                    <span class="text-muted">({{ q.match_score }})</span>
+                                </div>
+                            {% empty %}
+                                <span class="small text-muted">—</span>
+                            {% endfor %}
+                        </td>
+                        <td style="min-width: 230px;">
+                            {% for rel in row.related_articles %}
+                                <div class="small mb-1">
+                                    <a href="{% url 'articles:detail' slug=rel.article.slug %}" target="_blank" class="text-decoration-none text-dark fw-semibold">
+                                        • {{ rel.article.title|truncatechars:42 }}
+                                    </a>
+                                    <span class="text-muted">({{ rel.score }})</span>
+                                </div>
+                            {% endfor %}
+                        </td>
+                        <td class="text-center">
+                            {% if row.is_weak %}
+                                <span class="badge bg-warning text-dark px-2 py-1">ייחודי / לבדיקה</span>
+                            {% else %}
+                                <span class="badge bg-success px-2 py-1">קשר חזק ✓</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -24,6 +24,7 @@ def safe_book_detail(request, pk):
 urlpatterns = [
     path('', views.article_list, name='list'),
     path('index/', views.article_index, name='articles_index'),
+    path('connections-audit/', views.connections_audit_view, name='connections_audit'),
 
     path('article/new/', views.article_create, name='create'),
     path('article/<int:pk>/', legacy_article_id_redirect, name='legacy_article_detail'),

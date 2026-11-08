@@ -3,17 +3,11 @@
 {% block title %}שאלות ותשובות | הספרייה{% endblock %}
 
 {% block extra_head %}
-<!-- ========================================== -->
-<!-- מטא-תגיות דינמיות לתצוגה מקדימה (Open Graph) -->
-<!-- ========================================== -->
 <meta property="og:title" content="שאלות ותשובות הלכתיות | ספריית לייבוביץ">
 <meta property="og:description" content="מאגר שו&quot;ת, בירורי הלכה, ומענה תורני ישיר מאת משה לייבוביץ.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="{{ request.build_absolute_uri }}">
 
-<!-- ========================================== -->
-<!-- הזרקת FAQPage Schema לטובת מודלי AI ומנועי חיפוש (Google PAA) -->
-<!-- ========================================== -->
 {% if questions %}
 <script type="application/ld+json">
 {
@@ -60,29 +54,30 @@
 
 {% block content %}
 <style>
-    .qa-card { background-color: #fafafa; border-radius: 10px; transition: transform 0.2s, box-shadow 0.2s; border: 1px solid #f0f0f0; margin-bottom: 1rem; }
+    .qa-card { background-color: #fafafa; border-radius: 10px; transition: all 0.3s ease; border: 1px solid #f0f0f0; margin-bottom: 1rem; }
     .qa-card-alt { background-color: #fcfdfd; }
     .qa-card:hover { box-shadow: 0 6px 15px rgba(0,0,0,0.06); border-color: #e8e1d7; }
     
-    /* סגנונות חדשים למנגנון הפתיחה/סגירה (עצמאי לחלוטין) */
+    .qa-card.qa-highlighted {
+        border: 2px solid #d4af37 !important;
+        background: linear-gradient(145deg, #fffdf7 0%, #fcf4dc 100%) !important;
+        box-shadow: 0 10px 25px rgba(212, 175, 55, 0.25) !important;
+    }
+
     .qa-header { cursor: pointer; user-select: none; }
     .qa-title { color: #b36b00; font-size: 1.3rem; transition: color 0.2s; }
     .qa-header:hover .qa-title { color: #d4af37; }
     
     .qa-icon { color: #d19a55; font-size: 1.5rem; transition: transform 0.3s ease; }
-    /* סיבוב החץ כשהלשונית פתוחה */
     .qa-header.is-open .qa-icon { transform: rotate(180deg); }
     
-    /* ההגדרות שמכריחות את התשובה להיות סגורה תמיד בהתחלה */
     .qa-answer-container { display: none; }
-    /* המחלקה שמוסיפה לה תצוגה בלחיצה */
     .qa-answer-container.is-open { display: block; }
     
     .qa-answer { font-size: 1.05rem; line-height: 1.6; color: #4a4a4a; padding-top: 15px; }
 </style>
 
 <div class="row mt-2 px-3">
-    <!-- אזור הצגת השאלות והתשובות -->
     <div class="col-lg-9 order-lg-2">
         <div class="d-flex flex-column">
             
@@ -96,14 +91,13 @@
 
             {% if questions %}
                 {% for qa in questions %}
-                <div class="qa-card p-4 {% if forloop.counter|divisibleby:2 %}qa-card-alt{% endif %}">
+                <div id="qa-{{ qa.id }}" class="qa-card p-4 {% if forloop.counter|divisibleby:2 %}qa-card-alt{% endif %}">
                     
-                    <!-- אזור לחיץ המכיל את השאלה בלבד -->
-                    <div class="qa-header d-flex justify-content-between align-items-center" onclick="toggleQaAnswer('answer-{{ forloop.counter }}', this)">
+                    <div id="header-qa-{{ qa.id }}" class="qa-header d-flex justify-content-between align-items-center" onclick="toggleQaAnswer('answer-qa-{{ qa.id }}', this)">
                         <div class="w-100 pe-3">
                             <h4 class="fw-bold mb-1 qa-title">{{ qa.question }}</h4>
                             {% if qa.category %}
-                            <a href="?category={{ qa.category|urlencode }}" class="text-decoration-none">
+                            <a href="?category={{ qa.category|urlencode }}" class="text-decoration-none" onclick="event.stopPropagation();">
                                 <span class="text-muted small fw-bold" style="background-color: #f0ece6; padding: 2px 8px; border-radius: 4px; display: inline-block;">{{ qa.category }}</span>
                             </a>
                             {% endif %}
@@ -113,8 +107,7 @@
                         </div>
                     </div>
                     
-                    <!-- אזור התשובה הנסתר שמחכה ללחיצה -->
-                    <div id="answer-{{ forloop.counter }}" class="qa-answer-container">
+                    <div id="answer-qa-{{ qa.id }}" class="qa-answer-container">
                         <div class="qa-answer border-top mt-3">
                             {{ qa.answer|linebreaksbr }}
                         </div>
@@ -134,16 +127,12 @@
         </div>
     </div>
 
-    <!-- אזור סרגל הצד -->
     <div class="col-lg-3 order-lg-1 mt-4 mt-lg-0">
-        
-        <!-- הכפתור לשאילת שאלה -->
         <a href="{% url 'articles:contact' %}" class="btn w-100 fw-bold mb-4 shadow-sm d-flex align-items-center justify-content-center" style="background: linear-gradient(135deg, #d4af37 0%, #aa8529 100%); color: #1e293b; border-radius: 12px; padding: 15px; font-size: 1.1rem; transition: transform 0.2s;">
             <i class="bi bi-pencil-square me-2 fs-4"></i> רוצים לשאול שאלה? לחצו כאן
         </a>
 
         <div class="card p-4 shadow-sm border-0 mb-4 bg-light" style="border-radius: 12px;">
-            <!-- הוספת תגית name לתיבת החיפוש -->
             <form action="{% url 'articles:qa' %}" method="get" class="d-flex mb-4">
                 <input type="text" name="q" value="{{ request.GET.q|default:'' }}" class="form-control me-2" placeholder='חיפוש בשו"ת...' style="border-radius: 8px;">
                 <button type="submit" class="btn btn-secondary" style="border-radius: 8px;"><i class="bi bi-search"></i></button>
@@ -156,8 +145,6 @@
                         <i class="bi bi-dash"></i> כל השאלות
                     </a>
                 </li>
-                
-                <!-- יצירת התפריט אוטומטית מכל הקטגוריות במסד הנתונים -->
                 {% for cat in categories %}
                 <li class="mb-2 ps-3">
                     <a href="?category={{ cat|urlencode }}" class="text-decoration-none {% if request.GET.category == cat %}fw-bold text-dark{% else %}text-muted hover-gold{% endif %}">
@@ -165,26 +152,43 @@
                     </a>
                 </li>
                 {% endfor %}
-                
             </ul>
         </div>
     </div>
 </div>
 
-<!-- סקריפט לפתיחה וסגירה של התשובות -->
 <script>
     function toggleQaAnswer(answerId, headerEl) {
         var answerDiv = document.getElementById(answerId);
-        
+        if (!answerDiv) return;
         if (answerDiv.classList.contains('is-open')) {
-            // אם פתוח -> סגור
             answerDiv.classList.remove('is-open');
             headerEl.classList.remove('is-open');
         } else {
-            // אם סגור -> פתח
             answerDiv.classList.add('is-open');
             headerEl.classList.add('is-open');
         }
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var params = new URLSearchParams(window.location.search);
+        var openId = params.get('open');
+        if (!openId && window.location.hash.startsWith('#qa-')) {
+            openId = window.location.hash.replace('#qa-', '');
+        }
+        if (openId) {
+            var cardEl = document.getElementById('qa-' + openId);
+            var answerEl = document.getElementById('answer-qa-' + openId);
+            var headerEl = document.getElementById('header-qa-' + openId);
+            if (cardEl && answerEl && headerEl) {
+                answerEl.classList.add('is-open');
+                headerEl.classList.add('is-open');
+                cardEl.classList.add('qa-highlighted');
+                setTimeout(function() {
+                    cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 150);
+            }
+        }
+    });
 </script>
 {% endblock %}

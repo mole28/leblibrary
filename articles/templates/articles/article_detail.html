@@ -70,18 +70,6 @@
   },
   {
     "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [{
-      "@type": "Question",
-      "name": "מה ההלכה, הדעה, או הגישה העיונית לגבי {{ article.title|striptags|escapejs }}?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "לפי פסיקתו והגדרתו של המחבר התורני משה לייבוביץ באתר 'ספריית לייבוביץ', התשובה בנושא {{ article.title|striptags|escapejs }} קובעת כי: {{ article.content|striptags|truncatewords:45|escapejs }}... (לקריאת העיון המלא, יש להיכנס לאתר)."
-      }
-    }]
-  },
-  {
-    "@context": "https://schema.org",
     "@type": "WebPage",
     "name": "{{ article.title|striptags|escapejs }}",
     "speakable": {
@@ -103,6 +91,13 @@
         <li class="breadcrumb-item">
             <a href="{% url 'articles:articles_index' %}" class="text-decoration-none text-muted">מאמרים</a>
         </li>
+        {% if learning and learning.public_enabled or learning and user.is_superuser %}
+        <li class="breadcrumb-item">
+            <a href="{% url 'articles:articles_index' %}?cluster={{ learning.cluster.cluster_id }}" class="text-decoration-none" style="color: #a67c52; font-weight: 600;">
+                {{ learning.cluster.cluster_title }}
+            </a>
+        </li>
+        {% endif %}
         <li class="breadcrumb-item active fw-bold text-dark" aria-current="page">{{ article.title|safe }}</li>
       </ol>
     </nav>
@@ -118,24 +113,38 @@
     <div class="row justify-content-center">
         <article class="col-lg-10 content-card-bg shadow-sm p-4 p-md-5 rounded" id="main-content-col">
             
-            <div class="d-flex justify-content-end gap-3 mb-4 hide-in-zen flex-wrap align-items-center">
-                {% if article.title != "זמני המילה וברכותיה" and article.title != "זריזין מקדימין למילה" and article.book.title != "זמני המילה וברכותיה" and article.chapter.book.title != "זמני המילה וברכותיה" and article.book.title != "זריזין מקדימין למילה" and article.chapter.book.title != "זריזין מקדימין למילה" %}
-                <button onclick="toggleSpeech()" id="speechBtn" class="btn-print btn btn-outline-warning border shadow-sm" title="האזנה למאמר" style="color: #a67c52; border-color: #a67c52;">
-                    <i class="bi bi-volume-up-fill" id="speechIcon"></i> <span id="speechText">האזנה לקריאה</span>
-                </button>
-                {% endif %}
-                <button onclick="openShareModal()" class="btn-print btn btn-outline-warning border shadow-sm" title="שתף מאמר זה" style="color: #a67c52; border-color: #a67c52;">
-                    <i class="bi bi-share-fill"></i> שיתוף
-                </button>
-                <button onclick="copyCitation()" class="btn-print btn btn-outline-warning border shadow-sm" title="העתק קישור למקור" style="color: #a67c52; border-color: #a67c52;">
-                    <i class="bi bi-link-45deg"></i> העתק מקור
-                </button>
-                <button onclick="window.print()" class="btn-print btn btn-light border shadow-sm" title="הדפס מאמר">
-                    <i class="bi bi-printer"></i> הדפסה
-                </button>
-                {% if user.is_superuser %}
-                    <a href="{% url 'articles:edit' article.pk %}" class="btn btn-outline-secondary shadow-sm"><i class="bi bi-pencil"></i> ערוך מאמר</a>
-                {% endif %}
+            <div class="d-flex justify-content-between gap-3 mb-4 hide-in-zen flex-wrap align-items-center">
+                <div>
+                    {% if learning %}
+                        {% if learning.public_enabled or user.is_superuser %}
+                        <a href="{% url 'articles:articles_index' %}?cluster={{ learning.cluster.cluster_id }}" class="badge text-decoration-none px-3 py-2 shadow-sm" style="background: #1e293b; color: #f7e199; border: 1px solid #d4af37; font-size: 0.88rem; border-radius: 50px;">
+                            <i class="bi {{ learning.cluster.icon }} ms-1" style="color: #d4af37;"></i>
+                            מסלול {{ learning.cluster.cluster_title }} • יחידה {{ learning.navigation.position }} מתוך {{ learning.navigation.total_in_path }}
+                        </a>
+                        {% endif %}
+                    {% endif %}
+                </div>
+
+                <div class="d-flex gap-2 flex-wrap align-items-center">
+                    {% if article.title != "זמני המילה וברכותיה" and article.title != "זריזין מקדימין למילה" and article.book.title != "זמני המילה וברכותיה" and article.chapter.book.title != "זמני המילה וברכותיה" and article.book.title != "זריזין מקדימין למילה" and article.chapter.book.title != "זריזין מקדימין למילה" %}
+                    <button onclick="toggleSpeech()" id="speechBtn" class="btn-print btn btn-outline-warning border shadow-sm" title="האזנה למאמר" style="color: #a67c52; border-color: #a67c52;">
+                        <i class="bi bi-volume-up-fill" id="speechIcon"></i> <span id="speechText">האזנה לקריאה</span>
+                    </button>
+                    {% endif %}
+                    <button onclick="openShareModal()" class="btn-print btn btn-outline-warning border shadow-sm" title="שתף מאמר זה" style="color: #a67c52; border-color: #a67c52;">
+                        <i class="bi bi-share-fill"></i> שיתוף
+                    </button>
+                    <button onclick="copyCitation()" class="btn-print btn btn-outline-warning border shadow-sm" title="העתק קישור למקור" style="color: #a67c52; border-color: #a67c52;">
+                        <i class="bi bi-link-45deg"></i> העתק מקור
+                    </button>
+                    <button onclick="window.print()" class="btn-print btn btn-light border shadow-sm" title="הדפס מאמר">
+                        <i class="bi bi-printer"></i> הדפסה
+                    </button>
+                    {% if user.is_superuser %}
+                        <a href="{% url 'articles:edit' article.slug %}" class="btn btn-outline-secondary shadow-sm"><i class="bi bi-pencil"></i> ערוך מאמר</a>
+                        <a href="{% url 'articles:connections_audit' %}#audit-art-{{ article.pk }}" class="btn btn-outline-dark shadow-sm" title="בקרת קשרים למאמר זה"><i class="bi bi-diagram-3"></i> דו"ח קשרים</a>
+                    {% endif %}
+                </div>
             </div>
 
             <header class="text-center mb-5">
@@ -168,9 +177,183 @@
                 <hr class="w-25 mx-auto opacity-75" style="border-color: #d4af37; border-width: 2px;">
             </header>
 
-            <div class="article-content book-reading-mode">
+            <div class="article-content book-reading-mode" id="articleBodyContent">
                 {{ article.content|safe }}
             </div>
+
+            {% if learning %}
+            {% if learning.public_enabled or user.is_superuser %}
+            <section class="beit-midrash-continuation mt-5 pt-4 hide-in-zen" dir="rtl">
+                
+                {% if not learning.public_enabled and user.is_superuser %}
+                <div class="alert d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 py-2 px-3 rounded-3" style="background: #fffbeb; border: 1.5px dashed #d97706; color: #92400e;">
+                    <div class="small fw-bold">
+                        <i class="bi bi-eye-slash-fill ms-1"></i>
+                        מצב תצוגת מנהל בלבד (מוסתר כעת מגולשים רגילים עד לאישורך בדו"ח הקשרים).
+                    </div>
+                    <a href="{% url 'articles:connections_audit' %}" class="btn btn-sm btn-warning fw-bold px-3 rounded-pill">
+                        לדו"ח הקשרים והפעלה לגולשים ←
+                    </a>
+                </div>
+                {% endif %}
+
+                <div class="bm-panel p-4 p-md-5 rounded-4 shadow-sm">
+                    
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 pb-3 mb-4" style="border-bottom: 1px solid rgba(212, 175, 55, 0.35);">
+                        <div>
+                            <div class="small fw-bold mb-1" style="color: #b8860b; letter-spacing: 0.4px;">
+                                <i class="bi {{ learning.cluster.icon }} ms-1"></i>{{ learning.navigation.stage_label }}
+                            </div>
+                            <h3 class="fw-bold mb-1 bm-heading" style="font-family: 'Frank Ruhl Libre', serif; font-size: 1.85rem;">
+                                המשך העיון בסוגיה: {{ learning.cluster.cluster_title }}
+                            </h3>
+                            <p class="mb-0 small bm-subtext">{{ learning.cluster.description }}</p>
+                        </div>
+                        <div class="d-flex flex-column align-items-md-end gap-2">
+                            <span class="badge px-3 py-2" style="background: #1e293b; color: #f7e199; border: 1px solid #d4af37; font-size: 0.9rem;">
+                                יחידה {{ learning.navigation.position }} מתוך {{ learning.navigation.total_in_path }} במסלול
+                            </span>
+                            <a href="{% url 'articles:articles_index' %}?cluster={{ learning.cluster.cluster_id }}" class="small fw-bold text-decoration-none" style="color: #a67c52;">
+                                לכל המאמרים במסלול זה ←
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            {% if learning.navigation.prev_article %}
+                            <a href="{% url 'articles:detail' slug=learning.navigation.prev_article.slug %}" class="bm-nav-card d-block p-3 rounded-3 text-decoration-none h-100">
+                                <div class="small fw-bold mb-1" style="color: #a67c52;">▶ היחידה הקודמת במסלול</div>
+                                <div class="fw-bold bm-card-title" style="font-family: 'Frank Ruhl Libre', serif; font-size: 1.18rem;">
+                                    {{ learning.navigation.prev_article.title }}
+                                </div>
+                            </a>
+                            {% else %}
+                            <div class="bm-nav-card-disabled p-3 rounded-3 h-100 d-flex align-items-center small text-muted">
+                                מאמר זה פותח את מסלול "{{ learning.cluster.cluster_title }}"
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            {% if learning.navigation.next_article %}
+                            <a href="{% url 'articles:detail' slug=learning.navigation.next_article.slug %}" class="bm-nav-card bm-nav-card-next d-block p-3 rounded-3 text-decoration-none h-100">
+                                <div class="small fw-bold mb-1" style="color: #8c6239;">היחידה הבאה במסלול ◀</div>
+                                <div class="fw-bold bm-card-title" style="font-family: 'Frank Ruhl Libre', serif; font-size: 1.18rem;">
+                                    {{ learning.navigation.next_article.title }}
+                                </div>
+                            </a>
+                            {% else %}
+                            <div class="bm-nav-card-disabled p-3 rounded-3 h-100 d-flex align-items-center small text-muted">
+                                הגעת ליחידת הסיום במסלול "{{ learning.cluster.cluster_title }}"
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if learning.book_units %}
+                    <div class="mb-4 pt-2">
+                        <h5 class="fw-bold mb-3 bm-section-title" style="font-family: 'Frank Ruhl Libre', serif;">
+                            <i class="bi bi-book-half ms-2" style="color: #b8860b;"></i>הרחבה בספרי המחבר (מעבר ישיר לפרק העוסק בסוגיה):
+                        </h5>
+                        <div class="row g-3">
+                            {% for b_unit in learning.book_units %}
+                            <div class="col-md-4">
+                                <a href="{{ b_unit.url }}" class="bm-book-card d-flex flex-column justify-content-between p-3 rounded-3 text-decoration-none h-100">
+                                    <div>
+                                        <span class="badge mb-2 px-2 py-1" style="background: #1e293b; color: #f7e199; font-size: 0.75rem; font-weight: 600;">
+                                            <i class="bi bi-journal-bookmark-fill ms-1" style="color: #d4af37;"></i>{{ b_unit.badge }}
+                                        </span>
+                                        <h6 class="fw-bold mb-2 bm-card-title" style="font-family: 'Frank Ruhl Libre', serif; font-size: 1.15rem;">
+                                            {{ b_unit.title }}
+                                        </h6>
+                                        {% if b_unit.preview %}
+                                        <p class="small text-muted mb-2" style="line-height: 1.5; font-size: 0.88rem;">
+                                            {{ b_unit.preview }}
+                                        </p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center pt-2 mt-2" style="border-top: 1px dashed rgba(212, 175, 55, 0.35);">
+                                        <span class="small fw-bold" style="color: #8c6239;">פתיחת הפרק בספר</span>
+                                        <i class="bi bi-arrow-left-circle-fill" style="color: #b8860b;"></i>
+                                    </div>
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="row g-4 pt-2">
+                        <div class="col-lg-6">
+                            <h5 class="fw-bold mb-3 bm-section-title" style="font-family: 'Frank Ruhl Libre', serif;">
+                                <i class="bi bi-file-earmark-richtext ms-2" style="color: #b8860b;"></i>מאמרי עיון קשורים בסוגיה:
+                            </h5>
+                            <div class="d-flex flex-column gap-2">
+                                {% for item in learning.related_articles %}
+                                <a href="{% url 'articles:detail' slug=item.article.slug %}" class="bm-list-item p-3 rounded-3 text-decoration-none d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="fw-bold bm-card-title" style="font-family: 'Frank Ruhl Libre', serif; font-size: 1.12rem;">
+                                            {{ item.article.title }}
+                                        </div>
+                                        {% if item.reasons %}
+                                        <div class="small text-muted mt-1" style="font-size: 0.82rem;">
+                                            נושאים משותפים: {{ item.reasons|join:", " }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <i class="bi bi-chevron-left ms-2" style="color: #b8860b;"></i>
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            {% if learning.related_qas %}
+                            <h5 class="fw-bold mb-3 bm-section-title" style="font-family: 'Frank Ruhl Libre', serif;">
+                                <i class="bi bi-patch-question-fill ms-2" style="color: #b8860b;"></i>תשובות הלכה למעשה במדור השו"ת:
+                            </h5>
+                            <div class="d-flex flex-column gap-2 mb-4">
+                                {% for qa in learning.related_qas %}
+                                <a href="{{ qa.url }}" class="bm-list-item bm-qa-item p-3 rounded-3 text-decoration-none d-flex justify-content-between align-items-center">
+                                    <div class="pe-1">
+                                        <span class="badge mb-1" style="background: #f0ece1; color: #7a5827; border: 1px solid #d4af37; font-size: 0.72rem;">
+                                            שו"ת • {{ qa.category }}
+                                        </span>
+                                        <div class="fw-bold bm-card-title" style="font-family: 'Frank Ruhl Libre', serif; font-size: 1.08rem;">
+                                            {{ qa.question }}
+                                        </div>
+                                    </div>
+                                    <span class="small fw-bold text-nowrap ms-2" style="color: #8c6239;">לתשובה ←</span>
+                                </a>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                            <h5 class="fw-bold mb-3 bm-section-title" style="font-family: 'Frank Ruhl Libre', serif;">
+                                <i class="bi bi-compass ms-2" style="color: #b8860b;"></i>כלי מחקר וחיפוש מקורות לסוגיה זו:
+                            </h5>
+                            <div class="d-flex flex-column gap-2">
+                                {% for tool in learning.smart_tools %}
+                                <a href="{{ tool.url }}" class="bm-tool-card p-3 rounded-3 text-decoration-none d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="fw-bold" style="color: #1e293b; font-size: 1rem;">
+                                            <i class="bi {{ tool.icon }} ms-2" style="color: #b8860b;"></i>{{ tool.title }}
+                                        </div>
+                                        <div class="small text-muted mt-1" style="font-size: 0.84rem;">
+                                            {{ tool.subtitle }}
+                                        </div>
+                                    </div>
+                                    <i class="bi bi-arrow-left-circle-fill fs-5" style="color: #b8860b;"></i>
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+            {% endif %}
+            {% endif %}
             
         </article>
     </div>
@@ -350,6 +533,93 @@
 </script>
 
 <style>
+    .bm-panel {
+        background: linear-gradient(145deg, #fcfaf5 0%, #f5efe0 100%);
+        border: 2px solid #d4af37;
+        color: #1e293b;
+    }
+    .bm-heading { color: #1e293b; }
+    .bm-subtext { color: #57534e; }
+    .bm-section-title { color: #1e293b; font-size: 1.25rem; }
+    .bm-card-title { color: #1e293b; transition: color 0.2s; }
+
+    .bm-nav-card {
+        background: #ffffff;
+        border: 1px solid #dfd5c0;
+        transition: all 0.2s ease;
+    }
+    .bm-nav-card-next {
+        background: linear-gradient(135deg, #fffdf7 0%, #faefd4 100%);
+        border: 1.5px solid #d4af37;
+    }
+    .bm-nav-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(184, 134, 11, 0.14);
+        border-color: #b8860b;
+    }
+    .bm-nav-card-disabled {
+        background: rgba(255, 255, 255, 0.45);
+        border: 1px dashed #d6cbb5;
+    }
+
+    .bm-book-card {
+        background: #ffffff;
+        border: 1.5px solid #d4af37;
+        border-right: 5px solid #b8860b;
+        transition: all 0.2s ease;
+    }
+    .bm-book-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(184, 134, 11, 0.18);
+        background: #fffef9;
+    }
+
+    .bm-list-item {
+        background: #ffffff;
+        border: 1px solid #e2d9c5;
+        border-right: 4px solid #d4af37;
+        transition: all 0.2s ease;
+    }
+    .bm-list-item:hover {
+        background: #fffdf7;
+        border-color: #b8860b;
+        transform: translateX(-3px);
+    }
+
+    .bm-tool-card {
+        background: linear-gradient(135deg, #fffdf9 0%, #f7eed6 100%);
+        border: 1.5px solid #d4af37;
+        transition: all 0.2s ease;
+    }
+    .bm-tool-card:hover {
+        background: #faecc8;
+        transform: translateY(-2px);
+    }
+
+    body.dark-mode .bm-panel {
+        background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
+        border-color: #d4af37;
+        color: #f8fafc;
+    }
+    body.dark-mode .bm-heading,
+    body.dark-mode .bm-section-title,
+    body.dark-mode .bm-card-title {
+        color: #f8fafc !important;
+    }
+    body.dark-mode .bm-subtext { color: #cbd5e1 !important; }
+    body.dark-mode .bm-nav-card,
+    body.dark-mode .bm-book-card,
+    body.dark-mode .bm-list-item {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(212, 175, 55, 0.4);
+    }
+    body.dark-mode .bm-tool-card {
+        background: rgba(212, 175, 55, 0.14);
+    }
+    body.dark-mode .bm-tool-card div {
+        color: #f7e199 !important;
+    }
+
     .lux-modal-content {
         background: linear-gradient(145deg, #1e202c 0%, #0f172a 100%);
         border: 1px solid rgba(212, 175, 55, 0.3);

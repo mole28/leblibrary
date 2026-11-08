@@ -37,8 +37,7 @@ from .emails import send_order_confirmation
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .vector_store import search_similar_articles
-
-# ייבוא מנועי החיפוש התורני וה-AI מהקבצים המודולריים
+from .clusters_engine import ClusterEngine, GRAVITY_CLUSTERS
 from .torah_engine import (
     HEBREW_GEMATRIA,
     TANAKH_NAMES,
@@ -303,7 +302,6 @@ def article_list(request):
         'schema_json_ld': get_base_schema_json()
     })
 
-
 def article_detail(request, slug):
     slug_str = str(slug).strip()
     article = Article.objects.filter(slug=slug_str).first()
@@ -316,10 +314,43 @@ def article_detail(request, slug):
     if article:
         if article.slug and article.slug != slug_str:
             return redirect('articles:detail', slug=article.slug, permanent=True)
-        return render(request, 'articles/article_detail.html', {'article': article, 'current_page': 'articles'})
+
+        all_published = list(Article.objects.filter(is_published=True))
+        learning_ctx = ClusterEngine.get_learning_context(article, all_published)
+
+        return render(request, 'articles/article_detail.html', {
+            'article': article,
+            'learning': learning_ctx,
+            'current_page': 'articles',
+        })
 
     raise Http404(f"העמוד '{slug_str}' לא נמצא.")
 
+@login_required
+def connections_audit_view(request):
+    if not request.user.is_superuser:
+        return redirect('articles:list')
+
+    if request.method == 'POST':
+        cfg = ClusterEngine.get_runtime_config()
+        new_score = request.POST.get('min_connection_score', cfg['min_connection_score'])
+        action = request.POST.get('action', 'save_score')
+
+        public_enabled = cfg['public_enabled']
+        if action == 'enable_public':
+            public_enabled = True
+        elif action == 'disable_public':
+            public_enabled = False
+
+        ClusterEngine.save_runtime_config(new_score, public_enabled)
+        return redirect('articles:connections_audit')
+
+    preview_score = request.GET.get('min_score')
+    report = ClusterEngine.generate_admin_audit_report(min_score_override=preview_score if preview_score else None)
+    return render(request, 'articles/connections_audit.html', {
+        'report': report,
+        'current_page': 'articles',
+    })
 
 @login_required
 def article_create(request):
