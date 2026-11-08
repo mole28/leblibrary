@@ -36,6 +36,7 @@ urlpatterns = [
     path('book/<int:pk>/', safe_book_detail, name='book_detail'),
 
     path('qa/', views.qa_list, name='qa'),
+    path('qa/<int:pk>/', views.qa_list, name='qa_detail'),
     path('parasha/', views.parasha_list, name='parasha'),
 
     path('calculator/', views.calculator, name='calculator'),

@@ -2,40 +2,49 @@ import json
 import os
 import re
 from django.conf import settings
-from django.core.cache import cache
-from django.utils.html import strip_tags
 from .models import Article, Book, Chapter, QA
 
-DEFAULT_MIN_CONNECTION_SCORE = 24
+DEFAULT_MIN_CONNECTION_SCORE = 26
 TITLE_WEIGHT = 10
 BODY_WEIGHT = 1
 MAX_BODY_HITS = 5
-ENGINE_VERSION = "v9_fast"
+ENGINE_VERSION = "v10_precision"
 
 RUNTIME_CONFIG_PATH = os.path.join(settings.BASE_DIR, 'clusters_runtime_config.json')
 
-# זיכרון מטמון פנימי מהיר בתוך תהליך הפייתון (מונע חישוב מחדש בכל בקשה)
 _MEM_CACHE = {}
 
 MANUAL_ARTICLE_OVERRIDES = {}
+
+UNCLASSIFIED_CLUSTER = {
+    'id': 'general_iyun',
+    'title': 'עיונים כלליים (לבדיקה)',
+    'icon': 'bi-book-half',
+    'description': 'מאמרים ועיונים תורניים והלכתיים במגוון מקצועות התורה.',
+}
 
 GRAVITY_CLUSTERS = [
     {
         'id': 'brachot',
         'title': 'ברכות ותפילה',
         'icon': 'bi-stars',
-        'description': 'סוגיות ובירורי הלכה בברכות הנהנין, ברכות הריח, שהחיינו, ברכות הראייה והשבח והלכות תפילה.',
+        'description': 'סוגיות ובירורי הלכה בברכות הנהנין, ברכות הריח, שהחיינו, ברכות הראייה והשבח, תפילה וקריאת התורה.',
         'phrases': [
             'ברכת הריח', 'ברכות הריח', 'בגדים מבושמים', 'שמן אפרסמון', 'ריח טוב',
             'ברכת שהחיינו', 'הטוב והמטיב', 'ברכת הזמן', 'חכם הרזים', 'שישים ריבוא',
             'מחיה המתים', 'ברכת הקשת', 'קשת בענן', 'ברכת הגומל', 'ברכת האורח',
             'שמונה עשרה', 'קריאת שמע', 'ברכות השחר', 'ברכת כהנים', 'ברכת המזון',
-            'בשם ומלכות', 'ספק ברכות'
+            'בשם ומלכות', 'ספק ברכות', 'ותן טל ומטר', 'טל ומטר', 'משיב הרוח',
+            'גבורות גשמים', 'ברכת השנים', 'ברכת נחם', 'ברכת החודש', 'קידוש לבנה',
+            'ברכת הלבנה', 'שככה לו בעולמו', 'הים התיכון', 'הים הגדול', 'מעשה בראשית',
+            'קריאת התורה', 'עשרת הדברות', 'פרשת הקללות', 'פרשיית הקללות'
         ],
-        'keywords': [
-            'ברכה', 'ברכות', 'ברכת', 'מברך', 'לברך', 'שהחיינו', 'בשמים', 'מבושמים',
-            'אפרסמון', 'מוגמר', 'להריח', 'הקשת', 'הגומל', 'תפילה', 'תפילת', 'עמידה',
-            'ציצית', 'תפילין'
+        'specific_keywords': [
+            'שהחיינו', 'בשמים', 'מבושמים', 'אפרסמון', 'מוגמר', 'להריח', 'הקשת',
+            'הגומל', 'ציצית', 'תפילין', 'תחנון', 'הלל', 'מפטיר', 'הפטרה'
+        ],
+        'broad_classify_only': [
+            'ברכה', 'ברכות', 'ברכת', 'מברך', 'לברך', 'תפילה', 'תפילת', 'עמידה'
         ]
     },
     {
@@ -45,14 +54,18 @@ GRAVITY_CLUSTERS = [
         'description': 'עיונים והלכות בשבת, חנוכה, סוכה וארבעת המינים, פסח, פורים ומועדי השנה.',
         'phrases': [
             'נר חנוכה', 'נרות חנוכה', 'הדלקת נרות', 'פרסומי ניסא', 'כבתה אין זקוק לה',
-            'ארבעת המינים', 'נטילת לולב', 'תשבו כעין תדורו', 'ליל הסדר', 'חמץ ומצה',
-            'בדיקת חמץ', 'מקרא מגילה', 'משלוח מנות', 'ראש השנה', 'תקיעת שופר',
-            'יום הכיפורים', 'יום טוב', 'עונג שבת', 'תחום שבת'
+            'ארבעת המינים', 'נטילת לולב', 'תשבו כעין תדורו', 'שמיני עצרת', 'שמחת תורה',
+            'ליל הסדר', 'חמץ ומצה', 'בדיקת חמץ', 'מקרא מגילה', 'משלוח מנות',
+            'ראש השנה', 'תקיעת שופר', 'יום הכיפורים', 'יום טוב', 'עונג שבת',
+            'תחום שבת', 'תשעה באב', 'בין המצרים', 'ראש חודש'
         ],
-        'keywords': [
-            'שבת', 'מועד', 'מועדים', 'חנוכה', 'הדלקה', 'חנוכיה', 'סוכה', 'סוכות',
-            'סכך', 'דפנות', 'לולב', 'אתרוג', 'הדס', 'ערבה', 'פסח', 'חמץ', 'מצה',
-            'פורים', 'מגילה', 'שופר', 'מוקצה', 'עירוב', 'עירובין', 'קידוש', 'הבדלה'
+        'specific_keywords': [
+            'שבת', 'חנוכה', 'חנוכיה', 'סוכה', 'סוכות', 'סכך', 'דפנות', 'לולב',
+            'אתרוג', 'הדס', 'ערבה', 'פסח', 'חמץ', 'מצה', 'פורים', 'מגילה',
+            'שופר', 'מוקצה', 'עירוב', 'עירובין', 'קידוש', 'הבדלה'
+        ],
+        'broad_classify_only': [
+            'מועד', 'מועדים', 'הדלקה', 'הדלקת', 'חג'
         ]
     },
     {
@@ -63,13 +76,14 @@ GRAVITY_CLUSTERS = [
         'phrases': [
             'ארץ ישראל', 'תרומות ומעשרות', 'מעשר שני', 'מעשר עני', 'שנת מעשר',
             'ביעור מעשרות', 'מציב גבול אלמנה', 'חלוקת הארץ', 'כיבוש הארץ',
-            'פירות ארץ ישראל', 'ישוב ארץ ישראל', 'מצוות התלויות בארץ', 'שביעית',
+            'פירות ארץ ישראל', 'ישוב ארץ ישראל', 'מצוות התלויות בארץ',
             'שנת השמיטה', 'על שהנחלת'
         ],
-        'keywords': [
+        'specific_keywords': [
             'מעשר', 'מעשרות', 'תרומות', 'תרומה', 'טבל', 'דמאי', 'שמיטה', 'שביעית',
             'שהנחלת', 'נחלה', 'גורל', 'ירושלים', 'מקדש'
-        ]
+        ],
+        'broad_classify_only': []
     },
     {
         'id': 'mishpacha_mila',
@@ -79,12 +93,13 @@ GRAVITY_CLUSTERS = [
         'phrases': [
             'ברית מילה', 'זמני המילה', 'זריזין מקדימין למילה', 'מילה שלא בזמנה',
             'אבי הבן', 'ברית אברהם', 'גדרי החופה', 'חופה וקידושין', 'שבע ברכות',
-            'ברכת חתנים', 'פנים חדשות', 'חדר ייחוד', 'פדיון הבן'
+            'ברכת חתנים', 'פנים חדשות', 'חדר ייחוד', 'פדיון הבן', 'כבוד המת'
         ],
-        'keywords': [
+        'specific_keywords': [
             'מילה', 'מוהל', 'סנדק', 'נימול', 'פריעה', 'מציצה', 'חופה', 'נישואין',
-            'קידושין', 'אירוסין', 'חתן', 'כלה', 'כתובה', 'ייחוד'
-        ]
+            'קידושין', 'אירוסין', 'חתן', 'כלה', 'כתובה', 'ייחוד', 'קבורה', 'אבלות'
+        ],
+        'broad_classify_only': []
     },
     {
         'id': 'taharah_shiurim',
@@ -95,10 +110,13 @@ GRAVITY_CLUSTERS = [
             'טומאה וטהרה', 'נטילת ידיים', 'מידות חז"ל', 'שיעורי תורה', 'טומאת אהל',
             'טומאת מת', 'ארבעים סאה', 'מי מקווה', 'טהרת כלים', 'שיעור כזית', 'שיעור רביעית'
         ],
-        'keywords': [
+        'specific_keywords': [
             'טומאה', 'טהרה', 'טמא', 'טהור', 'מקווה', 'מקוואות', 'טבילה', 'חציצה',
             'אמה', 'טפח', 'טפחים', 'אצבע', 'זרת', 'מיל', 'רביעית', 'לוג', 'כזית',
-            'כביצה', 'סלע', 'שקל', 'שיעור', 'שיעורים', 'מידות'
+            'כביצה', 'סלע', 'שקל', 'מידות'
+        ],
+        'broad_classify_only': [
+            'שיעור', 'שיעורים', 'כלי', 'כלים'
         ]
     },
     {
@@ -108,15 +126,20 @@ GRAVITY_CLUSTERS = [
         'description': 'דיני חזקות, ריבית, ממונות, קניינים, ספקות, מנהגים וכללי פסיקה בעיון הש"ס והפוסקים.',
         'phrases': [
             'דיני חזקות', 'חזקת מרא קמא', 'המוציא מחברו', 'היתר עסקה', 'איסור ריבית',
-            'דיני ממונות', 'ספק ספיקא', 'מנהג ישראל', 'כללי פסיקה'
+            'דיני ממונות', 'ספק ספיקא', 'מנהג ישראל', 'כללי פסיקה', 'עד אחד באיסורים',
+            'עד אחד נאמן'
         ],
-        'keywords': [
+        'specific_keywords': [
             'חזקה', 'חזקות', 'חזקת', 'מוחזק', 'ריבית', 'ממון', 'ממונות', 'קניין',
-            'בעלות', 'רוב', 'מנהג', 'מנהגים', 'שטר', 'עדים', 'שבועה', 'נדר', 'נדרים'
+            'בעלות', 'מנהג', 'מנהגים', 'שטר', 'עדים', 'שבועה', 'נדר', 'נדרים'
+        ],
+        'broad_classify_only': [
+            'רוב', 'ספק', 'ספקות'
         ]
     },
 ]
 
+# Words that must NEVER trigger similarity links between articles/books on their own
 GENERIC_NOISE_WORDS = {
     'אבל', 'או', 'אולי', 'אותו', 'אותה', 'אותם', 'אחר', 'אחרי', 'אחת', 'איך', 'אין',
     'אלא', 'אלה', 'אלו', 'אם', 'אנחנו', 'אני', 'אף', 'אפשר', 'אשר', 'את', 'אתה',
@@ -132,7 +155,12 @@ GENERIC_NOISE_WORDS = {
     'בדין', 'גדרי', 'גדר', 'דין', 'דיני', 'שאלה', 'תשובה', 'שו"ת', 'מקור', 'טעם',
     'ביאור', 'עניין', 'דברים', 'הראשונים', 'האחרונים', 'הפוסקים', 'פסק', 'כתב',
     'כתבו', 'אומר', 'אמרו', 'מבואר', 'איתא', 'שנינו', 'נאמר', 'פסוק', 'להלכה',
-    'למעשה', 'בזמן', 'הזה', 'חלק', 'ספר', 'מאמר', 'הרב', 'משה', 'לייבוביץ'
+    'למעשה', 'בזמן', 'הזה', 'חלק', 'ספר', 'מאמר', 'הרב', 'משה', 'לייבוביץ',
+    # Generic liturgical/structural words that caused false links to "Zmanei HaMilah U'Birchoteha":
+    'ברכה', 'ברכות', 'ברכת', 'מברך', 'לברך', 'ברכותיה', 'וברכותיה', 'הברכה', 'הברכות',
+    'תפילה', 'תפילת', 'התפילה', 'זמן', 'זמני', 'הזמן', 'הקדמה', 'מבוא', 'פתיחה',
+    'סימנים', 'הערות', 'נספח', 'תוכן', 'עניינים', 'כלל', 'כללים', 'אופן', 'אמירת',
+    'קריאת', 'מקורה', 'וטעמיה', 'בעולמו', 'החודש', 'נחם'
 }
 
 
@@ -190,29 +218,41 @@ class ClusterEngine:
         body_clean = cls.clean_text_fast(body_snippet, 1000).lower()
 
         matched_phrases = set()
-        matched_keywords = set()
+        matched_specific_keywords = set()
         cluster_scores = {}
         keyword_breakdown = {}
 
         for cluster in GRAVITY_CLUSTERS:
             c_score = 0
+
+            # 1. Exact multi-word phrases (strongest signal for both classification and similarity)
             for phrase in cluster['phrases']:
                 t_hits = 1 if phrase in title_clean else 0
                 b_hits = min(MAX_BODY_HITS, body_clean.count(phrase)) if phrase in body_clean else 0
                 if t_hits > 0 or b_hits > 0:
-                    pts = (t_hits * TITLE_WEIGHT * 1.8) + (b_hits * BODY_WEIGHT * 2.5)
+                    pts = (t_hits * TITLE_WEIGHT * 2.0) + (b_hits * BODY_WEIGHT * 3.0)
                     c_score += pts
                     matched_phrases.add(phrase)
                     keyword_breakdown[phrase] = keyword_breakdown.get(phrase, 0) + round(pts, 1)
 
-            for kw in cluster['keywords']:
+            # 2. Specific subject keywords (used for both classification and similarity)
+            for kw in cluster['specific_keywords']:
                 t_hits = 1 if kw in title_clean else 0
                 b_hits = min(MAX_BODY_HITS, body_clean.count(kw)) if kw in body_clean else 0
                 if t_hits > 0 or b_hits >= 2:
                     pts = (t_hits * TITLE_WEIGHT) + (b_hits * BODY_WEIGHT)
                     c_score += pts
-                    matched_keywords.add(kw)
+                    matched_specific_keywords.add(kw)
                     keyword_breakdown[kw] = keyword_breakdown.get(kw, 0) + round(pts, 1)
+
+            # 3. Broad classification words (e.g. 'ברכה', 'תפילה') - ONLY for cluster classification, NEVER for similarity!
+            for b_kw in cluster.get('broad_classify_only', []):
+                t_hits = 1 if b_kw in title_clean else 0
+                b_hits = min(3, body_clean.count(b_kw)) if b_kw in body_clean else 0
+                if t_hits > 0 or b_hits >= 2:
+                    pts = (t_hits * 6) + (b_hits * 0.5)
+                    c_score += pts
+                    keyword_breakdown[b_kw] = keyword_breakdown.get(b_kw, 0) + round(pts, 1)
 
             cluster_scores[cluster['id']] = round(c_score, 1)
 
@@ -236,55 +276,62 @@ class ClusterEngine:
 
         dominant_body_stems = {st for st, cnt in body_freq.items() if cnt >= 2 or st in title_specific_stems}
 
-        best_cluster_id = max(cluster_scores.items(), key=lambda x: x[1])[0] if cluster_scores else 'choshen_iyun'
-        best_score = cluster_scores.get(best_cluster_id, 0)
-        if best_score <= 0:
-            best_cluster_id = 'choshen_iyun'
+        best_cluster_id, best_score = max(cluster_scores.items(), key=lambda x: x[1]) if cluster_scores else ('general_iyun', 0)
 
-        best_cluster_obj = next((c for c in GRAVITY_CLUSTERS if c['id'] == best_cluster_id), GRAVITY_CLUSTERS[-1])
+        # Fix 3: Never default to Choshen Mishpat when score is 0!
+        if best_score <= 0:
+            best_cluster_obj = UNCLASSIFIED_CLUSTER
+        else:
+            best_cluster_obj = next((c for c in GRAVITY_CLUSTERS if c['id'] == best_cluster_id), UNCLASSIFIED_CLUSTER)
+
         sorted_breakdown = sorted(keyword_breakdown.items(), key=lambda x: -x[1])[:6]
 
         return {
             'cluster': best_cluster_obj,
             'cluster_score': best_score,
             'phrases': matched_phrases,
-            'keywords': matched_keywords,
+            'keywords': matched_specific_keywords,
             'title_stems': title_specific_stems,
             'body_stems': dominant_body_stems,
             'breakdown': sorted_breakdown,
         }
 
     @classmethod
-    def _calculate_pair_similarity(cls, sig_a, sig_b, parasha_a="", parasha_b="") -> tuple:
+    def _calculate_pair_similarity(cls, sig_a, sig_b, parasha_a="", parasha_b="", is_book_target=False) -> tuple:
         shared_phrases = sig_a['phrases'] & sig_b['phrases']
         shared_keywords = sig_a['keywords'] & sig_b['keywords']
         shared_title_stems = sig_a['title_stems'] & sig_b['title_stems']
         title_to_body_stems = (sig_a['title_stems'] & sig_b['body_stems']) | (sig_b['title_stems'] & sig_a['body_stems'])
 
+        # Fix 1: Prevent cross-cluster false book matches (e.g. general Brachot article matching Mila book)
+        if is_book_target and sig_a['cluster']['id'] != sig_b['cluster']['id']:
+            if not shared_phrases and not shared_keywords:
+                return 0, []
+
         score = 0
         reasons = []
 
         if shared_phrases:
-            score += len(shared_phrases) * 35
+            score += len(shared_phrases) * 38
             reasons.extend(list(shared_phrases)[:3])
 
-        if shared_title_stems:
-            score += len(shared_title_stems) * 26
-            for st in list(shared_title_stems)[:2]:
-                if st not in reasons:
-                    reasons.append(st)
-
         if shared_keywords:
-            score += len(shared_keywords) * 14
+            score += len(shared_keywords) * 20
             for kw in list(shared_keywords)[:2]:
                 if kw not in reasons:
                     reasons.append(kw)
 
-        if title_to_body_stems:
-            score += len(title_to_body_stems) * 10
+        if shared_title_stems:
+            score += len(shared_title_stems) * 24
+            for st in list(shared_title_stems)[:2]:
+                if st not in reasons:
+                    reasons.append(st)
 
-        if sig_a['cluster']['id'] == sig_b['cluster']['id'] and score >= 14:
-            score += 10
+        if title_to_body_stems:
+            score += len(title_to_body_stems) * 8
+
+        if sig_a['cluster']['id'] == sig_b['cluster']['id'] and sig_a['cluster']['id'] != 'general_iyun' and score >= 18:
+            score += 8
 
         if parasha_a and parasha_b and parasha_a == parasha_b and 'general' not in parasha_a:
             score += 18
@@ -297,7 +344,7 @@ class ClusterEngine:
         if 'indexed_articles' in _MEM_CACHE:
             return _MEM_CACHE['indexed_articles']
 
-        articles_Index = []
+        articles_index = []
         qs = Article.objects.filter(is_published=True).only('id', 'title', 'slug', 'parasha', 'content')
         for art in qs:
             snippet = cls.clean_text_fast(art.content or '', 900)
@@ -312,7 +359,7 @@ class ClusterEngine:
             specific = ('ספק', 'בדיעבד', 'האם', 'מתי', 'כיצד', 'איך', 'מנהג', 'בזמן הזה')
             stage = 1 if any(t in title_str for t in foundational) else (3 if any(t in title_str for t in specific) else 2)
 
-            articles_Index.append({
+            articles_index.append({
                 'pk': art.pk,
                 'title': title_str,
                 'slug': art.slug,
@@ -329,8 +376,8 @@ class ClusterEngine:
                 'sort_key': (stage, -sig['cluster_score'], art.pk),
             })
 
-        _MEM_CACHE['indexed_articles'] = articles_Index
-        return articles_Index
+        _MEM_CACHE['indexed_articles'] = articles_index
+        return articles_index
 
     @classmethod
     def _get_indexed_book_units(cls):
@@ -342,22 +389,40 @@ class ClusterEngine:
         chapters = list(Chapter.objects.only('id', 'book_id', 'title', 'order').order_by('book_id', 'order', 'id'))
 
         books_with_chapters = set()
+        seen_book_chapter_titles = set()
+
         for ch in chapters:
             book = books.get(ch.book_id)
             if not book:
                 continue
             books_with_chapters.add(book.pk)
-            full_title = f"{book.title} {ch.title}"
-            b_summary = cls.clean_text_fast(book.summary or '', 300)
-            sig = cls._extract_distinctive_signature(full_title, b_summary)
+
+            clean_b_title = re.sub(r'\s+', ' ', (book.title or '').strip())
+            clean_ch_title = re.sub(r'\s+', ' ', (ch.title or '').strip())
+
+            # Fix 2: Strict deduplication of identical chapter titles within the same book
+            dedup_title_key = (clean_b_title, clean_ch_title)
+            if dedup_title_key in seen_book_chapter_titles:
+                continue
+            seen_book_chapter_titles.add(dedup_title_key)
+
+            # Skip generic "הקדמה" / "תוכן עניינים" chapters from being matched as subject chapters
+            if clean_ch_title in ('הקדמה', 'מבוא', 'תוכן עניינים', 'הסכמות', 'פתח דבר'):
+                continue
+
+            # Important: Extract signature primarily from the chapter title + book's core subject (excluding generic 'וברכותיה')
+            book_subject_title = clean_b_title.replace('וברכותיה', '').replace('וברכותיו', '')
+            sig = cls._extract_distinctive_signature(f"{book_subject_title} {clean_ch_title}", "")
+            b_summary = cls.clean_text_fast(book.summary or '', 260)
+
             units.append({
                 'unit_type': 'chapter',
                 'book_id': book.pk,
-                'book_title': book.title,
+                'book_title': clean_b_title,
                 'chapter_id': ch.pk,
-                'chapter_title': ch.title,
-                'title': ch.title,
-                'badge': f'מתוך הספר "{book.title}"',
+                'chapter_title': clean_ch_title,
+                'title': clean_ch_title,
+                'badge': f'מתוך הספר "{clean_b_title}"',
                 'preview': b_summary[:130],
                 'url': f"/book/{book.pk}/?chapter={ch.pk}#chapter-{ch.pk}",
                 'signature': sig,
@@ -366,15 +431,17 @@ class ClusterEngine:
         for b_id, book in books.items():
             if b_id in books_with_chapters:
                 continue
+            clean_b_title = re.sub(r'\s+', ' ', (book.title or '').strip())
             b_summary = cls.clean_text_fast(book.summary or '', 400)
-            sig = cls._extract_distinctive_signature(book.title or '', b_summary)
+            book_subject_title = clean_b_title.replace('וברכותיה', '').replace('וברכותיו', '')
+            sig = cls._extract_distinctive_signature(book_subject_title, b_summary)
             units.append({
                 'unit_type': 'book',
                 'book_id': book.pk,
-                'book_title': book.title,
+                'book_title': clean_b_title,
                 'chapter_id': None,
                 'chapter_title': '',
-                'title': f'הספר "{book.title}"',
+                'title': f'הספר "{clean_b_title}"',
                 'badge': 'ספר שלם בספרייה',
                 'preview': b_summary[:140],
                 'url': f"/book/{book.pk}/",
@@ -398,7 +465,7 @@ class ClusterEngine:
                 'question': qa.question,
                 'category': qa.category or 'שו"ת הלכתי',
                 'preview': ans_clean[:130],
-                'url': f"/qa/?open={qa.pk}#qa-{qa.pk}",
+                'url': f"/qa/{qa.pk}/",
                 'signature': sig,
             })
 
@@ -467,7 +534,7 @@ class ClusterEngine:
         active_min_score = int(min_score_override) if min_score_override is not None else runtime_cfg['min_connection_score']
         public_enabled = runtime_cfg['public_enabled']
 
-        mem_key = f"ctx_{article.pk}_{active_min_score}_{public_enabled}"
+        mem_key = f"ctx_{ENGINE_VERSION}_{article.pk}_{active_min_score}_{public_enabled}"
         if mem_key in _MEM_CACHE:
             return _MEM_CACHE[mem_key]
 
@@ -524,7 +591,8 @@ class ClusterEngine:
                 continue
             sim_score, reasons = cls._calculate_pair_similarity(
                 curr_sig, cand['signature'],
-                curr_entry['parasha'], cand['parasha']
+                curr_entry['parasha'], cand['parasha'],
+                is_book_target=False
             )
             if sim_score >= active_min_score:
                 scored_articles.append({
@@ -548,26 +616,47 @@ class ClusterEngine:
                 if len(strong_related_articles) >= 2:
                     break
 
-        scored_books = []
-        seen_books = set()
+        # Book matching with strict deduplication by title and max 2 chapters per book
+        raw_scored_books = []
         for b_unit in cls._get_indexed_book_units():
-            sim_score, reasons = cls._calculate_pair_similarity(curr_sig, b_unit['signature'])
+            sim_score, reasons = cls._calculate_pair_similarity(
+                curr_sig, b_unit['signature'], is_book_target=True
+            )
             if sim_score >= active_min_score:
-                dedup_key = (b_unit['book_id'], b_unit['chapter_id'] or 0)
-                if dedup_key not in seen_books:
-                    seen_books.add(dedup_key)
-                    unit_copy = {k: v for k, v in b_unit.items() if k != 'signature'}
-                    unit_copy['match_score'] = sim_score
-                    unit_copy['reasons'] = reasons
-                    scored_books.append(unit_copy)
+                unit_copy = {k: v for k, v in b_unit.items() if k != 'signature'}
+                unit_copy['match_score'] = sim_score
+                unit_copy['reasons'] = reasons
+                raw_scored_books.append(unit_copy)
 
-        scored_books.sort(key=lambda x: -x['match_score'])
-        matched_book_units = scored_books[:3]
+        raw_scored_books.sort(key=lambda x: -x['match_score'])
+        matched_book_units = []
+        seen_display_keys = set()
+        book_count_per_id = {}
+
+        for b_cand in raw_scored_books:
+            disp_key = (b_cand['book_title'].strip(), b_cand['title'].strip())
+            if disp_key in seen_display_keys:
+                continue
+            b_id = b_cand['book_id']
+            if book_count_per_id.get(b_id, 0) >= 2:
+                continue
+            seen_display_keys.add(disp_key)
+            book_count_per_id[b_id] = book_count_per_id.get(b_id, 0) + 1
+            matched_book_units.append(b_cand)
+            if len(matched_book_units) >= 3:
+                break
 
         scored_qas = []
+        seen_qa_questions = set()
         for q_unit in cls._get_indexed_qa_units():
-            sim_score, reasons = cls._calculate_pair_similarity(curr_sig, q_unit['signature'])
+            sim_score, reasons = cls._calculate_pair_similarity(
+                curr_sig, q_unit['signature'], is_book_target=False
+            )
             if sim_score >= active_min_score:
+                q_norm = q_unit['question'].strip()
+                if q_norm in seen_qa_questions:
+                    continue
+                seen_qa_questions.add(q_norm)
                 q_copy = {k: v for k, v in q_unit.items() if k != 'signature'}
                 q_copy['match_score'] = sim_score
                 q_copy['reasons'] = reasons
@@ -579,10 +668,9 @@ class ClusterEngine:
         smart_tools = cls.get_smart_tools_for_article(curr_entry['title'], curr_entry['snippet'], curr_sig)
 
         is_orphan_or_weak = (
-            curr_entry['score'] < 15 and
-            not has_strong_article_match and
-            not matched_book_units and
-            not matched_qas
+            curr_entry['cluster_id'] == 'general_iyun' or
+            curr_entry['score'] < 12 or
+            (not has_strong_article_match and not matched_book_units and not matched_qas)
         )
 
         payload = {

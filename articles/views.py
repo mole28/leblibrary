@@ -526,8 +526,8 @@ def terms(request):
 def books_list(request):
     return render(request, 'articles/books_list.html', {'current_page': 'books'})
 
-
-def qa_list(request):
+def qa_list(request, pk=None):
+    selected_qa = None
     try:
         questions = QA.objects.all().order_by('-created_at')
         categories = QA.objects.exclude(category__isnull=True).exclude(category__exact='').values_list('category', flat=True).distinct()
@@ -540,6 +540,10 @@ def qa_list(request):
         if category:
             questions = questions.filter(category=category)
 
+        open_id = pk or request.GET.get('open')
+        if open_id and str(open_id).isdigit():
+            selected_qa = QA.objects.filter(pk=int(open_id)).first()
+
     except Exception:
         questions = None
         categories = []
@@ -547,9 +551,9 @@ def qa_list(request):
     return render(request, 'articles/qa_list.html', {
         'questions': questions,
         'categories': categories,
+        'selected_qa': selected_qa,
         'current_page': 'qa'
     })
-
 
 def acronyms_view(request):
     query = request.GET.get('q', '').strip()
