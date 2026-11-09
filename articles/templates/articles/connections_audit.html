@@ -16,6 +16,29 @@
     .status-btn.active-rejected { background-color: #dc2626 !important; color: #fff !important; border-color: #dc2626 !important; }
     tr.row-status-rejected { opacity: 0.65; background-color: #fef2f2 !important; }
     tr.row-status-approved { background-color: #f0fdf4 !important; }
+
+    .corpus-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 11px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+        user-select: none;
+        transition: all 0.15s ease;
+    }
+    .corpus-chip:hover {
+        border-color: #b8860b;
+        background: #fffdf7;
+    }
+    .corpus-chip input[type="checkbox"] {
+        cursor: pointer;
+        accent-color: #1e293b;
+    }
 </style>
 
 <div class="container-fluid py-4" style="max-width: 1600px;" dir="rtl">
@@ -27,7 +50,7 @@
                     <i class="bi bi-sliders ms-2" style="color: #d4af37;"></i>מערכת עריכת קשרים, מסלולים וכלי מחקר
                 </h2>
                 <p class="mb-0 text-light opacity-75">
-                    שליטה מלאה על מאמרים קשורים, פרקים בספרים, שו"ת וכלי מחקר (חיפוש גימטריא/בבלי/תנ"ך, ראשי תיבות, מתרגם ארמי ומחשבונים).
+                    שליטה מלאה על מאמרים קשורים, פרקים בספרים, שו"ת וכלי מחקר (חיפוש מותאם במספר מאגרים לפי בחירה, גימטריא, ראשי תיבות, מתרגם ארמי ומחשבונים).
                 </p>
             </div>
 
@@ -490,10 +513,10 @@
 
                 <div id="selectWrapTools" style="display:none;">
                     <div class="p-3 rounded-3 border bg-light mb-2">
-                        <h6 class="fw-bold mb-2" style="color: #1e293b;">בונה כלי חיפוש, גימטריא, ראשי תיבות, מתרגם ומחשבונים:</h6>
-                        <div class="row g-2 mb-2">
-                            <div class="col-md-4">
-                                <label class="small fw-bold">1. סוג הכלי / החיפוש:</label>
+                        <h6 class="fw-bold mb-3" style="color: #1e293b;">בונה כלי חיפוש, גימטריא, ראשי תיבות, מתרגם ומחשבונים:</h6>
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-6">
+                                <label class="small fw-bold mb-1">1. סוג הכלי / החיפוש:</label>
                                 <select id="auditTbKind" class="form-select form-select-sm fw-bold" onchange="updateAuditToolPreview()">
                                     <optgroup label="חיפוש במאגר התורני (תנ״ך, בבלי, רמב״ם...)">
                                         <option value="search_text">חיפוש מילה / ביטוי במאגר</option>
@@ -520,25 +543,58 @@
                                     </optgroup>
                                 </select>
                             </div>
-                            <div class="col-md-4" id="auditTbQueryCol">
-                                <label class="small fw-bold">2. מילה / ביטוי לחיפוש:</label>
+
+                            <div class="col-md-6" id="auditTbQueryCol">
+                                <label class="small fw-bold mb-1">2. מילה / ביטוי לחיפוש:</label>
                                 <input type="text" id="auditTbQuery" class="form-control form-control-sm" placeholder="למשל: חזקה" oninput="updateAuditToolPreview()">
                             </div>
-                            <div class="col-md-4" id="auditTbCorpusCol">
-                                <label class="small fw-bold">3. באיזה מאגר לחפש?</label>
-                                <select id="auditTbCorpus" class="form-select form-select-sm" onchange="updateAuditToolPreview()">
-                                    <option value="all">כל המאגר התורני</option>
-                                    <option value="talmud">תלמוד בבלי</option>
-                                    <option value="torah">חמישה חומשי תורה</option>
-                                    <option value="tanakh">תנ"ך מלא</option>
-                                    <option value="mishnah">משנה</option>
-                                    <option value="tosefta">תוספתא</option>
-                                    <option value="yerushalmi">תלמוד ירושלמי</option>
-                                    <option value="rambam">רמב"ם (משנה תורה)</option>
-                                    <option value="shulchan_aruch">שולחן ערוך</option>
-                                </select>
+
+                            <!-- 3. בחירה מרובה של מאגרים ספציפיים לפי בחירת העורך -->
+                            <div class="col-md-12" id="auditTbCorpusCol">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="small fw-bold mb-0">3. באילו מאגרים לחפש? (ניתן לסמן מאגר אחד, מספר מאגרים יחד, או הכל):</label>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-dark py-0 px-2" style="font-size: 0.75rem;" onclick="toggleAllAuditCorpora(true)">בחר הכל</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 0.75rem;" onclick="toggleAllAuditCorpora(false)">נקה בחירה</button>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-wrap gap-2 p-2 rounded-3 border bg-white">
+                                    <label class="corpus-chip">
+                                        <input type="checkbox" class="audit-corpus-cb" value="torah" data-label="תורה" checked onchange="updateAuditToolPreview()">
+                                        <span>חמישה חומשי תורה</span>
+                                    </label>
+                                    <label class="corpus-chip">
+                                        <input type="checkbox" class="audit-corpus-cb" value="tanakh" data-label="תנ״ך" checked onchange="updateAuditToolPreview()">
+                                        <span>תנ"ך (נ"ך)</span>
+                                    </label>
+                                    <label class="corpus-chip">
+                                        <input type="checkbox" class="audit-corpus-cb" value="mishnah" data-label="משנה" checked onchange="updateAuditToolPreview()">
+                                        <span>משנה</span>
+                                    </label>
+                                    <label class="corpus-chip">
+                                        <input type="checkbox" class="audit-corpus-cb" value="tosefta" data-label="תוספתא" checked onchange="updateAuditToolPreview()">
+                                        <span>תוספתא</span>
+                                    </label>
+                                    <label class="corpus-chip">
+                                        <input type="checkbox" class="audit-corpus-cb" value="talmud" data-label="תלמוד בבלי" checked onchange="updateAuditToolPreview()">
+                                        <span>תלמוד בבלי</span>
+                                    </label>
+                                    <label class="corpus-chip">
+                                        <input type="checkbox" class="audit-corpus-cb" value="yerushalmi" data-label="תלמוד ירושלמי" checked onchange="updateAuditToolPreview()">
+                                        <span>תלמוד ירושלמי</span>
+                                    </label>
+                                    <label class="corpus-chip">
+                                        <input type="checkbox" class="audit-corpus-cb" value="rambam" data-label="רמב״ם" checked onchange="updateAuditToolPreview()">
+                                        <span>רמב"ם</span>
+                                    </label>
+                                    <label class="corpus-chip">
+                                        <input type="checkbox" class="audit-corpus-cb" value="shulchan_aruch" data-label="שולחן ערוך" checked onchange="updateAuditToolPreview()">
+                                        <span>שולחן ערוך</span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
+
                         <hr class="my-2">
                         <div class="row g-2">
                             <div class="col-md-6">
@@ -677,24 +733,45 @@
         });
     }
 
+    function toggleAllAuditCorpora(checkState) {
+        document.querySelectorAll('.audit-corpus-cb').forEach(cb => {
+            cb.checked = checkState;
+        });
+        updateAuditToolPreview();
+    }
+
+    function getSelectedAuditCorporaInfo() {
+        const allCbs = Array.from(document.querySelectorAll('.audit-corpus-cb'));
+        const checkedCbs = allCbs.filter(cb => cb.checked);
+
+        if (checkedCbs.length === 0 || checkedCbs.length === allCbs.length) {
+            return { param: 'all', label: 'כל המאגר התורני' };
+        }
+
+        const values = checkedCbs.map(cb => cb.value);
+        const labels = checkedCbs.map(cb => cb.getAttribute('data-label'));
+
+        let labelStr = '';
+        if (labels.length === 1) {
+            labelStr = labels[0];
+        } else if (labels.length === 2) {
+            labelStr = labels[0] + ' ו' + labels[1];
+        } else {
+            labelStr = labels.slice(0, -1).join(', ') + ' ו' + labels[labels.length - 1];
+        }
+
+        return { param: values.join(','), label: labelStr };
+    }
+
     function updateAuditToolPreview() {
         const kindEl = document.getElementById('auditTbKind');
         if (!kindEl) return;
         const kind = kindEl.value;
         const q = (document.getElementById('auditTbQuery').value || '').trim() || 'חזקה';
-        const corpus = document.getElementById('auditTbCorpus').value;
-        const corpusNames = {
-            'all': 'כל המאגר התורני',
-            'talmud': 'תלמוד בבלי',
-            'torah': 'חמישה חומשי תורה',
-            'tanakh': 'תנ"ך',
-            'mishnah': 'משנה',
-            'tosefta': 'תוספתא',
-            'yerushalmi': 'תלמוד ירושלמי',
-            'rambam': 'רמב"ם',
-            'shulchan_aruch': 'שולחן ערוך'
-        };
-        const cLabel = corpusNames[corpus] || 'המאגר התורני';
+        const corpusInfo = getSelectedAuditCorporaInfo();
+        const corpus = corpusInfo.param;
+        const cLabel = corpusInfo.label;
+
         const qCol = document.getElementById('auditTbQueryCol');
         const cCol = document.getElementById('auditTbCorpusCol');
 
@@ -703,7 +780,7 @@
             qCol.style.display = 'block';
             cCol.style.display = 'block';
             const typeMap = {
-                'search_text': ['text', `חיפוש "${q}" ב${cLabel}`, `סריקת כל ההופעות של "${q}" ב${cLabel}`],
+                'search_text': ['text', `חיפוש "${q}" ב${cLabel}`, `סריקת ההופעות של "${q}" ב${cLabel}`],
                 'search_exact': ['text_exact', `חיפוש מדויק של "${q}" ב${cLabel}`, `איתור הופעות מדויקות של "${q}" ב${cLabel}`],
                 'search_fuzzy': ['text_fuzzy', `חיפוש "${q}" (כתיב מלא/חסר) ב${cLabel}`, `סריקה כולל תחיליות וכתיב מלא וחסר ב${cLabel}`],
                 'search_gematria': ['gematria', `חיפוש גימטריא של "${q}" ב${cLabel}`, `איתור מילים ופסוקים בעלי ערך גימטרי זהה ב${cLabel}`],

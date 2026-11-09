@@ -561,19 +561,24 @@
                                 <label class="small fw-bold">2. מילה / ביטוי / ערך לחיפוש:</label>
                                 <input type="text" id="tbQuery" class="form-control form-control-sm" placeholder="למשל: חזקה" oninput="updateToolBuilderPreview()">
                             </div>
-                            <div class="col-md-4" id="tbCorpusCol">
-                                <label class="small fw-bold">3. באיזה מאגר לחפש?</label>
-                                <select id="tbCorpus" class="form-select form-select-sm" onchange="updateToolBuilderPreview()">
-                                    <option value="all">כל המאגר התורני</option>
-                                    <option value="talmud">תלמוד בבלי</option>
-                                    <option value="torah">חמישה חומשי תורה</option>
-                                    <option value="tanakh">תנ"ך מלא</option>
-                                    <option value="mishnah">משנה</option>
-                                    <option value="tosefta">תוספתא</option>
-                                    <option value="yerushalmi">תלמוד ירושלמי</option>
-                                    <option value="rambam">רמב"ם (משנה תורה)</option>
-                                    <option value="shulchan_aruch">שולחן ערוך</option>
-                                </select>
+                            <div class="col-md-12 mt-2" id="tbCorpusCol">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="small fw-bold mb-0">3. באילו מאגרים לחפש? (ניתן לסמן מספר מאגרים יחד):</label>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-dark py-0 px-2" style="font-size: 0.75rem;" onclick="toggleAllInlineCorpora(true)">בחר הכל</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 0.75rem;" onclick="toggleAllInlineCorpora(false)">נקה בחירה</button>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-wrap gap-2 p-2 rounded-3 border bg-white">
+                                    <label class="badge bg-light text-dark border p-2" style="cursor:pointer;"><input type="checkbox" class="inline-corpus-cb me-1" value="torah" data-label="תורה" checked onchange="updateToolBuilderPreview()"> חמישה חומשי תורה</label>
+                                    <label class="badge bg-light text-dark border p-2" style="cursor:pointer;"><input type="checkbox" class="inline-corpus-cb me-1" value="tanakh" data-label="תנ״ך" checked onchange="updateToolBuilderPreview()"> תנ"ך (נ"ך)</label>
+                                    <label class="badge bg-light text-dark border p-2" style="cursor:pointer;"><input type="checkbox" class="inline-corpus-cb me-1" value="mishnah" data-label="משנה" checked onchange="updateToolBuilderPreview()"> משנה</label>
+                                    <label class="badge bg-light text-dark border p-2" style="cursor:pointer;"><input type="checkbox" class="inline-corpus-cb me-1" value="tosefta" data-label="תוספתא" checked onchange="updateToolBuilderPreview()"> תוספתא</label>
+                                    <label class="badge bg-light text-dark border p-2" style="cursor:pointer;"><input type="checkbox" class="inline-corpus-cb me-1" value="talmud" data-label="תלמוד בבלי" checked onchange="updateToolBuilderPreview()"> תלמוד בבלי</label>
+                                    <label class="badge bg-light text-dark border p-2" style="cursor:pointer;"><input type="checkbox" class="inline-corpus-cb me-1" value="yerushalmi" data-label="תלמוד ירושלמי" checked onchange="updateToolBuilderPreview()"> תלמוד ירושלמי</label>
+                                    <label class="badge bg-light text-dark border p-2" style="cursor:pointer;"><input type="checkbox" class="inline-corpus-cb me-1" value="rambam" data-label="רמב״ם" checked onchange="updateToolBuilderPreview()"> רמב"ם</label>
+                                    <label class="badge bg-light text-dark border p-2" style="cursor:pointer;"><input type="checkbox" class="inline-corpus-cb me-1" value="shulchan_aruch" data-label="שולחן ערוך" checked onchange="updateToolBuilderPreview()"> שולחן ערוך</label>
+                                </div>
                             </div>
                         </div>
 
@@ -887,41 +892,40 @@
         });
     }
 
+    function toggleAllInlineCorpora(state) {
+        document.querySelectorAll('.inline-corpus-cb').forEach(cb => { cb.checked = state; });
+        updateToolBuilderPreview();
+    }
+
     function updateToolBuilderPreview() {
         const kind = document.getElementById('tbKind').value;
         const q = (document.getElementById('tbQuery').value || '').trim() || 'חזקה';
-        const corpus = document.getElementById('tbCorpus').value;
-        const corpusNames = {
-            'all': 'כל המאגר התורני',
-            'talmud': 'תלמוד בבלי',
-            'torah': 'חמישה חומשי תורה',
-            'tanakh': 'תנ"ך',
-            'mishnah': 'משנה',
-            'tosefta': 'תוספתא',
-            'yerushalmi': 'תלמוד ירושלמי',
-            'rambam': 'רמב"ם',
-            'shulchan_aruch': 'שולחן ערוך'
-        };
-        const cLabel = corpusNames[corpus] || 'המאגר התורני';
+        const allCbs = Array.from(document.querySelectorAll('.inline-corpus-cb'));
+        const checkedCbs = allCbs.filter(cb => cb.checked);
+
+        let corpus = 'all';
+        let cLabel = 'כל המאגר התורני';
+        if (checkedCbs.length > 0 && checkedCbs.length < allCbs.length) {
+            corpus = checkedCbs.map(cb => cb.value).join(',');
+            const labels = checkedCbs.map(cb => cb.getAttribute('data-label'));
+            cLabel = labels.length === 1 ? labels[0] : (labels.length === 2 ? labels[0] + ' ו' + labels[1] : labels.slice(0, -1).join(', ') + ' ו' + labels[labels.length - 1]);
+        }
 
         const qCol = document.getElementById('tbQueryCol');
         const cCol = document.getElementById('tbCorpusCol');
 
-        let title = '';
-        let subtitle = '';
-        let url = '';
-
+        let title = '', subtitle = '', url = '';
         if (kind.startsWith('search_')) {
             qCol.style.display = 'block';
             cCol.style.display = 'block';
             const typeMap = {
-                'search_text': ['text', `חיפוש "${q}" ב${cLabel}`, `סריקת כל ההופעות של "${q}" ב${cLabel}`],
+                'search_text': ['text', `חיפוש "${q}" ב${cLabel}`, `סריקת ההופעות של "${q}" ב${cLabel}`],
                 'search_exact': ['text_exact', `חיפוש מדויק של "${q}" ב${cLabel}`, `איתור הופעות מדויקות של "${q}" ב${cLabel}`],
                 'search_fuzzy': ['text_fuzzy', `חיפוש "${q}" (כתיב מלא/חסר) ב${cLabel}`, `סריקה כולל תחיליות וכתיב מלא וחסר ב${cLabel}`],
                 'search_gematria': ['gematria', `חיפוש גימטריא של "${q}" ב${cLabel}`, `איתור מילים ופסוקים בעלי ערך גימטרי זהה ב${cLabel}`],
                 'search_rashei': ['rashei_tevot', `חיפוש ראשי תיבות "${q}" ב${cLabel}`, `איתור רצפי תיבות שראשי התיבות שלהן "${q}" ב${cLabel}`],
                 'search_sofei': ['sofei_tevot', `חיפוש סופי תיבות "${q}" ב${cLabel}`, `איתור רצפי תיבות שסופי התיבות שלהן "${q}" ב${cLabel}`],
-                'search_reverse': ['reverse', `חיפוך אותיות של "${q}" ב${cLabel}`, `חיפוש מילים הפוכות ופלינדרום ב${cLabel}`],
+                'search_reverse': ['reverse', `היפוך אותיות של "${q}" ב${cLabel}`, `חיפוש מילים הפוכות ופלינדרום ב${cLabel}`],
                 'search_els': ['els', `דילוגי אותיות של "${q}" ב${cLabel}`, `חיפוש מרווחי אותיות שווים (ELS) ב${cLabel}`],
                 'search_els_verse': ['els_verse', `דילוגי אותיות בפסוק של "${q}" ב${cLabel}`, `חיפוש דילוגי אותיות חוצי מילים ב${cLabel}`]
             }[kind];
