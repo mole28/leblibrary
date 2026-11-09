@@ -8,12 +8,13 @@ DEFAULT_MIN_CONNECTION_SCORE = 26
 TITLE_WEIGHT = 10
 BODY_WEIGHT = 1
 MAX_BODY_HITS = 5
-ENGINE_VERSION = "v13_index_hierarchy"
+ENGINE_VERSION = "v14_full_control"
 
 RUNTIME_CONFIG_PATH = os.path.join(settings.BASE_DIR, 'clusters_runtime_config.json')
 EDITORIAL_DB_PATH = os.path.join(settings.BASE_DIR, 'editorial_connections.json')
 
 _MEM_CACHE = {}
+_WORD_RX_CACHE = {}
 
 UNCLASSIFIED_CLUSTER = {
     'id': 'general_iyun',
@@ -22,6 +23,46 @@ UNCLASSIFIED_CLUSTER = {
     'emoji': '🔍',
     'description': 'מאמרים הממתינים לשיוך נושאי ידני על ידי העורך (אינו מוצג לציבור כקטגוריה).',
 }
+
+TOOLS_CATALOG = [
+    {
+        'tool_key': 'aramaic_translator',
+        'title': 'מתרגם ארמי ⇄ עברי לש"ס',
+        'subtitle': 'פענוח ותרגום מונחי התלמוד הבבלי, הירושלמי והזוהר',
+        'url': '/aramaic-translator/',
+        'icon': 'bi-translate',
+    },
+    {
+        'tool_key': 'calc_length',
+        'title': 'מחשבון מידות אורך בתורה',
+        'subtitle': 'המרת אמה, טפח, זרת ואצבע לסנטימטרים לפי שיטות הפוסקים',
+        'url': '/calculator/',
+        'icon': 'bi-rulers',
+    },
+    {
+        'tool_key': 'calc_volume',
+        'title': 'מחשבון מידות נפח הלכתי',
+        'subtitle': 'חישוב כזית, כביצה, רביעית, לוג ומקווה בסמ"ק',
+        'url': '/volume-calculator/',
+        'icon': 'bi-cup-straw',
+    },
+    {
+        'tool_key': 'calc_weight',
+        'title': 'מחשבון משקל ומטבעות חז"ל',
+        'subtitle': 'חישוב משקלי התורה ומטבעות ההלכה בגרמים',
+        'url': '/weight-calculator/',
+        'icon': 'bi-coin',
+    },
+    {
+        'tool_key': 'torah_search_general',
+        'title': 'מנוע החיפוש התורני המתקדם',
+        'subtitle': 'חיפוש בתנ"ך, משנה, תוספתא, בבלי, ירושלמי, רמב"ם ושולחן ערוך',
+        'url': '/advanced-search/',
+        'icon': 'bi-search',
+    },
+]
+
+TOOLS_BY_KEY = {t['tool_key']: t for t in TOOLS_CATALOG}
 
 GRAVITY_CLUSTERS = [
     {
@@ -117,11 +158,11 @@ GRAVITY_CLUSTERS = [
         ],
         'specific_keywords': [
             'טומאה', 'טהרה', 'טמא', 'טהור', 'מקווה', 'מקוואות', 'טבילה', 'חציצה',
-            'אמה', 'טפח', 'טפחים', 'אצבע', 'זרת', 'מיל', 'רביעית', 'לוג', 'כזית',
+            'אמה', 'טפח', 'טפחים', 'אצבע', 'זרת', 'רביעית', 'לוג', 'כזית',
             'כביצה', 'סלע', 'שקל', 'מידות'
         ],
         'broad_classify_only': [
-            'שיעור', 'שיעורים', 'כלי', 'כלים'
+            'שיעור', 'שיעורים', 'כלים'
         ]
     },
     {
@@ -166,11 +207,22 @@ GENERIC_NOISE_WORDS = {
     'ברכה', 'ברכות', 'ברכת', 'מברך', 'לברך', 'ברכותיה', 'וברכותיה', 'הברכה', 'הברכות',
     'תפילה', 'תפילת', 'התפילה', 'זמן', 'זמני', 'הזמן', 'הקדמה', 'מבוא', 'פתיחה',
     'סימנים', 'הערות', 'נספח', 'תוכן', 'עניינים', 'כלל', 'כללים', 'אופן', 'אמירת',
-    'קריאת', 'מקורה', 'וטעמיה', 'בעולמו', 'החודש', 'נחם', 'האם', 'מתי', 'כיצד'
+    'קריאת', 'מקורה', 'וטעמיה', 'בעולמו', 'החודש', 'נחם', 'האם', 'מתי', 'כיצד',
+    'מיל', 'כלי', 'חג', 'שני', 'אחד', 'ביאור'
 }
 
 
 class ClusterEngine:
+
+    @classmethod
+    def _count_whole_word(cls, text: str, term: str) -> int:
+        if not text or not term or term not in text:
+            return 0
+        rx = _WORD_RX_CACHE.get(term)
+        if rx is None:
+            rx = re.compile(rf'(?<![א-תa-z0-9])(?:ו?[הבכלמש])?{re.escape(term)}(?![א-תa-z0-9])')
+            _WORD_RX_CACHE[term] = rx
+        return len(rx.findall(text))
 
     @classmethod
     def clear_memory_cache(cls):
@@ -258,6 +310,11 @@ class ClusterEngine:
                 'approved': [int(x) for x in rec.get('qas', {}).get('approved', []) if str(x).isdigit()],
                 'rejected': [int(x) for x in rec.get('qas', {}).get('rejected', []) if str(x).isdigit()],
                 'manual_added': [int(x) for x in rec.get('qas', {}).get('manual_added', []) if str(x).isdigit()],
+            },
+            'tools': {
+                'approved': list(rec.get('tools', {}).get('approved', [])),
+                'rejected': list(rec.get('tools', {}).get('rejected', [])),
+                'manual_added': list(rec.get('tools', {}).get('manual_added', [])),
             }
         }
 
@@ -278,7 +335,7 @@ class ClusterEngine:
         elif action == 'reset_cluster_to_ai':
             rec['cluster_id'] = ''
 
-        elif target_type in ('articles', 'books', 'qas') and target_id != '':
+        elif target_type in ('articles', 'books', 'qas', 'tools') and target_id != '':
             t_val = int(target_id) if target_type in ('articles', 'qas') and str(target_id).isdigit() else str(target_id)
             bucket = rec[target_type]
 
@@ -349,6 +406,11 @@ class ClusterEngine:
                     qid = int(q['qa_id'])
                     if qid not in rec['qas']['approved'] and qid not in rec['qas']['manual_added']:
                         rec['qas']['approved'].append(qid)
+            for t in ctx.get('smart_tools', []):
+                if t.get('editorial_state') == 'ai_suggested':
+                    tkey = str(t['tool_key'])
+                    if tkey not in rec['tools']['approved'] and tkey not in rec['tools']['manual_added']:
+                        rec['tools']['approved'].append(tkey)
             rec['status'] = 'approved'
 
         elif mode == 'reject_all_ai_for_article':
@@ -406,8 +468,8 @@ class ClusterEngine:
             c_score = 0
 
             for phrase in cluster['phrases']:
-                t_hits = 1 if phrase in title_clean else 0
-                b_hits = min(MAX_BODY_HITS, body_clean.count(phrase)) if phrase in body_clean else 0
+                t_hits = cls._count_whole_word(title_clean, phrase)
+                b_hits = min(MAX_BODY_HITS, cls._count_whole_word(body_clean, phrase))
                 if t_hits > 0 or b_hits > 0:
                     pts = (t_hits * TITLE_WEIGHT * 2.0) + (b_hits * BODY_WEIGHT * 3.0)
                     c_score += pts
@@ -415,8 +477,8 @@ class ClusterEngine:
                     keyword_breakdown[phrase] = keyword_breakdown.get(phrase, 0) + round(pts, 1)
 
             for kw in cluster['specific_keywords']:
-                t_hits = 1 if kw in title_clean else 0
-                b_hits = min(MAX_BODY_HITS, body_clean.count(kw)) if kw in body_clean else 0
+                t_hits = cls._count_whole_word(title_clean, kw)
+                b_hits = min(MAX_BODY_HITS, cls._count_whole_word(body_clean, kw))
                 if t_hits > 0 or b_hits >= 2:
                     pts = (t_hits * TITLE_WEIGHT) + (b_hits * BODY_WEIGHT)
                     c_score += pts
@@ -424,8 +486,8 @@ class ClusterEngine:
                     keyword_breakdown[kw] = keyword_breakdown.get(kw, 0) + round(pts, 1)
 
             for b_kw in cluster.get('broad_classify_only', []):
-                t_hits = 1 if b_kw in title_clean else 0
-                b_hits = min(3, body_clean.count(b_kw)) if b_kw in body_clean else 0
+                t_hits = cls._count_whole_word(title_clean, b_kw)
+                b_hits = min(3, cls._count_whole_word(body_clean, b_kw))
                 if t_hits > 0 or b_hits >= 2:
                     pts = (t_hits * 6) + (b_hits * 0.5)
                     c_score += pts
@@ -439,8 +501,10 @@ class ClusterEngine:
             if w in GENERIC_NOISE_WORDS:
                 continue
             stem = w[1:] if (len(w) >= 5 and w[0] in 'הבכלמשו') else w
-            if stem not in GENERIC_NOISE_WORDS and len(stem) >= 3:
+            if stem not in GENERIC_NOISE_WORDS and len(stem) >= 4:
                 title_specific_stems.add(stem)
+            elif w not in GENERIC_NOISE_WORDS and len(w) >= 3:
+                title_specific_stems.add(w)
 
         raw_body_words = re.findall(r'[א-ת]{4,}', body_clean)
         body_freq = {}
@@ -448,7 +512,7 @@ class ClusterEngine:
             if w in GENERIC_NOISE_WORDS:
                 continue
             stem = w[1:] if (len(w) >= 5 and w[0] in 'הבכלמשו') else w
-            if stem not in GENERIC_NOISE_WORDS and len(stem) >= 3:
+            if stem not in GENERIC_NOISE_WORDS and len(stem) >= 4:
                 body_freq[stem] = body_freq.get(stem, 0) + 1
 
         dominant_body_stems = {st for st, cnt in body_freq.items() if cnt >= 2 or st in title_specific_stems}
@@ -540,7 +604,6 @@ class ClusterEngine:
                 is_cluster_overridden = False
                 editor_cluster_title = None
 
-            # Update signature's active cluster so similarity respects editor's cluster override
             sig_with_override = dict(sig)
             sig_with_override['cluster'] = effective_cluster_obj
 
@@ -576,10 +639,6 @@ class ClusterEngine:
 
     @classmethod
     def get_public_index_clusters(cls, is_superuser: bool = False, selected_cluster_id: str = None):
-        """
-        Builds the approved Topic Clusters hierarchy for /index/.
-        Strictly excludes 'general_iyun' (עיונים כלליים - לבדיקה) from public display.
-        """
         runtime_cfg = cls.get_runtime_config()
         public_enabled = runtime_cfg['public_enabled']
         indexed_articles = cls._get_all_indexed_articles()
@@ -722,38 +781,36 @@ class ClusterEngine:
         return qa_units
 
     @classmethod
-    def get_smart_tools_for_article(cls, title: str, snippet: str, sig):
-        text_combined = f"{title} {snippet}"
-        tools = []
+    def _build_tool_object(cls, tool_key: str, default_search_term: str, editorial_state: str):
+        if tool_key.startswith('search:'):
+            custom_q = tool_key.split(':', 1)[1].strip() or default_search_term
+            return {
+                'tool_key': tool_key,
+                'title': f'חיפוש "{custom_q}" במאגר התורני',
+                'subtitle': 'סריקה בתנ"ך, משנה, תוספתא, בבלי, ירושלמי, רמב"ם ושולחן ערוך',
+                'url': f'/advanced-search/?q={custom_q}',
+                'icon': 'bi-search',
+                'editorial_state': editorial_state,
+            }
+        if tool_key == 'torah_search_auto':
+            return {
+                'tool_key': 'torah_search_auto',
+                'title': f'חיפוש "{default_search_term}" במאגר התורני',
+                'subtitle': 'סריקה בתנ"ך, משנה, תוספתא, בבלי, ירושלמי, רמב"ם ושולחן ערוך',
+                'url': f'/advanced-search/?q={default_search_term}',
+                'icon': 'bi-search',
+                'editorial_state': editorial_state,
+            }
+        base_tool = TOOLS_BY_KEY.get(tool_key)
+        if not base_tool:
+            return None
+        t_copy = dict(base_tool)
+        t_copy['editorial_state'] = editorial_state
+        return t_copy
 
-        if any(w in text_combined for w in ('אמה', 'טפח', 'טפחים', 'אצבע', 'זרת', 'מיל', 'תחום שבת', 'גובה')):
-            tools.append({
-                'title': 'מחשבון מידות אורך בתורה',
-                'subtitle': 'המרת אמה, טפח, זרת ואצבע לסנטימטרים לפי שיטות הפוסקים',
-                'url': '/calculator/',
-                'icon': 'bi-rulers'
-            })
-        if any(w in text_combined for w in ('רביעית', 'לוג', 'כזית', 'כביצה', 'סאה', 'ארבעים סאה', 'מקווה', 'נפח')):
-            tools.append({
-                'title': 'מחשבון מידות נפח הלכתי',
-                'subtitle': 'חישוב כזית, כביצה, רביעית, לוג ומקווה בסמ"ק',
-                'url': '/volume-calculator/',
-                'icon': 'bi-cup-straw'
-            })
-        if any(w in text_combined for w in ('שקל', 'סלע', 'דינר', 'פרוטה', 'פדיון הבן', 'חומש', 'מטבע', 'משקל')):
-            tools.append({
-                'title': 'מחשבון משקל ומטבעות חז"ל',
-                'subtitle': 'חישוב משקלי התורה ומטבעות ההלכה בגרמים',
-                'url': '/weight-calculator/',
-                'icon': 'bi-coin'
-            })
-        if any(w in text_combined for w in ('בגמרא', 'בבלי', 'ירושלמי', 'איתמר', 'תא שמע', 'מאי טעמא', 'נפקא מינה')):
-            tools.append({
-                'title': 'מתרגם ארמי ⇄ עברי לש"ס',
-                'subtitle': 'פענוח ותרגום מונחי התלמוד הבבלי, הירושלמי והזוהר',
-                'url': '/aramaic-translator/',
-                'icon': 'bi-translate'
-            })
+    @classmethod
+    def get_smart_tools_for_article(cls, title: str, snippet: str, sig, ed_tools_rec: dict):
+        text_combined = f"{title} {snippet}".lower()
 
         search_term = ""
         if sig['phrases']:
@@ -766,16 +823,50 @@ class ClusterEngine:
             clean_t = re.sub(r'[^א-ת\s]', '', title).strip()
             search_term = " ".join(clean_t.split()[:2])
 
-        tools.append({
-            'title': f'חיפוש "{search_term}" במאגר התורני',
-            'subtitle': 'סריקה בתנ"ך, משנה, תוספתא, בבלי, ירושלמי, רמב"ם ושולחן ערוך',
-            'url': f'/advanced-search/?q={search_term}',
-            'icon': 'bi-search',
-            'is_primary_search': True,
-            'search_term': search_term,
-        })
+        ai_candidate_keys = []
+        if any(cls._count_whole_word(text_combined, w) > 0 for w in ('אמה', 'טפח', 'טפחים', 'אצבע', 'זרת', 'תחום שבת', 'גובה סוכה', 'גובה חופה')):
+            ai_candidate_keys.append('calc_length')
+        if any(cls._count_whole_word(text_combined, w) > 0 for w in ('רביעית', 'לוג', 'כזית', 'כביצה', 'סאה', 'ארבעים סאה', 'מקווה', 'נפח')):
+            ai_candidate_keys.append('calc_volume')
+        if any(cls._count_whole_word(text_combined, w) > 0 for w in ('שקל', 'סלע', 'דינר', 'פרוטה', 'פדיון הבן', 'חומש', 'מטבע', 'משקל')):
+            ai_candidate_keys.append('calc_weight')
+        if any(cls._count_whole_word(text_combined, w) > 0 for w in ('בגמרא', 'בבלי', 'ירושלמי', 'איתמר', 'תא שמע', 'מאי טעמא', 'נפקא מינה')):
+            ai_candidate_keys.append('aramaic_translator')
 
-        return tools[:2]
+        ai_candidate_keys.append('torah_search_auto')
+
+        rejected_keys = set(ed_tools_rec.get('rejected', []))
+        final_tools = []
+        seen_keys = set()
+
+        for m_key in ed_tools_rec.get('manual_added', []):
+            if m_key not in seen_keys and m_key not in rejected_keys:
+                t_obj = cls._build_tool_object(m_key, search_term, 'manual')
+                if t_obj:
+                    final_tools.append(t_obj)
+                    seen_keys.add(m_key)
+
+        for a_key in ed_tools_rec.get('approved', []):
+            if a_key not in seen_keys and a_key not in rejected_keys:
+                t_obj = cls._build_tool_object(a_key, search_term, 'approved')
+                if t_obj:
+                    final_tools.append(t_obj)
+                    seen_keys.add(a_key)
+
+        for ai_key in ai_candidate_keys:
+            if ai_key not in seen_keys and ai_key not in rejected_keys:
+                t_obj = cls._build_tool_object(ai_key, search_term, 'ai_suggested')
+                if t_obj:
+                    final_tools.append(t_obj)
+                    seen_keys.add(ai_key)
+
+        rejected_tools_objs = []
+        for r_key in rejected_keys:
+            r_obj = cls._build_tool_object(r_key, search_term, 'rejected')
+            if r_obj:
+                rejected_tools_objs.append(r_obj)
+
+        return final_tools, rejected_tools_objs
 
     @classmethod
     def get_learning_context(cls, article, all_articles=None, min_score_override=None):
@@ -846,6 +937,7 @@ class ClusterEngine:
             3: 'שלב ג׳: הלכה למעשה ופרטי דינים'
         }
 
+        # 1. Related Articles (No hard limit of 4 - keeps all suggestions!)
         art_ed = ed_rec['articles']
         rejected_art_ids = set(art_ed['rejected'])
         final_related_articles = []
@@ -877,6 +969,7 @@ class ClusterEngine:
                 seen_art_ids.add(a_id)
 
         ai_scored_articles = []
+        extra_candidate_articles = []
         for cand in indexed_articles:
             if cand['pk'] in seen_art_ids or cand['pk'] in rejected_art_ids:
                 continue
@@ -885,25 +978,28 @@ class ClusterEngine:
                 curr_entry['parasha'], cand['parasha'],
                 is_book_target=False
             )
+            item_obj = {
+                'article': {'pk': cand['pk'], 'title': cand['title'], 'slug': cand['slug']},
+                'score': sim_score,
+                'reasons': reasons,
+                'editorial_state': 'ai_suggested',
+            }
             if sim_score >= active_min_score:
-                ai_scored_articles.append({
-                    'article': {'pk': cand['pk'], 'title': cand['title'], 'slug': cand['slug']},
-                    'score': sim_score,
-                    'reasons': reasons,
-                    'editorial_state': 'ai_suggested',
-                })
+                ai_scored_articles.append(item_obj)
+            elif sim_score >= 8:
+                extra_candidate_articles.append(item_obj)
 
         ai_scored_articles.sort(key=lambda x: (-x['score'], -x['article']['pk']))
-        for item in ai_scored_articles:
-            if len(final_related_articles) >= 5:
-                break
-            final_related_articles.append(item)
+        extra_candidate_articles.sort(key=lambda x: (-x['score'], -x['article']['pk']))
+
+        final_related_articles.extend(ai_scored_articles)
 
         rejected_article_objs = [
             {'pk': r_id, 'title': articles_by_pk[r_id]['title']}
             for r_id in art_ed['rejected'] if r_id in articles_by_pk
         ]
 
+        # 2. Book Chapters & Books (All matching chapters preserved)
         book_ed = ed_rec['books']
         rejected_book_keys = set(book_ed['rejected'])
         all_book_units = cls._get_indexed_book_units()
@@ -933,6 +1029,7 @@ class ClusterEngine:
                 seen_book_keys.add(a_key)
 
         raw_scored_books = []
+        extra_candidate_books = []
         for b_unit in all_book_units:
             u_key = b_unit['unit_key']
             if u_key in seen_book_keys or u_key in rejected_book_keys:
@@ -942,29 +1039,25 @@ class ClusterEngine:
             sim_score, reasons = cls._calculate_pair_similarity(
                 curr_sig, b_unit['signature'], is_book_target=True
             )
+            unit_copy = {k: v for k, v in b_unit.items() if k != 'signature'}
+            unit_copy['match_score'] = sim_score
+            unit_copy['reasons'] = reasons
+            unit_copy['editorial_state'] = 'ai_suggested'
             if sim_score >= active_min_score:
-                unit_copy = {k: v for k, v in b_unit.items() if k != 'signature'}
-                unit_copy['match_score'] = sim_score
-                unit_copy['reasons'] = reasons
-                unit_copy['editorial_state'] = 'ai_suggested'
                 raw_scored_books.append(unit_copy)
+            elif sim_score >= 10:
+                extra_candidate_books.append(unit_copy)
 
         raw_scored_books.sort(key=lambda x: -x['match_score'])
-        book_count_per_id = {}
-        for b_cand in raw_scored_books:
-            if len(final_book_units) >= 4:
-                break
-            b_id = b_cand['book_id']
-            if book_count_per_id.get(b_id, 0) >= 2:
-                continue
-            book_count_per_id[b_id] = book_count_per_id.get(b_id, 0) + 1
-            final_book_units.append(b_cand)
+        extra_candidate_books.sort(key=lambda x: -x['match_score'])
+        final_book_units.extend(raw_scored_books)
 
         rejected_book_objs = [
             {'unit_key': r_key, 'label': book_units_by_key[r_key]['display_label']}
             for r_key in book_ed['rejected'] if r_key in book_units_by_key
         ]
 
+        # 3. Q&As
         qa_ed = ed_rec['qas']
         rejected_qa_ids = set(qa_ed['rejected'])
         all_qa_units = cls._get_indexed_qa_units()
@@ -1007,17 +1100,17 @@ class ClusterEngine:
                 ai_scored_qas.append(q_copy)
 
         ai_scored_qas.sort(key=lambda x: -x['match_score'])
-        for q_cand in ai_scored_qas:
-            if len(final_qas) >= 4:
-                break
-            final_qas.append(q_cand)
+        final_qas.extend(ai_scored_qas)
 
         rejected_qa_objs = [
             {'qa_id': r_qid, 'question': qas_by_id[r_qid]['question']}
             for r_qid in qa_ed['rejected'] if r_qid in qas_by_id
         ]
 
-        smart_tools = cls.get_smart_tools_for_article(curr_entry['title'], curr_entry['snippet'], curr_sig)
+        # 4. Smart Tools (with full editorial control)
+        smart_tools, rejected_tools_objs = cls.get_smart_tools_for_article(
+            curr_entry['title'], curr_entry['snippet'], curr_sig, ed_rec['tools']
+        )
 
         has_any_content = bool(final_related_articles or final_book_units or final_qas)
         is_orphan_or_weak = (
@@ -1056,12 +1149,15 @@ class ClusterEngine:
                 'next_article': next_article,
             },
             'related_articles': final_related_articles,
+            'extra_candidate_articles': extra_candidate_articles[:10],
             'rejected_articles': rejected_article_objs,
             'book_units': final_book_units,
+            'extra_candidate_books': extra_candidate_books[:10],
             'rejected_books': rejected_book_objs,
             'related_qas': final_qas,
             'rejected_qas': rejected_qa_objs,
             'smart_tools': smart_tools,
+            'rejected_tools': rejected_tools_objs,
             'has_strong_matches': has_any_content,
             'is_orphan_or_weak': is_orphan_or_weak,
         }
@@ -1121,12 +1217,15 @@ class ClusterEngine:
                 'cluster_score': ctx['cluster']['score'],
                 'breakdown': ctx['cluster']['breakdown'],
                 'related_articles': ctx['related_articles'],
+                'extra_candidate_articles': ctx['extra_candidate_articles'],
                 'rejected_articles': ctx['rejected_articles'],
                 'book_units': ctx['book_units'],
+                'extra_candidate_books': ctx['extra_candidate_books'],
                 'rejected_books': ctx['rejected_books'],
                 'related_qas': ctx['related_qas'],
                 'rejected_qas': ctx['rejected_qas'],
                 'smart_tools': ctx['smart_tools'],
+                'rejected_tools': ctx['rejected_tools'],
                 'is_weak': ctx['is_orphan_or_weak'],
             }
             rows.append(row)
@@ -1151,6 +1250,7 @@ class ClusterEngine:
             'all_articles_choices': [{'pk': a['pk'], 'title': a['title']} for a in indexed_articles],
             'all_books_choices': [{'unit_key': b['unit_key'], 'label': b['display_label']} for b in all_book_units],
             'all_qas_choices': [{'qa_id': q['qa_id'], 'question': q['question']} for q in all_qa_units],
+            'all_tools_choices': TOOLS_CATALOG,
             'active_min_score': active_min_score,
             'saved_min_score': runtime_cfg['min_connection_score'],
             'public_enabled': runtime_cfg['public_enabled'],
