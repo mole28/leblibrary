@@ -8,7 +8,7 @@ DEFAULT_MIN_CONNECTION_SCORE = 26
 TITLE_WEIGHT = 10
 BODY_WEIGHT = 1
 MAX_BODY_HITS = 5
-ENGINE_VERSION = "v11_editorial"
+ENGINE_VERSION = "v13_index_hierarchy"
 
 RUNTIME_CONFIG_PATH = os.path.join(settings.BASE_DIR, 'clusters_runtime_config.json')
 EDITORIAL_DB_PATH = os.path.join(settings.BASE_DIR, 'editorial_connections.json')
@@ -19,7 +19,8 @@ UNCLASSIFIED_CLUSTER = {
     'id': 'general_iyun',
     'title': 'עיונים כלליים (לבדיקה)',
     'icon': 'bi-book-half',
-    'description': 'מאמרים ועיונים תורניים והלכתיים במגוון מקצועות התורה.',
+    'emoji': '🔍',
+    'description': 'מאמרים הממתינים לשיוך נושאי ידני על ידי העורך (אינו מוצג לציבור כקטגוריה).',
 }
 
 GRAVITY_CLUSTERS = [
@@ -27,6 +28,7 @@ GRAVITY_CLUSTERS = [
         'id': 'brachot',
         'title': 'ברכות ותפילה',
         'icon': 'bi-stars',
+        'emoji': '📖',
         'description': 'סוגיות ובירורי הלכה בברכות הנהנין, ברכות הריח, שהחיינו, ברכות הראייה והשבח, תפילה וקריאת התורה.',
         'phrases': [
             'ברכת הריח', 'ברכות הריח', 'בגדים מבושמים', 'שמן אפרסמון', 'ריח טוב',
@@ -47,9 +49,28 @@ GRAVITY_CLUSTERS = [
         ]
     },
     {
+        'id': 'eretz_yisrael',
+        'title': 'ארץ ישראל ומצוותיה',
+        'icon': 'bi-geo-alt-fill',
+        'emoji': '🌍',
+        'description': 'מצוות התלויות בארץ, תרומות ומעשרות, מעשר שני, קדושת הארץ, גבולותיה ומעלתה.',
+        'phrases': [
+            'ארץ ישראל', 'תרומות ומעשרות', 'מעשר שני', 'מעשר עני', 'שנת מעשר',
+            'ביעור מעשרות', 'מציב גבול אלמנה', 'חלוקת הארץ', 'כיבוש הארץ',
+            'פירות ארץ ישראל', 'ישוב ארץ ישראל', 'מצוות התלויות בארץ',
+            'שנת השמיטה', 'על שהנחלת'
+        ],
+        'specific_keywords': [
+            'מעשר', 'מעשרות', 'תרומות', 'תרומה', 'טבל', 'דמאי', 'שמיטה', 'שביעית',
+            'שהנחלת', 'נחלה', 'גורל', 'ירושלים', 'מקדש'
+        ],
+        'broad_classify_only': []
+    },
+    {
         'id': 'moadim',
         'title': 'שבת ומועדי ישראל',
         'icon': 'bi-calendar-heart',
+        'emoji': '🕯',
         'description': 'עיונים והלכות בשבת, חנוכה, סוכה וארבעת המינים, פסח, פורים ומועדי השנה.',
         'phrases': [
             'נר חנוכה', 'נרות חנוכה', 'הדלקת נרות', 'פרסומי ניסא', 'כבתה אין זקוק לה',
@@ -68,26 +89,10 @@ GRAVITY_CLUSTERS = [
         ]
     },
     {
-        'id': 'eretz_yisrael',
-        'title': 'ארץ ישראל ומצוותיה',
-        'icon': 'bi-geo-alt-fill',
-        'description': 'מצוות התלויות בארץ, תרומות ומעשרות, מעשר שני, קדושת הארץ, גבולותיה ומעלתה.',
-        'phrases': [
-            'ארץ ישראל', 'תרומות ומעשרות', 'מעשר שני', 'מעשר עני', 'שנת מעשר',
-            'ביעור מעשרות', 'מציב גבול אלמנה', 'חלוקת הארץ', 'כיבוש הארץ',
-            'פירות ארץ ישראל', 'ישוב ארץ ישראל', 'מצוות התלויות בארץ',
-            'שנת השמיטה', 'על שהנחלת'
-        ],
-        'specific_keywords': [
-            'מעשר', 'מעשרות', 'תרומות', 'תרומה', 'טבל', 'דמאי', 'שמיטה', 'שביעית',
-            'שהנחלת', 'נחלה', 'גורל', 'ירושלים', 'מקדש'
-        ],
-        'broad_classify_only': []
-    },
-    {
         'id': 'mishpacha_mila',
         'title': 'משפחה, חופה וברית מילה',
         'icon': 'bi-people-fill',
+        'emoji': '👨‍👩‍👦',
         'description': 'הלכות ברית מילה וברכותיה, זמני המילה, גדרי החופה וברכות הנישואין, קידושין ואבן העזר.',
         'phrases': [
             'ברית מילה', 'זמני המילה', 'זריזין מקדימין למילה', 'מילה שלא בזמנה',
@@ -104,6 +109,7 @@ GRAVITY_CLUSTERS = [
         'id': 'taharah_shiurim',
         'title': 'טהרה, מידות ושיעורי תורה',
         'icon': 'bi-rulers',
+        'emoji': '📏',
         'description': 'סוגיות בהלכות טומאה וטהרה, מקוואות, נטילת ידיים, ומידות ושיעורי חז"ל.',
         'phrases': [
             'טומאה וטהרה', 'נטילת ידיים', 'מידות חז"ל', 'שיעורי תורה', 'טומאת אהל',
@@ -122,6 +128,7 @@ GRAVITY_CLUSTERS = [
         'id': 'choshen_iyun',
         'title': 'חושן משפט, חזקות ועיונים',
         'icon': 'bi-journal-bookmark-fill',
+        'emoji': '⚖️',
         'description': 'דיני חזקות, ריבית, ממונות, קניינים, ספקות, מנהגים וכללי פסיקה בעיון הש"ס והפוסקים.',
         'phrases': [
             'דיני חזקות', 'חזקת מרא קמא', 'המוציא מחברו', 'היתר עסקה', 'איסור ריבית',
@@ -203,9 +210,6 @@ class ClusterEngine:
         _MEM_CACHE.clear()
         return cfg
 
-    # =========================================================================
-    # Editorial Decisions Database (Persistent Human-in-the-Loop Storage)
-    # =========================================================================
     @classmethod
     def get_editorial_db(cls) -> dict:
         if 'editorial_db' in _MEM_CACHE:
@@ -238,7 +242,7 @@ class ClusterEngine:
         key = str(article_pk)
         rec = db.get(key, {})
         return {
-            'status': rec.get('status', 'pending'),  # 'approved' | 'pending' | 'rejected'
+            'status': rec.get('status', 'pending'),
             'cluster_id': rec.get('cluster_id', ''),
             'articles': {
                 'approved': [int(x) for x in rec.get('articles', {}).get('approved', []) if str(x).isdigit()],
@@ -266,8 +270,13 @@ class ClusterEngine:
         if action in ('set_approved', 'set_pending', 'set_rejected'):
             rec['status'] = action.replace('set_', '')
 
-        elif action == 'set_cluster' and target_id:
-            rec['cluster_id'] = str(target_id)
+        elif action == 'set_cluster':
+            rec['cluster_id'] = str(target_id).strip()
+            if rec['cluster_id'] and rec['cluster_id'] != 'general_iyun' and rec['status'] == 'pending':
+                rec['status'] = 'approved'
+
+        elif action == 'reset_cluster_to_ai':
+            rec['cluster_id'] = ''
 
         elif target_type in ('articles', 'books', 'qas') and target_id != '':
             t_val = int(target_id) if target_type in ('articles', 'qas') and str(target_id).isdigit() else str(target_id)
@@ -297,7 +306,6 @@ class ClusterEngine:
                 if t_val not in bucket['manual_added']:
                     bucket['manual_added'].append(t_val)
 
-                # Automatic bidirectional linking when linking two articles manually
                 if target_type == 'articles' and bidirectional and isinstance(t_val, int) and t_val != int(article_pk):
                     other_rec = cls.get_article_editorial_record(t_val)
                     src_pk = int(article_pk)
@@ -308,6 +316,59 @@ class ClusterEngine:
                     db[str(t_val)] = other_rec
 
         db[key] = rec
+        cls.save_editorial_db(db)
+        return rec
+
+    @classmethod
+    def batch_article_ai_decision(cls, article_pk: int, mode: str):
+        class _DummyArt:
+            def __init__(self, pk):
+                self.pk = pk
+                self.title = ""
+                self.slug = ""
+                self.parasha = ""
+                self.content = ""
+
+        ctx = cls.get_learning_context(_DummyArt(int(article_pk)))
+        db = cls.get_editorial_db()
+        rec = cls.get_article_editorial_record(int(article_pk))
+
+        if mode == 'approve_all_ai_for_article':
+            for rel in ctx.get('related_articles', []):
+                if rel.get('editorial_state') == 'ai_suggested':
+                    tid = int(rel['article']['pk'])
+                    if tid not in rec['articles']['approved'] and tid not in rec['articles']['manual_added']:
+                        rec['articles']['approved'].append(tid)
+            for b in ctx.get('book_units', []):
+                if b.get('editorial_state') == 'ai_suggested':
+                    ukey = str(b['unit_key'])
+                    if ukey not in rec['books']['approved'] and ukey not in rec['books']['manual_added']:
+                        rec['books']['approved'].append(ukey)
+            for q in ctx.get('related_qas', []):
+                if q.get('editorial_state') == 'ai_suggested':
+                    qid = int(q['qa_id'])
+                    if qid not in rec['qas']['approved'] and qid not in rec['qas']['manual_added']:
+                        rec['qas']['approved'].append(qid)
+            rec['status'] = 'approved'
+
+        elif mode == 'reject_all_ai_for_article':
+            for rel in ctx.get('related_articles', []):
+                if rel.get('editorial_state') == 'ai_suggested':
+                    tid = int(rel['article']['pk'])
+                    if tid not in rec['articles']['rejected']:
+                        rec['articles']['rejected'].append(tid)
+            for b in ctx.get('book_units', []):
+                if b.get('editorial_state') == 'ai_suggested':
+                    ukey = str(b['unit_key'])
+                    if ukey not in rec['books']['rejected']:
+                        rec['books']['rejected'].append(ukey)
+            for q in ctx.get('related_qas', []):
+                if q.get('editorial_state') == 'ai_suggested':
+                    qid = int(q['qa_id'])
+                    if qid not in rec['qas']['rejected']:
+                        rec['qas']['rejected'].append(qid)
+
+        db[str(article_pk)] = rec
         cls.save_editorial_db(db)
         return rec
 
@@ -467,10 +528,21 @@ class ClusterEngine:
             sig = cls._extract_distinctive_signature(art.title or '', snippet)
             ed_rec = editorial_db.get(str(art.pk), {})
 
-            cluster_obj = sig['cluster']
-            manual_cl_id = ed_rec.get('cluster_id')
+            ai_cluster_obj = sig['cluster']
+            manual_cl_id = ed_rec.get('cluster_id', '').strip()
+
             if manual_cl_id:
-                cluster_obj = next((c for c in ALL_CLUSTERS_LIST if c['id'] == manual_cl_id), cluster_obj)
+                effective_cluster_obj = next((c for c in ALL_CLUSTERS_LIST if c['id'] == manual_cl_id), ai_cluster_obj)
+                is_cluster_overridden = True
+                editor_cluster_title = effective_cluster_obj['title']
+            else:
+                effective_cluster_obj = ai_cluster_obj
+                is_cluster_overridden = False
+                editor_cluster_title = None
+
+            # Update signature's active cluster so similarity respects editor's cluster override
+            sig_with_override = dict(sig)
+            sig_with_override['cluster'] = effective_cluster_obj
 
             title_str = art.title or ''
             foundational = ('גדר', 'גדרי', 'יסוד', 'יסודות', 'מהות', 'כלל', 'כללי', 'מבוא', 'מקור', 'חיוב', 'מצוות')
@@ -483,19 +555,78 @@ class ClusterEngine:
                 'slug': art.slug,
                 'parasha': art.parasha or '',
                 'snippet': snippet,
-                'cluster_id': cluster_obj['id'],
-                'cluster_title': cluster_obj['title'],
-                'icon': cluster_obj['icon'],
-                'description': cluster_obj['description'],
+                'cluster_id': effective_cluster_obj['id'],
+                'cluster_title': effective_cluster_obj['title'],
+                'ai_cluster_id': ai_cluster_obj['id'],
+                'ai_cluster_title': ai_cluster_obj['title'],
+                'is_cluster_overridden': is_cluster_overridden,
+                'editor_cluster_title': editor_cluster_title,
+                'icon': effective_cluster_obj['icon'],
+                'emoji': effective_cluster_obj.get('emoji', '📖'),
+                'description': effective_cluster_obj['description'],
                 'score': sig['cluster_score'],
                 'breakdown': sig['breakdown'],
-                'signature': sig,
+                'signature': sig_with_override,
                 'stage': stage,
                 'sort_key': (stage, -sig['cluster_score'], art.pk),
             })
 
         _MEM_CACHE['indexed_articles'] = articles_index
         return articles_index
+
+    @classmethod
+    def get_public_index_clusters(cls, is_superuser: bool = False, selected_cluster_id: str = None):
+        """
+        Builds the approved Topic Clusters hierarchy for /index/.
+        Strictly excludes 'general_iyun' (עיונים כלליים - לבדיקה) from public display.
+        """
+        runtime_cfg = cls.get_runtime_config()
+        public_enabled = runtime_cfg['public_enabled']
+        indexed_articles = cls._get_all_indexed_articles()
+
+        clusters_map = {c['id']: [] for c in GRAVITY_CLUSTERS}
+
+        for item in indexed_articles:
+            c_id = item['cluster_id']
+            if c_id == 'general_iyun' or c_id not in clusters_map:
+                continue
+
+            ed_rec = cls.get_article_editorial_record(item['pk'])
+            st = ed_rec['status']
+            if st == 'rejected':
+                continue
+
+            is_article_approved = (st == 'approved') or item['is_cluster_overridden'] or public_enabled or is_superuser
+            if is_article_approved:
+                clusters_map[c_id].append(item)
+
+        public_clusters = []
+        selected_cluster_obj = None
+
+        for c_def in GRAVITY_CLUSTERS:
+            c_id = c_def['id']
+            art_list = clusters_map.get(c_id, [])
+            if not art_list:
+                continue
+            art_list.sort(key=lambda x: x['sort_key'])
+            c_payload = {
+                'id': c_id,
+                'title': c_def['title'],
+                'icon': c_def['icon'],
+                'emoji': c_def.get('emoji', '📖'),
+                'description': c_def['description'],
+                'count': len(art_list),
+                'articles': art_list,
+            }
+            public_clusters.append(c_payload)
+            if selected_cluster_id and selected_cluster_id == c_id:
+                selected_cluster_obj = c_payload
+
+        return {
+            'clusters': public_clusters,
+            'selected_cluster': selected_cluster_obj,
+            'public_enabled': public_enabled,
+        }
 
     @classmethod
     def _get_indexed_book_units(cls):
@@ -674,6 +805,10 @@ class ClusterEngine:
                 'snippet': snippet,
                 'cluster_id': sig['cluster']['id'],
                 'cluster_title': sig['cluster']['title'],
+                'ai_cluster_id': sig['cluster']['id'],
+                'ai_cluster_title': sig['cluster']['title'],
+                'is_cluster_overridden': False,
+                'editor_cluster_title': None,
                 'icon': sig['cluster']['icon'],
                 'description': sig['cluster']['description'],
                 'score': sig['cluster_score'],
@@ -711,9 +846,6 @@ class ClusterEngine:
             3: 'שלב ג׳: הלכה למעשה ופרטי דינים'
         }
 
-        # =====================================================================
-        # 1. Related Articles: Manual + Approved first, then AI Suggestions (excluding Rejected)
-        # =====================================================================
         art_ed = ed_rec['articles']
         rejected_art_ids = set(art_ed['rejected'])
         final_related_articles = []
@@ -725,7 +857,7 @@ class ClusterEngine:
                 final_related_articles.append({
                     'article': {'pk': cand['pk'], 'title': cand['title'], 'slug': cand['slug']},
                     'score': 100,
-                    'reasons': ['נקבע ידנית על ידי העורך'],
+                    'reasons': ['קשר ידני'],
                     'editorial_state': 'manual',
                 })
                 seen_art_ids.add(m_id)
@@ -739,7 +871,7 @@ class ClusterEngine:
                 final_related_articles.append({
                     'article': {'pk': cand['pk'], 'title': cand['title'], 'slug': cand['slug']},
                     'score': sim_score or 50,
-                    'reasons': reasons or ['מאושר על ידי העורך'],
+                    'reasons': reasons or ['מאושר'],
                     'editorial_state': 'approved',
                 })
                 seen_art_ids.add(a_id)
@@ -763,7 +895,7 @@ class ClusterEngine:
 
         ai_scored_articles.sort(key=lambda x: (-x['score'], -x['article']['pk']))
         for item in ai_scored_articles:
-            if len(final_related_articles) >= 4:
+            if len(final_related_articles) >= 5:
                 break
             final_related_articles.append(item)
 
@@ -772,9 +904,6 @@ class ClusterEngine:
             for r_id in art_ed['rejected'] if r_id in articles_by_pk
         ]
 
-        # =====================================================================
-        # 2. Book Chapters & Books: Manual + Approved first, then AI Suggestions
-        # =====================================================================
         book_ed = ed_rec['books']
         rejected_book_keys = set(book_ed['rejected'])
         all_book_units = cls._get_indexed_book_units()
@@ -787,7 +916,7 @@ class ClusterEngine:
             if m_key not in seen_book_keys and m_key in book_units_by_key and m_key not in rejected_book_keys:
                 u_copy = {k: v for k, v in book_units_by_key[m_key].items() if k != 'signature'}
                 u_copy['match_score'] = 100
-                u_copy['reasons'] = ['נקבע ידנית']
+                u_copy['reasons'] = ['קשר ידני']
                 u_copy['editorial_state'] = 'manual'
                 final_book_units.append(u_copy)
                 seen_book_keys.add(m_key)
@@ -823,7 +952,7 @@ class ClusterEngine:
         raw_scored_books.sort(key=lambda x: -x['match_score'])
         book_count_per_id = {}
         for b_cand in raw_scored_books:
-            if len(final_book_units) >= 3:
+            if len(final_book_units) >= 4:
                 break
             b_id = b_cand['book_id']
             if book_count_per_id.get(b_id, 0) >= 2:
@@ -831,9 +960,11 @@ class ClusterEngine:
             book_count_per_id[b_id] = book_count_per_id.get(b_id, 0) + 1
             final_book_units.append(b_cand)
 
-        # =====================================================================
-        # 3. Q&As: Manual + Approved first, then AI Suggestions
-        # =====================================================================
+        rejected_book_objs = [
+            {'unit_key': r_key, 'label': book_units_by_key[r_key]['display_label']}
+            for r_key in book_ed['rejected'] if r_key in book_units_by_key
+        ]
+
         qa_ed = ed_rec['qas']
         rejected_qa_ids = set(qa_ed['rejected'])
         all_qa_units = cls._get_indexed_qa_units()
@@ -846,7 +977,7 @@ class ClusterEngine:
             if m_qid not in seen_qa_ids and m_qid in qas_by_id and m_qid not in rejected_qa_ids:
                 q_copy = {k: v for k, v in qas_by_id[m_qid].items() if k != 'signature'}
                 q_copy['match_score'] = 100
-                q_copy['reasons'] = ['נקבע ידנית']
+                q_copy['reasons'] = ['קשר ידני']
                 q_copy['editorial_state'] = 'manual'
                 final_qas.append(q_copy)
                 seen_qa_ids.add(m_qid)
@@ -877,9 +1008,14 @@ class ClusterEngine:
 
         ai_scored_qas.sort(key=lambda x: -x['match_score'])
         for q_cand in ai_scored_qas:
-            if len(final_qas) >= 3:
+            if len(final_qas) >= 4:
                 break
             final_qas.append(q_cand)
+
+        rejected_qa_objs = [
+            {'qa_id': r_qid, 'question': qas_by_id[r_qid]['question']}
+            for r_qid in qa_ed['rejected'] if r_qid in qas_by_id
+        ]
 
         smart_tools = cls.get_smart_tools_for_article(curr_entry['title'], curr_entry['snippet'], curr_sig)
 
@@ -891,11 +1027,8 @@ class ClusterEngine:
             )
         )
 
-        # Public visibility rule:
-        # Never show if article is explicitly 'rejected'.
-        # Show if article is 'approved', OR if global public_enabled is True and article is not 'rejected'.
         is_visible_to_public = (connections_status != 'rejected') and (
-            connections_status == 'approved' or public_enabled
+            connections_status == 'approved' or curr_entry['is_cluster_overridden'] or public_enabled
         )
 
         payload = {
@@ -906,6 +1039,10 @@ class ClusterEngine:
             'cluster': {
                 'cluster_id': curr_entry['cluster_id'],
                 'cluster_title': curr_entry['cluster_title'],
+                'ai_cluster_id': curr_entry['ai_cluster_id'],
+                'ai_cluster_title': curr_entry['ai_cluster_title'],
+                'is_cluster_overridden': curr_entry['is_cluster_overridden'],
+                'editor_cluster_title': curr_entry['editor_cluster_title'],
                 'icon': curr_entry['icon'],
                 'description': curr_entry['description'],
                 'score': curr_entry['score'],
@@ -921,7 +1058,9 @@ class ClusterEngine:
             'related_articles': final_related_articles,
             'rejected_articles': rejected_article_objs,
             'book_units': final_book_units,
+            'rejected_books': rejected_book_objs,
             'related_qas': final_qas,
+            'rejected_qas': rejected_qa_objs,
             'smart_tools': smart_tools,
             'has_strong_matches': has_any_content,
             'is_orphan_or_weak': is_orphan_or_weak,
@@ -963,17 +1102,30 @@ class ClusterEngine:
             else:
                 pending_count += 1
 
+            has_ai_suggestions = (
+                any(x.get('editorial_state') == 'ai_suggested' for x in ctx['related_articles']) or
+                any(x.get('editorial_state') == 'ai_suggested' for x in ctx['book_units']) or
+                any(x.get('editorial_state') == 'ai_suggested' for x in ctx['related_qas'])
+            )
+
             row = {
                 'article': light_art,
                 'connections_status': st,
+                'has_ai_suggestions': has_ai_suggestions,
                 'cluster_id': ctx['cluster']['cluster_id'],
                 'cluster_title': ctx['cluster']['cluster_title'],
+                'ai_cluster_id': ctx['cluster']['ai_cluster_id'],
+                'ai_cluster_title': ctx['cluster']['ai_cluster_title'],
+                'is_cluster_overridden': ctx['cluster']['is_cluster_overridden'],
+                'editor_cluster_title': ctx['cluster']['editor_cluster_title'],
                 'cluster_score': ctx['cluster']['score'],
                 'breakdown': ctx['cluster']['breakdown'],
                 'related_articles': ctx['related_articles'],
                 'rejected_articles': ctx['rejected_articles'],
                 'book_units': ctx['book_units'],
+                'rejected_books': ctx['rejected_books'],
                 'related_qas': ctx['related_qas'],
+                'rejected_qas': ctx['rejected_qas'],
                 'smart_tools': ctx['smart_tools'],
                 'is_weak': ctx['is_orphan_or_weak'],
             }

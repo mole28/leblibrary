@@ -344,6 +344,10 @@ def connections_audit_view(request):
                     ClusterEngine.approve_all_pending_articles()
                     return JsonResponse({'ok': True})
 
+                if art_pk > 0 and ed_action in ('approve_all_ai_for_article', 'reject_all_ai_for_article'):
+                    ClusterEngine.batch_article_ai_decision(article_pk=art_pk, mode=ed_action)
+                    return JsonResponse({'ok': True})
+
                 if art_pk > 0 and ed_action:
                     ClusterEngine.update_editorial_decision(
                         article_pk=art_pk,
@@ -615,19 +619,35 @@ def acronyms_view(request):
 
 
 def article_index(request):
+    selected_cluster_id = request.GET.get('cluster', '').strip()
+    clusters_data = ClusterEngine.get_public_index_clusters(
+        is_superuser=request.user.is_superuser,
+        selected_cluster_id=selected_cluster_id
+    )
+
     published_articles = Article.objects.filter(is_published=True).only('id', 'title', 'slug', 'created_at').order_by('title')
     articles_count = published_articles.count()
+
+    if clusters_data['selected_cluster']:
+        allowed_pks = {a['pk'] for a in clusters_data['selected_cluster']['articles']}
+        filtered_articles = [a for a in published_articles if a.pk in allowed_pks]
+    else:
+        filtered_articles = list(published_articles)
+
     grouped_articles = {}
-    for article in published_articles:
+    for article in filtered_articles:
         if article.title:
             first_letter = article.title.strip()[0]
             if first_letter not in grouped_articles:
                 grouped_articles[first_letter] = []
             grouped_articles[first_letter].append(article)
     sorted_groups = {k: grouped_articles[k] for k in sorted(grouped_articles.keys())}
+
     return render(request, 'articles/article_index.html', {
         'grouped_articles': sorted_groups,
         'articles_count': articles_count,
+        'topic_clusters': clusters_data['clusters'],
+        'selected_cluster': clusters_data['selected_cluster'],
         'current_page': 'articles'
     })
 
