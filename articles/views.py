@@ -1233,8 +1233,152 @@ def search_acronyms_api(request):
 
 
 def advanced_search_view(request):
-    return render(request, 'articles/advanced_search.html', {'current_page': 'advanced_search'})
+    response = render(request, 'articles/advanced_search.html', {'current_page': 'advanced_search'})
+    if request.GET.get('book') or request.GET.get('type') or request.GET.get('tab'):
+        sync_script = """
+<script>
+(function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlBook = (urlParams.get('book') || '').trim();
+    const urlType = (urlParams.get('type') || '').trim();
+    const urlQ = (urlParams.get('q') || '').trim();
+    let initialOverrideActive = Boolean(urlBook || urlType);
 
+    const origFetch = window.fetch;
+    window.fetch = function(input, init) {
+        if (initialOverrideActive && typeof input === 'string' && input.includes('/api/tanakh-search/')) {
+            try {
+                const u = new URL(input, window.location.origin);
+                if (urlBook && !u.searchParams.get('target_book')) {
+                    u.searchParams.set('book', urlBook);
+                }
+                if (urlType && !['book_chapters', 'commentary', 'chapter_context', 'quick_open'].includes(u.searchParams.get('type'))) {
+                    if (urlType === 'text' || urlType === 'text_broad') {
+                        u.searchParams.set('type', 'text_broad');
+                        u.searchParams.set('exact', 'false');
+                    } else if (urlType === 'text_exact') {
+                        u.searchParams.set('type', 'text_exact');
+                        u.searchParams.set('exact', 'true');
+                    } else {
+                        u.searchParams.set('type', urlType);
+                    }
+                }
+                input = u.pathname + u.search;
+            } catch (e) {}
+        }
+        return origFetch.call(this, input, init);
+    };
+
+    function isBtnSelected(el) {
+        if (!el) return false;
+        if (el.classList.contains('active') || el.classList.contains('selected')) return true;
+        if (el.querySelector('.bi-check-circle-fill, .bi-check-circle, .bi-check2-circle')) return true;
+        const bg = (el.style && el.style.backgroundColor) ? el.style.backgroundColor : '';
+        if (bg && bg !== 'transparent' && bg !== 'rgb(255, 255, 255)' && bg !== '#ffffff') return true;
+        return false;
+    }
+
+    function syncSearchUiFromUrl() {
+        const allClickables = Array.from(document.querySelectorAll('button, [onclick], .card, .btn, [data-book], [data-corpus], [data-type]'));
+
+        const allCorporaBtn = allClickables.find(el => (el.innerText || '').trim() === 'כל המאגרים יחד');
+        const corpusContainer = allCorporaBtn ? (allCorporaBtn.closest('.card, .p-3, .p-4, section') || document) : document;
+        const corpusCandidates = Array.from(corpusContainer.querySelectorAll('button, [onclick], [data-book], [data-corpus], .btn, div[style*="cursor"]'));
+
+        function findCorpusBtn(key) {
+            return corpusCandidates.find(el => {
+                const db = el.getAttribute('data-book') || el.getAttribute('data-corpus') || '';
+                const oc = el.getAttribute('onclick') || '';
+                if (db === key || oc.includes("'" + key + "'") || oc.includes('"' + key + '"')) return true;
+                const t = (el.innerText || '').replace(/\\s+/g, ' ').trim();
+                if (!t || t.length > 35) return false;
+                if (key === 'all') return t.includes('כל המאגרים');
+                if (key === 'torah') return t === 'תורה' || (t.includes('תורה') && !t.includes('משנה תורה') && !t.includes('רמב'));
+                if (key === 'tanakh') return t.includes('תנ"ך') || t.includes('תנ״ך');
+                if (key === 'mishnah') return t === 'משנה' || (t.includes('משנה') && !t.includes('משנה תורה') && !t.includes('רמב'));
+                if (key === 'tosefta') return t.includes('תוספתא');
+                if (key === 'talmud') return t.includes('תלמוד בבלי');
+                if (key === 'yerushalmi') return t.includes('תלמוד ירושלמי');
+                if (key === 'rambam') return t.includes('רמב"ם') || t.includes('רמב״ם');
+                if (key === 'shulchan_aruch') return t.includes('שולחן ערוך');
+                return false;
+            });
+        }
+
+        if (urlBook) {
+            const targetBooks = urlBook.split(',').map(s => s.trim()).filter(Boolean);
+            const allKeys = ['torah', 'tanakh', 'mishnah', 'tosefta', 'talmud', 'yerushalmi', 'rambam', 'shulchan_aruch'];
+
+            if (targetBooks.includes('all')) {
+                const bAll = findCorpusBtn('all');
+                if (bAll && !isBtnSelected(bAll)) bAll.click();
+            } else {
+                targetBooks.forEach(k => {
+                    const b = findCorpusBtn(k);
+                    if (b && !isBtnSelected(b)) b.click();
+                });
+                allKeys.forEach(k => {
+                    if (!targetBooks.includes(k)) {
+                        const b = findCorpusBtn(k);
+                        if (b && isBtnSelected(b)) b.click();
+                    }
+                });
+            }
+        }
+
+        if (urlType) {
+            const typeTextMap = {
+                'text': 'חיפוש חופשי',
+                'text_broad': 'חיפוש חופשי',
+                'text_exact': 'מילה מדויקת',
+                'text_fuzzy': 'כתיב מלא',
+                'gematria': 'גימטריה',
+                'rashei_tevot': 'ראשי תיבות',
+                'acronym': 'ראשי תיבות',
+                'sofei_tevot': 'סופי תיבות',
+                'suffix': 'סופי תיבות',
+                'reverse': 'מילים הפוכות',
+                'els': 'דילוגים במילה',
+                'els_verse': 'דילוגים בפסוק'
+            };
+            const targetLabel = typeTextMap[urlType];
+            if (targetLabel) {
+                const typeBtn = allClickables.find(el => {
+                    const dt = el.getAttribute('data-type') || el.getAttribute('onclick') || '';
+                    if (dt.includes("'" + urlType + "'")) return true;
+                    const t = (el.innerText || '').trim();
+                    return t.length < 60 && t.includes(targetLabel);
+                });
+                if (typeBtn) typeBtn.click();
+            }
+        }
+
+        if (urlQ) {
+            const qInput = document.querySelector('input[type="text"][placeholder*="מילה"], input#searchInput, input[name="q"]');
+            if (qInput) qInput.value = urlQ;
+            const searchBtn = allClickables.find(el => (el.innerText || '').includes('בצע חיפוש מהיר'));
+            if (searchBtn) searchBtn.click();
+        }
+
+        setTimeout(() => { initialOverrideActive = false; }, 1500);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(syncSearchUiFromUrl, 120);
+    });
+})();
+</script>
+"""
+        try:
+            html_str = response.content.decode('utf-8')
+            if '</body>' in html_str:
+                html_str = html_str.replace('</body>', sync_script + '\n</body>', 1)
+            else:
+                html_str += sync_script
+            response.content = html_str.encode('utf-8')
+        except Exception:
+            pass
+    return response
 
 def or_hacarmel_view(request):
     return render(request, 'articles/or_hacarmel.html')
