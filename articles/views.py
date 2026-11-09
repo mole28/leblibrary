@@ -331,9 +331,38 @@ def connections_audit_view(request):
         return redirect('articles:list')
 
     if request.method == 'POST':
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            try:
+                payload = json.loads(request.body.decode('utf-8'))
+                art_pk = int(payload.get('article_pk', 0))
+                ed_action = payload.get('ed_action', '')
+                target_type = payload.get('target_type', '')
+                target_id = payload.get('target_id', '')
+                bidirectional = bool(payload.get('bidirectional', True))
+
+                if ed_action == 'approve_all_pending':
+                    ClusterEngine.approve_all_pending_articles()
+                    return JsonResponse({'ok': True})
+
+                if art_pk > 0 and ed_action:
+                    ClusterEngine.update_editorial_decision(
+                        article_pk=art_pk,
+                        action=ed_action,
+                        target_type=target_type,
+                        target_id=target_id,
+                        bidirectional=bidirectional,
+                    )
+                    return JsonResponse({'ok': True})
+            except Exception as e:
+                return JsonResponse({'ok': False, 'error': str(e)}, status=400)
+
         cfg = ClusterEngine.get_runtime_config()
         new_score = request.POST.get('min_connection_score', cfg['min_connection_score'])
         action = request.POST.get('action', 'save_score')
+
+        if action == 'approve_all_pending':
+            ClusterEngine.approve_all_pending_articles()
+            return redirect('articles:connections_audit')
 
         public_enabled = cfg['public_enabled']
         if action == 'enable_public':

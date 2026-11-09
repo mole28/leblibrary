@@ -8,13 +8,12 @@ DEFAULT_MIN_CONNECTION_SCORE = 26
 TITLE_WEIGHT = 10
 BODY_WEIGHT = 1
 MAX_BODY_HITS = 5
-ENGINE_VERSION = "v10_precision"
+ENGINE_VERSION = "v11_editorial"
 
 RUNTIME_CONFIG_PATH = os.path.join(settings.BASE_DIR, 'clusters_runtime_config.json')
+EDITORIAL_DB_PATH = os.path.join(settings.BASE_DIR, 'editorial_connections.json')
 
 _MEM_CACHE = {}
-
-MANUAL_ARTICLE_OVERRIDES = {}
 
 UNCLASSIFIED_CLUSTER = {
     'id': 'general_iyun',
@@ -56,8 +55,8 @@ GRAVITY_CLUSTERS = [
             'נר חנוכה', 'נרות חנוכה', 'הדלקת נרות', 'פרסומי ניסא', 'כבתה אין זקוק לה',
             'ארבעת המינים', 'נטילת לולב', 'תשבו כעין תדורו', 'שמיני עצרת', 'שמחת תורה',
             'ליל הסדר', 'חמץ ומצה', 'בדיקת חמץ', 'מקרא מגילה', 'משלוח מנות',
-            'ראש השנה', 'תקיעת שופר', 'יום הכיפורים', 'יום טוב', 'עונג שבת',
-            'תחום שבת', 'תשעה באב', 'בין המצרים', 'ראש חודש'
+            'ראש השנה', 'תקיעת שופר', 'יום הכיפורים', 'יום טוב', 'יו"ט שני', 'פסח שני',
+            'עונג שבת', 'תחום שבת', 'תשעה באב', 'בין המצרים', 'ראש חודש'
         ],
         'specific_keywords': [
             'שבת', 'חנוכה', 'חנוכיה', 'סוכה', 'סוכות', 'סכך', 'דפנות', 'לולב',
@@ -139,7 +138,8 @@ GRAVITY_CLUSTERS = [
     },
 ]
 
-# Words that must NEVER trigger similarity links between articles/books on their own
+ALL_CLUSTERS_LIST = GRAVITY_CLUSTERS + [UNCLASSIFIED_CLUSTER]
+
 GENERIC_NOISE_WORDS = {
     'אבל', 'או', 'אולי', 'אותו', 'אותה', 'אותם', 'אחר', 'אחרי', 'אחת', 'איך', 'אין',
     'אלא', 'אלה', 'אלו', 'אם', 'אנחנו', 'אני', 'אף', 'אפשר', 'אשר', 'את', 'אתה',
@@ -156,11 +156,10 @@ GENERIC_NOISE_WORDS = {
     'ביאור', 'עניין', 'דברים', 'הראשונים', 'האחרונים', 'הפוסקים', 'פסק', 'כתב',
     'כתבו', 'אומר', 'אמרו', 'מבואר', 'איתא', 'שנינו', 'נאמר', 'פסוק', 'להלכה',
     'למעשה', 'בזמן', 'הזה', 'חלק', 'ספר', 'מאמר', 'הרב', 'משה', 'לייבוביץ',
-    # Generic liturgical/structural words that caused false links to "Zmanei HaMilah U'Birchoteha":
     'ברכה', 'ברכות', 'ברכת', 'מברך', 'לברך', 'ברכותיה', 'וברכותיה', 'הברכה', 'הברכות',
     'תפילה', 'תפילת', 'התפילה', 'זמן', 'זמני', 'הזמן', 'הקדמה', 'מבוא', 'פתיחה',
     'סימנים', 'הערות', 'נספח', 'תוכן', 'עניינים', 'כלל', 'כללים', 'אופן', 'אמירת',
-    'קריאת', 'מקורה', 'וטעמיה', 'בעולמו', 'החודש', 'נחם'
+    'קריאת', 'מקורה', 'וטעמיה', 'בעולמו', 'החודש', 'נחם', 'האם', 'מתי', 'כיצד'
 }
 
 
@@ -204,6 +203,126 @@ class ClusterEngine:
         _MEM_CACHE.clear()
         return cfg
 
+    # =========================================================================
+    # Editorial Decisions Database (Persistent Human-in-the-Loop Storage)
+    # =========================================================================
+    @classmethod
+    def get_editorial_db(cls) -> dict:
+        if 'editorial_db' in _MEM_CACHE:
+            return _MEM_CACHE['editorial_db']
+
+        data = {}
+        if os.path.exists(EDITORIAL_DB_PATH):
+            try:
+                with open(EDITORIAL_DB_PATH, 'r', encoding='utf-8') as f:
+                    loaded = json.load(f)
+                    if isinstance(loaded, dict):
+                        data = loaded
+            except Exception:
+                data = {}
+        _MEM_CACHE['editorial_db'] = data
+        return data
+
+    @classmethod
+    def save_editorial_db(cls, data: dict):
+        try:
+            with open(EDITORIAL_DB_PATH, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+        _MEM_CACHE.clear()
+
+    @classmethod
+    def get_article_editorial_record(cls, article_pk: int) -> dict:
+        db = cls.get_editorial_db()
+        key = str(article_pk)
+        rec = db.get(key, {})
+        return {
+            'status': rec.get('status', 'pending'),  # 'approved' | 'pending' | 'rejected'
+            'cluster_id': rec.get('cluster_id', ''),
+            'articles': {
+                'approved': [int(x) for x in rec.get('articles', {}).get('approved', []) if str(x).isdigit()],
+                'rejected': [int(x) for x in rec.get('articles', {}).get('rejected', []) if str(x).isdigit()],
+                'manual_added': [int(x) for x in rec.get('articles', {}).get('manual_added', []) if str(x).isdigit()],
+            },
+            'books': {
+                'approved': list(rec.get('books', {}).get('approved', [])),
+                'rejected': list(rec.get('books', {}).get('rejected', [])),
+                'manual_added': list(rec.get('books', {}).get('manual_added', [])),
+            },
+            'qas': {
+                'approved': [int(x) for x in rec.get('qas', {}).get('approved', []) if str(x).isdigit()],
+                'rejected': [int(x) for x in rec.get('qas', {}).get('rejected', []) if str(x).isdigit()],
+                'manual_added': [int(x) for x in rec.get('qas', {}).get('manual_added', []) if str(x).isdigit()],
+            }
+        }
+
+    @classmethod
+    def update_editorial_decision(cls, article_pk: int, action: str, target_type: str = '', target_id='', bidirectional: bool = True):
+        db = cls.get_editorial_db()
+        key = str(article_pk)
+        rec = cls.get_article_editorial_record(article_pk)
+
+        if action in ('set_approved', 'set_pending', 'set_rejected'):
+            rec['status'] = action.replace('set_', '')
+
+        elif action == 'set_cluster' and target_id:
+            rec['cluster_id'] = str(target_id)
+
+        elif target_type in ('articles', 'books', 'qas') and target_id != '':
+            t_val = int(target_id) if target_type in ('articles', 'qas') and str(target_id).isdigit() else str(target_id)
+            bucket = rec[target_type]
+
+            if action == 'item_approve':
+                if t_val in bucket['rejected']:
+                    bucket['rejected'].remove(t_val)
+                if t_val not in bucket['approved'] and t_val not in bucket['manual_added']:
+                    bucket['approved'].append(t_val)
+
+            elif action == 'item_reject':
+                if t_val in bucket['approved']:
+                    bucket['approved'].remove(t_val)
+                if t_val in bucket['manual_added']:
+                    bucket['manual_added'].remove(t_val)
+                if t_val not in bucket['rejected']:
+                    bucket['rejected'].append(t_val)
+
+            elif action == 'item_unreject':
+                if t_val in bucket['rejected']:
+                    bucket['rejected'].remove(t_val)
+
+            elif action == 'item_add_manual':
+                if t_val in bucket['rejected']:
+                    bucket['rejected'].remove(t_val)
+                if t_val not in bucket['manual_added']:
+                    bucket['manual_added'].append(t_val)
+
+                # Automatic bidirectional linking when linking two articles manually
+                if target_type == 'articles' and bidirectional and isinstance(t_val, int) and t_val != int(article_pk):
+                    other_rec = cls.get_article_editorial_record(t_val)
+                    src_pk = int(article_pk)
+                    if src_pk in other_rec['articles']['rejected']:
+                        other_rec['articles']['rejected'].remove(src_pk)
+                    if src_pk not in other_rec['articles']['manual_added']:
+                        other_rec['articles']['manual_added'].append(src_pk)
+                    db[str(t_val)] = other_rec
+
+        db[key] = rec
+        cls.save_editorial_db(db)
+        return rec
+
+    @classmethod
+    def approve_all_pending_articles(cls):
+        db = cls.get_editorial_db()
+        indexed = cls._get_all_indexed_articles()
+        for item in indexed:
+            pk_str = str(item['pk'])
+            rec = cls.get_article_editorial_record(item['pk'])
+            if rec['status'] == 'pending' and item['cluster_id'] != 'general_iyun':
+                rec['status'] = 'approved'
+                db[pk_str] = rec
+        cls.save_editorial_db(db)
+
     @staticmethod
     def clean_text_fast(html_content: str, max_len: int = 1200) -> str:
         if not html_content:
@@ -225,7 +344,6 @@ class ClusterEngine:
         for cluster in GRAVITY_CLUSTERS:
             c_score = 0
 
-            # 1. Exact multi-word phrases (strongest signal for both classification and similarity)
             for phrase in cluster['phrases']:
                 t_hits = 1 if phrase in title_clean else 0
                 b_hits = min(MAX_BODY_HITS, body_clean.count(phrase)) if phrase in body_clean else 0
@@ -235,7 +353,6 @@ class ClusterEngine:
                     matched_phrases.add(phrase)
                     keyword_breakdown[phrase] = keyword_breakdown.get(phrase, 0) + round(pts, 1)
 
-            # 2. Specific subject keywords (used for both classification and similarity)
             for kw in cluster['specific_keywords']:
                 t_hits = 1 if kw in title_clean else 0
                 b_hits = min(MAX_BODY_HITS, body_clean.count(kw)) if kw in body_clean else 0
@@ -245,7 +362,6 @@ class ClusterEngine:
                     matched_specific_keywords.add(kw)
                     keyword_breakdown[kw] = keyword_breakdown.get(kw, 0) + round(pts, 1)
 
-            # 3. Broad classification words (e.g. 'ברכה', 'תפילה') - ONLY for cluster classification, NEVER for similarity!
             for b_kw in cluster.get('broad_classify_only', []):
                 t_hits = 1 if b_kw in title_clean else 0
                 b_hits = min(3, body_clean.count(b_kw)) if b_kw in body_clean else 0
@@ -278,7 +394,6 @@ class ClusterEngine:
 
         best_cluster_id, best_score = max(cluster_scores.items(), key=lambda x: x[1]) if cluster_scores else ('general_iyun', 0)
 
-        # Fix 3: Never default to Choshen Mishpat when score is 0!
         if best_score <= 0:
             best_cluster_obj = UNCLASSIFIED_CLUSTER
         else:
@@ -303,7 +418,6 @@ class ClusterEngine:
         shared_title_stems = sig_a['title_stems'] & sig_b['title_stems']
         title_to_body_stems = (sig_a['title_stems'] & sig_b['body_stems']) | (sig_b['title_stems'] & sig_a['body_stems'])
 
-        # Fix 1: Prevent cross-cluster false book matches (e.g. general Brachot article matching Mila book)
         if is_book_target and sig_a['cluster']['id'] != sig_b['cluster']['id']:
             if not shared_phrases and not shared_keywords:
                 return 0, []
@@ -344,15 +458,19 @@ class ClusterEngine:
         if 'indexed_articles' in _MEM_CACHE:
             return _MEM_CACHE['indexed_articles']
 
+        editorial_db = cls.get_editorial_db()
         articles_index = []
         qs = Article.objects.filter(is_published=True).only('id', 'title', 'slug', 'parasha', 'content')
+
         for art in qs:
             snippet = cls.clean_text_fast(art.content or '', 900)
             sig = cls._extract_distinctive_signature(art.title or '', snippet)
-            override = MANUAL_ARTICLE_OVERRIDES.get(art.slug) or MANUAL_ARTICLE_OVERRIDES.get(art.pk) or {}
+            ed_rec = editorial_db.get(str(art.pk), {})
+
             cluster_obj = sig['cluster']
-            if override.get('cluster_id'):
-                cluster_obj = next((c for c in GRAVITY_CLUSTERS if c['id'] == override['cluster_id']), cluster_obj)
+            manual_cl_id = ed_rec.get('cluster_id')
+            if manual_cl_id:
+                cluster_obj = next((c for c in ALL_CLUSTERS_LIST if c['id'] == manual_cl_id), cluster_obj)
 
             title_str = art.title or ''
             foundational = ('גדר', 'גדרי', 'יסוד', 'יסודות', 'מהות', 'כלל', 'כללי', 'מבוא', 'מקור', 'חיוב', 'מצוות')
@@ -400,28 +518,27 @@ class ClusterEngine:
             clean_b_title = re.sub(r'\s+', ' ', (book.title or '').strip())
             clean_ch_title = re.sub(r'\s+', ' ', (ch.title or '').strip())
 
-            # Fix 2: Strict deduplication of identical chapter titles within the same book
             dedup_title_key = (clean_b_title, clean_ch_title)
             if dedup_title_key in seen_book_chapter_titles:
                 continue
             seen_book_chapter_titles.add(dedup_title_key)
 
-            # Skip generic "הקדמה" / "תוכן עניינים" chapters from being matched as subject chapters
             if clean_ch_title in ('הקדמה', 'מבוא', 'תוכן עניינים', 'הסכמות', 'פתח דבר'):
                 continue
 
-            # Important: Extract signature primarily from the chapter title + book's core subject (excluding generic 'וברכותיה')
             book_subject_title = clean_b_title.replace('וברכותיה', '').replace('וברכותיו', '')
             sig = cls._extract_distinctive_signature(f"{book_subject_title} {clean_ch_title}", "")
             b_summary = cls.clean_text_fast(book.summary or '', 260)
 
             units.append({
+                'unit_key': f"ch_{ch.pk}",
                 'unit_type': 'chapter',
                 'book_id': book.pk,
                 'book_title': clean_b_title,
                 'chapter_id': ch.pk,
                 'chapter_title': clean_ch_title,
                 'title': clean_ch_title,
+                'display_label': f"{clean_b_title} – {clean_ch_title}",
                 'badge': f'מתוך הספר "{clean_b_title}"',
                 'preview': b_summary[:130],
                 'url': f"/book/{book.pk}/?chapter={ch.pk}#chapter-{ch.pk}",
@@ -429,23 +546,24 @@ class ClusterEngine:
             })
 
         for b_id, book in books.items():
-            if b_id in books_with_chapters:
-                continue
             clean_b_title = re.sub(r'\s+', ' ', (book.title or '').strip())
             b_summary = cls.clean_text_fast(book.summary or '', 400)
             book_subject_title = clean_b_title.replace('וברכותיה', '').replace('וברכותיו', '')
             sig = cls._extract_distinctive_signature(book_subject_title, b_summary)
             units.append({
+                'unit_key': f"bk_{book.pk}",
                 'unit_type': 'book',
                 'book_id': book.pk,
                 'book_title': clean_b_title,
                 'chapter_id': None,
                 'chapter_title': '',
                 'title': f'הספר "{clean_b_title}"',
+                'display_label': f'הספר "{clean_b_title}" (ספר שלם)',
                 'badge': 'ספר שלם בספרייה',
                 'preview': b_summary[:140],
                 'url': f"/book/{book.pk}/",
                 'signature': sig,
+                'has_subchapters': b_id in books_with_chapters,
             })
 
         _MEM_CACHE['book_units'] = units
@@ -538,8 +656,12 @@ class ClusterEngine:
         if mem_key in _MEM_CACHE:
             return _MEM_CACHE[mem_key]
 
+        ed_rec = cls.get_article_editorial_record(article.pk)
+        connections_status = ed_rec['status']
+
         indexed_articles = cls._get_all_indexed_articles()
-        curr_entry = next((item for item in indexed_articles if item['pk'] == article.pk), None)
+        articles_by_pk = {a['pk']: a for a in indexed_articles}
+        curr_entry = articles_by_pk.get(article.pk)
 
         if not curr_entry:
             snippet = cls.clean_text_fast(article.content or '', 900)
@@ -562,10 +684,14 @@ class ClusterEngine:
             }
 
         curr_sig = curr_entry['signature']
-        path_articles = [a for a in indexed_articles if a['cluster_id'] == curr_entry['cluster_id']]
+        path_articles = [
+            a for a in indexed_articles
+            if a['cluster_id'] == curr_entry['cluster_id']
+            and cls.get_article_editorial_record(a['pk'])['status'] != 'rejected'
+        ]
         path_articles.sort(key=lambda x: x['sort_key'])
 
-        total_in_path = len(path_articles)
+        total_in_path = max(1, len(path_articles))
         position = 1
         prev_article = None
         next_article = None
@@ -585,9 +711,42 @@ class ClusterEngine:
             3: 'שלב ג׳: הלכה למעשה ופרטי דינים'
         }
 
-        scored_articles = []
+        # =====================================================================
+        # 1. Related Articles: Manual + Approved first, then AI Suggestions (excluding Rejected)
+        # =====================================================================
+        art_ed = ed_rec['articles']
+        rejected_art_ids = set(art_ed['rejected'])
+        final_related_articles = []
+        seen_art_ids = {article.pk}
+
+        for m_id in art_ed['manual_added']:
+            if m_id not in seen_art_ids and m_id in articles_by_pk and m_id not in rejected_art_ids:
+                cand = articles_by_pk[m_id]
+                final_related_articles.append({
+                    'article': {'pk': cand['pk'], 'title': cand['title'], 'slug': cand['slug']},
+                    'score': 100,
+                    'reasons': ['נקבע ידנית על ידי העורך'],
+                    'editorial_state': 'manual',
+                })
+                seen_art_ids.add(m_id)
+
+        for a_id in art_ed['approved']:
+            if a_id not in seen_art_ids and a_id in articles_by_pk and a_id not in rejected_art_ids:
+                cand = articles_by_pk[a_id]
+                sim_score, reasons = cls._calculate_pair_similarity(
+                    curr_sig, cand['signature'], curr_entry['parasha'], cand['parasha']
+                )
+                final_related_articles.append({
+                    'article': {'pk': cand['pk'], 'title': cand['title'], 'slug': cand['slug']},
+                    'score': sim_score or 50,
+                    'reasons': reasons or ['מאושר על ידי העורך'],
+                    'editorial_state': 'approved',
+                })
+                seen_art_ids.add(a_id)
+
+        ai_scored_articles = []
         for cand in indexed_articles:
-            if cand['pk'] == article.pk:
+            if cand['pk'] in seen_art_ids or cand['pk'] in rejected_art_ids:
                 continue
             sim_score, reasons = cls._calculate_pair_similarity(
                 curr_sig, cand['signature'],
@@ -595,30 +754,62 @@ class ClusterEngine:
                 is_book_target=False
             )
             if sim_score >= active_min_score:
-                scored_articles.append({
+                ai_scored_articles.append({
                     'article': {'pk': cand['pk'], 'title': cand['title'], 'slug': cand['slug']},
                     'score': sim_score,
                     'reasons': reasons,
+                    'editorial_state': 'ai_suggested',
                 })
 
-        scored_articles.sort(key=lambda x: (-x['score'], -x['article']['pk']))
-        strong_related_articles = scored_articles[:3]
-        has_strong_article_match = len(strong_related_articles) > 0
+        ai_scored_articles.sort(key=lambda x: (-x['score'], -x['article']['pk']))
+        for item in ai_scored_articles:
+            if len(final_related_articles) >= 4:
+                break
+            final_related_articles.append(item)
 
-        if not strong_related_articles:
-            for p_art in path_articles:
-                if p_art['pk'] != article.pk:
-                    strong_related_articles.append({
-                        'article': {'pk': p_art['pk'], 'title': p_art['title'], 'slug': p_art['slug']},
-                        'score': 10,
-                        'reasons': [curr_entry['cluster_title']],
-                    })
-                if len(strong_related_articles) >= 2:
-                    break
+        rejected_article_objs = [
+            {'pk': r_id, 'title': articles_by_pk[r_id]['title']}
+            for r_id in art_ed['rejected'] if r_id in articles_by_pk
+        ]
 
-        # Book matching with strict deduplication by title and max 2 chapters per book
+        # =====================================================================
+        # 2. Book Chapters & Books: Manual + Approved first, then AI Suggestions
+        # =====================================================================
+        book_ed = ed_rec['books']
+        rejected_book_keys = set(book_ed['rejected'])
+        all_book_units = cls._get_indexed_book_units()
+        book_units_by_key = {u['unit_key']: u for u in all_book_units}
+
+        final_book_units = []
+        seen_book_keys = set()
+
+        for m_key in book_ed['manual_added']:
+            if m_key not in seen_book_keys and m_key in book_units_by_key and m_key not in rejected_book_keys:
+                u_copy = {k: v for k, v in book_units_by_key[m_key].items() if k != 'signature'}
+                u_copy['match_score'] = 100
+                u_copy['reasons'] = ['נקבע ידנית']
+                u_copy['editorial_state'] = 'manual'
+                final_book_units.append(u_copy)
+                seen_book_keys.add(m_key)
+
+        for a_key in book_ed['approved']:
+            if a_key not in seen_book_keys and a_key in book_units_by_key and a_key not in rejected_book_keys:
+                u_orig = book_units_by_key[a_key]
+                sim_score, reasons = cls._calculate_pair_similarity(curr_sig, u_orig['signature'], is_book_target=True)
+                u_copy = {k: v for k, v in u_orig.items() if k != 'signature'}
+                u_copy['match_score'] = sim_score or 50
+                u_copy['reasons'] = reasons or ['מאושר']
+                u_copy['editorial_state'] = 'approved'
+                final_book_units.append(u_copy)
+                seen_book_keys.add(a_key)
+
         raw_scored_books = []
-        for b_unit in cls._get_indexed_book_units():
+        for b_unit in all_book_units:
+            u_key = b_unit['unit_key']
+            if u_key in seen_book_keys or u_key in rejected_book_keys:
+                continue
+            if b_unit.get('has_subchapters'):
+                continue
             sim_score, reasons = cls._calculate_pair_similarity(
                 curr_sig, b_unit['signature'], is_book_target=True
             )
@@ -626,55 +817,91 @@ class ClusterEngine:
                 unit_copy = {k: v for k, v in b_unit.items() if k != 'signature'}
                 unit_copy['match_score'] = sim_score
                 unit_copy['reasons'] = reasons
+                unit_copy['editorial_state'] = 'ai_suggested'
                 raw_scored_books.append(unit_copy)
 
         raw_scored_books.sort(key=lambda x: -x['match_score'])
-        matched_book_units = []
-        seen_display_keys = set()
         book_count_per_id = {}
-
         for b_cand in raw_scored_books:
-            disp_key = (b_cand['book_title'].strip(), b_cand['title'].strip())
-            if disp_key in seen_display_keys:
-                continue
+            if len(final_book_units) >= 3:
+                break
             b_id = b_cand['book_id']
             if book_count_per_id.get(b_id, 0) >= 2:
                 continue
-            seen_display_keys.add(disp_key)
             book_count_per_id[b_id] = book_count_per_id.get(b_id, 0) + 1
-            matched_book_units.append(b_cand)
-            if len(matched_book_units) >= 3:
-                break
+            final_book_units.append(b_cand)
 
-        scored_qas = []
-        seen_qa_questions = set()
-        for q_unit in cls._get_indexed_qa_units():
-            sim_score, reasons = cls._calculate_pair_similarity(
-                curr_sig, q_unit['signature'], is_book_target=False
-            )
+        # =====================================================================
+        # 3. Q&As: Manual + Approved first, then AI Suggestions
+        # =====================================================================
+        qa_ed = ed_rec['qas']
+        rejected_qa_ids = set(qa_ed['rejected'])
+        all_qa_units = cls._get_indexed_qa_units()
+        qas_by_id = {q['qa_id']: q for q in all_qa_units}
+
+        final_qas = []
+        seen_qa_ids = set()
+
+        for m_qid in qa_ed['manual_added']:
+            if m_qid not in seen_qa_ids and m_qid in qas_by_id and m_qid not in rejected_qa_ids:
+                q_copy = {k: v for k, v in qas_by_id[m_qid].items() if k != 'signature'}
+                q_copy['match_score'] = 100
+                q_copy['reasons'] = ['נקבע ידנית']
+                q_copy['editorial_state'] = 'manual'
+                final_qas.append(q_copy)
+                seen_qa_ids.add(m_qid)
+
+        for a_qid in qa_ed['approved']:
+            if a_qid not in seen_qa_ids and a_qid in qas_by_id and a_qid not in rejected_qa_ids:
+                q_orig = qas_by_id[a_qid]
+                sim_score, reasons = cls._calculate_pair_similarity(curr_sig, q_orig['signature'])
+                q_copy = {k: v for k, v in q_orig.items() if k != 'signature'}
+                q_copy['match_score'] = sim_score or 50
+                q_copy['reasons'] = reasons or ['מאושר']
+                q_copy['editorial_state'] = 'approved'
+                final_qas.append(q_copy)
+                seen_qa_ids.add(a_qid)
+
+        ai_scored_qas = []
+        for q_unit in all_qa_units:
+            qid = q_unit['qa_id']
+            if qid in seen_qa_ids or qid in rejected_qa_ids:
+                continue
+            sim_score, reasons = cls._calculate_pair_similarity(curr_sig, q_unit['signature'])
             if sim_score >= active_min_score:
-                q_norm = q_unit['question'].strip()
-                if q_norm in seen_qa_questions:
-                    continue
-                seen_qa_questions.add(q_norm)
                 q_copy = {k: v for k, v in q_unit.items() if k != 'signature'}
                 q_copy['match_score'] = sim_score
                 q_copy['reasons'] = reasons
-                scored_qas.append(q_copy)
+                q_copy['editorial_state'] = 'ai_suggested'
+                ai_scored_qas.append(q_copy)
 
-        scored_qas.sort(key=lambda x: -x['match_score'])
-        matched_qas = scored_qas[:3]
+        ai_scored_qas.sort(key=lambda x: -x['match_score'])
+        for q_cand in ai_scored_qas:
+            if len(final_qas) >= 3:
+                break
+            final_qas.append(q_cand)
 
         smart_tools = cls.get_smart_tools_for_article(curr_entry['title'], curr_entry['snippet'], curr_sig)
 
+        has_any_content = bool(final_related_articles or final_book_units or final_qas)
         is_orphan_or_weak = (
-            curr_entry['cluster_id'] == 'general_iyun' or
-            curr_entry['score'] < 12 or
-            (not has_strong_article_match and not matched_book_units and not matched_qas)
+            connections_status == 'pending' and (
+                curr_entry['cluster_id'] == 'general_iyun' or
+                not has_any_content
+            )
+        )
+
+        # Public visibility rule:
+        # Never show if article is explicitly 'rejected'.
+        # Show if article is 'approved', OR if global public_enabled is True and article is not 'rejected'.
+        is_visible_to_public = (connections_status != 'rejected') and (
+            connections_status == 'approved' or public_enabled
         )
 
         payload = {
             'public_enabled': public_enabled,
+            'is_visible_to_public': is_visible_to_public,
+            'connections_status': connections_status,
             'min_connection_score': active_min_score,
             'cluster': {
                 'cluster_id': curr_entry['cluster_id'],
@@ -691,11 +918,12 @@ class ClusterEngine:
                 'prev_article': prev_article,
                 'next_article': next_article,
             },
-            'related_articles': strong_related_articles,
-            'book_units': matched_book_units,
-            'related_qas': matched_qas,
+            'related_articles': final_related_articles,
+            'rejected_articles': rejected_article_objs,
+            'book_units': final_book_units,
+            'related_qas': final_qas,
             'smart_tools': smart_tools,
-            'has_strong_matches': has_strong_article_match or bool(matched_book_units) or bool(matched_qas),
+            'has_strong_matches': has_any_content,
             'is_orphan_or_weak': is_orphan_or_weak,
         }
         _MEM_CACHE[mem_key] = payload
@@ -707,8 +935,14 @@ class ClusterEngine:
         active_min_score = int(min_score_override) if min_score_override is not None else runtime_cfg['min_connection_score']
 
         indexed_articles = sorted(cls._get_all_indexed_articles(), key=lambda x: x['title'])
+        all_book_units = cls._get_indexed_book_units()
+        all_qa_units = cls._get_indexed_qa_units()
+
         rows = []
         weak_articles = []
+        approved_count = 0
+        rejected_count = 0
+        pending_count = 0
 
         class _LightArticleObj:
             def __init__(self, pk, title, slug, parasha):
@@ -721,12 +955,23 @@ class ClusterEngine:
         for item in indexed_articles:
             light_art = _LightArticleObj(item['pk'], item['title'], item['slug'], item['parasha'])
             ctx = cls.get_learning_context(light_art, min_score_override=active_min_score)
+            st = ctx['connections_status']
+            if st == 'approved':
+                approved_count += 1
+            elif st == 'rejected':
+                rejected_count += 1
+            else:
+                pending_count += 1
+
             row = {
                 'article': light_art,
+                'connections_status': st,
+                'cluster_id': ctx['cluster']['cluster_id'],
                 'cluster_title': ctx['cluster']['cluster_title'],
                 'cluster_score': ctx['cluster']['score'],
                 'breakdown': ctx['cluster']['breakdown'],
                 'related_articles': ctx['related_articles'],
+                'rejected_articles': ctx['rejected_articles'],
                 'book_units': ctx['book_units'],
                 'related_qas': ctx['related_qas'],
                 'smart_tools': ctx['smart_tools'],
@@ -743,11 +988,17 @@ class ClusterEngine:
 
         return {
             'total_articles': len(indexed_articles),
+            'approved_count': approved_count,
+            'rejected_count': rejected_count,
+            'pending_count': pending_count,
             'weak_count': len(weak_articles),
-            'strong_count': len(indexed_articles) - len(weak_articles),
             'weak_articles': weak_articles,
             'rows': rows,
             'cluster_summary': cluster_summary,
+            'all_clusters': ALL_CLUSTERS_LIST,
+            'all_articles_choices': [{'pk': a['pk'], 'title': a['title']} for a in indexed_articles],
+            'all_books_choices': [{'unit_key': b['unit_key'], 'label': b['display_label']} for b in all_book_units],
+            'all_qas_choices': [{'qa_id': q['qa_id'], 'question': q['question']} for q in all_qa_units],
             'active_min_score': active_min_score,
             'saved_min_score': runtime_cfg['min_connection_score'],
             'public_enabled': runtime_cfg['public_enabled'],

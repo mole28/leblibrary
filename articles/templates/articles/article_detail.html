@@ -116,7 +116,7 @@
             <div class="d-flex justify-content-between gap-3 mb-4 hide-in-zen flex-wrap align-items-center">
                 <div>
                     {% if learning %}
-                        {% if learning.public_enabled or user.is_superuser %}
+                        {% if learning.is_visible_to_public or user.is_superuser %}
                         <a href="{% url 'articles:articles_index' %}?cluster={{ learning.cluster.cluster_id }}" class="badge text-decoration-none px-3 py-2 shadow-sm" style="background: #1e293b; color: #f7e199; border: 1px solid #d4af37; font-size: 0.88rem; border-radius: 50px;">
                             <i class="bi {{ learning.cluster.icon }} ms-1" style="color: #d4af37;"></i>
                             מסלול {{ learning.cluster.cluster_title }} • יחידה {{ learning.navigation.position }} מתוך {{ learning.navigation.total_in_path }}
@@ -182,7 +182,7 @@
             </div>
 
             {% if learning %}
-            {% if learning.public_enabled or user.is_superuser %}
+            {% if learning.is_visible_to_public or user.is_superuser %}
             <section class="beit-midrash-continuation mt-5 pt-4 hide-in-zen" dir="rtl">
                 
                 {% if not learning.public_enabled and user.is_superuser %}

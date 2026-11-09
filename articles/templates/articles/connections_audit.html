@@ -1,177 +1,255 @@
 {% extends 'articles/base.html' %}
 
-{% block title %}דו"ח בקרת קשרים ואשכולות | ניהול ספריית לייבוביץ{% endblock %}
+{% block title %}מערכת עריכת קשרים ומסלולים | ניהול ספריית לייבוביץ{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4" style="max-width: 1450px;" dir="rtl">
+<style>
+    .ed-badge-manual { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; font-size: 0.72rem; }
+    .ed-badge-approved { background: #dcfce7; color: #166534; border: 1px solid #86efac; font-size: 0.72rem; }
+    .ed-badge-ai { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-size: 0.72rem; }
+    .ed-item-box { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 10px; margin-bottom: 6px; transition: all 0.2s; }
+    .ed-item-box.state-manual, .ed-item-box.state-approved { border-right: 4px solid #16a34a; background: #f8fafc; }
+    .ed-item-box.state-ai_suggested { border-right: 4px solid #f59e0b; }
+    .status-btn.active-approved { background-color: #16a34a !important; color: #fff !important; border-color: #16a34a !important; }
+    .status-btn.active-pending { background-color: #f59e0b !important; color: #000 !important; border-color: #f59e0b !important; }
+    .status-btn.active-rejected { background-color: #dc2626 !important; color: #fff !important; border-color: #dc2626 !important; }
+    tr.row-status-rejected { opacity: 0.65; background-color: #fef2f2 !important; }
+    tr.row-status-approved { background-color: #f0fdf4 !important; }
+</style>
 
-    <!-- סרגל שליטה למנהל: הפעלה/הסתרה לגולשים וכוונון סף הרגישות (MIN_CONNECTION_SCORE) -->
+<div class="container-fluid py-4" style="max-width: 1500px;" dir="rtl">
+
     <div class="p-4 mb-4 rounded-4 shadow-sm" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 2px solid #d4af37; color: #f8fafc;">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3 pb-3" style="border-bottom: 1px solid rgba(212,175,55,0.3);">
             <div>
                 <h2 class="fw-bold mb-1" style="color: #f7e199; font-family: 'Frank Ruhl Libre', serif;">
-                    <i class="bi bi-diagram-3-fill ms-2" style="color: #d4af37;"></i>תחנת בקרה למנהל: דו"ח קשרים ומסלולי לימוד
+                    <i class="bi bi-sliders ms-2" style="color: #d4af37;"></i>מערכת עריכת קשרים ומסלולים (ה-AI מציע, העורך מחליט)
                 </h2>
                 <p class="mb-0 text-light opacity-75">
-                    בדוק את החיבורים שנוצרו עבור {{ report.total_articles }} המאמרים, כוון את סף הרגישות, והפעל את התצוגה לגולשים כשתהיה מרוצה.
+                    כל אישור (✅), דחייה (❌) או הוספה ידנית (➕) נשמרים לצמיתות וגוברים תמיד על אלגוריתם ה-AI.
                 </p>
             </div>
 
-            <div class="d-flex gap-3">
-                <div class="px-3 py-2 rounded-3 text-center" style="background: rgba(34, 197, 94, 0.18); border: 1px solid #22c55e;">
-                    <div class="fs-4 fw-bold text-white">{{ report.strong_count }}</div>
-                    <div class="small text-light">מאמרים מקושרים היטב</div>
-                </div>
-                <div class="px-3 py-2 rounded-3 text-center" style="background: rgba(245, 158, 11, 0.2); border: 1px solid #f59e0b;">
-                    <div class="fs-4 fw-bold text-warning">{{ report.weak_count }}</div>
-                    <div class="small text-light">מאמרים ייחודיים / לבדיקה</div>
-                </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <button type="button" onclick="filterRows('all')" class="btn btn-outline-light btn-sm px-3 py-2 rounded-3">
+                    הכל: <b>{{ report.total_articles }}</b>
+                </button>
+                <button type="button" onclick="filterRows('approved')" class="btn btn-sm px-3 py-2 rounded-3" style="background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; color: #fff;">
+                    ✅ מאושרים: <b id="cnt-approved">{{ report.approved_count }}</b>
+                </button>
+                <button type="button" onclick="filterRows('pending')" class="btn btn-sm px-3 py-2 rounded-3" style="background: rgba(245, 158, 11, 0.22); border: 1px solid #f59e0b; color: #fde68a;">
+                    🟡 ממתינים לבדיקה: <b id="cnt-pending">{{ report.pending_count }}</b>
+                </button>
+                <button type="button" onclick="filterRows('rejected')" class="btn btn-sm px-3 py-2 rounded-3" style="background: rgba(239, 68, 68, 0.22); border: 1px solid #ef4444; color: #fecaca;">
+                    ❌ נדחו (ללא קשרים): <b id="cnt-rejected">{{ report.rejected_count }}</b>
+                </button>
             </div>
         </div>
 
         <form method="post" class="row g-3 align-items-center bg-dark bg-opacity-50 p-3 rounded-3 border border-secondary">
             {% csrf_token %}
-            <div class="col-md-5">
+            <div class="col-md-4">
                 <label class="form-label fw-bold mb-1" style="color: #f7e199;">
-                    <i class="bi bi-sliders ms-1"></i>סף רגישות לקשרים (`MIN_CONNECTION_SCORE`):
+                    <i class="bi bi-sliders ms-1"></i>סף רגישות להצעות AI (`MIN_CONNECTION_SCORE`):
                 </label>
                 <div class="d-flex align-items-center gap-2">
-                    <input type="number" name="min_connection_score" value="{{ report.active_min_score }}" min="10" max="70" step="2" class="form-control form-control-sm fw-bold text-center" style="max-width: 90px; font-size: 1.05rem;">
-                    <span class="small text-light opacity-75">
-                        (נמוך יותר = יותר קשרים | גבוה יותר = קשרים הדוקים בלבד. מומלץ: 20–28)
-                    </span>
+                    <input type="number" name="min_connection_score" value="{{ report.active_min_score }}" min="10" max="70" step="2" class="form-control form-control-sm fw-bold text-center" style="max-width: 85px;">
+                    <button type="submit" name="action" value="save_score" class="btn btn-outline-warning btn-sm fw-bold">
+                        עדכן סף
+                    </button>
                 </div>
             </div>
 
             <div class="col-md-4">
                 <label class="form-label fw-bold mb-1" style="color: #f7e199;">
-                    <i class="bi bi-eye-fill ms-1"></i>סטטוס חשיפה לגולשים באתר:
+                    <i class="bi bi-lightning-charge-fill ms-1"></i>אישור מהיר של הצעות ה-AI:
                 </label>
                 <div>
-                    {% if report.public_enabled %}
-                        <span class="badge bg-success px-3 py-2 fs-6">פעיל ומוצג לכל הגולשים ✓</span>
-                    {% else %}
-                        <span class="badge bg-warning text-dark px-3 py-2 fs-6">בדיקת מנהל בלבד (מוסתר מגולשים) 🔒</span>
-                    {% endif %}
+                    <button type="submit" name="action" value="approve_all_pending" class="btn btn-warning btn-sm fw-bold px-3" onclick="return confirm('האם לאשר את כל המאמרים הממתינים שכבר יש להם אשכול מובהק?');">
+                        ✅ אשר את כל המאמרים המוצגים
+                    </button>
                 </div>
             </div>
 
-            <div class="col-md-3 d-flex flex-column gap-2">
-                <button type="submit" name="action" value="save_score" class="btn btn-outline-warning btn-sm fw-bold">
-                    <i class="bi bi-arrow-repeat ms-1"></i>עדכן ובדוק סף רגישות
-                </button>
+            <div class="col-md-4 d-flex flex-column gap-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="small fw-bold" style="color: #f7e199;">חשיפה לגולשים באתר:</span>
+                    {% if report.public_enabled %}
+                        <span class="badge bg-success">פתוח לכלל הגולשים ✓</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark">מוצגים רק מאמרים שסימנת כ"מאושר" 🔒</span>
+                    {% endif %}
+                </div>
                 {% if report.public_enabled %}
-                <button type="submit" name="action" value="disable_public" class="btn btn-danger btn-sm fw-bold">
-                    <i class="bi bi-eye-slash ms-1"></i>החזר למצב בדיקת מנהל בלבד
+                <button type="submit" name="action" value="disable_public" class="btn btn-outline-danger btn-sm fw-bold">
+                    הצג לגולשים רק מאמרים שסומנו "מאושר"
                 </button>
                 {% else %}
                 <button type="submit" name="action" value="enable_public" class="btn btn-success btn-sm fw-bold">
-                    <i class="bi bi-check2-circle ms-1"></i>אשר והפעל לכלל הגולשים באתר!
+                    פתח את כל המאמרים (מלבד נדחים) לכלל הגולשים!
                 </button>
                 {% endif %}
             </div>
         </form>
-
-        <div class="d-flex flex-wrap gap-2 mt-3">
-            {% for c_name, count in report.cluster_summary.items %}
-            <span class="badge px-3 py-2" style="background: rgba(255,255,255,0.08); border: 1px solid #d4af37; color: #f7e199; font-size: 0.9rem;">
-                {{ c_name }}: {{ count }} מאמרים
-            </span>
-            {% endfor %}
-        </div>
     </div>
-
-    {% if report.weak_articles %}
-    <div class="alert p-4 mb-4 rounded-4 shadow-sm" style="background: #fffbeb; border: 2px solid #f59e0b; color: #1e293b;">
-        <h5 class="fw-bold mb-2" style="color: #b45309;">
-            <i class="bi bi-exclamation-triangle-fill ms-2"></i>מאמרים ייחודיים שלא נמצא להם קשר ישיר חזק בסף הנוכחי ({{ report.weak_count }}):
-        </h5>
-        <p class="small text-muted mb-3">
-            מאמרים אלו מקושרים כעת למסלול הלימוד הכללי ולחיפוש אוטומטי במאגר התורני. לחיצה על שם המאמר תקפיץ אותך לשורה שלו בטבלה:
-        </p>
-        <div class="d-flex flex-wrap gap-2">
-            {% for w in report.weak_articles %}
-            <a href="#audit-art-{{ w.article.pk }}" class="btn btn-sm fw-bold rounded-pill px-3" style="background: #ffffff; border: 1px solid #d97706; color: #92400e;">
-                {{ w.article.title }}
-            </a>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
 
     <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table align-middle mb-0" id="editorialTable">
                 <thead style="background: #1e293b; color: #f7e199;">
                     <tr>
-                        <th class="py-3 px-3">מאמר</th>
-                        <th class="py-3">אשכול ומונחים שזוהו</th>
-                        <th class="py-3">פרקים בספרים שחוברו</th>
-                        <th class="py-3">שו"ת שחובר</th>
-                        <th class="py-3">מאמרים קשורים שחוברו</th>
-                        <th class="py-3 text-center">סטטוס</th>
+                        <th class="py-3 px-3" style="width: 20%;">מאמר וסטטוס אישור</th>
+                        <th class="py-3" style="width: 15%;">אשכול לימוד</th>
+                        <th class="py-3" style="width: 25%;">מאמרים קשורים (AI + ידני)</th>
+                        <th class="py-3" style="width: 22%;">פרקים בספרים (AI + ידני)</th>
+                        <th class="py-3" style="width: 18%;">שו"ת קשור (AI + ידני)</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for row in report.rows %}
-                    <tr id="audit-art-{{ row.article.pk }}" {% if row.is_weak %}style="background-color: #fffbeb;"{% endif %}>
-                        <td class="px-3 py-3" style="min-width: 220px;">
-                            <a href="{% url 'articles:detail' slug=row.article.slug %}" target="_blank" class="fw-bold text-decoration-none text-dark d-block">
+                    <tr id="audit-art-{{ row.article.pk }}" data-status="{{ row.connections_status }}" class="row-status-{{ row.connections_status }}">
+                        
+                        <td class="px-3 py-3">
+                            <a href="{% url 'articles:detail' slug=row.article.slug %}" target="_blank" class="fw-bold text-decoration-none text-dark d-block mb-2" style="font-size: 1.05rem;">
                                 {{ row.article.title }} <i class="bi bi-box-arrow-up-left small text-muted"></i>
                             </a>
-                            <span class="small text-muted">ID: {{ row.article.pk }}</span>
+                            <div class="btn-group btn-group-sm w-100" role="group">
+                                <button type="button" onclick="setArticleStatus('{{ row.article.pk }}', 'set_approved', this)" class="btn btn-outline-success status-btn {% if row.connections_status == 'approved' %}active-approved{% endif %}">
+                                    ✅ מאושר
+                                </button>
+                                <button type="button" onclick="setArticleStatus('{{ row.article.pk }}', 'set_pending', this)" class="btn btn-outline-warning status-btn {% if row.connections_status == 'pending' %}active-pending{% endif %}">
+                                    🟡 לבדיקה
+                                </button>
+                                <button type="button" onclick="setArticleStatus('{{ row.article.pk }}', 'set_rejected', this)" class="btn btn-outline-danger status-btn {% if row.connections_status == 'rejected' %}active-rejected{% endif %}" title="אל תציג קשרים למאמר זה">
+                                    ❌ אל תציג
+                                </button>
+                            </div>
                         </td>
-                        <td style="min-width: 200px;">
-                            <span class="badge bg-dark text-warning mb-1">{{ row.cluster_title }} (ציון: {{ row.cluster_score }})</span>
-                            <div class="small text-muted">
+
+                        <td>
+                            <select class="form-select form-select-sm fw-bold mb-1" onchange="changeArticleCluster('{{ row.article.pk }}', this.value)" style="border-color: #d4af37;">
+                                {% for cl in report.all_clusters %}
+                                <option value="{{ cl.id }}" {% if cl.id == row.cluster_id %}selected{% endif %}>
+                                    {{ cl.title }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="small text-muted" style="font-size: 0.78rem;">
                                 {% for kw, pts in row.breakdown %}
-                                    <span class="d-inline-block me-1">{{ kw }} ({{ pts }}),</span>
+                                    <span>{{ kw }} ({{ pts }}),</span>
                                 {% empty %}
-                                    <span class="text-danger">ללא מילות מפתח מובהקות</span>
+                                    <span class="text-danger">ללא מילות מפתח</span>
                                 {% endfor %}
                             </div>
                         </td>
-                        <td style="min-width: 220px;">
-                            {% for b in row.book_units %}
-                                <div class="small mb-1">
-                                    <a href="{{ b.url }}" target="_blank" class="text-decoration-none fw-semibold" style="color: #8c6239;">
-                                        📖 {{ b.book_title }} – {{ b.title }}
-                                    </a>
-                                    <span class="text-muted">({{ b.match_score }})</span>
-                                </div>
-                            {% empty %}
-                                <span class="small text-muted">—</span>
-                            {% endfor %}
-                        </td>
-                        <td style="min-width: 200px;">
-                            {% for q in row.related_qas %}
-                                <div class="small mb-1">
-                                    <a href="{{ q.url }}" target="_blank" class="text-decoration-none fw-semibold text-primary">
-                                        ⚖️ {{ q.question|truncatechars:42 }}
-                                    </a>
-                                    <span class="text-muted">({{ q.match_score }})</span>
-                                </div>
-                            {% empty %}
-                                <span class="small text-muted">—</span>
-                            {% endfor %}
-                        </td>
-                        <td style="min-width: 230px;">
+
+                        <td>
                             {% for rel in row.related_articles %}
-                                <div class="small mb-1">
-                                    <a href="{% url 'articles:detail' slug=rel.article.slug %}" target="_blank" class="text-decoration-none text-dark fw-semibold">
-                                        • {{ rel.article.title|truncatechars:42 }}
+                            <div class="ed-item-box state-{{ rel.editorial_state }} d-flex justify-content-between align-items-center">
+                                <div class="pe-1">
+                                    {% if rel.editorial_state == 'manual' %}
+                                        <span class="badge ed-badge-manual ms-1">📌 ידני</span>
+                                    {% elif rel.editorial_state == 'approved' %}
+                                        <span class="badge ed-badge-approved ms-1">✓ מאושר</span>
+                                    {% else %}
+                                        <span class="badge ed-badge-ai ms-1">הצעת AI ({{ rel.score }})</span>
+                                    {% endif %}
+                                    <a href="{% url 'articles:detail' slug=rel.article.slug %}" target="_blank" class="text-decoration-none text-dark fw-semibold small">
+                                        {{ rel.article.title }}
                                     </a>
-                                    <span class="text-muted">({{ rel.score }})</span>
                                 </div>
+                                <div class="d-flex gap-1 ms-1 flex-shrink-0">
+                                    {% if rel.editorial_state == 'ai_suggested' %}
+                                    <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_approve', 'articles', '{{ rel.article.pk }}')" class="btn btn-sm btn-success py-0 px-2" title="אשר קשר זה">✓</button>
+                                    {% endif %}
+                                    <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_reject', 'articles', '{{ rel.article.pk }}')" class="btn btn-sm btn-outline-danger py-0 px-2" title="דחה והסר קשר זה">✕</button>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="small text-muted mb-2">אין מאמרים קשורים כרגע</div>
                             {% endfor %}
-                        </td>
-                        <td class="text-center">
-                            {% if row.is_weak %}
-                                <span class="badge bg-warning text-dark px-2 py-1">ייחודי / לבדיקה</span>
-                            {% else %}
-                                <span class="badge bg-success px-2 py-1">קשר חזק ✓</span>
+
+                            <button type="button" class="btn btn-sm btn-outline-primary w-100 mt-1 fw-bold" data-pk="{{ row.article.pk }}" data-title="{{ row.article.title }}" onclick="openAddModalFromBtn(this, 'articles')">
+                                ➕ הוסף מאמר קשור ידנית
+                            </button>
+
+                            {% if row.rejected_articles %}
+                            <details class="mt-1 small text-muted">
+                                <summary style="cursor: pointer; font-size: 0.78rem;">נדחו על ידך ({{ row.rejected_articles|length }})</summary>
+                                <div class="pt-1">
+                                    {% for rj in row.rejected_articles %}
+                                    <div class="d-flex justify-content-between align-items-center border-bottom py-1">
+                                        <span class="text-decoration-line-through" style="font-size: 0.78rem;">{{ rj.title }}</span>
+                                        <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_unreject', 'articles', '{{ rj.pk }}')" class="btn btn-link btn-sm p-0 text-secondary" style="font-size: 0.75rem;">שחזר</button>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </details>
                             {% endif %}
                         </td>
+
+                        <td>
+                            {% for b in row.book_units %}
+                            <div class="ed-item-box state-{{ b.editorial_state }} d-flex justify-content-between align-items-center">
+                                <div class="pe-1">
+                                    {% if b.editorial_state == 'manual' %}
+                                        <span class="badge ed-badge-manual ms-1">📌 ידני</span>
+                                    {% elif b.editorial_state == 'approved' %}
+                                        <span class="badge ed-badge-approved ms-1">✓ מאושר</span>
+                                    {% else %}
+                                        <span class="badge ed-badge-ai ms-1">AI ({{ b.match_score }})</span>
+                                    {% endif %}
+                                    <a href="{{ b.url }}" target="_blank" class="text-decoration-none fw-semibold small" style="color: #8c6239;">
+                                        📖 {{ b.book_title }} – {{ b.title }}
+                                    </a>
+                                </div>
+                                <div class="d-flex gap-1 ms-1 flex-shrink-0">
+                                    {% if b.editorial_state == 'ai_suggested' %}
+                                    <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_approve', 'books', '{{ b.unit_key }}')" class="btn btn-sm btn-success py-0 px-2" title="אשר פרק זה">✓</button>
+                                    {% endif %}
+                                    <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_reject', 'books', '{{ b.unit_key }}')" class="btn btn-sm btn-outline-danger py-0 px-2" title="דחה והסר פרק זה">✕</button>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="small text-muted mb-2">—</div>
+                            {% endfor %}
+
+                            <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-1 fw-bold" data-pk="{{ row.article.pk }}" data-title="{{ row.article.title }}" onclick="openAddModalFromBtn(this, 'books')">
+                                ➕ הוסף פרק/ספר ידנית
+                            </button>
+                        </td>
+
+                        <td>
+                            {% for q in row.related_qas %}
+                            <div class="ed-item-box state-{{ q.editorial_state }} d-flex justify-content-between align-items-center">
+                                <div class="pe-1">
+                                    {% if q.editorial_state == 'manual' %}
+                                        <span class="badge ed-badge-manual ms-1">📌 ידני</span>
+                                    {% elif q.editorial_state == 'approved' %}
+                                        <span class="badge ed-badge-approved ms-1">✓ מאושר</span>
+                                    {% else %}
+                                        <span class="badge ed-badge-ai ms-1">AI ({{ q.match_score }})</span>
+                                    {% endif %}
+                                    <a href="{{ q.url }}" target="_blank" class="text-decoration-none fw-semibold small text-primary">
+                                        ⚖️ {{ q.question|truncatechars:45 }}
+                                    </a>
+                                </div>
+                                <div class="d-flex gap-1 ms-1 flex-shrink-0">
+                                    {% if q.editorial_state == 'ai_suggested' %}
+                                    <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_approve', 'qas', '{{ q.qa_id }}')" class="btn btn-sm btn-success py-0 px-2" title="אשר שו&quot;ת זה">✓</button>
+                                    {% endif %}
+                                    <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_reject', 'qas', '{{ q.qa_id }}')" class="btn btn-sm btn-outline-danger py-0 px-2" title="דחה והסר שו&quot;ת זה">✕</button>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="small text-muted mb-2">—</div>
+                            {% endfor %}
+
+                            <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-1 fw-bold" data-pk="{{ row.article.pk }}" data-title="{{ row.article.title }}" onclick="openAddModalFromBtn(this, 'qas')">
+                                ➕ הוסף שו"ת ידנית
+                            </button>
+                        </td>
+
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -180,4 +258,187 @@
     </div>
 
 </div>
+
+<div class="modal fade" id="manualAddModal" tabindex="-1" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-2" style="border-color: #d4af37;">
+            <div class="modal-header text-white" style="background: #1e293b;">
+                <h5 class="modal-title fw-bold" id="manualModalTitle">➕ הוספת קשר ידני</h5>
+                <button type="button" class="btn-close btn-close-white ms-0 me-auto" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="small text-muted mb-2">מוסיף קשר קבוע עבור המאמר: <strong id="manualModalArticleName" class="text-dark"></strong></p>
+
+                <input type="text" id="manualFilterInput" class="form-control mb-2" placeholder="הקלד לחיפוש מהיר ברשימה..." oninput="filterManualSelect()">
+
+                <div id="selectWrapArticles" style="display:none;">
+                    <select id="manualSelectArticles" class="form-select" size="8">
+                        {% for a in report.all_articles_choices %}
+                        <option value="{{ a.pk }}">{{ a.title }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" id="bidirectionalCheck" checked>
+                        <label class="form-check-label fw-bold small" for="bidirectionalCheck">
+                            ↔ קשר דו-כיווני אוטומטי (הוסף גם את המאמר הנוכחי לתוך המאמר השני)
+                        </label>
+                    </div>
+                </div>
+
+                <div id="selectWrapBooks" style="display:none;">
+                    <select id="manualSelectBooks" class="form-select" size="8">
+                        {% for b in report.all_books_choices %}
+                        <option value="{{ b.unit_key }}">{{ b.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div id="selectWrapQas" style="display:none;">
+                    <select id="manualSelectQas" class="form-select" size="8">
+                        {% for q in report.all_qas_choices %}
+                        <option value="{{ q.qa_id }}">{{ q.question }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                <button type="button" class="btn btn-success fw-bold px-4" onclick="submitManualAdd()">➕ שמור קשר ידני</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const CSRF_TOKEN = "{{ csrf_token }}";
+    let currentModalArticlePk = 0;
+    let currentModalType = 'articles';
+    let manualModalInstance = null;
+
+    async function postEditorialUpdate(payload) {
+        const resp = await fetch(window.location.pathname, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRF_TOKEN,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(payload)
+        });
+        return await resp.json();
+    }
+
+    async function setArticleStatus(articlePkStr, actionStr, btnEl) {
+        const articlePk = parseInt(articlePkStr, 10);
+        const res = await postEditorialUpdate({ article_pk: articlePk, ed_action: actionStr });
+        if (res && res.ok) {
+            const tr = document.getElementById('audit-art-' + articlePk);
+            const newStatus = actionStr.replace('set_', '');
+            tr.dataset.status = newStatus;
+            tr.className = 'row-status-' + newStatus;
+            const group = btnEl.parentElement.querySelectorAll('.status-btn');
+            group.forEach(b => b.classList.remove('active-approved', 'active-pending', 'active-rejected'));
+            btnEl.classList.add('active-' + newStatus);
+        }
+    }
+
+    async function changeArticleCluster(articlePkStr, newClusterId) {
+        const articlePk = parseInt(articlePkStr, 10);
+        await postEditorialUpdate({
+            article_pk: articlePk,
+            ed_action: 'set_cluster',
+            target_id: newClusterId
+        });
+    }
+
+    async function editorialItemAction(articlePkStr, actionStr, targetType, targetId) {
+        const articlePk = parseInt(articlePkStr, 10);
+        const scrollY = window.scrollY;
+        const res = await postEditorialUpdate({
+            article_pk: articlePk,
+            ed_action: actionStr,
+            target_type: targetType,
+            target_id: targetId
+        });
+        if (res && res.ok) {
+            sessionStorage.setItem('audit_scroll_y', scrollY);
+            window.location.reload();
+        }
+    }
+
+    function openAddModalFromBtn(btnEl, targetType) {
+        currentModalArticlePk = parseInt(btnEl.getAttribute('data-pk'), 10);
+        currentModalType = targetType;
+        document.getElementById('manualModalArticleName').innerText = btnEl.getAttribute('data-title') || '';
+        document.getElementById('manualFilterInput').value = '';
+        filterManualSelect();
+
+        document.getElementById('selectWrapArticles').style.display = (targetType === 'articles') ? 'block' : 'none';
+        document.getElementById('selectWrapBooks').style.display = (targetType === 'books') ? 'block' : 'none';
+        document.getElementById('selectWrapQas').style.display = (targetType === 'qas') ? 'block' : 'none';
+
+        if (!manualModalInstance) {
+            manualModalInstance = new bootstrap.Modal(document.getElementById('manualAddModal'));
+        }
+        manualModalInstance.show();
+    }
+
+    function filterManualSelect() {
+        const q = document.getElementById('manualFilterInput').value.trim().toLowerCase();
+        const mapId = {
+            'articles': 'manualSelectArticles',
+            'books': 'manualSelectBooks',
+            'qas': 'manualSelectQas'
+        }[currentModalType];
+        const sel = document.getElementById(mapId);
+        if (!sel) return;
+        Array.from(sel.options).forEach(opt => {
+            opt.style.display = (!q || opt.text.toLowerCase().includes(q)) ? '' : 'none';
+        });
+    }
+
+    async function submitManualAdd() {
+        const mapId = {
+            'articles': 'manualSelectArticles',
+            'books': 'manualSelectBooks',
+            'qas': 'manualSelectQas'
+        }[currentModalType];
+        const sel = document.getElementById(mapId);
+        if (!sel || !sel.value) {
+            alert('נא לבחור פריט מהרשימה.');
+            return;
+        }
+        const bidir = document.getElementById('bidirectionalCheck').checked;
+        const scrollY = window.scrollY;
+        const res = await postEditorialUpdate({
+            article_pk: currentModalArticlePk,
+            ed_action: 'item_add_manual',
+            target_type: currentModalType,
+            target_id: sel.value,
+            bidirectional: bidir
+        });
+        if (res && res.ok) {
+            sessionStorage.setItem('audit_scroll_y', scrollY);
+            window.location.reload();
+        }
+    }
+
+    function filterRows(statusFilter) {
+        document.querySelectorAll('#editorialTable tbody tr').forEach(tr => {
+            if (statusFilter === 'all' || tr.dataset.status === statusFilter) {
+                tr.style.display = '';
+            } else {
+                tr.style.display = 'none';
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const savedScroll = sessionStorage.getItem('audit_scroll_y');
+        if (savedScroll) {
+            window.scrollTo({ top: parseInt(savedScroll, 10), behavior: 'instant' });
+            sessionStorage.removeItem('audit_scroll_y');
+        }
+    });
+</script>
 {% endblock %}
