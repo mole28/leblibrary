@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import urllib.parse
 from django.conf import settings
 from .models import Article, Book, Chapter, QA
 
@@ -8,7 +9,7 @@ DEFAULT_MIN_CONNECTION_SCORE = 26
 TITLE_WEIGHT = 10
 BODY_WEIGHT = 1
 MAX_BODY_HITS = 5
-ENGINE_VERSION = "v14_full_control"
+ENGINE_VERSION = "v15_master_control"
 
 RUNTIME_CONFIG_PATH = os.path.join(settings.BASE_DIR, 'clusters_runtime_config.json')
 EDITORIAL_DB_PATH = os.path.join(settings.BASE_DIR, 'editorial_connections.json')
@@ -31,6 +32,13 @@ TOOLS_CATALOG = [
         'subtitle': 'פענוח ותרגום מונחי התלמוד הבבלי, הירושלמי והזוהר',
         'url': '/aramaic-translator/',
         'icon': 'bi-translate',
+    },
+    {
+        'tool_key': 'acronyms_dict',
+        'title': 'מילון ראשי תיבות תורני',
+        'subtitle': 'חיפוש ופענוח ראשי תיבות וקיצורים בספרות התורנית',
+        'url': '/advanced-search/?tab=acronyms',
+        'icon': 'bi-alphabet-uppercase',
     },
     {
         'tool_key': 'calc_length',
@@ -208,7 +216,7 @@ GENERIC_NOISE_WORDS = {
     'תפילה', 'תפילת', 'התפילה', 'זמן', 'זמני', 'הזמן', 'הקדמה', 'מבוא', 'פתיחה',
     'סימנים', 'הערות', 'נספח', 'תוכן', 'עניינים', 'כלל', 'כללים', 'אופן', 'אמירת',
     'קריאת', 'מקורה', 'וטעמיה', 'בעולמו', 'החודש', 'נחם', 'האם', 'מתי', 'כיצד',
-    'מיל', 'כלי', 'חג', 'שני', 'אחד', 'ביאור'
+    'מיל', 'כלי', 'חג', 'שני', 'אחד'
 }
 
 
@@ -782,25 +790,42 @@ class ClusterEngine:
 
     @classmethod
     def _build_tool_object(cls, tool_key: str, default_search_term: str, editorial_state: str):
+        if tool_key.startswith('custom_json:'):
+            try:
+                raw_json = tool_key.split('custom_json:', 1)[1]
+                parsed = json.loads(raw_json)
+                return {
+                    'tool_key': tool_key,
+                    'title': parsed.get('title', 'כלי מחקר תורני'),
+                    'subtitle': parsed.get('subtitle', 'לחץ לפתיחת הכלי והמקורות'),
+                    'url': parsed.get('url', '/advanced-search/'),
+                    'icon': parsed.get('icon', 'bi-search'),
+                    'editorial_state': editorial_state,
+                }
+            except Exception:
+                return None
+
         if tool_key.startswith('search:'):
             custom_q = tool_key.split(':', 1)[1].strip() or default_search_term
             return {
                 'tool_key': tool_key,
                 'title': f'חיפוש "{custom_q}" במאגר התורני',
                 'subtitle': 'סריקה בתנ"ך, משנה, תוספתא, בבלי, ירושלמי, רמב"ם ושולחן ערוך',
-                'url': f'/advanced-search/?q={custom_q}',
+                'url': f'/advanced-search/?q={urllib.parse.quote(custom_q)}',
                 'icon': 'bi-search',
                 'editorial_state': editorial_state,
             }
+
         if tool_key == 'torah_search_auto':
             return {
                 'tool_key': 'torah_search_auto',
                 'title': f'חיפוש "{default_search_term}" במאגר התורני',
                 'subtitle': 'סריקה בתנ"ך, משנה, תוספתא, בבלי, ירושלמי, רמב"ם ושולחן ערוך',
-                'url': f'/advanced-search/?q={default_search_term}',
+                'url': f'/advanced-search/?q={urllib.parse.quote(default_search_term)}',
                 'icon': 'bi-search',
                 'editorial_state': editorial_state,
             }
+
         base_tool = TOOLS_BY_KEY.get(tool_key)
         if not base_tool:
             return None
@@ -812,13 +837,12 @@ class ClusterEngine:
     def get_smart_tools_for_article(cls, title: str, snippet: str, sig, ed_tools_rec: dict):
         text_combined = f"{title} {snippet}".lower()
 
+        # Always select the #1 highest-scoring term from breakdown!
         search_term = ""
-        if sig['phrases']:
-            search_term = list(sig['phrases'])[0]
-        elif sig['keywords']:
-            search_term = list(sig['keywords'])[0]
-        elif sig['title_stems']:
-            search_term = list(sig['title_stems'])[0]
+        if sig.get('breakdown'):
+            search_term = sig['breakdown'][0][0]
+        elif sig.get('title_stems'):
+            search_term = sorted(list(sig['title_stems']), key=len, reverse=True)[0]
         else:
             clean_t = re.sub(r'[^א-ת\s]', '', title).strip()
             search_term = " ".join(clean_t.split()[:2])
@@ -937,7 +961,6 @@ class ClusterEngine:
             3: 'שלב ג׳: הלכה למעשה ופרטי דינים'
         }
 
-        # 1. Related Articles (No hard limit of 4 - keeps all suggestions!)
         art_ed = ed_rec['articles']
         rejected_art_ids = set(art_ed['rejected'])
         final_related_articles = []
@@ -991,7 +1014,6 @@ class ClusterEngine:
 
         ai_scored_articles.sort(key=lambda x: (-x['score'], -x['article']['pk']))
         extra_candidate_articles.sort(key=lambda x: (-x['score'], -x['article']['pk']))
-
         final_related_articles.extend(ai_scored_articles)
 
         rejected_article_objs = [
@@ -999,7 +1021,6 @@ class ClusterEngine:
             for r_id in art_ed['rejected'] if r_id in articles_by_pk
         ]
 
-        # 2. Book Chapters & Books (All matching chapters preserved)
         book_ed = ed_rec['books']
         rejected_book_keys = set(book_ed['rejected'])
         all_book_units = cls._get_indexed_book_units()
@@ -1057,7 +1078,6 @@ class ClusterEngine:
             for r_key in book_ed['rejected'] if r_key in book_units_by_key
         ]
 
-        # 3. Q&As
         qa_ed = ed_rec['qas']
         rejected_qa_ids = set(qa_ed['rejected'])
         all_qa_units = cls._get_indexed_qa_units()
@@ -1107,7 +1127,6 @@ class ClusterEngine:
             for r_qid in qa_ed['rejected'] if r_qid in qas_by_id
         ]
 
-        # 4. Smart Tools (with full editorial control)
         smart_tools, rejected_tools_objs = cls.get_smart_tools_for_article(
             curr_entry['title'], curr_entry['snippet'], curr_sig, ed_rec['tools']
         )
@@ -1165,13 +1184,25 @@ class ClusterEngine:
         return payload
 
     @classmethod
+    def get_editorial_choices_for_admin(cls):
+        indexed_articles = sorted(cls._get_all_indexed_articles(), key=lambda x: x['title'])
+        all_book_units = cls._get_indexed_book_units()
+        all_qa_units = cls._get_indexed_qa_units()
+        return {
+            'all_clusters': ALL_CLUSTERS_LIST,
+            'all_articles_choices': [{'pk': a['pk'], 'title': a['title']} for a in indexed_articles],
+            'all_books_choices': [{'unit_key': b['unit_key'], 'label': b['display_label']} for b in all_book_units],
+            'all_qas_choices': [{'qa_id': q['qa_id'], 'question': q['question']} for q in all_qa_units],
+            'all_tools_choices': TOOLS_CATALOG,
+        }
+
+    @classmethod
     def generate_admin_audit_report(cls, min_score_override=None):
         runtime_cfg = cls.get_runtime_config()
         active_min_score = int(min_score_override) if min_score_override is not None else runtime_cfg['min_connection_score']
 
         indexed_articles = sorted(cls._get_all_indexed_articles(), key=lambda x: x['title'])
-        all_book_units = cls._get_indexed_book_units()
-        all_qa_units = cls._get_indexed_qa_units()
+        choices = cls.get_editorial_choices_for_admin()
 
         rows = []
         weak_articles = []
@@ -1246,11 +1277,11 @@ class ClusterEngine:
             'weak_articles': weak_articles,
             'rows': rows,
             'cluster_summary': cluster_summary,
-            'all_clusters': ALL_CLUSTERS_LIST,
-            'all_articles_choices': [{'pk': a['pk'], 'title': a['title']} for a in indexed_articles],
-            'all_books_choices': [{'unit_key': b['unit_key'], 'label': b['display_label']} for b in all_book_units],
-            'all_qas_choices': [{'qa_id': q['qa_id'], 'question': q['question']} for q in all_qa_units],
-            'all_tools_choices': TOOLS_CATALOG,
+            'all_clusters': choices['all_clusters'],
+            'all_articles_choices': choices['all_articles_choices'],
+            'all_books_choices': choices['all_books_choices'],
+            'all_qas_choices': choices['all_qas_choices'],
+            'all_tools_choices': choices['all_tools_choices'],
             'active_min_score': active_min_score,
             'saved_min_score': runtime_cfg['min_connection_score'],
             'public_enabled': runtime_cfg['public_enabled'],

@@ -312,18 +312,24 @@ def article_detail(request, slug):
             return redirect('articles:detail', slug=article.slug, permanent=True)
 
     if article:
+        if not article.is_published and not request.user.is_superuser:
+            raise Http404("המאמר מוקפא כעת ואינו מפורסם לציבור.")
+
         if article.slug and article.slug != slug_str:
             return redirect('articles:detail', slug=article.slug, permanent=True)
 
         learning_ctx = ClusterEngine.get_learning_context(article)
+        admin_choices = ClusterEngine.get_editorial_choices_for_admin() if request.user.is_superuser else None
 
         return render(request, 'articles/article_detail.html', {
             'article': article,
             'learning': learning_ctx,
+            'admin_choices': admin_choices,
             'current_page': 'articles',
         })
 
     raise Http404(f"העמוד '{slug_str}' לא נמצא.")
+
 
 @login_required
 def connections_audit_view(request):
@@ -343,6 +349,13 @@ def connections_audit_view(request):
                 if ed_action == 'approve_all_pending':
                     ClusterEngine.approve_all_pending_articles()
                     return JsonResponse({'ok': True})
+
+                if art_pk > 0 and ed_action == 'toggle_article_publish':
+                    art_obj = get_object_or_404(Article, pk=art_pk)
+                    art_obj.is_published = not art_obj.is_published
+                    art_obj.save(update_fields=['is_published'])
+                    ClusterEngine.clear_memory_cache()
+                    return JsonResponse({'ok': True, 'is_published': art_obj.is_published})
 
                 if art_pk > 0 and ed_action in ('approve_all_ai_for_article', 'reject_all_ai_for_article'):
                     ClusterEngine.batch_article_ai_decision(article_pk=art_pk, mode=ed_action)

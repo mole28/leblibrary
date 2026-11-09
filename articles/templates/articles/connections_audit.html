@@ -27,7 +27,7 @@
                     <i class="bi bi-sliders ms-2" style="color: #d4af37;"></i>מערכת עריכת קשרים, מסלולים וכלי מחקר
                 </h2>
                 <p class="mb-0 text-light opacity-75">
-                    שליטה מלאה על מאמרים קשורים, פרקים בספרים, שו"ת וכלי מחקר (מחשבונים / מתרגם ארמי / חיפוש תורני).
+                    שליטה מלאה על מאמרים קשורים, פרקים בספרים, שו"ת וכלי מחקר (חיפוש גימטריא/בבלי/תנ"ך, ראשי תיבות, מתרגם ארמי ומחשבונים).
                 </p>
             </div>
 
@@ -111,7 +111,6 @@
                     {% for row in report.rows %}
                     <tr id="audit-art-{{ row.article.pk }}" data-status="{{ row.connections_status }}" class="row-status-{{ row.connections_status }}">
                         
-                        <!-- 1. מאמר וסטטוס -->
                         <td class="px-3 py-3">
                             <a href="{% url 'articles:detail' slug=row.article.slug %}" target="_blank" class="fw-bold text-decoration-none text-dark d-block mb-2" style="font-size: 1rem;">
                                 {{ row.article.title }} <i class="bi bi-box-arrow-up-left small text-muted"></i>
@@ -141,7 +140,6 @@
                             {% endif %}
                         </td>
 
-                        <!-- 2. אשכול לימוד -->
                         <td>
                             <div class="p-2 rounded-3 mb-2 border" style="background: #f8fafc;">
                                 <div class="small fw-bold text-dark mb-1">
@@ -181,7 +179,6 @@
                             </div>
                         </td>
 
-                        <!-- 3. מאמרים קשורים (מציג 4 ראשונים + פתיחה של כל שאר ההצעות!) -->
                         <td>
                             {% for rel in row.related_articles|slice:":4" %}
                             <div class="ed-item-box state-{{ rel.editorial_state }} d-flex justify-content-between align-items-center">
@@ -210,8 +207,8 @@
 
                             {% if row.related_articles|length > 4 or row.extra_candidate_articles %}
                             <details class="mb-2">
-                                <summary class="btn btn-sm btn-warning w-100 fw-bold py-1" style="font-size: 0.78rem;">
-                                    🔽 הצג עוד הצעות מאמרים שמצא המנוע ({% widthratio row.related_articles|slice:"4:"|length 1 1 %} חזקים + {{ row.extra_candidate_articles|length }} משניים)
+                                <summary class="btn btn-sm btn-warning w-100 fw-bold py-1" style="font-size: 0.76rem;">
+                                    🔽 הצג עוד הצעות מאמרים ({{ row.related_articles|slice:"4:"|length }} חזקים + {{ row.extra_candidate_articles|length }} משניים)
                                 </summary>
                                 <div class="pt-2">
                                     {% for rel in row.related_articles|slice:"4:" %}
@@ -266,7 +263,6 @@
                             {% endif %}
                         </td>
 
-                        <!-- 4. פרקים בספרים (4 ראשונים + כפתור להצגת כל השאר!) -->
                         <td>
                             {% for b in row.book_units|slice:":4" %}
                             <div class="ed-item-box state-{{ b.editorial_state }} d-flex justify-content-between align-items-center">
@@ -296,7 +292,7 @@
                             {% if row.book_units|length > 4 or row.extra_candidate_books %}
                             <details class="mb-2">
                                 <summary class="btn btn-sm btn-warning w-100 fw-bold py-1" style="font-size: 0.76rem;">
-                                    🔽 הצג עוד פרקים שהמנוע מצא ({{ row.book_units|slice:"4:"|length }} חזקים + {{ row.extra_candidate_books|length }} משניים)
+                                    🔽 הצג עוד פרקים ({{ row.book_units|slice:"4:"|length }} חזקים + {{ row.extra_candidate_books|length }} משניים)
                                 </summary>
                                 <div class="pt-2">
                                     {% for b in row.book_units|slice:"4:" %}
@@ -351,7 +347,6 @@
                             {% endif %}
                         </td>
 
-                        <!-- 5. שו"ת קשור -->
                         <td>
                             {% for q in row.related_qas %}
                             <div class="ed-item-box state-{{ q.editorial_state }} d-flex justify-content-between align-items-center">
@@ -397,7 +392,6 @@
                             {% endif %}
                         </td>
 
-                        <!-- 6. כלי מחקר וחיפוש (מחשבון / מתרגם ארמי / חיפוש תורני) -->
                         <td>
                             {% for t in row.smart_tools %}
                             <div class="ed-item-box state-{{ t.editorial_state }} d-flex justify-content-between align-items-center">
@@ -415,9 +409,9 @@
                                 </div>
                                 <div class="d-flex gap-1 ms-1 flex-shrink-0">
                                     {% if t.editorial_state == 'ai_suggested' %}
-                                    <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_approve', 'tools', '{{ t.tool_key }}')" class="btn btn-sm btn-success py-0 px-2" title="אשר כלי זה">✅</button>
+                                    <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_approve', 'tools', '{{ t.tool_key|escapejs }}')" class="btn btn-sm btn-success py-0 px-2" title="אשר כלי זה">✅</button>
                                     {% endif %}
-                                    <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_reject', 'tools', '{{ t.tool_key }}')" class="btn btn-sm btn-outline-danger py-0 px-2" title="הסר כלי זה מהמאמר">❌</button>
+                                    <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_reject', 'tools', '{{ t.tool_key|escapejs }}')" class="btn btn-sm btn-outline-danger py-0 px-2" title="הסר כלי זה מהמאמר">❌</button>
                                 </div>
                             </div>
                             {% empty %}
@@ -435,7 +429,7 @@
                                     {% for rjt in row.rejected_tools %}
                                     <div class="d-flex justify-content-between align-items-center border-bottom py-1">
                                         <span class="text-decoration-line-through text-danger" style="font-size: 0.75rem;">{{ rjt.title }}</span>
-                                        <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_unreject', 'tools', '{{ rjt.tool_key }}')" class="btn btn-link btn-sm p-0 text-secondary" style="font-size: 0.74rem;">שחזר</button>
+                                        <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_unreject', 'tools', '{{ rjt.tool_key|escapejs }}')" class="btn btn-link btn-sm p-0 text-secondary" style="font-size: 0.74rem;">שחזר</button>
                                     </div>
                                     {% endfor %}
                                 </div>
@@ -452,9 +446,8 @@
 
 </div>
 
-<!-- חלונית הוספת קשר ידני (מאמר / פרק בספר / שו"ת / כלי מחקר וחיפוש) -->
 <div class="modal fade" id="manualAddModal" tabindex="-1" aria-hidden="true" dir="rtl">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content rounded-4 border-2" style="border-color: #d4af37;">
             <div class="modal-header text-white" style="background: #1e293b;">
                 <h5 class="modal-title fw-bold" id="manualModalTitle">➕ הוספת קשר ידני</h5>
@@ -496,15 +489,71 @@
                 </div>
 
                 <div id="selectWrapTools" style="display:none;">
-                    <label class="form-label small fw-bold">בחר כלי מחקר מהרשימה:</label>
-                    <select id="manualSelectTools" class="form-select mb-3" size="5">
-                        {% for t in report.all_tools_choices %}
-                        <option value="{{ t.tool_key }}">{{ t.title }} ({{ t.subtitle }})</option>
-                        {% endfor %}
-                    </select>
-                    <div class="p-3 rounded-3 border bg-light">
-                        <label class="form-label small fw-bold mb-1">או הגדר כפתור חיפוש תורני עם מילת חיפוש מותאמת אישית:</label>
-                        <input type="text" id="customSearchTermInput" class="form-control form-control-sm" placeholder='למשל: "ברית מילה" או "מוגמר" (השאר ריק אם בחרת כלי למעלה)'>
+                    <div class="p-3 rounded-3 border bg-light mb-2">
+                        <h6 class="fw-bold mb-2" style="color: #1e293b;">בונה כלי חיפוש, גימטריא, ראשי תיבות, מתרגם ומחשבונים:</h6>
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-4">
+                                <label class="small fw-bold">1. סוג הכלי / החיפוש:</label>
+                                <select id="auditTbKind" class="form-select form-select-sm fw-bold" onchange="updateAuditToolPreview()">
+                                    <optgroup label="חיפוש במאגר התורני (תנ״ך, בבלי, רמב״ם...)">
+                                        <option value="search_text">חיפוש מילה / ביטוי במאגר</option>
+                                        <option value="search_exact">חיפוש מדויק במאגר</option>
+                                        <option value="search_fuzzy">חיפוש כתיב מלא/חסר ותחיליות</option>
+                                        <option value="search_gematria">חיפוש גימטריא במאגר</option>
+                                        <option value="search_rashei">ראשי תיבות בפסוקים (ר״ת)</option>
+                                        <option value="search_sofei">סופי תיבות בפסוקים (ס״ת)</option>
+                                        <option value="search_reverse">היפוך אותיות / פלינדרום</option>
+                                        <option value="search_els">דילוגי אותיות במילה (ELS)</option>
+                                        <option value="search_els_verse">דילוגי אותיות בפסוק</option>
+                                    </optgroup>
+                                    <optgroup label="מילון ראשי תיבות ומתרגם ארמי">
+                                        <option value="acronyms_dict">מילון ראשי תיבות תורני</option>
+                                        <option value="aramaic_translator">מתרגם ארמי ⇄ עברי לש״ס</option>
+                                    </optgroup>
+                                    <optgroup label="מחשבוני מידות חז״ל">
+                                        <option value="calc_length">מחשבון מידות אורך בתורה</option>
+                                        <option value="calc_volume">מחשבון מידות נפח הלכתי</option>
+                                        <option value="calc_weight">מחשבון משקל ומטבעות חז״ל</option>
+                                    </optgroup>
+                                    <optgroup label="התאמה אישית מלאה">
+                                        <option value="custom_free">כפתור / קישור חופשי ("כל המצאה אחרת")</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div class="col-md-4" id="auditTbQueryCol">
+                                <label class="small fw-bold">2. מילה / ביטוי לחיפוש:</label>
+                                <input type="text" id="auditTbQuery" class="form-control form-control-sm" placeholder="למשל: חזקה" oninput="updateAuditToolPreview()">
+                            </div>
+                            <div class="col-md-4" id="auditTbCorpusCol">
+                                <label class="small fw-bold">3. באיזה מאגר לחפש?</label>
+                                <select id="auditTbCorpus" class="form-select form-select-sm" onchange="updateAuditToolPreview()">
+                                    <option value="all">כל המאגר התורני</option>
+                                    <option value="talmud">תלמוד בבלי</option>
+                                    <option value="torah">חמישה חומשי תורה</option>
+                                    <option value="tanakh">תנ"ך מלא</option>
+                                    <option value="mishnah">משנה</option>
+                                    <option value="tosefta">תוספתא</option>
+                                    <option value="yerushalmi">תלמוד ירושלמי</option>
+                                    <option value="rambam">רמב"ם (משנה תורה)</option>
+                                    <option value="shulchan_aruch">שולחן ערוך</option>
+                                </select>
+                            </div>
+                        </div>
+                        <hr class="my-2">
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="small fw-bold">כותרת הכפתור (ניתנת לעריכה חופשית):</label>
+                                <input type="text" id="auditTbFinalTitle" class="form-control form-control-sm fw-bold">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="small fw-bold">תת-כותרת:</label>
+                                <input type="text" id="auditTbFinalSubtitle" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="small fw-bold">כתובת הקישור (URL):</label>
+                                <input type="text" id="auditTbFinalUrl" class="form-control form-control-sm" dir="ltr">
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -597,15 +646,16 @@
         document.getElementById('manualModalArticleName').innerText = btnEl.getAttribute('data-title') || '';
         document.getElementById('manualFilterInput').value = '';
         document.getElementById('manualFilterInput').style.display = (targetType === 'tools') ? 'none' : 'block';
-        if (document.getElementById('customSearchTermInput')) {
-            document.getElementById('customSearchTermInput').value = '';
-        }
         filterManualSelect();
 
         document.getElementById('selectWrapArticles').style.display = (targetType === 'articles') ? 'block' : 'none';
         document.getElementById('selectWrapBooks').style.display = (targetType === 'books') ? 'block' : 'none';
         document.getElementById('selectWrapQas').style.display = (targetType === 'qas') ? 'block' : 'none';
         document.getElementById('selectWrapTools').style.display = (targetType === 'tools') ? 'block' : 'none';
+
+        if (targetType === 'tools') {
+            updateAuditToolPreview();
+        }
 
         if (!manualModalInstance) {
             manualModalInstance = new bootstrap.Modal(document.getElementById('manualAddModal'));
@@ -618,8 +668,7 @@
         const mapId = {
             'articles': 'manualSelectArticles',
             'books': 'manualSelectBooks',
-            'qas': 'manualSelectQas',
-            'tools': 'manualSelectTools'
+            'qas': 'manualSelectQas'
         }[currentModalType];
         const sel = document.getElementById(mapId);
         if (!sel) return;
@@ -628,16 +677,107 @@
         });
     }
 
+    function updateAuditToolPreview() {
+        const kindEl = document.getElementById('auditTbKind');
+        if (!kindEl) return;
+        const kind = kindEl.value;
+        const q = (document.getElementById('auditTbQuery').value || '').trim() || 'חזקה';
+        const corpus = document.getElementById('auditTbCorpus').value;
+        const corpusNames = {
+            'all': 'כל המאגר התורני',
+            'talmud': 'תלמוד בבלי',
+            'torah': 'חמישה חומשי תורה',
+            'tanakh': 'תנ"ך',
+            'mishnah': 'משנה',
+            'tosefta': 'תוספתא',
+            'yerushalmi': 'תלמוד ירושלמי',
+            'rambam': 'רמב"ם',
+            'shulchan_aruch': 'שולחן ערוך'
+        };
+        const cLabel = corpusNames[corpus] || 'המאגר התורני';
+        const qCol = document.getElementById('auditTbQueryCol');
+        const cCol = document.getElementById('auditTbCorpusCol');
+
+        let title = '', subtitle = '', url = '';
+        if (kind.startsWith('search_')) {
+            qCol.style.display = 'block';
+            cCol.style.display = 'block';
+            const typeMap = {
+                'search_text': ['text', `חיפוש "${q}" ב${cLabel}`, `סריקת כל ההופעות של "${q}" ב${cLabel}`],
+                'search_exact': ['text_exact', `חיפוש מדויק של "${q}" ב${cLabel}`, `איתור הופעות מדויקות של "${q}" ב${cLabel}`],
+                'search_fuzzy': ['text_fuzzy', `חיפוש "${q}" (כתיב מלא/חסר) ב${cLabel}`, `סריקה כולל תחיליות וכתיב מלא וחסר ב${cLabel}`],
+                'search_gematria': ['gematria', `חיפוש גימטריא של "${q}" ב${cLabel}`, `איתור מילים ופסוקים בעלי ערך גימטרי זהה ב${cLabel}`],
+                'search_rashei': ['rashei_tevot', `חיפוש ראשי תיבות "${q}" ב${cLabel}`, `איתור רצפי תיבות שראשי התיבות שלהן "${q}" ב${cLabel}`],
+                'search_sofei': ['sofei_tevot', `חיפוש סופי תיבות "${q}" ב${cLabel}`, `איתור רצפי תיבות שסופי התיבות שלהן "${q}" ב${cLabel}`],
+                'search_reverse': ['reverse', `היפוך אותיות של "${q}" ב${cLabel}`, `חיפוש מילים הפוכות ופלינדרום ב${cLabel}`],
+                'search_els': ['els', `דילוגי אותיות של "${q}" ב${cLabel}`, `חיפוש מרווחי אותיות שווים (ELS) ב${cLabel}`],
+                'search_els_verse': ['els_verse', `דילוגי אותיות בפסוק של "${q}" ב${cLabel}`, `חיפוש דילוגי אותיות חוצי מילים ב${cLabel}`]
+            }[kind];
+            title = typeMap[1];
+            subtitle = typeMap[2];
+            url = `/advanced-search/?q=${encodeURIComponent(q)}&type=${typeMap[0]}&book=${corpus}`;
+        } else if (kind === 'acronyms_dict') {
+            qCol.style.display = 'block';
+            cCol.style.display = 'none';
+            title = q ? `פענוח ראשי תיבות "${q}" במילון` : 'מילון ראשי תיבות תורני';
+            subtitle = 'חיפוש ופענוח ראשי תיבות וקיצורים בספרות התורנית';
+            url = `/advanced-search/?tab=acronyms&q=${encodeURIComponent(q)}`;
+        } else if (kind === 'aramaic_translator') {
+            qCol.style.display = 'block';
+            cCol.style.display = 'none';
+            title = 'מתרגם ארמי ⇄ עברי לש"ס';
+            subtitle = 'פענוח ותרגום מונחי התלמוד הבבלי, הירושלמי והזוהר';
+            url = q ? `/aramaic-translator/?q=${encodeURIComponent(q)}` : '/aramaic-translator/';
+        } else if (kind === 'calc_length') {
+            qCol.style.display = 'none';
+            cCol.style.display = 'none';
+            title = 'מחשבון מידות אורך בתורה';
+            subtitle = 'המרת אמה, טפח, זרת ואצבע לסנטימטרים לפי שיטות הפוסקים';
+            url = '/calculator/';
+        } else if (kind === 'calc_volume') {
+            qCol.style.display = 'none';
+            cCol.style.display = 'none';
+            title = 'מחשבון מידות נפח הלכתי';
+            subtitle = 'חישוב כזית, כביצה, רביעית, לוג ומקווה בסמ"ק';
+            url = '/volume-calculator/';
+        } else if (kind === 'calc_weight') {
+            qCol.style.display = 'none';
+            cCol.style.display = 'none';
+            title = 'מחשבון משקל ומטבעות חז"ל';
+            subtitle = 'חישוב משקלי התורה ומטבעות ההלכה בגרמים';
+            url = '/weight-calculator/';
+        } else {
+            qCol.style.display = 'none';
+            cCol.style.display = 'none';
+            title = 'כלי מחקר / קישור מותאם אישית';
+            subtitle = 'לחץ לפתיחה';
+            url = '/advanced-search/';
+        }
+        document.getElementById('auditTbFinalTitle').value = title;
+        document.getElementById('auditTbFinalSubtitle').value = subtitle;
+        document.getElementById('auditTbFinalUrl').value = url;
+    }
+
     async function submitManualAdd() {
         let chosenValue = '';
         if (currentModalType === 'tools') {
-            const customQ = document.getElementById('customSearchTermInput').value.trim();
-            if (customQ) {
-                chosenValue = 'search:' + customQ;
-            } else {
-                const selT = document.getElementById('manualSelectTools');
-                chosenValue = selT ? selT.value : '';
-            }
+            const kind = document.getElementById('auditTbKind').value;
+            const fTitle = document.getElementById('auditTbFinalTitle').value.trim();
+            const fSub = document.getElementById('auditTbFinalSubtitle').value.trim();
+            const fUrl = document.getElementById('auditTbFinalUrl').value.trim();
+            const iconMap = {
+                'aramaic_translator': 'bi-translate',
+                'acronyms_dict': 'bi-alphabet-uppercase',
+                'calc_length': 'bi-rulers',
+                'calc_volume': 'bi-cup-straw',
+                'calc_weight': 'bi-coin'
+            };
+            chosenValue = 'custom_json:' + JSON.stringify({
+                title: fTitle,
+                subtitle: fSub,
+                url: fUrl,
+                icon: iconMap[kind] || 'bi-search'
+            });
         } else {
             const mapId = {
                 'articles': 'manualSelectArticles',
