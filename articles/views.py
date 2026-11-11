@@ -1234,155 +1234,283 @@ def search_acronyms_api(request):
 
 def advanced_search_view(request):
     response = render(request, 'articles/advanced_search.html', {'current_page': 'advanced_search'})
-    if request.GET.get('book') or request.GET.get('type') or request.GET.get('tab'):
-        sync_script = """
+    sync_script = """
 <script>
 (function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlBook = (urlParams.get('book') || '').trim();
-    const urlType = (urlParams.get('type') || '').trim();
-    const urlQ = (urlParams.get('q') || '').trim();
-    let initialOverrideActive = Boolean(urlBook || urlType);
+    const initParams = new URLSearchParams(window.location.search);
+    const initBook = (initParams.get('book') || '').trim();
+    const initType = (initParams.get('type') || '').trim();
+    const initExact = (initParams.get('exact') || '').trim();
+    const initExclude = (initParams.get('exclude_books') || '').trim();
+    const initSkip = (initParams.get('skip') || '').trim();
+    const initQ = (initParams.get('q') || '').trim();
+
+    let initialUrlOverrideActive = Boolean(initBook || initType || initExclude || initSkip);
+    let initialSearchExecuted = false;
+    window.__currentSearchShareUrl = window.location.href;
+
+    const origReplaceState = window.history.replaceState;
+    const origPushState = window.history.pushState;
+
+    function enrichHistoryUrl(urlArg) {
+        if (!urlArg || !window.__currentSearchShareUrl) return urlArg;
+        try {
+            const u = new URL(urlArg, window.location.origin);
+            if (u.pathname.includes('advanced-search') && u.searchParams.get('q') && !u.searchParams.get('book')) {
+                return window.__currentSearchShareUrl;
+            }
+        } catch (e) {}
+        return urlArg;
+    }
+
+    window.history.replaceState = function(state, title, url) {
+        return origReplaceState.call(this, state, title, enrichHistoryUrl(url));
+    };
+
+    window.history.pushState = function(state, title, url) {
+        return origPushState.call(this, state, title, enrichHistoryUrl(url));
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        const origWriteText = navigator.clipboard.writeText.bind(navigator.clipboard);
+        navigator.clipboard.writeText = function(text) {
+            if (typeof text === 'string' && text.includes('/advanced-search/?q=') && !text.includes('&book=') && window.__currentSearchShareUrl) {
+                text = text.replace(/https?:\\/\\/[^\\s]+\\/advanced-search\\/\\?q=[^\\s&]+/, window.__currentSearchShareUrl);
+            }
+            return origWriteText(text);
+        };
+    }
+
+    if (navigator.share) {
+        const origShare = navigator.share.bind(navigator);
+        navigator.share = function(shareData) {
+            if (shareData && typeof shareData === 'object' && window.__currentSearchShareUrl) {
+                if (shareData.url && shareData.url.includes('/advanced-search/') && !shareData.url.includes('book=')) {
+                    shareData.url = window.__currentSearchShareUrl;
+                }
+                if (shareData.text && shareData.text.includes('/advanced-search/?q=') && !shareData.text.includes('&book=')) {
+                    shareData.text = shareData.text.replace(/https?:\\/\\/[^\\s]+\\/advanced-search\\/\\?q=[^\\s&]+/, window.__currentSearchShareUrl);
+                }
+            }
+            return origShare(shareData);
+        };
+    }
 
     const origFetch = window.fetch;
     window.fetch = function(input, init) {
-        if (initialOverrideActive && typeof input === 'string' && input.includes('/api/tanakh-search/')) {
+        if (typeof input === 'string' && input.includes('/api/tanakh-search/')) {
             try {
                 const u = new URL(input, window.location.origin);
-                if (urlBook && !u.searchParams.get('target_book')) {
-                    u.searchParams.set('book', urlBook);
-                }
-                if (urlType && !['book_chapters', 'commentary', 'chapter_context', 'quick_open'].includes(u.searchParams.get('type'))) {
-                    if (urlType === 'text' || urlType === 'text_broad') {
-                        u.searchParams.set('type', 'text_broad');
-                        u.searchParams.set('exact', 'false');
-                    } else if (urlType === 'text_exact') {
-                        u.searchParams.set('type', 'text_exact');
-                        u.searchParams.set('exact', 'true');
-                    } else {
-                        u.searchParams.set('type', urlType);
+                const reqType = u.searchParams.get('type') || 'text';
+                const isUtilityCall = ['book_chapters', 'commentary', 'chapter_context', 'quick_open'].includes(reqType);
+
+                if (!isUtilityCall) {
+                    if (initialUrlOverrideActive) {
+                        if (initBook) u.searchParams.set('book', initBook);
+                        if (initExclude) u.searchParams.set('exclude_books', initExclude);
+                        if (initSkip) u.searchParams.set('skip', initSkip);
+                        if (initType) {
+                            if (initType === 'text' || initType === 'text_broad') {
+                                u.searchParams.set('type', 'text_broad');
+                                u.searchParams.set('exact', 'false');
+                            } else if (initType === 'text_exact') {
+                                u.searchParams.set('type', 'text_exact');
+                                u.searchParams.set('exact', 'true');
+                            } else {
+                                u.searchParams.set('type', initType);
+                            }
+                        } else if (initExact) {
+                            u.searchParams.set('exact', initExact);
+                        }
+                        input = u.pathname + u.search;
+                        initialSearchExecuted = true;
+                    }
+
+                    const finalQ = (u.searchParams.get('q') || '').trim();
+                    const finalBook = (u.searchParams.get('book') || '').trim();
+                    const finalType = (u.searchParams.get('type') || 'text').trim();
+                    const finalExact = (u.searchParams.get('exact') || '').trim();
+                    const finalExclude = (u.searchParams.get('exclude_books') || '').trim();
+                    const finalSkip = (u.searchParams.get('skip') || '').trim();
+
+                    if (finalQ) {
+                        const shareParams = new URLSearchParams();
+                        shareParams.set('q', finalQ);
+                        if (finalType === 'text') {
+                            shareParams.set('type', finalExact === 'true' ? 'text_exact' : 'text_broad');
+                        } else {
+                            shareParams.set('type', finalType);
+                        }
+                        if (finalBook) shareParams.set('book', finalBook);
+                        if (finalExclude) shareParams.set('exclude_books', finalExclude);
+                        if (finalSkip) shareParams.set('skip', finalSkip);
+
+                        const fullUrl = window.location.origin + window.location.pathname + '?' + shareParams.toString();
+                        window.__currentSearchShareUrl = fullUrl;
+                        origReplaceState.call(window.history, null, '', fullUrl);
+                        setTimeout(function() {
+                            origReplaceState.call(window.history, null, '', window.__currentSearchShareUrl);
+                        }, 80);
                     }
                 }
-                input = u.pathname + u.search;
             } catch (e) {}
         }
         return origFetch.call(this, input, init);
     };
 
-    function isBtnSelected(el) {
-        if (!el) return false;
-        if (el.classList.contains('active') || el.classList.contains('selected')) return true;
-        if (el.querySelector('.bi-check-circle-fill, .bi-check-circle, .bi-check2-circle')) return true;
-        const bg = (el.style && el.style.backgroundColor) ? el.style.backgroundColor : '';
-        if (bg && bg !== 'transparent' && bg !== 'rgb(255, 255, 255)' && bg !== '#ffffff') return true;
-        return false;
+    function getSettingsSidebar() {
+        const els = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6, div, span, label'));
+        const h = els.find(el => el.children.length <= 2 && (el.innerText || '').trim().includes('הגדרות חיפוש'));
+        if (h) {
+            let curr = h.parentElement;
+            while (curr && curr !== document.body) {
+                const txt = curr.innerText || '';
+                if (txt.includes('בחר מאגרי חיפוש') && txt.includes('בחר סוג פעולה')) {
+                    return curr;
+                }
+                curr = curr.parentElement;
+            }
+        }
+        return document;
     }
 
-    function syncSearchUiFromUrl() {
-        const allClickables = Array.from(document.querySelectorAll('button, [onclick], .card, .btn, [data-book], [data-corpus], [data-type]'));
+    function isCorpusBtnActive(btn) {
+        if (!btn) return false;
+        if (btn.querySelector('.bi-check-circle-fill, .bi-check-circle, .bi-check2-circle, input:checked')) return true;
+        if (btn.querySelector('.bi-circle')) return false;
+        return btn.classList.contains('active') || btn.classList.contains('selected');
+    }
 
-        const allCorporaBtn = allClickables.find(el => (el.innerText || '').trim() === 'כל המאגרים יחד');
-        const corpusContainer = allCorporaBtn ? (allCorporaBtn.closest('.card, .p-3, .p-4, section') || document) : document;
-        const corpusCandidates = Array.from(corpusContainer.querySelectorAll('button, [onclick], [data-book], [data-corpus], .btn, div[style*="cursor"]'));
+    function findSidebarCorpusBtn(sidebar, key) {
+        const icons = Array.from(sidebar.querySelectorAll('i.bi-circle, i.bi-check-circle-fill, i.bi-check-circle, [data-corpus], [data-book]'));
+        const candidates = [];
+        icons.forEach(ic => {
+            const btn = ic.closest('[onclick], button, [data-corpus], [data-book], .btn, .card') || ic.parentElement;
+            if (btn && !candidates.includes(btn)) candidates.push(btn);
+        });
 
-        function findCorpusBtn(key) {
-            return corpusCandidates.find(el => {
-                const db = el.getAttribute('data-book') || el.getAttribute('data-corpus') || '';
-                const oc = el.getAttribute('onclick') || '';
-                if (db === key || oc.includes("'" + key + "'") || oc.includes('"' + key + '"')) return true;
-                const t = (el.innerText || '').replace(/\\s+/g, ' ').trim();
-                if (!t || t.length > 35) return false;
-                if (key === 'all') return t.includes('כל המאגרים');
-                if (key === 'torah') return t === 'תורה' || (t.includes('תורה') && !t.includes('משנה תורה') && !t.includes('רמב'));
-                if (key === 'tanakh') return t.includes('תנ"ך') || t.includes('תנ״ך');
-                if (key === 'mishnah') return t === 'משנה' || (t.includes('משנה') && !t.includes('משנה תורה') && !t.includes('רמב'));
-                if (key === 'tosefta') return t.includes('תוספתא');
-                if (key === 'talmud') return t.includes('תלמוד בבלי');
-                if (key === 'yerushalmi') return t.includes('תלמוד ירושלמי');
-                if (key === 'rambam') return t.includes('רמב"ם') || t.includes('רמב״ם');
-                if (key === 'shulchan_aruch') return t.includes('שולחן ערוך');
-                return false;
-            });
+        return candidates.find(el => {
+            const dc = el.getAttribute('data-corpus') || el.getAttribute('data-book') || '';
+            const oc = el.getAttribute('onclick') || '';
+            if (dc === key || oc.includes("'" + key + "'") || oc.includes('"' + key + '"')) return true;
+            const t = (el.innerText || '').replace(/\\s+/g, ' ').trim();
+            if (!t || t.length > 40) return false;
+            if (key === 'all') return t.includes('כל המאגרים');
+            if (key === 'torah') return t === 'תורה' || (t.includes('תורה') && !t.includes('רמב') && !t.includes('משנה'));
+            if (key === 'tanakh') return t.includes('תנ"ך') || t.includes('תנ״ך');
+            if (key === 'mishnah') return t === 'משנה' || (t.includes('משנה') && !t.includes('רמב') && !t.includes('תורה'));
+            if (key === 'tosefta') return t.includes('תוספתא');
+            if (key === 'talmud') return t.includes('תלמוד בבלי');
+            if (key === 'yerushalmi') return t.includes('תלמוד ירושלמי');
+            if (key === 'rambam') return t.includes('רמב"ם') || t.includes('רמב״ם');
+            if (key === 'shulchan_aruch') return t.includes('שולחן ערוך');
+            return false;
+        });
+    }
+
+    function findSidebarTypeBtn(sidebar, urlTypeVal, urlExactVal) {
+        let effectiveType = urlTypeVal;
+        if (effectiveType === 'text') {
+            effectiveType = (urlExactVal === 'true') ? 'text_exact' : 'text_broad';
         }
+        const typeTextMap = {
+            'text_broad': 'חיפוש חופשי',
+            'text_exact': 'מילה מדויקת',
+            'text_fuzzy': 'כתיב מלא',
+            'gematria': 'גימטריה',
+            'rashei_tevot': 'ראשי תיבות',
+            'acronym': 'ראשי תיבות',
+            'sofei_tevot': 'סופי תיבות',
+            'suffix': 'סופי תיבות',
+            'reverse': 'מילים הפוכות',
+            'palindrome': 'מילים הפוכות',
+            'els': 'דילוגים במילה',
+            'skip': 'דילוגים במילה',
+            'dilugim': 'דילוגים במילה',
+            'els_verse': 'דילוגים בפסוק'
+        };
+        const targetLabel = typeTextMap[effectiveType];
+        if (!targetLabel) return null;
 
-        if (urlBook) {
-            const targetBooks = urlBook.split(',').map(s => s.trim()).filter(Boolean);
+        const allEls = Array.from(sidebar.querySelectorAll('[onclick], [data-type], button, .btn, .card, div'));
+        const matches = allEls.filter(el => {
+            const dt = el.getAttribute('data-type') || el.getAttribute('onclick') || '';
+            if (dt && (dt.includes("'" + effectiveType + "'") || dt.includes('"' + effectiveType + '"'))) return true;
+            const t = (el.innerText || '').replace(/\\s+/g, ' ').trim();
+            return t.length > 0 && t.length < 55 && t.includes(targetLabel);
+        });
+        return matches.length ? matches[matches.length - 1] : null;
+    }
+
+    function applyUrlStateToUi(triggerSearchIfNeeded) {
+        if (!initialUrlOverrideActive) return;
+        const sidebar = getSettingsSidebar();
+
+        if (initBook) {
+            const targetBooks = initBook.split(',').map(s => s.trim()).filter(Boolean);
             const allKeys = ['torah', 'tanakh', 'mishnah', 'tosefta', 'talmud', 'yerushalmi', 'rambam', 'shulchan_aruch'];
 
             if (targetBooks.includes('all')) {
-                const bAll = findCorpusBtn('all');
-                if (bAll && !isBtnSelected(bAll)) bAll.click();
+                const bAll = findSidebarCorpusBtn(sidebar, 'all');
+                if (bAll && !isCorpusBtnActive(bAll)) bAll.click();
             } else {
+                // First activate all desired corpora so the list is never empty
                 targetBooks.forEach(k => {
-                    const b = findCorpusBtn(k);
-                    if (b && !isBtnSelected(b)) b.click();
+                    const b = findSidebarCorpusBtn(sidebar, k);
+                    if (b && !isCorpusBtnActive(b)) b.click();
                 });
+                // Then deactivate any corpus not in targetBooks (e.g. default 'torah')
                 allKeys.forEach(k => {
                     if (!targetBooks.includes(k)) {
-                        const b = findCorpusBtn(k);
-                        if (b && isBtnSelected(b)) b.click();
+                        const b = findSidebarCorpusBtn(sidebar, k);
+                        if (b && isCorpusBtnActive(b)) b.click();
                     }
                 });
             }
         }
 
-        if (urlType) {
-            const typeTextMap = {
-                'text': 'חיפוש חופשי',
-                'text_broad': 'חיפוש חופשי',
-                'text_exact': 'מילה מדויקת',
-                'text_fuzzy': 'כתיב מלא',
-                'gematria': 'גימטריה',
-                'rashei_tevot': 'ראשי תיבות',
-                'acronym': 'ראשי תיבות',
-                'sofei_tevot': 'סופי תיבות',
-                'suffix': 'סופי תיבות',
-                'reverse': 'מילים הפוכות',
-                'els': 'דילוגים במילה',
-                'els_verse': 'דילוגים בפסוק'
-            };
-            const targetLabel = typeTextMap[urlType];
-            if (targetLabel) {
-                const typeBtn = allClickables.find(el => {
-                    const dt = el.getAttribute('data-type') || el.getAttribute('onclick') || '';
-                    if (dt.includes("'" + urlType + "'")) return true;
-                    const t = (el.innerText || '').trim();
-                    return t.length < 60 && t.includes(targetLabel);
-                });
-                if (typeBtn) typeBtn.click();
+        if (initType) {
+            const tBtn = findSidebarTypeBtn(sidebar, initType, initExact);
+            if (tBtn) tBtn.click();
+        }
+
+        if (initQ) {
+            const qInput = sidebar.querySelector('input[type="text"], input[type="search"], input:not([type="hidden"]):not([type="checkbox"])');
+            if (qInput && qInput.value !== initQ) {
+                qInput.value = initQ;
+            }
+            if (triggerSearchIfNeeded && !initialSearchExecuted) {
+                const allBtns = Array.from(sidebar.querySelectorAll('button, [onclick], .btn'));
+                const searchBtn = allBtns.find(el => (el.innerText || '').includes('בצע חיפוש'));
+                if (searchBtn) searchBtn.click();
             }
         }
-
-        if (urlQ) {
-            const qInput = document.querySelector('input[type="text"][placeholder*="מילה"], input#searchInput, input[name="q"]');
-            if (qInput) qInput.value = urlQ;
-            const searchBtn = allClickables.find(el => (el.innerText || '').includes('בצע חיפוש מהיר'));
-            if (searchBtn) searchBtn.click();
-        }
-
-        setTimeout(() => { initialOverrideActive = false; }, 1500);
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        setTimeout(syncSearchUiFromUrl, 120);
+        applyUrlStateToUi(false);
+        setTimeout(function() {
+            applyUrlStateToUi(true);
+        }, 120);
+        setTimeout(function() {
+            initialUrlOverrideActive = false;
+        }, 1800);
     });
 })();
 </script>
 """
-        try:
-            html_str = response.content.decode('utf-8')
-            if '</body>' in html_str:
-                html_str = html_str.replace('</body>', sync_script + '\n</body>', 1)
-            else:
-                html_str += sync_script
-            response.content = html_str.encode('utf-8')
-        except Exception:
-            pass
+    try:
+        html_str = response.content.decode('utf-8')
+        if '<head>' in html_str:
+            html_str = html_str.replace('<head>', '<head>\n' + sync_script, 1)
+        elif '</body>' in html_str:
+            html_str = html_str.replace('</body>', sync_script + '\n</body>', 1)
+        else:
+            html_str += sync_script
+        response.content = html_str.encode('utf-8')
+    except Exception:
+        pass
     return response
-
-def or_hacarmel_view(request):
-    return render(request, 'articles/or_hacarmel.html')
-
 
 def aramaic_translator_view(request):
     context = _get_aramaic_context(request)
