@@ -92,11 +92,13 @@
             <a href="{% url 'articles:articles_index' %}" class="text-decoration-none text-muted">מאמרים</a>
         </li>
         {% if learning and learning.is_visible_to_public or learning and user.is_superuser %}
+        {% if learning.cluster.cluster_id != 'general_iyun' %}
         <li class="breadcrumb-item">
             <a href="{% url 'articles:articles_index' %}?cluster={{ learning.cluster.cluster_id }}" class="text-decoration-none" style="color: #a67c52; font-weight: 600;">
                 {{ learning.cluster.cluster_title }}
             </a>
         </li>
+        {% endif %}
         {% endif %}
         <li class="breadcrumb-item active fw-bold text-dark" aria-current="page">{{ article.title|safe }}</li>
       </ol>
@@ -127,11 +129,11 @@
 
             <div class="d-flex justify-content-between gap-3 mb-4 hide-in-zen flex-wrap align-items-center">
                 <div>
-                    {% if learning %}
+                    {% if learning and learning.cluster.cluster_id != 'general_iyun' %}
                         {% if learning.is_visible_to_public or user.is_superuser %}
-                        <a href="{% url 'articles:articles_index' %}?cluster={{ learning.cluster.cluster_id }}" class="badge text-decoration-none px-3 py-2 shadow-sm" style="background: #1e293b; color: #f7e199; border: 1px solid #d4af37; font-size: 0.88rem; border-radius: 50px;">
+                        <a href="{% url 'articles:articles_index' %}?cluster={{ learning.cluster.cluster_id }}" class="badge text-decoration-none px-3 py-2 shadow-sm" style="background: #1e293b; color: #f7e199; border: 1px solid #d4af37; font-size: 0.85rem; border-radius: 50px; font-weight: 600;">
                             <i class="bi {{ learning.cluster.icon }} ms-1" style="color: #d4af37;"></i>
-                            מסלול {{ learning.cluster.cluster_title }} • יחידה {{ learning.navigation.position }} מתוך {{ learning.navigation.total_in_path }}
+                            מדור {{ learning.cluster.cluster_title }}
                         </a>
                         {% endif %}
                     {% endif %}
@@ -203,68 +205,60 @@
 
             {% if learning %}
             {% if learning.is_visible_to_public or user.is_superuser %}
-            <section class="beit-midrash-continuation mt-5 pt-4 hide-in-zen" id="bmContinuationSection" dir="rtl">
+            <section class="beit-midrash-continuation mt-5 pt-3 hide-in-zen" id="bmContinuationSection" dir="rtl">
                 
                 {% if user.is_superuser %}
-                <!-- ========================================================================= -->
-                <!-- סרגל ניהול ועריכה חי למנהל תחת כל מאמר (פרסום / הקפאה / עריכת קשרים וכלים) -->
-                <!-- ========================================================================= -->
-                <div class="p-3 mb-3 rounded-4 shadow-sm" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 2px solid #d4af37; color: #f8fafc;">
+                <!-- סרגל ניהול ועריכה חי למנהל בלבד (מוסתר לחלוטין מגולשים) -->
+                <div class="p-3 mb-3 rounded-3 shadow-sm" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 1.5px solid #d4af37; color: #f8fafc;">
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <span class="fw-bold" style="color: #f7e199;">
-                                <i class="bi bi-shield-lock-fill ms-1" style="color: #d4af37;"></i>בקרת מנהל על קשרי המאמר:
+                            <span class="fw-bold small" style="color: #f7e199;">
+                                <i class="bi bi-shield-lock-fill ms-1" style="color: #d4af37;"></i>בקרת עורך:
                             </span>
                             {% if learning.connections_status == 'approved' %}
-                                <span class="badge bg-success px-3 py-2">🟢 מאושר ומפורסם לכלל הגולשים</span>
+                                <span class="badge bg-success">🟢 מאושר ופתוח לציבור</span>
                             {% elif learning.connections_status == 'rejected' %}
-                                <span class="badge bg-danger px-3 py-2">❄️ מוקפא / מוסתר מהציבור</span>
+                                <span class="badge bg-danger">❄️ מוקפא / מוסתר מהציבור</span>
                             {% else %}
                                 {% if learning.is_visible_to_public %}
-                                    <span class="badge bg-info text-dark px-3 py-2">🟡 ממתין לבדיקה (גלוי לציבור)</span>
+                                    <span class="badge bg-info text-dark">🟡 ממתין לבדיקה (גלוי לציבור)</span>
                                 {% else %}
-                                    <span class="badge bg-warning text-dark px-3 py-2">🔒 מצב טיוטה למנהל בלבד (מוסתר מהציבור)</span>
+                                    <span class="badge bg-warning text-dark">🔒 טיוטה למנהל בלבד</span>
                                 {% endif %}
                             {% endif %}
                         </div>
 
                         <div class="d-flex gap-2 flex-wrap">
                             {% if learning.connections_status != 'approved' %}
-                            <button type="button" onclick="adminQuickStatus('{{ article.pk }}', 'set_approved')" class="btn btn-sm btn-success fw-bold px-3">
-                                🟢 פרסם קשרים אלו לכלל הציבור
+                            <button type="button" onclick="adminQuickStatus('{{ article.pk }}', 'set_approved')" class="btn btn-sm btn-success fw-bold">
+                                🟢 פרסם קשרים אלו לציבור
                             </button>
                             {% endif %}
                             {% if learning.connections_status != 'rejected' %}
-                            <button type="button" onclick="adminQuickStatus('{{ article.pk }}', 'set_rejected')" class="btn btn-sm btn-danger fw-bold px-3">
-                                ❄️ הקפא פרסום קשרים בדף זה
+                            <button type="button" onclick="adminQuickStatus('{{ article.pk }}', 'set_rejected')" class="btn btn-sm btn-danger fw-bold">
+                                ❄️ הקפא קשרים בדף זה
                             </button>
                             {% endif %}
-                            {% if learning.connections_status != 'pending' %}
-                            <button type="button" onclick="adminQuickStatus('{{ article.pk }}', 'set_pending')" class="btn btn-sm btn-outline-warning fw-bold">
-                                🟡 החזר למצב בדיקה
-                            </button>
-                            {% endif %}
-                            <button type="button" onclick="toggleInlineAdminEdit()" id="toggleInlineEditBtn" class="btn btn-sm btn-warning fw-bold px-3">
+                            <button type="button" onclick="toggleInlineAdminEdit()" id="toggleInlineEditBtn" class="btn btn-sm btn-warning fw-bold">
                                 ⚙️ ערוך קשרים וכלים בדף זה
                             </button>
                             <a href="{% url 'articles:connections_audit' %}#audit-art-{{ article.pk }}" class="btn btn-sm btn-outline-light">
-                                לטבלת הקשרים המלאה ←
+                                לטבלת הבקרה ←
                             </a>
                         </div>
                     </div>
 
-                    <!-- אזור שינוי אשכול ואישור מהיר שנפתח במצב עריכה -->
                     <div id="inlineAdminTopPanel" class="mt-3 pt-3 border-top border-secondary" style="display: none;">
-                        <div class="row g-3 align-items-center">
-                            <div class="col-md-5">
-                                <label class="small fw-bold mb-1 d-block" style="color: #f7e199;">שיוך לאשכול לימוד (AI הציע: {{ learning.cluster.ai_cluster_title }}):</label>
+                        <div class="row g-2 align-items-center">
+                            <div class="col-md-4">
+                                <label class="small fw-bold mb-1 d-block" style="color: #f7e199;">מדור נושאי:</label>
                                 <select class="form-select form-select-sm fw-bold" onchange="adminChangeClusterInline('{{ article.pk }}', this.value)">
                                     {% for cl in admin_choices.all_clusters %}
                                     <option value="{{ cl.id }}" {% if cl.id == learning.cluster.cluster_id %}selected{% endif %}>{{ cl.title }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
-                            <div class="col-md-7 d-flex gap-2 flex-wrap justify-content-md-end pt-3">
+                            <div class="col-md-8 d-flex gap-2 flex-wrap justify-content-md-end pt-3">
                                 <button type="button" data-pk="{{ article.pk }}" data-title="{{ article.title }}" onclick="openBuilderModal(this, 'articles')" class="btn btn-sm btn-outline-info fw-bold">
                                     ➕ הוסף מאמר
                                 </button>
@@ -275,7 +269,7 @@
                                     ➕ הוסף שו"ת
                                 </button>
                                 <button type="button" data-pk="{{ article.pk }}" data-title="{{ article.title }}" onclick="openBuilderModal(this, 'tools')" class="btn btn-sm btn-warning fw-bold text-dark">
-                                    ➕ הוסף חיפוש גימטריא/בבלי/מתרגם/מחשבון
+                                    ➕ הוסף כלי חיפוש / מחשבון / מתרגם
                                 </button>
                             </div>
                         </div>
@@ -283,92 +277,86 @@
                 </div>
                 {% endif %}
 
-                <div class="bm-panel p-4 p-md-5 rounded-4 shadow-sm">
+                <!-- ========================================================================= -->
+                <!-- תיבת המשך העיון בסוגיה - עיצוב יוקרתי, פרופורציונלי ונקי לקורא -->
+                <!-- ========================================================================= -->
+                <div class="bm-lux-container p-3 p-md-4 rounded-4">
                     
-                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 pb-3 mb-4" style="border-bottom: 1px solid rgba(212, 175, 55, 0.35);">
+                    <!-- כותרת מדור מזמינה וברורה (ללא "שלב ב'" וללא "יחידה 1 מתוך 3") -->
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pb-3 mb-3 bm-header-divider">
                         <div>
-                            <div class="small fw-bold mb-1" style="color: #b8860b; letter-spacing: 0.4px;">
-                                <i class="bi {{ learning.cluster.icon }} ms-1"></i>{{ learning.navigation.stage_label }}
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="bm-topic-pill">
+                                    <i class="bi {{ learning.cluster.icon }} ms-1"></i>מדור {{ learning.cluster.cluster_title }}
+                                </span>
                             </div>
-                            <h3 class="fw-bold mb-1 bm-heading" style="font-family: 'Frank Ruhl Libre', serif; font-size: 1.85rem;">
-                                המשך העיון בסוגיה: {{ learning.cluster.cluster_title }}
-                            </h3>
-                            <p class="mb-0 small bm-subtext">{{ learning.cluster.description }}</p>
+                            <h4 class="fw-bold mb-0 bm-main-title">
+                                המשך העיון והרחבה בסוגיה
+                            </h4>
                         </div>
-                        <div class="d-flex flex-column align-items-md-end gap-2">
-                            <span class="badge px-3 py-2" style="background: #1e293b; color: #f7e199; border: 1px solid #d4af37; font-size: 0.9rem;">
-                                יחידה {{ learning.navigation.position }} מתוך {{ learning.navigation.total_in_path }} במסלול
-                            </span>
-                            <a href="{% url 'articles:articles_index' %}?cluster={{ learning.cluster.cluster_id }}" class="small fw-bold text-decoration-none" style="color: #a67c52;">
-                                לכל המאמרים במסלול זה ←
-                            </a>
-                        </div>
+                        {% if learning.cluster.cluster_id != 'general_iyun' %}
+                        <a href="{% url 'articles:articles_index' %}?cluster={{ learning.cluster.cluster_id }}" class="bm-all-link">
+                            לכל המאמרים במדור זה ({{ learning.navigation.total_in_path }}) <i class="bi bi-arrow-left ms-1"></i>
+                        </a>
+                        {% endif %}
                     </div>
 
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            {% if learning.navigation.prev_article %}
-                            <a href="{% url 'articles:detail' slug=learning.navigation.prev_article.slug %}" class="bm-nav-card d-block p-3 rounded-3 text-decoration-none h-100">
-                                <div class="small fw-bold mb-1" style="color: #a67c52;">▶ היחידה הקודמת במסלול</div>
-                                <div class="fw-bold bm-card-title" style="font-family: 'Frank Ruhl Libre', serif; font-size: 1.18rem;">
-                                    {{ learning.navigation.prev_article.title }}
-                                </div>
-                            </a>
-                            {% else %}
-                            <div class="bm-nav-card-disabled p-3 rounded-3 h-100 d-flex align-items-center small text-muted">
-                                מאמר זה פותח את מסלול "{{ learning.cluster.cluster_title }}"
-                            </div>
-                            {% endif %}
+                    <!-- 1. מאמרי עיון קשורים בסוגיה (שמות המאמרים בלבד, בגריד מאוזן ללא חורים!) -->
+                    {% if learning.related_articles %}
+                    <div class="mb-4">
+                        <div class="bm-sub-label mb-2">
+                            <i class="bi bi-file-earmark-text ms-1" style="color: #b8860b;"></i>מאמרים קשורים בסוגיה:
                         </div>
-                        <div class="col-md-6">
-                            {% if learning.navigation.next_article %}
-                            <a href="{% url 'articles:detail' slug=learning.navigation.next_article.slug %}" class="bm-nav-card bm-nav-card-next d-block p-3 rounded-3 text-decoration-none h-100">
-                                <div class="small fw-bold mb-1" style="color: #8c6239;">היחידה הבאה במסלול ◀</div>
-                                <div class="fw-bold bm-card-title" style="font-family: 'Frank Ruhl Libre', serif; font-size: 1.18rem;">
-                                    {{ learning.navigation.next_article.title }}
+                        <div class="bm-articles-grid">
+                            {% for item in learning.related_articles|slice:":6" %}
+                            <div class="position-relative">
+                                {% if user.is_superuser %}
+                                <div class="inline-admin-ctrl position-absolute top-50 start-0 translate-middle-y ms-4 z-3 gap-1" style="display: none;">
+                                    {% if item.editorial_state == 'ai_suggested' %}
+                                    <button type="button" onclick="adminItemAction('{{ article.pk }}', 'item_approve', 'articles', '{{ item.article.pk }}')" class="btn btn-sm btn-success py-0 px-1">✅</button>
+                                    {% endif %}
+                                    <button type="button" onclick="adminItemAction('{{ article.pk }}', 'item_reject', 'articles', '{{ item.article.pk }}')" class="btn btn-sm btn-danger py-0 px-1" title="הסר מאמר זה">❌</button>
                                 </div>
-                            </a>
-                            {% else %}
-                            <div class="bm-nav-card-disabled p-3 rounded-3 h-100 d-flex align-items-center small text-muted">
-                                הגעת ליחידת הסיום במסלול "{{ learning.cluster.cluster_title }}"
+                                {% endif %}
+                                <a href="{% url 'articles:detail' slug=item.article.slug %}" class="bm-article-chip">
+                                    <span class="bm-article-chip-title">{{ item.article.title }}</span>
+                                    <i class="bi bi-chevron-left bm-chip-arrow"></i>
+                                </a>
                             </div>
-                            {% endif %}
+                            {% endfor %}
                         </div>
                     </div>
+                    {% endif %}
 
+                    <!-- 2. הרחבה בספרי המחבר (כרטיסים קומפקטיים ויוקרתיים) -->
                     {% if learning.book_units %}
-                    <div class="mb-4 pt-2">
-                        <h5 class="fw-bold mb-3 bm-section-title" style="font-family: 'Frank Ruhl Libre', serif;">
-                            <i class="bi bi-book-half ms-2" style="color: #b8860b;"></i>הרחבה בספרי המחבר (מעבר ישיר לפרק העוסק בסוגיה):
-                        </h5>
-                        <div class="row g-3">
+                    <div class="mb-4">
+                        <div class="bm-sub-label mb-2">
+                            <i class="bi bi-journal-bookmark-fill ms-1" style="color: #b8860b;"></i>הרחבה בספרי המחבר:
+                        </div>
+                        <div class="bm-books-grid">
                             {% for b_unit in learning.book_units|slice:":3" %}
-                            <div class="col-md-4 position-relative">
+                            <div class="position-relative">
                                 {% if user.is_superuser %}
                                 <div class="inline-admin-ctrl position-absolute top-0 start-0 m-2 z-3 gap-1" style="display: none;">
                                     {% if b_unit.editorial_state == 'ai_suggested' %}
-                                    <button type="button" onclick="adminItemAction('{{ article.pk }}', 'item_approve', 'books', '{{ b_unit.unit_key }}')" class="btn btn-sm btn-success py-0 px-2 shadow">✅</button>
+                                    <button type="button" onclick="adminItemAction('{{ article.pk }}', 'item_approve', 'books', '{{ b_unit.unit_key }}')" class="btn btn-sm btn-success py-0 px-1 shadow">✅</button>
                                     {% endif %}
-                                    <button type="button" onclick="adminItemAction('{{ article.pk }}', 'item_reject', 'books', '{{ b_unit.unit_key }}')" class="btn btn-sm btn-danger py-0 px-2 shadow" title="הסר פרק זה">❌</button>
+                                    <button type="button" onclick="adminItemAction('{{ article.pk }}', 'item_reject', 'books', '{{ b_unit.unit_key }}')" class="btn btn-sm btn-danger py-0 px-1 shadow" title="הסר פרק זה">❌</button>
                                 </div>
                                 {% endif %}
-                                <a href="{{ b_unit.url }}" class="bm-book-card d-flex flex-column justify-content-between p-3 rounded-3 text-decoration-none h-100">
+                                <a href="{{ b_unit.url }}" class="bm-book-compact-card">
                                     <div>
-                                        <span class="badge mb-2 px-2 py-1" style="background: #1e293b; color: #f7e199; font-size: 0.75rem; font-weight: 600;">
-                                            <i class="bi bi-journal-bookmark-fill ms-1" style="color: #d4af37;"></i>{{ b_unit.badge }}
-                                        </span>
-                                        <h6 class="fw-bold mb-2 bm-card-title" style="font-family: 'Frank Ruhl Libre', serif; font-size: 1.15rem;">
+                                        <div class="bm-book-badge">
+                                            <i class="bi bi-book ms-1" style="color: #d4af37;"></i>{{ b_unit.badge }}
+                                        </div>
+                                        <div class="bm-book-chapter-title">
                                             {{ b_unit.title }}
-                                        </h6>
-                                        {% if b_unit.preview %}
-                                        <p class="small text-muted mb-2" style="line-height: 1.5; font-size: 0.88rem;">
-                                            {{ b_unit.preview }}
-                                        </p>
-                                        {% endif %}
+                                        </div>
                                     </div>
-                                    <div class="d-flex justify-content-between align-items-center pt-2 mt-2" style="border-top: 1px dashed rgba(212, 175, 55, 0.35);">
-                                        <span class="small fw-bold" style="color: #8c6239;">פתיחת הפרק בספר</span>
-                                        <i class="bi bi-arrow-left-circle-fill" style="color: #b8860b;"></i>
+                                    <div class="bm-book-footer">
+                                        <span>לקריאת הפרק בספר</span>
+                                        <i class="bi bi-arrow-left-circle-fill"></i>
                                     </div>
                                 </a>
                             </div>
@@ -377,104 +365,65 @@
                     </div>
                     {% endif %}
 
-                    <div class="row g-4 pt-2">
-                        <div class="col-lg-6">
-                            <h5 class="fw-bold mb-3 bm-section-title" style="font-family: 'Frank Ruhl Libre', serif;">
-                                <i class="bi bi-file-earmark-richtext ms-2" style="color: #b8860b;"></i>מאמרי עיון קשורים בסוגיה:
-                            </h5>
-                            <div class="d-flex flex-column gap-2">
-                                {% for item in learning.related_articles|slice:":4" %}
-                                <div class="position-relative">
-                                    {% if user.is_superuser %}
-                                    <div class="inline-admin-ctrl position-absolute top-50 start-0 translate-middle-y ms-5 z-3 gap-1" style="display: none;">
-                                        {% if item.editorial_state == 'ai_suggested' %}
-                                        <button type="button" onclick="adminItemAction('{{ article.pk }}', 'item_approve', 'articles', '{{ item.article.pk }}')" class="btn btn-sm btn-success py-0 px-2">✅</button>
-                                        {% endif %}
-                                        <button type="button" onclick="adminItemAction('{{ article.pk }}', 'item_reject', 'articles', '{{ item.article.pk }}')" class="btn btn-sm btn-danger py-0 px-2" title="הסר מאמר זה">❌</button>
-                                    </div>
-                                    {% endif %}
-                                    <a href="{% url 'articles:detail' slug=item.article.slug %}" class="bm-list-item p-3 rounded-3 text-decoration-none d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <div class="fw-bold bm-card-title" style="font-family: 'Frank Ruhl Libre', serif; font-size: 1.12rem;">
-                                                {{ item.article.title }}
-                                            </div>
-                                            {% if item.reasons %}
-                                            <div class="small text-muted mt-1" style="font-size: 0.82rem;">
-                                                נושאים משותפים: {{ item.reasons|join:", " }}
-                                            </div>
-                                            {% endif %}
-                                        </div>
-                                        <i class="bi bi-chevron-left ms-2" style="color: #b8860b;"></i>
-                                    </a>
-                                </div>
-                                {% empty %}
-                                <div class="text-muted small">אין מאמרים קשורים נוספים בסוגיה זו.</div>
-                                {% endfor %}
-                            </div>
+                    <!-- 3. שו"ת הלכה למעשה + כלי מחקר וחיפוש מקורות (מאוחדים בגריד חכם ללא שום חלל ריק) -->
+                    {% if learning.related_qas or learning.smart_tools %}
+                    <div>
+                        <div class="bm-sub-label mb-2">
+                            <i class="bi bi-compass ms-1" style="color: #b8860b;"></i>שו"ת וכלי מחקר לסוגיה זו:
                         </div>
-
-                        <div class="col-lg-6">
-                            {% if learning.related_qas %}
-                            <h5 class="fw-bold mb-3 bm-section-title" style="font-family: 'Frank Ruhl Libre', serif;">
-                                <i class="bi bi-patch-question-fill ms-2" style="color: #b8860b;"></i>תשובות הלכה למעשה במדור השו"ת:
-                            </h5>
-                            <div class="d-flex flex-column gap-2 mb-4">
-                                {% for qa in learning.related_qas|slice:":3" %}
-                                <div class="position-relative">
-                                    {% if user.is_superuser %}
-                                    <div class="inline-admin-ctrl position-absolute top-50 start-0 translate-middle-y ms-5 z-3 gap-1" style="display: none;">
-                                        {% if qa.editorial_state == 'ai_suggested' %}
-                                        <button type="button" onclick="adminItemAction('{{ article.pk }}', 'item_approve', 'qas', '{{ qa.qa_id }}')" class="btn btn-sm btn-success py-0 px-2">✅</button>
-                                        {% endif %}
-                                        <button type="button" onclick="adminItemAction('{{ article.pk }}', 'item_reject', 'qas', '{{ qa.qa_id }}')" class="btn btn-sm btn-danger py-0 px-2" title="הסר שו&quot;ת זה">❌</button>
-                                    </div>
+                        <div class="bm-tools-qa-grid">
+                            {% for qa in learning.related_qas|slice:":3" %}
+                            <div class="position-relative">
+                                {% if user.is_superuser %}
+                                <div class="inline-admin-ctrl position-absolute top-50 start-0 translate-middle-y ms-4 z-3 gap-1" style="display: none;">
+                                    {% if qa.editorial_state == 'ai_suggested' %}
+                                    <button type="button" onclick="adminItemAction('{{ article.pk }}', 'item_approve', 'qas', '{{ qa.qa_id }}')" class="btn btn-sm btn-success py-0 px-1">✅</button>
                                     {% endif %}
-                                    <a href="{{ qa.url }}" class="bm-list-item bm-qa-item p-3 rounded-3 text-decoration-none d-flex justify-content-between align-items-center">
-                                        <div class="pe-1">
-                                            <span class="badge mb-1" style="background: #f0ece1; color: #7a5827; border: 1px solid #d4af37; font-size: 0.72rem;">
-                                                שו"ת • {{ qa.category }}
-                                            </span>
-                                            <div class="fw-bold bm-card-title" style="font-family: 'Frank Ruhl Libre', serif; font-size: 1.08rem;">
-                                                {{ qa.question }}
-                                            </div>
-                                        </div>
-                                        <span class="small fw-bold text-nowrap ms-2" style="color: #8c6239;">לתשובה ←</span>
-                                    </a>
+                                    <button type="button" onclick="adminItemAction('{{ article.pk }}', 'item_reject', 'qas', '{{ qa.qa_id }}')" class="btn btn-sm btn-danger py-0 px-1" title="הסר שו&quot;ת">❌</button>
                                 </div>
-                                {% endfor %}
-                            </div>
-                            {% endif %}
-
-                            <h5 class="fw-bold mb-3 bm-section-title" style="font-family: 'Frank Ruhl Libre', serif;">
-                                <i class="bi bi-compass ms-2" style="color: #b8860b;"></i>כלי מחקר וחיפוש מקורות לסוגיה זו:
-                            </h5>
-                            <div class="d-flex flex-column gap-2">
-                                {% for tool in learning.smart_tools %}
-                                <div class="position-relative">
-                                    {% if user.is_superuser %}
-                                    <div class="inline-admin-ctrl position-absolute top-50 start-0 translate-middle-y ms-5 z-3 gap-1" style="display: none;">
-                                        {% if tool.editorial_state == 'ai_suggested' %}
-                                        <button type="button" onclick="adminItemAction('{{ article.pk }}', 'item_approve', 'tools', '{{ tool.tool_key|escapejs }}')" class="btn btn-sm btn-success py-0 px-2">✅</button>
-                                        {% endif %}
-                                        <button type="button" onclick="adminItemAction('{{ article.pk }}', 'item_reject', 'tools', '{{ tool.tool_key|escapejs }}')" class="btn btn-sm btn-danger py-0 px-2" title="הסר כלי זה">❌</button>
-                                    </div>
-                                    {% endif %}
-                                    <a href="{{ tool.url }}" class="bm-tool-card p-3 rounded-3 text-decoration-none d-flex justify-content-between align-items-center">
+                                {% endif %}
+                                <a href="{{ qa.url }}" class="bm-utility-card bm-qa-variant">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="bm-utility-icon">
+                                            <i class="bi bi-patch-question-fill"></i>
+                                        </div>
                                         <div>
-                                            <div class="fw-bold" style="color: #1e293b; font-size: 1rem;">
-                                                <i class="bi {{ tool.icon }} ms-2" style="color: #b8860b;"></i>{{ tool.title }}
-                                            </div>
-                                            <div class="small text-muted mt-1" style="font-size: 0.84rem;">
-                                                {{ tool.subtitle }}
-                                            </div>
+                                            <div class="bm-utility-tag">שו"ת הלכה למעשה • {{ qa.category }}</div>
+                                            <div class="bm-utility-title">{{ qa.question }}</div>
                                         </div>
-                                        <i class="bi bi-arrow-left-circle-fill fs-5" style="color: #b8860b;"></i>
-                                    </a>
-                                </div>
-                                {% endfor %}
+                                    </div>
+                                    <i class="bi bi-arrow-left-short fs-4" style="color: #b8860b;"></i>
+                                </a>
                             </div>
+                            {% endfor %}
+
+                            {% for tool in learning.smart_tools %}
+                            <div class="position-relative">
+                                {% if user.is_superuser %}
+                                <div class="inline-admin-ctrl position-absolute top-50 start-0 translate-middle-y ms-4 z-3 gap-1" style="display: none;">
+                                    {% if tool.editorial_state == 'ai_suggested' %}
+                                    <button type="button" onclick="adminItemAction('{{ article.pk }}', 'item_approve', 'tools', '{{ tool.tool_key|escapejs }}')" class="btn btn-sm btn-success py-0 px-1">✅</button>
+                                    {% endif %}
+                                    <button type="button" onclick="adminItemAction('{{ article.pk }}', 'item_reject', 'tools', '{{ tool.tool_key|escapejs }}')" class="btn btn-sm btn-danger py-0 px-1" title="הסר כלי זה">❌</button>
+                                </div>
+                                {% endif %}
+                                <a href="{{ tool.url }}" class="bm-utility-card bm-tool-variant">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="bm-utility-icon">
+                                            <i class="bi {{ tool.icon }}"></i>
+                                        </div>
+                                        <div>
+                                            <div class="bm-utility-title">{{ tool.title }}</div>
+                                            <div class="bm-utility-subtitle">{{ tool.subtitle }}</div>
+                                        </div>
+                                    </div>
+                                    <i class="bi bi-arrow-left-circle-fill fs-5" style="color: #b8860b;"></i>
+                                </a>
+                            </div>
+                            {% endfor %}
                         </div>
                     </div>
+                    {% endif %}
 
                 </div>
             </section>
@@ -486,7 +435,7 @@
 </div>
 
 {% if user.is_superuser and admin_choices %}
-<!-- חלונית בונה הקשרים וכלי החיפוש המתקדם למנהל בדף המאמר -->
+<!-- חלונית בונה הקשרים וכלי החיפוש המתקדם למנהל -->
 <div class="modal fade" id="adminBuilderModal" tabindex="-1" aria-hidden="true" dir="rtl">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content rounded-4 border-2" style="border-color: #d4af37;">
@@ -529,7 +478,7 @@
                     <div class="p-3 rounded-3 border bg-light mb-3">
                         <h6 class="fw-bold mb-3" style="color: #1e293b;"><i class="bi bi-sliders ms-1" style="color: #b8860b;"></i>בונה כלי חיפוש, גימטריא, ראשי תיבות, מתרגם ומחשבונים:</h6>
                         <div class="row g-2 mb-2">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="small fw-bold">1. סוג הכלי / החיפוש:</label>
                                 <select id="tbKind" class="form-select form-select-sm fw-bold" onchange="updateToolBuilderPreview()">
                                     <optgroup label="חיפוש במאגר התורני (תנ״ך, בבלי, רמב״ם...)">
@@ -553,13 +502,13 @@
                                         <option value="calc_weight">מחשבון משקל ומטבעות חז״ל</option>
                                     </optgroup>
                                     <optgroup label="התאמה אישית מלאה">
-                                        <option value="custom_free">כפתור / קישור חופשי ("כל המצאה אחרת")</option>
+                                        <option value="custom_free">כפתור / קישור חופשי</option>
                                     </optgroup>
                                 </select>
                             </div>
-                            <div class="col-md-4" id="tbQueryCol">
+                            <div class="col-md-6" id="tbQueryCol">
                                 <label class="small fw-bold">2. מילה / ביטוי / ערך לחיפוש:</label>
-                                <input type="text" id="tbQuery" class="form-control form-control-sm" placeholder="למשל: חזקה" oninput="updateToolBuilderPreview()">
+                                <input type="text" id="tbQuery" class="form-control form-control-sm" placeholder="למשל: ברית מילה" oninput="updateToolBuilderPreview()">
                             </div>
                             <div class="col-md-12 mt-2" id="tbCorpusCol">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
@@ -583,14 +532,13 @@
                         </div>
 
                         <hr class="my-2">
-                        <div class="small fw-bold text-primary mb-1">תצוגה מקדימה ועריכה חופשית של טקסט הכפתור והקישור (בשליטה מלאה שלך):</div>
                         <div class="row g-2">
                             <div class="col-md-6">
-                                <label class="small fw-bold">כותרת הכפתור שתוצג לקורא:</label>
+                                <label class="small fw-bold">כותרת הכפתור (קצרה ונקייה):</label>
                                 <input type="text" id="tbFinalTitle" class="form-control form-control-sm fw-bold">
                             </div>
                             <div class="col-md-6">
-                                <label class="small fw-bold">תת-כותרת (הסבר קצר):</label>
+                                <label class="small fw-bold">תת-כותרת (פירוט המאגרים ואופן החיפוש):</label>
                                 <input type="text" id="tbFinalSubtitle" class="form-control form-control-sm">
                             </div>
                             <div class="col-md-12">
@@ -778,9 +726,6 @@
         }, 10);
     }
 
-    /* ========================================================================= */
-    /* פונקציות עריכה חיה למנהל בדף המאמר (לפרסם לכל / להקפיא / לערוך כלים) */
-    /* ========================================================================= */
     const ADMIN_CSRF = "{{ csrf_token }}";
     let inlineBuilderType = 'articles';
     let inlineBuilderModal = null;
@@ -919,15 +864,15 @@
             qCol.style.display = 'block';
             cCol.style.display = 'block';
             const typeMap = {
-                'search_text': ['text', `חיפוש "${q}" ב${cLabel}`, `סריקת ההופעות של "${q}" ב${cLabel}`],
-                'search_exact': ['text_exact', `חיפוש מדויק של "${q}" ב${cLabel}`, `איתור הופעות מדויקות של "${q}" ב${cLabel}`],
-                'search_fuzzy': ['text_fuzzy', `חיפוש "${q}" (כתיב מלא/חסר) ב${cLabel}`, `סריקה כולל תחיליות וכתיב מלא וחסר ב${cLabel}`],
-                'search_gematria': ['gematria', `חיפוש גימטריא של "${q}" ב${cLabel}`, `איתור מילים ופסוקים בעלי ערך גימטרי זהה ב${cLabel}`],
-                'search_rashei': ['rashei_tevot', `חיפוש ראשי תיבות "${q}" ב${cLabel}`, `איתור רצפי תיבות שראשי התיבות שלהן "${q}" ב${cLabel}`],
-                'search_sofei': ['sofei_tevot', `חיפוש סופי תיבות "${q}" ב${cLabel}`, `איתור רצפי תיבות שסופי התיבות שלהן "${q}" ב${cLabel}`],
-                'search_reverse': ['reverse', `היפוך אותיות של "${q}" ב${cLabel}`, `חיפוש מילים הפוכות ופלינדרום ב${cLabel}`],
-                'search_els': ['els', `דילוגי אותיות של "${q}" ב${cLabel}`, `חיפוש מרווחי אותיות שווים (ELS) ב${cLabel}`],
-                'search_els_verse': ['els_verse', `דילוגי אותיות בפסוק של "${q}" ב${cLabel}`, `חיפוש דילוגי אותיות חוצי מילים ב${cLabel}`]
+                'search_text': ['text_broad', `חיפוש "${q}" במאגר התורני`, `${cLabel} • חיפוש חופשי`],
+                'search_exact': ['text_exact', `חיפוש "${q}" במאגר התורני`, `${cLabel} • מילה מדויקת`],
+                'search_fuzzy': ['text_fuzzy', `חיפוש "${q}" במאגר התורני`, `${cLabel} • כתיב מלא וחסר`],
+                'search_gematria': ['gematria', `חיפוש גימטריא: "${q}"`, `${cLabel} • השוואת ערך גימטרי`],
+                'search_rashei': ['rashei_tevot', `חיפוש ראשי תיבות: "${q}"`, `${cLabel} • ראשי תיבות בפסוקים`],
+                'search_sofei': ['sofei_tevot', `חיפוש סופי תיבות: "${q}"`, `${cLabel} • סופי תיבות בפסוקים`],
+                'search_reverse': ['reverse', `היפוך אותיות: "${q}"`, `${cLabel} • מילים הפוכות ופלינדרום`],
+                'search_els': ['els', `דילוגי אותיות: "${q}"`, `${cLabel} • מרווחי אותיות במילה`],
+                'search_els_verse': ['els_verse', `דילוגי אותיות בפסוק: "${q}"`, `${cLabel} • דילוגים חוצי מילים`]
             }[kind];
             title = typeMap[1];
             subtitle = typeMap[2];
@@ -935,32 +880,32 @@
         } else if (kind === 'acronyms_dict') {
             qCol.style.display = 'block';
             cCol.style.display = 'none';
-            title = q ? `פענוח ראשי תיבות "${q}" במילון` : 'מילון ראשי תיבות תורני';
-            subtitle = 'חיפוש ופענוח ראשי תיבות וקיצורים בספרות התורנית';
+            title = q ? `פענוח ראשי תיבות: "${q}"` : 'מילון ראשי תיבות תורני';
+            subtitle = 'מילון ראשי תיבות וקיצורים בספרות התורנית';
             url = `/advanced-search/?tab=acronyms&q=${encodeURIComponent(q)}`;
         } else if (kind === 'aramaic_translator') {
             qCol.style.display = 'block';
             cCol.style.display = 'none';
             title = 'מתרגם ארמי ⇄ עברי לש"ס';
-            subtitle = 'פענוח ותרגום מונחי התלמוד הבבלי, הירושלמי והזוהר';
+            subtitle = 'בבלי, ירושלמי והזוהר';
             url = q ? `/aramaic-translator/?q=${encodeURIComponent(q)}` : '/aramaic-translator/';
         } else if (kind === 'calc_length') {
             qCol.style.display = 'none';
             cCol.style.display = 'none';
             title = 'מחשבון מידות אורך בתורה';
-            subtitle = 'המרת אמה, טפח, זרת ואצבע לסנטימטרים לפי שיטות הפוסקים';
+            subtitle = 'אמה, טפח, זרת ואצבע לסנטימטרים';
             url = '/calculator/';
         } else if (kind === 'calc_volume') {
             qCol.style.display = 'none';
             cCol.style.display = 'none';
             title = 'מחשבון מידות נפח הלכתי';
-            subtitle = 'חישוב כזית, כביצה, רביעית, לוג ומקווה בסמ"ק';
+            subtitle = 'כזית, כביצה, רביעית, לוג ומקווה';
             url = '/volume-calculator/';
         } else if (kind === 'calc_weight') {
             qCol.style.display = 'none';
             cCol.style.display = 'none';
             title = 'מחשבון משקל ומטבעות חז"ל';
-            subtitle = 'חישוב משקלי התורה ומטבעות ההלכה בגרמים';
+            subtitle = 'שקל, סלע, דינר ופרוטה בגרמים';
             url = '/weight-calculator/';
         } else {
             qCol.style.display = 'none';
@@ -1042,91 +987,236 @@
 </script>
 
 <style>
-    .bm-panel {
-        background: linear-gradient(145deg, #fcfaf5 0%, #f5efe0 100%);
-        border: 2px solid #d4af37;
+    /* ========================================================================= */
+    /* עיצוב יוקרתי, פרופורציונלי ומאוזן לאזור המשך העיון בתחתית המאמר */
+    /* ========================================================================= */
+    .bm-lux-container {
+        background: linear-gradient(145deg, #fcfaf5 0%, #f6f0e2 100%);
+        border: 1.5px solid rgba(212, 175, 55, 0.65);
+        box-shadow: 0 8px 24px rgba(30, 41, 59, 0.05);
         color: #1e293b;
     }
-    .bm-heading { color: #1e293b; }
-    .bm-subtext { color: #57534e; }
-    .bm-section-title { color: #1e293b; font-size: 1.25rem; }
-    .bm-card-title { color: #1e293b; transition: color 0.2s; }
-
-    .bm-nav-card {
-        background: #ffffff;
-        border: 1px solid #dfd5c0;
+    .bm-header-divider {
+        border-bottom: 1px solid rgba(212, 175, 55, 0.35);
+    }
+    .bm-topic-pill {
+        display: inline-block;
+        background: #1e293b;
+        color: #f7e199;
+        border: 1px solid #d4af37;
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 3px 12px;
+        border-radius: 50px;
+    }
+    .bm-main-title {
+        font-family: 'Frank Ruhl Libre', serif;
+        font-size: 1.42rem;
+        color: #1e293b;
+    }
+    .bm-all-link {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #8c6239;
+        text-decoration: none;
+        padding: 5px 14px;
+        border-radius: 50px;
+        background: rgba(212, 175, 55, 0.14);
+        border: 1px solid rgba(212, 175, 55, 0.4);
         transition: all 0.2s ease;
     }
-    .bm-nav-card-next {
-        background: linear-gradient(135deg, #fffdf7 0%, #faefd4 100%);
-        border: 1.5px solid #d4af37;
+    .bm-all-link:hover {
+        background: #1e293b;
+        color: #f7e199;
+        border-color: #1e293b;
     }
-    .bm-nav-card:hover {
+    .bm-sub-label {
+        font-family: 'Frank Ruhl Libre', serif;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #334155;
+    }
+
+    /* גריד דינמי למאמרים קשורים (ללא חורים - מסתדר אוטומטית לפי 1, 2, 3, 4, 5 או 6 מאמרים) */
+    .bm-articles-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 10px;
+    }
+    .bm-article-chip {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #ffffff;
+        border: 1px solid #e4dccb;
+        border-right: 3.5px solid #d4af37;
+        border-radius: 10px;
+        padding: 11px 15px;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        min-height: 52px;
+    }
+    .bm-article-chip:hover {
+        background: #fffdf8;
+        border-color: #b8860b;
         transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(184, 134, 11, 0.14);
-        border-color: #b8860b;
+        box-shadow: 0 5px 14px rgba(184, 134, 11, 0.12);
     }
-    .bm-nav-card-disabled {
-        background: rgba(255, 255, 255, 0.45);
-        border: 1px dashed #d6cbb5;
+    .bm-article-chip-title {
+        font-family: 'Frank Ruhl Libre', serif;
+        font-size: 1.04rem;
+        font-weight: 700;
+        color: #1e293b;
+        line-height: 1.35;
     }
-
-    .bm-book-card {
-        background: #ffffff;
-        border: 1.5px solid #d4af37;
-        border-right: 5px solid #b8860b;
-        transition: all 0.2s ease;
+    .bm-chip-arrow {
+        color: #b8860b;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+        margin-right: 8px;
+        transition: transform 0.2s ease;
     }
-    .bm-book-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 20px rgba(184, 134, 11, 0.18);
-        background: #fffef9;
-    }
-
-    .bm-list-item {
-        background: #ffffff;
-        border: 1px solid #e2d9c5;
-        border-right: 4px solid #d4af37;
-        transition: all 0.2s ease;
-    }
-    .bm-list-item:hover {
-        background: #fffdf7;
-        border-color: #b8860b;
+    .bm-article-chip:hover .bm-chip-arrow {
         transform: translateX(-3px);
     }
 
-    .bm-tool-card {
-        background: linear-gradient(135deg, #fffdf9 0%, #f7eed6 100%);
-        border: 1.5px solid #d4af37;
+    /* גריד קומפקטי ויוקרתי לפרקים בספרי המחבר */
+    .bm-books-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 12px;
+    }
+    .bm-book-compact-card {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        background: #ffffff;
+        border: 1px solid #dfd3b8;
+        border-right: 4px solid #b8860b;
+        border-radius: 10px;
+        padding: 12px 15px;
+        text-decoration: none;
+        height: 100%;
         transition: all 0.2s ease;
     }
-    .bm-tool-card:hover {
-        background: #faecc8;
+    .bm-book-compact-card:hover {
+        background: #fffef9;
+        border-color: #b8860b;
         transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(184, 134, 11, 0.14);
+    }
+    .bm-book-badge {
+        display: inline-block;
+        background: #1e293b;
+        color: #f7e199;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 2px 9px;
+        border-radius: 6px;
+        margin-bottom: 6px;
+    }
+    .bm-book-chapter-title {
+        font-family: 'Frank Ruhl Libre', serif;
+        font-size: 1.03rem;
+        font-weight: 700;
+        color: #1e293b;
+        line-height: 1.4;
+    }
+    .bm-book-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
+        padding-top: 7px;
+        border-top: 1px dashed rgba(212, 175, 55, 0.4);
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #8c6239;
     }
 
-    body.dark-mode .bm-panel {
+    /* גריד מאוחד לשו"ת ולכלי מחקר (מונע חורים כשיש כלי אחד או שניים) */
+    .bm-tools-qa-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 10px;
+    }
+    .bm-utility-card {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 11px 15px;
+        border-radius: 10px;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        height: 100%;
+    }
+    .bm-tool-variant {
+        background: linear-gradient(135deg, #fffdf9 0%, #f8efda 100%);
+        border: 1px solid #d4af37;
+    }
+    .bm-qa-variant {
+        background: #ffffff;
+        border: 1px solid #dfd3b8;
+        border-right: 4px solid #1e293b;
+    }
+    .bm-utility-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(184, 134, 11, 0.15);
+    }
+    .bm-utility-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: rgba(212, 175, 55, 0.18);
+        color: #8c6239;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+    .bm-utility-tag {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #8c6239;
+    }
+    .bm-utility-title {
+        font-family: 'Frank Ruhl Libre', serif;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1e293b;
+        line-height: 1.3;
+    }
+    .bm-utility-subtitle {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin-top: 2px;
+    }
+
+    /* התאמה למצב כהה (Dark Mode) */
+    body.dark-mode .bm-lux-container {
         background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
-        border-color: #d4af37;
+        border-color: rgba(212, 175, 55, 0.5);
         color: #f8fafc;
     }
-    body.dark-mode .bm-heading,
-    body.dark-mode .bm-section-title,
-    body.dark-mode .bm-card-title {
+    body.dark-mode .bm-main-title,
+    body.dark-mode .bm-sub-label,
+    body.dark-mode .bm-article-chip-title,
+    body.dark-mode .bm-book-chapter-title,
+    body.dark-mode .bm-utility-title {
         color: #f8fafc !important;
     }
-    body.dark-mode .bm-subtext { color: #cbd5e1 !important; }
-    body.dark-mode .bm-nav-card,
-    body.dark-mode .bm-book-card,
-    body.dark-mode .bm-list-item {
+    body.dark-mode .bm-article-chip,
+    body.dark-mode .bm-book-compact-card,
+    body.dark-mode .bm-qa-variant {
         background: rgba(255, 255, 255, 0.05);
-        border-color: rgba(212, 175, 55, 0.4);
+        border-color: rgba(212, 175, 55, 0.35);
     }
-    body.dark-mode .bm-tool-card {
-        background: rgba(212, 175, 55, 0.14);
+    body.dark-mode .bm-tool-variant {
+        background: rgba(212, 175, 55, 0.12);
     }
-    body.dark-mode .bm-tool-card div {
-        color: #f7e199 !important;
+    body.dark-mode .bm-utility-subtitle {
+        color: #cbd5e1 !important;
     }
 
     .lux-modal-content {

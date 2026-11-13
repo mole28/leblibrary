@@ -794,11 +794,52 @@ class ClusterEngine:
             try:
                 raw_json = tool_key.split('custom_json:', 1)[1]
                 parsed = json.loads(raw_json)
+                title = parsed.get('title', 'כלי מחקר תורני').strip()
+                subtitle = parsed.get('subtitle', 'לחץ לפתיחת הכלי והמקורות').strip()
+                url = parsed.get('url', '/advanced-search/')
+
+                # ניקוי אוטומטי של כותרות חיפוש ארוכות וכפולות (גם לכפתורים שכבר נשמרו בעבר)
+                m_q = re.search(r'"([^"]+)"', title)
+                if m_q and ('חיפוש' in title or 'דילוגי' in title or 'היפוך' in title):
+                    q_word = m_q.group(1)
+                    corpus_part = ''
+                    m_corp = re.search(r'\)\s*ב(.+)$', title) or re.search(r'"\s*ב(.+)$', title)
+                    if m_corp:
+                        corpus_part = m_corp.group(1).strip()
+
+                    mode_label = 'חיפוש חופשי'
+                    if 'כתיב מלא' in title or 'type=text_fuzzy' in url:
+                        mode_label = 'כתיב מלא וחסר'
+                    elif 'מדויק' in title or 'type=text_exact' in url:
+                        mode_label = 'מילה מדויקת'
+                    elif 'גימטרי' in title or 'type=gematria' in url:
+                        mode_label = 'השוואת גימטריא'
+                    elif 'ראשי תיבות' in title and 'tab=acronyms' not in url:
+                        mode_label = 'ראשי תיבות בפסוקים'
+                    elif 'סופי תיבות' in title:
+                        mode_label = 'סופי תיבות בפסוקים'
+                    elif 'היפוך' in title:
+                        mode_label = 'היפוך אותיות'
+                    elif 'דילוגי' in title:
+                        mode_label = 'דילוגי אותיות'
+
+                    if 'גימטרי' in title:
+                        title = f'חיפוש גימטריא: "{q_word}"'
+                    elif 'ראשי תיבות' in title and 'tab=acronyms' in url:
+                        title = f'פענוח ראשי תיבות: "{q_word}"'
+                    else:
+                        title = f'חיפוש "{q_word}" במאגר התורני'
+
+                    if corpus_part and 'כל המאגר' not in corpus_part:
+                        subtitle = f'{corpus_part} • {mode_label}'
+                    elif 'tab=acronyms' not in url:
+                        subtitle = f'כל המאגר התורני • {mode_label}'
+
                 return {
                     'tool_key': tool_key,
-                    'title': parsed.get('title', 'כלי מחקר תורני'),
-                    'subtitle': parsed.get('subtitle', 'לחץ לפתיחת הכלי והמקורות'),
-                    'url': parsed.get('url', '/advanced-search/'),
+                    'title': title,
+                    'subtitle': subtitle,
+                    'url': url,
                     'icon': parsed.get('icon', 'bi-search'),
                     'editorial_state': editorial_state,
                 }
@@ -810,7 +851,7 @@ class ClusterEngine:
             return {
                 'tool_key': tool_key,
                 'title': f'חיפוש "{custom_q}" במאגר התורני',
-                'subtitle': 'סריקה בתנ"ך, משנה, תוספתא, בבלי, ירושלמי, רמב"ם ושולחן ערוך',
+                'subtitle': 'תנ"ך, משנה, בבלי, ירושלמי, רמב"ם ושו"ע',
                 'url': f'/advanced-search/?q={urllib.parse.quote(custom_q)}',
                 'icon': 'bi-search',
                 'editorial_state': editorial_state,
@@ -820,7 +861,7 @@ class ClusterEngine:
             return {
                 'tool_key': 'torah_search_auto',
                 'title': f'חיפוש "{default_search_term}" במאגר התורני',
-                'subtitle': 'סריקה בתנ"ך, משנה, תוספתא, בבלי, ירושלמי, רמב"ם ושולחן ערוך',
+                'subtitle': 'תנ"ך, משנה, בבלי, ירושלמי, רמב"ם ושו"ע',
                 'url': f'/advanced-search/?q={urllib.parse.quote(default_search_term)}',
                 'icon': 'bi-search',
                 'editorial_state': editorial_state,
