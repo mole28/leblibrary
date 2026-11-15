@@ -65,7 +65,7 @@ def smart_hebrew_search(queryset, query, search_fields):
                     output_field=IntegerField()
                 )
 
-    return results.annotate(relevance=score_expr).order_by('-relevance').distinct()
+    return results.annotate(relevance=score_expr).order_by('-relevance', '-pk')
 
 
 def get_text_fields(model_class):
