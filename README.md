@@ -66,33 +66,3 @@ To run this project locally for development or testing:
 4. **Start the development server:**
     ```bash
     python manage.py runserver
-
----
-
-## 📋 Deployment & Maintenance Cheat Sheet
-This section documents the standard workflow for updating the live production server.
-
-### 1. Pushing Local Changes (Development Environment)
-After modifying templates (e.g., `base.html`), adding static files, or updating Python logic:
-
-# Stage all changes
-    git add .
-
-# Commit with a descriptive message
-    git commit -m "Update description here"
-
-# Push to the main branch
-    git push origin main
-
-### 2. Updating the Production Server (Ubuntu / Gunicorn / Nginx)
-Connect to the Ubuntu server and pull the latest changes:
-
-# Navigate to the project directory
-    cd /var/www/lab_library
-
-# Pull latest code from GitHub
-    git pull origin main
-
-# Restart Gunicorn and Nginx services
-    sudo systemctl restart gunicorn
-    sudo systemctl restart nginx

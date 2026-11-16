@@ -11,3 +11,5 @@ pyluach
 Pillow
 edge-tts
 chromadb
+sentry-sdk
+requests
