@@ -306,14 +306,23 @@ def article_detail(request, slug):
     slug_str = str(slug).strip()
     article = Article.objects.filter(slug=slug_str).first()
 
-    if not article and slug_str.isdigit():
-        article = Article.objects.only('id', 'slug').filter(pk=int(slug_str)).first()
+    # תפיסת כתובות ישנות מהצורה /article/32/ או /article/article-32/
+    legacy_id = None
+    if not article:
+        if slug_str.isdigit():
+            legacy_id = int(slug_str)
+        elif slug_str.startswith('article-') and slug_str.replace('article-', '', 1).isdigit():
+            legacy_id = int(slug_str.replace('article-', '', 1))
+
+    if legacy_id is not None:
+        article = Article.objects.only('id', 'slug', 'is_published').filter(pk=legacy_id).first()
         if article and article.slug:
             return redirect('articles:detail', slug=article.slug, permanent=True)
+        return redirect('articles:articles_index', permanent=True)
 
     if article:
         if not article.is_published and not request.user.is_superuser:
-            raise Http404("המאמר מוקפא כעת ואינו מפורסם לציבור.")
+            return redirect('articles:articles_index')
 
         if article.slug and article.slug != slug_str:
             return redirect('articles:detail', slug=article.slug, permanent=True)
@@ -810,9 +819,10 @@ def _get_or_create_cart(request):
         cart, _ = Cart.objects.get_or_create(session_id=request.session.session_key)
         return cart
 
-
 def add_to_cart(request, book_id):
-    book = get_object_or_404(Book, id=book_id, is_for_sale=True)
+    book = Book.objects.filter(id=book_id, is_for_sale=True).first()
+    if not book:
+        return redirect('articles:books', permanent=True)
     cart = _get_or_create_cart(request)
     cart_item, created = CartItem.objects.get_or_create(cart=cart, book=book)
     if not created:
@@ -821,14 +831,13 @@ def add_to_cart(request, book_id):
     messages.success(request, f'הספר "{book.title}" נוסף לעגלת הקניות בהצלחה.')
     return redirect('articles:cart_detail')
 
-
 def remove_from_cart(request, item_id):
     cart = _get_or_create_cart(request)
-    item = get_object_or_404(CartItem, id=item_id, cart=cart)
-    item.delete()
-    messages.info(request, 'הפריט הוסר מעגלת הקניות.')
+    item = CartItem.objects.filter(id=item_id, cart=cart).first()
+    if item:
+        item.delete()
+        messages.info(request, 'הפריט הוסר מעגלת הקניות.')
     return redirect('articles:cart_detail')
-
 
 def cart_detail(request):
     cart = _get_or_create_cart(request)

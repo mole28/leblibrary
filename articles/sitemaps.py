@@ -1,6 +1,7 @@
 from django.contrib.sitemaps import Sitemap
 from django.urls import reverse, NoReverseMatch
-from articles.models import Article, Book
+from articles.models import Article, Book, QA
+
 
 class BaseSitemap(Sitemap):
     """
@@ -8,7 +9,7 @@ class BaseSitemap(Sitemap):
     וכופה את הדומיין והפרוטוקול האמיתיים של האתר על כל המפות
     """
     protocol = 'https'
-    
+
     def get_urls(self, page=1, site=None, protocol=None):
         class SiteMock:
             domain = 'leblibrary.co.il'
@@ -23,23 +24,59 @@ class BaseSitemap(Sitemap):
             return obj.created_at
         return None
 
+
 class StaticViewSitemap(BaseSitemap):
-    """מפת אתר לעמודים רגילים שאין להם מודל במסד הנתונים"""
-    priority = 0.9  
+    """מפת אתר לכל העמודים הקבועים והכלים התורניים באתר"""
+    priority = 0.9
     changefreq = 'weekly'
 
     def items(self):
-        return ['advanced_search', 'about', 'contact', 'terms', 'calculator', 'volume_calculator', 'weight_calculator']
+        return [
+            'list',
+            'articles_index',
+            'books',
+            'qa',
+            'parasha',
+            'recently_added',
+            'advanced_search',
+            'aramaic_translator',
+            'calculator',
+            'volume_calculator',
+            'weight_calculator',
+            'about',
+            'contact',
+            'terms',
+        ]
 
     def location(self, item):
         try:
             return reverse(item)
         except NoReverseMatch:
-            return reverse(f'articles:{item}')
+            try:
+                return reverse(f'articles:{item}')
+            except NoReverseMatch:
+                fallback_paths = {
+                    'list': '/',
+                    'articles_index': '/index/',
+                    'books': '/books/',
+                    'qa': '/qa/',
+                    'parasha': '/parasha/',
+                    'recently_added': '/recently-added/',
+                    'advanced_search': '/advanced-search/',
+                    'aramaic_translator': '/aramaic-translator/',
+                    'calculator': '/calculator/',
+                    'volume_calculator': '/volume-calculator/',
+                    'weight_calculator': '/weight-calculator/',
+                    'about': '/about/',
+                    'contact': '/contact/',
+                    'terms': '/terms/',
+                }
+                return fallback_paths.get(item, '/')
+
 
 class ArticleSitemap(BaseSitemap):
     """מפת אתר דינמית ששולפת אוטומטית את כל המאמרים המפורסמים ממסד הנתונים"""
-    priority = 0.9  
+    priority = 0.9
     changefreq = 'daily'
 
     def items(self):
@@ -50,6 +87,7 @@ class ArticleSitemap(BaseSitemap):
             return reverse('detail', kwargs={'slug': item.slug})
         except NoReverseMatch:
             return reverse('articles:detail', kwargs={'slug': item.slug})
+
 
 class BookSitemap(BaseSitemap):
     """מפת אתר דינמית ששולפת אוטומטית את כל הספרים ממסד הנתונים"""
@@ -65,11 +103,25 @@ class BookSitemap(BaseSitemap):
         except NoReverseMatch:
             return reverse('articles:book_detail', kwargs={'pk': item.pk})
 
-# =====================================
-# המילון שמאגד את כל מפות האתר
-# =====================================
+
+class QASitemap(BaseSitemap):
+    """מפת אתר דינמית לכל תשובות השו"ת באתר"""
+    priority = 0.8
+    changefreq = 'weekly'
+
+    def items(self):
+        return QA.objects.all().order_by('-pk')
+
+    def location(self, item):
+        try:
+            return reverse('articles:qa_detail', kwargs={'pk': item.pk})
+        except NoReverseMatch:
+            return f'/qa/{item.pk}/'
+
+
 sitemaps = {
     'static': StaticViewSitemap,
     'articles': ArticleSitemap,
     'books': BookSitemap,
+    'qas': QASitemap,
 }

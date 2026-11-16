@@ -15,7 +15,7 @@
 
     <meta name="description" content="{% block meta_description %}ספריית לייבוביץ - ספרייה תורנית, ספרי הלכה, מאמרים, שו״ת, מילון ראשי תיבות, מתרגם ארמי-עברי, מחשבוני מידות חז״ל (אורך, נפח ומשקל) ומנוע חיפוש תורני מתקדם (כתיב מלא וחסר, גימטריאות, ראשי וסופי תיבות ודילוגי אותיות בתנ״ך, במשנה, בתלמודים ובפוסקים) מאת הרב משה לייבוביץ.{% endblock %}">
     <meta name="keywords" content="משה לייבוביץ, משה ליבוביץ, ספריית לייבוביץ, חיפוש תורני מתקדם, חיפוש כתיב מלא וחסר, חיפוש גימטריה בתנך, דילוגי אותיות בתורה, חיפוש ראשי תיבות, סופי תיבות, מילון ראשי תיבות, מחשבון מידות חזל, מידות אורך בתורה, שנת מעשר תשפז, ברכה על קשת בענן, מאמרים תורניים">
-    {% if request.GET.q or request.GET.type or request.GET.page %}
+    {% if request.GET.q or request.GET.type or request.GET.page or request.GET.open or request.GET.book or request.GET.chapter %}
     <meta name="robots" content="noindex, follow">
     {% else %}
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
@@ -32,7 +32,7 @@
     
     <meta property="og:title" content="{% block og_title %}ספריית לייבוביץ | משה לייבוביץ{% endblock %}">
     <meta property="og:description" content="{% block og_description %}ספרייה תורנית, ספרי הלכה, מאמרים, שו״ת ומנוע חיפוש תורני מתקדם בתנ״ך, במשנה, בתלמודים ובפוסקים.{% endblock %}">
-    <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
+    <meta property="og:url" content="https://leblibrary.co.il{{ request.path }}">
     <meta property="og:type" content="website">
     <meta property="og:image" content="https://leblibrary.co.il/static/images/icon-512x512.png">
     <meta name="msvalidate.01" content="4F414ADD88881F3E5922BC3D6B34104C" />
@@ -341,7 +341,6 @@
             .article-text { font-size: 1rem; }
             .container-main { padding-left: 10px !important; padding-right: 10px !important; }
             
-            /* הקטנת הכפתור הוורוד במובייל ל-70% מגודלו הקודם */
             .global-ai-side-btn { width: 35px !important; height: 35px !important; top: auto; bottom: 95px; border-radius: 6px 0 0 6px; opacity: 0.92; }
             .ai-side-icon { width: 35px !important; height: 35px !important; }
             .ai-side-icon svg { width: 15px !important; height: 15px !important; }
@@ -480,7 +479,7 @@
         }
     </style>
     
-    <link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
+    <link rel="canonical" href="https://leblibrary.co.il{{ request.path }}">
     
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     <link rel="icon" type="image/png" sizes="192x192" href="{% static 'images/icon-192x192.png' %}">
@@ -500,7 +499,6 @@
         <div id="reading-progress-bar"></div>
     </div>
 
-    <!-- Inject Navbar -->
     {% include 'articles/includes/navbar.html' %}
 
     <div class="content-wrapper">
@@ -517,15 +515,12 @@
         </main>
     </div>
 
-    <!-- Inject Footer -->
     {% include 'articles/includes/footer.html' %}
 
-    <!-- Inject Modals (בתחתית העמוד עם חסימת תקציר לגוגל) -->
     <div data-nosnippet>
         {% include 'articles/includes/modals.html' %}
     </div>
 
-    <!-- Inject Scripts -->
     {% include 'articles/includes/scripts.html' %}
 
 </body>
