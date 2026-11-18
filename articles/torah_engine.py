@@ -182,6 +182,10 @@ def calculate_gematria(text):
 def format_divine_name(text):
     if not text:
         return ""
+    # תיקון מראה מקום שגוי בתוספתא ברכות א, ג: (שופטים ד) -> (שופטים ז, יט) [LEB-UI-13]
+    if 'שופטים' in text and 'אשמורת' in text:
+        text = re.sub(r'\(\s*שופטים\s+ד[\'׳]?\s*\)', '(שופטים ז, יט)', text)
+
     pattern = re.compile(
         r'(י[\u0591-\u05C7]*(?:</?(?:strong|mark)[^>]*>)*)'
         r'(ה[\u0591-\u05C7]*(?:</?(?:strong|mark)[^>]*>)*)'
@@ -1076,7 +1080,7 @@ def tanakh_advanced_search_api(request):
     except ValueError:
         per_page = 10
 
-    search_cache_key = f"tanakh_srch_v50_{query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
+    search_cache_key = f"tanakh_srch_v51_{query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
     cached_search_data = cache.get(search_cache_key)
     if cached_search_data:
         return JsonResponse(cached_search_data, json_dumps_params={'ensure_ascii': False})
@@ -1146,7 +1150,6 @@ def tanakh_advanced_search_api(request):
                 for target_w in q_words:
                     w_q = Q(clean_text__icontains=target_w)
                     if len(target_w) >= 3:
-                        # תמיכה במילים עם אות רבתי/זעירא בתחילת או סוף המילה (כגון <big>ב</big>ראשית או ויקר<small>א</small>)
                         w_q |= (Q(clean_text__icontains=target_w[1:]) & Q(clean_text__icontains='<'))
                         w_q |= (Q(clean_text__icontains=target_w[:-1]) & Q(clean_text__icontains='<'))
                         w_q |= Q(clean_text__icontains=f"{target_w[0]} {target_w[1:]}")

@@ -947,45 +947,30 @@ def clear_cache_on_db_change(sender, instance, **kwargs):
 
 
 def load_tts_dictionary():
-    base_dict = {
-        "או'": "אומר",
-        "ואו'": "ואומר",
-        "ר\"ג": "רבן גמליאל",
-        "כר\"ג": "כרבן גמליאל",
-        "א\"ר": "אמר רבי",
-        "דא\"ר": "דאמר רבי",
-        "וא\"ר": "ואמר רבי",
-        "מח'": "מחלוקת",
-        "הל'": "הלכה",
-        "מהל'": "מהלכות",
-        "בהל'": "בהלכות",
-        "גמ'": "גמרא",
-        "בגמ'": "בגמרא",
-        "ובגמ'": "ובגמרא",
-        "תוס'": "תוספות",
-        "בתוס'": "בתוספות",
-        "ובתוס'": "ובתוספות",
-        "יו\"ט": "יום טוב",
-        "מיו\"ט": "מיום טוב",
-        "ביו\"ט": "ביום טוב",
-        "ליו\"ט": "ליום טוב",
-        "נא'": "נאמר",
-        "שנא'": "שנאמר",
-        "אפ'": "אפילו",
-        "אפי'": "אפילו",
-        "סי'": "סימן",
-        "בסי'": "בסימן",
-        "סע'": "סעיף",
-        "בסע'": "בסעיף",
-        "וחכ\"א": "וחכמים אומרים",
+    dict_path = os.path.join(settings.BASE_DIR, 'tts_dictionary.json')
+    if not os.path.exists(dict_path):
+        dict_path = os.path.join(settings.BASE_DIR, 'articles', 'tts_dictionary.json')
+
+    if os.path.exists(dict_path):
+        try:
+            with open(dict_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                data["או'"] = "אומר"
+                data["ואו'"] = "ואומר"
+                return data
+        except Exception:
+            pass
+
+    return {
+        "או'": 'אומר', "ואו'": 'ואומר',
         'רמב"ם': 'רמבם', 'רש"י': 'רשי', 'שו"ע': 'שולחן ערוך', 'שו"ת': 'שאלות ותשובות',
-        'רמב"ן': 'רמבן', 'רס"ג': 'רב סעדיה גאון',
+        'רמב"ן': 'רמבן', 'רס"ג': 'רב סעדיה גאון', "תוס'": 'תוספות', "גמ'": 'גמרא',
         'וכו\'': 'וכולי', 'ע"ד': 'על דרך', 'ע"י': 'על ידי', "לכאו'": 'לכאורה',
         'כמו"ש': 'כמו שכתוב', 'ע"כ': 'עד כאן', 'קא משמע לן': 'קָא מַשְׁמַע לָן',
         'אי נמי': 'אִי נַמִּי', 'מנא לן': 'מְנָא לָן', 'פשיטא': 'פְּשִׁיטָא',
         'הכי נמי': 'הָכִי נַמִּי', 'תנא': 'תַּנָּא', 'א"כ': 'אם כן', 'ג"כ': 'גם כן',
         'אע"פ': 'אף על פי', 'בד"כ': 'בדרך כלל', 'חז"ל': 'חכמינו זיכרונם לברכה',
-        'ק"ו': 'קל וחומר', 'ת"ח': 'תלמיד חכם', 'בע"ה': 'בעזרת השם',
+        'יו"ט': 'יום טוב', 'ק"ו': 'קל וחומר', 'ת"ח': 'תלמיד חכם', 'בע"ה': 'בעזרת השם',
         'זצ"ל': 'זכר צדיק לברכה', 'שליט"א': 'שיחיה לאורך ימים טובים אמן',
         'הקב"ה': 'הקדוש ברוך הוא', 'רבש"ע': 'ריבונו של עולם',
         'איתא': 'אִיתָא', 'ליתא': 'לֵיתָא', 'הכא': 'הָכָא', 'התם': 'הָתָם', 'האי': 'זה', 'הני': 'אלה',
@@ -1078,23 +1063,6 @@ def load_tts_dictionary():
         'תשב"ץ': 'תשובות שמעון בן צמח'
     }
 
-    for dict_path in [
-        os.path.join(settings.BASE_DIR, 'tts_dictionary.json'),
-        os.path.join(settings.BASE_DIR, 'articles', 'tts_dictionary.json')
-    ]:
-        if os.path.exists(dict_path):
-            try:
-                with open(dict_path, 'r', encoding='utf-8') as f:
-                    file_dict = json.load(f)
-                    if isinstance(file_dict, dict):
-                        merged = dict(file_dict)
-                        merged.update(base_dict)
-                        return merged
-            except Exception:
-                pass
-
-    return base_dict
-
 
 def apply_tts_dictionary(text):
     if not text:
@@ -1107,25 +1075,22 @@ def apply_tts_dictionary(text):
     text = strip_tags(text)
     text = unescape(text)
 
-    # נרמול גרשיים ומרכאות טיפוגרפיים מוורד כדי שקיצורים כמו או' / ר"ג יזוהו תמיד
-    text = re.sub(r'[״”“]', '"', text)
-    text = re.sub(r"[׳’‘`]", "'", text)
-
     text = re.sub(r'\[.*?\]', '', text)
     text = re.sub(r'\(\d+\)', '', text)
     text = re.sub(r'[*_#]', '', text)
+
+    # הרחבה בטוחה של הקיצור התלמודי "או'" -> "אומר" (מבלי לגעת במילה הרגילה "או")
+    text = re.sub(r"(?<![א-ת])(ו?)או['׳’](?![א-ת])", r"\1אומר", text)
 
     tts_dict = load_tts_dictionary()
     sorted_keys = sorted(tts_dict.keys(), key=len, reverse=True)
 
     for key in sorted_keys:
         val = tts_dict[key]
-        if " " in key:
+        if '"' in key or "'" in key or " " in key:
             text = text.replace(key, val)
-        elif key.endswith("'") or '"' in key or "'" in key:
-            text = re.sub(rf'(?<![א-ת]){re.escape(key)}(?![א-ת])', val, text)
         else:
-            text = re.sub(rf'(?<![א-ת]){re.escape(key)}(?![א-ת])', val, text)
+            text = re.sub(rf'(?<![א-ת]){key}(?![א-ת])', val, text)
 
     text = re.sub(r'([א-ת])"([א-ת])', r'\1\2', text)
     text = re.sub(r"([א-ת])'([א-ת])", r'\1\2', text)
@@ -1161,7 +1126,7 @@ def generate_article_audio_background(article_id):
         audio_dir = os.path.join(base_media, 'audio')
         os.makedirs(audio_dir, exist_ok=True)
 
-        file_name = f"article_{article.id}_v2.mp3"
+        file_name = f"article_{article.id}.mp3"
         file_path = os.path.join(audio_dir, file_name)
 
         if not os.path.exists(file_path):
@@ -1197,13 +1162,12 @@ def generate_article_audio_background(article_id):
 def trigger_article_audio_pregeneration(sender, instance, created, **kwargs):
     if instance.is_published:
         base_media = getattr(settings, 'MEDIA_ROOT', os.path.join(settings.BASE_DIR, 'media'))
-        for fn in (f"article_{instance.id}.mp3", f"article_{instance.id}_v2.mp3"):
-            file_path = os.path.join(base_media, 'audio', fn)
-            if os.path.exists(file_path):
-                try:
-                    os.remove(file_path)
-                except Exception:
-                    pass
+        file_path = os.path.join(base_media, 'audio', f"article_{instance.id}.mp3")
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass
 
         transaction.on_commit(lambda: threading.Thread(target=generate_article_audio_background, args=(instance.id,)).start())
 
@@ -1221,7 +1185,7 @@ def get_article_audio(request, identifier):
     audio_dir = os.path.join(base_media, 'audio')
     os.makedirs(audio_dir, exist_ok=True)
 
-    file_name = f"article_{article.id}_v2.mp3"
+    file_name = f"article_{article.id}.mp3"
     file_path = os.path.join(audio_dir, file_name)
     media_url = getattr(settings, 'MEDIA_URL', '/media/')
 
@@ -1270,7 +1234,7 @@ def get_book_audio(request, book_id):
     audio_dir = os.path.join(base_media, 'audio')
     os.makedirs(audio_dir, exist_ok=True)
 
-    file_name = f"book_{book.id}_v2.mp3"
+    file_name = f"book_{book.id}.mp3"
     file_path = os.path.join(audio_dir, file_name)
     media_url = getattr(settings, 'MEDIA_URL', '/media/')
 
@@ -1655,7 +1619,6 @@ document.addEventListener('DOMContentLoaded', function() {
     except Exception:
         pass
     return response
-
 
 @ratelimit(rate=30, timeout=60)
 def aramaic_translate_api(request):
