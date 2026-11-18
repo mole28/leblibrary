@@ -302,11 +302,11 @@ def article_list(request):
         'schema_json_ld': get_base_schema_json()
     })
 
+
 def article_detail(request, slug):
     slug_str = str(slug).strip()
     article = Article.objects.filter(slug=slug_str).first()
 
-    # תפיסת כתובות ישנות מהצורה /article/32/ או /article/article-32/
     legacy_id = None
     if not article:
         if slug_str.isdigit():
@@ -405,6 +405,7 @@ def connections_audit_view(request):
         'report': report,
         'current_page': 'articles',
     })
+
 
 @login_required
 def article_create(request):
@@ -581,6 +582,7 @@ def terms(request):
 def books_list(request):
     return render(request, 'articles/books_list.html', {'current_page': 'books'})
 
+
 def qa_list(request, pk=None):
     selected_qa = None
     q = (request.GET.get('q') or '').strip()
@@ -636,7 +638,6 @@ def qa_list(request, pk=None):
     try:
         return render(request, 'articles/qa_list.html', context)
     except Exception:
-        # הגנה מפני שגיאת NoReverseMatch בתבנית qa_list.html כאשר request.GET.q קיים
         orig_get = request.GET
         clean_get = request.GET.copy()
         clean_get.pop('q', None)
@@ -652,6 +653,7 @@ def qa_list(request, pk=None):
             except Exception:
                 pass
         return resp
+
 
 def acronyms_view(request):
     query = request.GET.get('q', '').strip()
@@ -862,6 +864,7 @@ def _get_or_create_cart(request):
         cart, _ = Cart.objects.get_or_create(session_id=request.session.session_key)
         return cart
 
+
 def add_to_cart(request, book_id):
     book = Book.objects.filter(id=book_id, is_for_sale=True).first()
     if not book:
@@ -874,6 +877,7 @@ def add_to_cart(request, book_id):
     messages.success(request, f'הספר "{book.title}" נוסף לעגלת הקניות בהצלחה.')
     return redirect('articles:cart_detail')
 
+
 def remove_from_cart(request, item_id):
     cart = _get_or_create_cart(request)
     item = CartItem.objects.filter(id=item_id, cart=cart).first()
@@ -881,6 +885,7 @@ def remove_from_cart(request, item_id):
         item.delete()
         messages.info(request, 'הפריט הוסר מעגלת הקניות.')
     return redirect('articles:cart_detail')
+
 
 def cart_detail(request):
     cart = _get_or_create_cart(request)
@@ -933,33 +938,54 @@ def ping_indexnow(article_url):
     except Exception:
         pass
 
+
 @receiver([post_save, post_delete], sender=Article)
 @receiver([post_save, post_delete], sender=Book)
 def clear_cache_on_db_change(sender, instance, **kwargs):
     cache.clear()
     ClusterEngine.clear_memory_cache()
 
+
 def load_tts_dictionary():
-    dict_path = os.path.join(settings.BASE_DIR, 'tts_dictionary.json')
-    if not os.path.exists(dict_path):
-        dict_path = os.path.join(settings.BASE_DIR, 'articles', 'tts_dictionary.json')
-
-    if os.path.exists(dict_path):
-        try:
-            with open(dict_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception:
-            pass
-
-    return {
+    base_dict = {
+        "או'": "אומר",
+        "ואו'": "ואומר",
+        "ר\"ג": "רבן גמליאל",
+        "כר\"ג": "כרבן גמליאל",
+        "א\"ר": "אמר רבי",
+        "דא\"ר": "דאמר רבי",
+        "וא\"ר": "ואמר רבי",
+        "מח'": "מחלוקת",
+        "הל'": "הלכה",
+        "מהל'": "מהלכות",
+        "בהל'": "בהלכות",
+        "גמ'": "גמרא",
+        "בגמ'": "בגמרא",
+        "ובגמ'": "ובגמרא",
+        "תוס'": "תוספות",
+        "בתוס'": "בתוספות",
+        "ובתוס'": "ובתוספות",
+        "יו\"ט": "יום טוב",
+        "מיו\"ט": "מיום טוב",
+        "ביו\"ט": "ביום טוב",
+        "ליו\"ט": "ליום טוב",
+        "נא'": "נאמר",
+        "שנא'": "שנאמר",
+        "אפ'": "אפילו",
+        "אפי'": "אפילו",
+        "סי'": "סימן",
+        "בסי'": "בסימן",
+        "סע'": "סעיף",
+        "בסע'": "בסעיף",
+        "וחכ\"א": "וחכמים אומרים",
         'רמב"ם': 'רמבם', 'רש"י': 'רשי', 'שו"ע': 'שולחן ערוך', 'שו"ת': 'שאלות ותשובות',
-        'רמב"ן': 'רמבן', 'רס"ג': 'רב סעדיה גאון', "תוס'": 'תוספות', "גמ'": 'גמרא',
+        'רמב"ן': 'רמבן', 'רס"ג': 'רב סעדיה גאון',
         'וכו\'': 'וכולי', 'ע"ד': 'על דרך', 'ע"י': 'על ידי', "לכאו'": 'לכאורה',
         'כמו"ש': 'כמו שכתוב', 'ע"כ': 'עד כאן', 'קא משמע לן': 'קָא מַשְׁמַע לָן',
         'אי נמי': 'אִי נַמִּי', 'מנא לן': 'מְנָא לָן', 'פשיטא': 'פְּשִׁיטָא',
         'הכי נמי': 'הָכִי נַמִּי', 'תנא': 'תַּנָּא', 'א"כ': 'אם כן', 'ג"כ': 'גם כן',
         'אע"פ': 'אף על פי', 'בד"כ': 'בדרך כלל', 'חז"ל': 'חכמינו זיכרונם לברכה',
-        'יו"ט': 'יום טוב', 'ק"ו': 'קל וחומר', 'ת"ח': 'תלמיד חכם', 'בע"ה': 'בעזרת השם',
+        'ק"ו': 'קל וחומר', 'ת"ח': 'תלמיד חכם', 'בע"ה': 'בעזרת השם',
         'זצ"ל': 'זכר צדיק לברכה', 'שליט"א': 'שיחיה לאורך ימים טובים אמן',
         'הקב"ה': 'הקדוש ברוך הוא', 'רבש"ע': 'ריבונו של עולם',
         'איתא': 'אִיתָא', 'ליתא': 'לֵיתָא', 'הכא': 'הָכָא', 'התם': 'הָתָם', 'האי': 'זה', 'הני': 'אלה',
@@ -1052,6 +1078,23 @@ def load_tts_dictionary():
         'תשב"ץ': 'תשובות שמעון בן צמח'
     }
 
+    for dict_path in [
+        os.path.join(settings.BASE_DIR, 'tts_dictionary.json'),
+        os.path.join(settings.BASE_DIR, 'articles', 'tts_dictionary.json')
+    ]:
+        if os.path.exists(dict_path):
+            try:
+                with open(dict_path, 'r', encoding='utf-8') as f:
+                    file_dict = json.load(f)
+                    if isinstance(file_dict, dict):
+                        merged = dict(file_dict)
+                        merged.update(base_dict)
+                        return merged
+            except Exception:
+                pass
+
+    return base_dict
+
 
 def apply_tts_dictionary(text):
     if not text:
@@ -1064,6 +1107,10 @@ def apply_tts_dictionary(text):
     text = strip_tags(text)
     text = unescape(text)
 
+    # נרמול גרשיים ומרכאות טיפוגרפיים מוורד כדי שקיצורים כמו או' / ר"ג יזוהו תמיד
+    text = re.sub(r'[״”“]', '"', text)
+    text = re.sub(r"[׳’‘`]", "'", text)
+
     text = re.sub(r'\[.*?\]', '', text)
     text = re.sub(r'\(\d+\)', '', text)
     text = re.sub(r'[*_#]', '', text)
@@ -1073,10 +1120,12 @@ def apply_tts_dictionary(text):
 
     for key in sorted_keys:
         val = tts_dict[key]
-        if '"' in key or "'" in key or " " in key:
+        if " " in key:
             text = text.replace(key, val)
+        elif key.endswith("'") or '"' in key or "'" in key:
+            text = re.sub(rf'(?<![א-ת]){re.escape(key)}(?![א-ת])', val, text)
         else:
-            text = re.sub(rf'(?<![א-ת]){key}(?![א-ת])', val, text)
+            text = re.sub(rf'(?<![א-ת]){re.escape(key)}(?![א-ת])', val, text)
 
     text = re.sub(r'([א-ת])"([א-ת])', r'\1\2', text)
     text = re.sub(r"([א-ת])'([א-ת])", r'\1\2', text)
@@ -1112,7 +1161,7 @@ def generate_article_audio_background(article_id):
         audio_dir = os.path.join(base_media, 'audio')
         os.makedirs(audio_dir, exist_ok=True)
 
-        file_name = f"article_{article.id}.mp3"
+        file_name = f"article_{article.id}_v2.mp3"
         file_path = os.path.join(audio_dir, file_name)
 
         if not os.path.exists(file_path):
@@ -1148,12 +1197,13 @@ def generate_article_audio_background(article_id):
 def trigger_article_audio_pregeneration(sender, instance, created, **kwargs):
     if instance.is_published:
         base_media = getattr(settings, 'MEDIA_ROOT', os.path.join(settings.BASE_DIR, 'media'))
-        file_path = os.path.join(base_media, 'audio', f"article_{instance.id}.mp3")
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except Exception:
-                pass
+        for fn in (f"article_{instance.id}.mp3", f"article_{instance.id}_v2.mp3"):
+            file_path = os.path.join(base_media, 'audio', fn)
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except Exception:
+                    pass
 
         transaction.on_commit(lambda: threading.Thread(target=generate_article_audio_background, args=(instance.id,)).start())
 
@@ -1171,7 +1221,7 @@ def get_article_audio(request, identifier):
     audio_dir = os.path.join(base_media, 'audio')
     os.makedirs(audio_dir, exist_ok=True)
 
-    file_name = f"article_{article.id}.mp3"
+    file_name = f"article_{article.id}_v2.mp3"
     file_path = os.path.join(audio_dir, file_name)
     media_url = getattr(settings, 'MEDIA_URL', '/media/')
 
@@ -1220,7 +1270,7 @@ def get_book_audio(request, book_id):
     audio_dir = os.path.join(base_media, 'audio')
     os.makedirs(audio_dir, exist_ok=True)
 
-    file_name = f"book_{book.id}.mp3"
+    file_name = f"book_{book.id}_v2.mp3"
     file_path = os.path.join(audio_dir, file_name)
     media_url = getattr(settings, 'MEDIA_URL', '/media/')
 
@@ -1506,12 +1556,10 @@ def advanced_search_view(request):
                 const bAll = findSidebarCorpusBtn(sidebar, 'all');
                 if (bAll && !isCorpusBtnActive(bAll)) bAll.click();
             } else {
-                // First activate all desired corpora so the list is never empty
                 targetBooks.forEach(k => {
                     const b = findSidebarCorpusBtn(sidebar, k);
                     if (b && !isCorpusBtnActive(b)) b.click();
                 });
-                // Then deactivate any corpus not in targetBooks (e.g. default 'torah')
                 allKeys.forEach(k => {
                     if (!targetBooks.includes(k)) {
                         const b = findSidebarCorpusBtn(sidebar, k);
@@ -1564,6 +1612,7 @@ def advanced_search_view(request):
         pass
     return response
 
+
 def aramaic_translator_view(request):
     context = _get_aramaic_context(request)
     response = render(request, 'articles/aramaic_translator.html', context)
@@ -1606,6 +1655,7 @@ document.addEventListener('DOMContentLoaded', function() {
     except Exception:
         pass
     return response
+
 
 @ratelimit(rate=30, timeout=60)
 def aramaic_translate_api(request):

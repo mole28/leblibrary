@@ -313,7 +313,16 @@
             filter: invert(100%);
         }
         body.a11y-readable-font * { font-family: Arial, Helvetica, sans-serif !important; }
-        body.a11y-highlight-links a { background-color: #ffeb3b !important; color: #000 !important; text-decoration: underline !important; font-weight: bold; }
+        body.a11y-highlight-links a,
+        body.a11y-highlight-links a * {
+            background-color: #ffeb3b !important;
+            background-image: none !important;
+            color: #000000 !important;
+            text-decoration: underline !important;
+            font-weight: bold !important;
+            text-shadow: none !important;
+            border-color: #000000 !important;
+        }
         body.a11y-highlight-headers h1, body.a11y-highlight-headers h2, body.a11y-highlight-headers h3, body.a11y-highlight-headers h4 { background-color: #000 !important; color: #fff !important; padding: 5px; border-radius: 4px; }
 
         .global-ai-side-btn { position: fixed; top: calc(20% + 75px); left: 0; width: 80px; height: 70px; background: linear-gradient(90deg, #3b4cff 0%, #d927c8 100%); color: white; border: none; display: flex; align-items: center; padding: 0; box-shadow: 2px 4px 15px rgba(217, 39, 200, 0.4); cursor: pointer; z-index: 1049; transition: width 0.4s ease, box-shadow 0.3s; overflow: hidden; white-space: nowrap; border-radius: 0 8px 8px 0; }
