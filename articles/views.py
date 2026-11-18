@@ -836,7 +836,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (isMatch) matchCount++;
         });
 
-        // הסתרת כותרות מדורים ריקים בעת סינון
         const rows = new Set(bookItems.map(i => i.wrapper.closest('.row')).filter(Boolean));
         rows.forEach(row => {
             const hasVisible = Array.from(row.children).some(ch => ch.style.display !== 'none');
@@ -1247,7 +1246,6 @@ def apply_tts_dictionary(text):
     text = re.sub(r'\(\d+\)', '', text)
     text = re.sub(r'[*_#]', '', text)
 
-    # הרחבה בטוחה של הקיצור התלמודי "או'" -> "אומר" (מבלי לגעת במילה הרגילה "או")
     text = re.sub(r"(?<![א-ת])(ו?)או['׳’](?![א-ת])", r"\1אומר", text)
 
     tts_dict = load_tts_dictionary()
@@ -1465,6 +1463,7 @@ def search_acronyms_api(request):
 
     return JsonResponse({'results': results})
 
+
 def advanced_search_view(request):
     response = render(request, 'articles/advanced_search.html', {'current_page': 'advanced_search'})
     sync_script = """
@@ -1517,7 +1516,6 @@ def advanced_search_view(request):
         return origPushState.call(this, state, title, enrichHistoryUrl(url));
     };
 
-    // ניקוי תוויות של כפתורי ממשק ("פירוש רש"י", "ניתוח AI" וכו') בעת העתקת פרק מלא או תוצאות [LEB-UI-18]
     function cleanCopiedTorahText(text) {
         if (typeof text !== 'string') return text;
         const trimmed = text.trim();
@@ -1676,7 +1674,6 @@ def advanced_search_view(request):
         return fetchPromise;
     };
 
-    // ייצוא והעתקה של כל התוצאות מכל העמודים בלחיצה על "העתק הכל" או "הורד כקובץ TXT" [LEB-UI-24]
     function stripHtmlToPlain(html) {
         const tmp = document.createElement('div');
         tmp.innerHTML = html || '';
@@ -1754,7 +1751,6 @@ def advanced_search_view(request):
         const isDownloadTxt = (txt === 'הורד כקובץ TXT' || txt.includes('הורד כקובץ TXT'));
         if (!isCopyAll && !isDownloadTxt) return;
 
-        // ודא שלא מדובר בחלונית "עיון במקור" אלא בתוצאות הסריקה במאגר
         const parentBox = btn.closest('.card, section, div');
         if (parentBox && (parentBox.innerText || '').includes('עיון במקור:') && !(parentBox.innerText || '').includes('תוצאות הסריקה במאגר')) {
             return;
@@ -1909,7 +1905,6 @@ def advanced_search_view(request):
         return null;
     }
 
-    // הנגשת כל כרטיסי בחירת המאגרים וכרטיסי סוג הפעולה לניווט מקלדת מלא (Tab / Shift+Tab / Enter / Space) [LEB-UI-25]
     function initSearchCardsKeyboardA11y() {
         const sidebar = getSettingsSidebar();
         const corpusKeys = ['all', 'torah', 'tanakh', 'mishnah', 'tosefta', 'talmud', 'yerushalmi', 'rambam', 'shulchan_aruch'];
@@ -1927,7 +1922,6 @@ def advanced_search_view(request):
             if (btn && !typeCards.includes(btn)) typeCards.push(btn);
         });
 
-        // הוספת כל אלמנט לחיץ נוסף בסרגל ההגדרות שאינו כפתור או קישור טבעי
         const extraClickables = Array.from(sidebar.querySelectorAll('[onclick], [data-corpus], [data-type]')).filter(el => {
             const tag = el.tagName.toUpperCase();
             return !['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA'].includes(tag)
@@ -2007,12 +2001,18 @@ def advanced_search_view(request):
         }
     }
 
-    function applyUrlStateToUi(triggerSearchIfNeeded) {
-        initSearchCardsKeyboardA11y();
+    // מנגנון Retry חכם לוודא שה-UI נטען במלואו לפני שחזור הבחירה [LEB-UI-22]
+    function applyUrlStateToUiWithRetry(attemptsLeft, triggerSearchIfNeeded = true) {
         if (!initBook && !initType && !initExact && !initExclude && !initSkip && !initQ) return;
         isRestoringUi = true;
         try {
             const sidebar = getSettingsSidebar();
+            const clickables = sidebar.querySelectorAll('[onclick], [data-type], button');
+            if (clickables.length < 4 && attemptsLeft > 0) {
+                isRestoringUi = false;
+                setTimeout(() => applyUrlStateToUiWithRetry(attemptsLeft - 1, triggerSearchIfNeeded), 120);
+                return;
+            }
 
             if (initBook && !userChangedBook) {
                 const targetBooks = initBook.split(',').map(s => s.trim()).filter(Boolean);
@@ -2044,11 +2044,14 @@ def advanced_search_view(request):
 
             if (initExclude && !userChangedExclude) {
                 restoreExcludeBooksInSelect(sidebar);
-                setTimeout(function() {
+                setTimeout(() => {
                     isRestoringUi = true;
-                    restoreExcludeBooksInSelect(sidebar);
-                    isRestoringUi = false;
-                }, 80);
+                    try {
+                        restoreExcludeBooksInSelect(sidebar);
+                    } finally {
+                        isRestoringUi = false;
+                    }
+                }, 100);
             }
 
             if (initQ) {
@@ -2096,13 +2099,7 @@ def advanced_search_view(request):
             }
         }, true);
 
-        applyUrlStateToUi(false);
-        setTimeout(function() {
-            applyUrlStateToUi(true);
-        }, 150);
-        setTimeout(function() {
-            applyUrlStateToUi(false);
-        }, 450);
+        applyUrlStateToUiWithRetry(12, true);
     });
 })();
 </script>
