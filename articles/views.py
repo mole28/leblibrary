@@ -580,7 +580,7 @@ def terms(request):
 
 
 def books_list(request):
-    return render(request, 'articles/books_list.html', {'current_page': 'books'})
+    return books(request)
 
 
 def qa_list(request, pk=None):
@@ -766,8 +766,176 @@ def book_detail(request, pk):
 
 
 def books(request):
+    q = (request.GET.get('q') or '').strip()
     books_ordered = Book.objects.all().order_by('order', 'title')
-    return render(request, 'articles/books_list.html', {'books': books_ordered, 'current_page': 'books'})
+    response = render(request, 'articles/books_list.html', {
+        'books': books_ordered,
+        'query': q,
+        'q': q,
+        'current_page': 'books',
+    })
+
+    books_search_script = """
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const mainArea = document.querySelector('main') || document.body;
+    const allInputs = Array.from(mainArea.querySelectorAll('input[type="text"], input[type="search"], input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"])'));
+    const searchInput = allInputs.find(el => {
+        const ph = (el.getAttribute('placeholder') || '');
+        return ph.includes('ספר') || ph.includes('חיפוש');
+    });
+    if (!searchInput) return;
+
+    searchInput.setAttribute('name', 'q');
+    const searchForm = searchInput.closest('form');
+    if (searchForm) {
+        searchForm.setAttribute('action', window.location.pathname);
+        searchForm.setAttribute('method', 'get');
+    }
+
+    const allCards = Array.from(mainArea.querySelectorAll('.card')).filter(card => {
+        if (card.contains(searchInput)) return false;
+        const txt = (card.innerText || '');
+        const hasBookLink = Boolean(card.querySelector('a[href*="/book/"], a[href*="/cart/"]'));
+        return hasBookLink || txt.includes('היכנס לספר') || txt.includes('פתח ספר') || txt.includes('הוסף לעגלה') || txt.includes('מאת:');
+    });
+
+    const bookItems = allCards.map(card => {
+        let wrapper = card.closest('[class*="col-"]');
+        if (!wrapper || wrapper.contains(searchInput)) {
+            wrapper = card;
+        }
+        const normText = (card.innerText || '')
+            .replace(/[\\u0591-\\u05C7"״'׳]/g, '')
+            .replace(/\\s+/g, ' ')
+            .toLowerCase();
+        return { card: card, wrapper: wrapper, normText: normText };
+    });
+
+    let statusBanner = document.getElementById('booksSearchStatusBanner');
+    if (!statusBanner && bookItems.length > 0) {
+        statusBanner = document.createElement('div');
+        statusBanner.id = 'booksSearchStatusBanner';
+        statusBanner.style.display = 'none';
+        statusBanner.className = 'mb-4';
+        const firstRow = bookItems[0].wrapper.closest('.row') || bookItems[0].wrapper.parentElement;
+        if (firstRow && firstRow.parentElement) {
+            firstRow.parentElement.insertBefore(statusBanner, firstRow);
+        }
+    }
+
+    function applyBooksFilter(rawQuery, updateUrl) {
+        const cleanQ = (rawQuery || '').trim();
+        const normQ = cleanQ.replace(/[\\u0591-\\u05C7"״'׳]/g, '').toLowerCase();
+        const words = normQ.split(/\\s+/).filter(Boolean);
+
+        let matchCount = 0;
+        bookItems.forEach(item => {
+            const isMatch = words.length === 0 || words.every(w => item.normText.includes(w));
+            item.wrapper.style.display = isMatch ? '' : 'none';
+            if (isMatch) matchCount++;
+        });
+
+        // הסתרת כותרות מדורים ריקים בעת סינון
+        const rows = new Set(bookItems.map(i => i.wrapper.closest('.row')).filter(Boolean));
+        rows.forEach(row => {
+            const hasVisible = Array.from(row.children).some(ch => ch.style.display !== 'none');
+            row.style.display = (words.length === 0 || hasVisible) ? '' : 'none';
+            const prev = row.previousElementSibling;
+            if (prev && prev.id !== 'booksSearchStatusBanner' && /^H[1-6]$/.test(prev.tagName)) {
+                prev.style.display = (words.length === 0 || hasVisible) ? '' : 'none';
+            }
+        });
+
+        if (updateUrl && window.history && window.history.replaceState) {
+            const newUrl = cleanQ
+                ? (window.location.pathname + '?q=' + encodeURIComponent(cleanQ))
+                : window.location.pathname;
+            window.history.replaceState(null, '', newUrl);
+        }
+
+        if (!statusBanner) return;
+
+        if (!cleanQ) {
+            statusBanner.style.display = 'none';
+            statusBanner.innerHTML = '';
+            return;
+        }
+
+        statusBanner.style.display = 'block';
+        if (matchCount > 0) {
+            statusBanner.innerHTML = `
+                <div class="alert d-flex justify-content-between align-items-center flex-wrap gap-2 shadow-sm rounded-3" style="background-color: #fcfaf5; border: 1px solid #d4af37; color: #1e293b;">
+                    <div>
+                        <i class="bi bi-search ms-2" style="color: #b8860b;"></i>
+                        נמצאו <strong>${matchCount}</strong> ספרים התואמים לחיפוש <strong>"${cleanQ.replace(/</g, '&lt;')}"</strong>
+                    </div>
+                    <button type="button" id="clearBooksSearchBtn" class="btn btn-sm btn-outline-dark rounded-pill px-3 fw-bold">
+                        נקה חיפוש והצג הכל
+                    </button>
+                </div>
+            `;
+        } else {
+            statusBanner.innerHTML = `
+                <div class="text-center p-5 rounded-4 shadow-sm my-3" style="background-color: #fcfaf5; border: 1.5px dashed #d4af37; color: #1e293b;">
+                    <i class="bi bi-journal-x fs-1 d-block mb-2" style="color: #b8860b;"></i>
+                    <h4 class="fw-bold mb-2">לא נמצאו ספרים התואמים לחיפוש "${cleanQ.replace(/</g, '&lt;')}"</h4>
+                    <p class="text-muted mb-3">נסה לחפש מילה אחרת משם הספר או הנושא.</p>
+                    <button type="button" id="clearBooksSearchBtn" class="btn rounded-pill px-4 py-2 fw-bold shadow-sm" style="background: #d4af37; color: #1e202c;">
+                        הצג את כל הספרים בספרייה
+                    </button>
+                </div>
+            `;
+        }
+
+        const clearBtn = document.getElementById('clearBooksSearchBtn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                searchInput.value = '';
+                applyBooksFilter('', true);
+                searchInput.focus();
+            });
+        }
+    }
+
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            applyBooksFilter(searchInput.value, true);
+        });
+    }
+
+    const searchBtn = searchForm ? searchForm.querySelector('button, [type="submit"], .btn') : null;
+    if (searchBtn) {
+        searchBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            applyBooksFilter(searchInput.value, true);
+        });
+    }
+
+    searchInput.addEventListener('input', function() {
+        applyBooksFilter(searchInput.value, true);
+    });
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialQ = (urlParams.get('q') || '').trim();
+    if (initialQ) {
+        searchInput.value = initialQ;
+        applyBooksFilter(initialQ, false);
+    } else if ((searchInput.value || '').trim()) {
+        applyBooksFilter(searchInput.value, true);
+    }
+});
+</script>
+"""
+    try:
+        html_str = response.content.decode('utf-8')
+        if '</body>' in html_str:
+            html_str = html_str.replace('</body>', books_search_script + '\n</body>', 1)
+            response.content = html_str.encode('utf-8')
+    except Exception:
+        pass
+    return response
 
 
 def live_search(request):
@@ -1337,13 +1505,50 @@ def advanced_search_view(request):
         return origPushState.call(this, state, title, enrichHistoryUrl(url));
     };
 
+    // ניקוי תוויות של כפתורי ממשק ("פירוש רש"י", "ניתוח AI" וכו') בעת העתקת פרק מלא או תוצאות [LEB-UI-18]
+    function cleanCopiedTorahText(text) {
+        if (typeof text !== 'string') return text;
+        const trimmed = text.trim();
+        if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return text;
+        return text
+            .replace(/(?:💬\\s*)?פירוש\\s+(?:רש["״]י|רבינו עובדיה מברטנורא|ברטנורא|מגיד משנה|כסף משנה|פני משה|באר היטב)\\s*/g, '')
+            .replace(/(?:✨\\s*)?ניתוח\\s+AI(?:\\s+של\\s+הנתונים)?\\s*/g, '')
+            .replace(/הצג\\s+פרק\\s+מלא\\s*/g, '')
+            .replace(/העתק\\s+פרק\\s+מלא\\s*/g, '')
+            .replace(/^[ \\t]*(?:העתק|שתף)[ \\t]*$/gm, '')
+            .replace(/[ \\t]{2,}/g, ' ')
+            .replace(/\\n{3,}/g, '\\n\\n')
+            .trim();
+    }
+
     if (navigator.clipboard && navigator.clipboard.writeText) {
         const origWriteText = navigator.clipboard.writeText.bind(navigator.clipboard);
         navigator.clipboard.writeText = function(text) {
-            if (typeof text === 'string' && text.includes('/advanced-search/?q=') && !text.includes('&book=') && window.__currentSearchShareUrl) {
-                text = text.replace(/https?:\\/\\/[^\\s]+\\/advanced-search\\/\\?q=[^\\s&]+/, window.__currentSearchShareUrl);
+            if (typeof text === 'string') {
+                if (text.includes('/advanced-search/?q=') && !text.includes('&book=') && window.__currentSearchShareUrl) {
+                    text = text.replace(/https?:\\/\\/[^\\s]+\\/advanced-search\\/\\?q=[^\\s&]+/, window.__currentSearchShareUrl);
+                } else {
+                    text = cleanCopiedTorahText(text);
+                }
             }
             return origWriteText(text);
+        };
+    }
+
+    const origExecCommand = document.execCommand ? document.execCommand.bind(document) : null;
+    if (origExecCommand) {
+        document.execCommand = function(cmd, showUI, val) {
+            if (cmd && cmd.toLowerCase() === 'copy') {
+                const activeEl = document.activeElement;
+                if (activeEl && (activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'INPUT')) {
+                    const v = activeEl.value || '';
+                    if (!v.includes('/advanced-search/?q=')) {
+                        activeEl.value = cleanCopiedTorahText(v);
+                        activeEl.select();
+                    }
+                }
+            }
+            return origExecCommand(cmd, showUI, val);
         };
     }
 
@@ -1619,6 +1824,7 @@ document.addEventListener('DOMContentLoaded', function() {
     except Exception:
         pass
     return response
+
 
 @ratelimit(rate=30, timeout=60)
 def aramaic_translate_api(request):

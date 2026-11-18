@@ -174,6 +174,52 @@ TORAH_CORE_CONCEPTS = [
     'מזל', 'נס', 'פדיון', 'שכינה', 'נבואה', 'ענוה', 'טהרה'
 ]
 
+# תיקון סדר אותיות בסימנים ופרקים שבהם טו/טז הוצבו לפני אותיות המאות (כגון טות -> תטו, טזת -> תטז, טותק -> תקטו) [LEB-UI-16]
+_MISORDERED_TU_TZ_RE = re.compile(r'(?<![א-ת])(ט[וז])([ק-ת]+)(?![א-ת])')
+_PROPER_TU_TZ_RE = re.compile(r'(?<![א-ת])([ק-ת]+)(ט[וז])(?![א-ת])')
+_CHAPTERS_DB_HEALED = False
+
+
+def _fix_hebrew_numeral_order(label: str) -> str:
+    if not label:
+        return ''
+    return _MISORDERED_TU_TZ_RE.sub(r'\2\1', str(label))
+
+
+def _chapter_db_variants(chapter_str: str) -> list:
+    c = str(chapter_str or '').strip()
+    if not c:
+        return []
+    fixed = _fix_hebrew_numeral_order(c)
+    inverted = _PROPER_TU_TZ_RE.sub(r'\2\1', fixed)
+    out = []
+    for candidate in (c, fixed, inverted):
+        if candidate and candidate not in out:
+            out.append(candidate)
+    return out
+
+
+def _auto_heal_misordered_chapters_in_db():
+    global _CHAPTERS_DB_HEALED
+    if _CHAPTERS_DB_HEALED:
+        return
+    _CHAPTERS_DB_HEALED = True
+    try:
+        bad_Chapters = list(
+            TorahText.objects.filter(
+                Q(chapter__icontains='טות') | Q(chapter__icontains='טזת') |
+                Q(chapter__icontains='טוק') | Q(chapter__icontains='טזק') |
+                Q(chapter__icontains='טור') | Q(chapter__icontains='טזר') |
+                Q(chapter__icontains='טוש') | Q(chapter__icontains='טזש')
+            ).values_list('chapter', flat=True).distinct()
+        )
+        for bad_ch in bad_Chapters:
+            fixed_ch = _fix_hebrew_numeral_order(bad_ch)
+            if fixed_ch and fixed_ch != bad_ch:
+                TorahText.objects.filter(chapter=bad_ch).update(chapter=fixed_ch)
+    except Exception:
+        pass
+
 
 def calculate_gematria(text):
     return sum(HEBREW_GEMATRIA.get(char, 0) for char in text)
@@ -249,7 +295,7 @@ def format_verse_hebrew(val):
     m = re.match(r'^(\d+)$', s)
     if m:
         return int_to_hebrew(int(m.group(1)))
-    return s
+    return _fix_hebrew_numeral_order(s)
 
 
 def parse_hebrew_number(val):
@@ -353,6 +399,7 @@ def _resolve_torah_verse_obj(book_name, chapter_name, verse_val):
     v_raw = str(verse_val or '').strip()
     if not (b and c and v_raw):
         return None
+    c_variants = _chapter_db_variants(c)
     v_int = parse_hebrew_number(v_raw)
     v_heb = int_to_hebrew(v_int) if v_int > 0 else v_raw
     candidates = [
@@ -360,9 +407,9 @@ def _resolve_torah_verse_obj(book_name, chapter_name, verse_val):
         f"פסוק {v_heb}", f"הלכה {v_heb}", f"משנה {v_heb}", f"סעיף {v_heb}", f"שורה {v_heb}",
         f"פסוק {v_int}", f"הלכה {v_int}", f"משנה {v_int}", f"סעיף {v_int}", f"שורה {v_int}"
     ]
-    obj = TorahText.objects.filter(book=b, chapter=c, verse__in=candidates).first()
+    obj = TorahText.objects.filter(book=b, chapter__in=c_variants, verse__in=candidates).first()
     if not obj and v_int > 0:
-        all_ch = list(TorahText.objects.filter(book=b, chapter=c))
+        all_ch = list(TorahText.objects.filter(book=b, chapter__in=c_variants))
         all_ch.sort(key=lambda x: safe_int(x.verse))
         if 1 <= v_int <= len(all_ch):
             obj = all_ch[v_int - 1]
@@ -583,14 +630,14 @@ def _extract_sefaria_verse_comments(data, verse_int, chap_int=0):
 
 def _fetch_commentary_for_source(book_name, chapter_name, verse_num, requested_commentator=''):
     b_str = _resolve_torah_book_in_db(book_name).replace('״', '"').replace('׳', "'")
-    c_str = str(chapter_name or '').strip()
+    c_str = _fix_hebrew_numeral_order(str(chapter_name or '').strip())
     v_str = str(verse_num or '').strip()
     req_comm = str(requested_commentator or '').strip()
 
     chap_int = max(1, parse_hebrew_number(c_str))
     verse_int = max(1, parse_hebrew_number(v_str))
 
-    cache_key = f"torah_comm_v55_{b_str}_{chap_int}_{verse_int}_{req_comm}"
+    cache_key = f"torah_comm_v56_{b_str}_{chap_int}_{verse_int}_{req_comm}"
     cached = cache.get(cache_key)
     if cached and cached.get('comments'):
         return cached
@@ -974,6 +1021,8 @@ def _build_fuzzy_sql_filter_for_word(word: str) -> Q:
 
 @ratelimit(rate=45, timeout=60)
 def tanakh_advanced_search_api(request):
+    _auto_heal_misordered_chapters_in_db()
+
     query_type = request.GET.get('type', 'text').strip()
     query_val = request.GET.get('q', '').strip()
     book_filter = request.GET.get('book', 'torah').strip()
@@ -1008,7 +1057,14 @@ def tanakh_advanced_search_api(request):
                 ch_qs = ch_qs.filter(chapter__startswith='דף')
             elif corpus_hint == 'mishnah':
                 ch_qs = ch_qs.exclude(chapter__startswith='דף')
-        chapters_list = list(ch_qs.values_list('chapter', flat=True).distinct())
+        raw_ch_list = list(ch_qs.values_list('chapter', flat=True).distinct())
+        seen_ch = set()
+        chapters_list = []
+        for ch_item in raw_ch_list:
+            fixed_ch = _fix_hebrew_numeral_order(ch_item)
+            if fixed_ch not in seen_ch:
+                seen_ch.add(fixed_ch)
+                chapters_list.append(fixed_ch)
         chapters_list.sort(key=safe_int)
         return JsonResponse({'book': target_book, 'chapters': chapters_list}, json_dumps_params={'ensure_ascii': False})
 
@@ -1025,11 +1081,13 @@ def tanakh_advanced_search_api(request):
         target_book = _resolve_torah_book_in_db(request.GET.get('target_book', '').strip())
         target_chapter = request.GET.get('target_chapter', '').strip()
         if target_book and target_chapter:
-            ch_verses = list(TorahText.objects.filter(book=target_book, chapter=target_chapter).values('verse', 'text_with_nikkud', 'clean_text'))
+            c_variants = _chapter_db_variants(target_chapter)
+            ch_verses = list(TorahText.objects.filter(book=target_book, chapter__in=c_variants).values('verse', 'text_with_nikkud', 'clean_text'))
             ch_verses.sort(key=lambda x: safe_int(x['verse']))
+            fixed_chapter = _fix_hebrew_numeral_order(target_chapter)
             return JsonResponse({
-                'book': target_book, 'chapter': target_chapter,
-                'verse_label': get_verse_label(target_book, target_chapter),
+                'book': target_book, 'chapter': fixed_chapter,
+                'verse_label': get_verse_label(target_book, fixed_chapter),
                 'verses': [
                     {'verse': format_verse_hebrew(v['verse']), 'raw_verse': v['verse'], 'text': format_divine_name(v['text_with_nikkud'] or v['clean_text'] or '')}
                     for v in ch_verses
@@ -1039,7 +1097,7 @@ def tanakh_advanced_search_api(request):
 
     if query_type == 'quick_open':
         explicit_book = request.GET.get('target_book', '').strip()
-        explicit_chapter = request.GET.get('target_chapter', '').strip()
+        explicit_chapter = _fix_hebrew_numeral_order(request.GET.get('target_chapter', '').strip())
         corpus_hint = request.GET.get('corpus', '').strip()
         matched_book = _resolve_torah_book_in_db(explicit_book)
         if not matched_book:
@@ -1052,13 +1110,21 @@ def tanakh_advanced_search_api(request):
             elif corpus_hint == 'mishnah' or not explicit_chapter.startswith('דף'):
                 ch_qs = ch_qs.exclude(chapter__startswith='דף')
 
-        raw_chapters = list(ch_qs.values_list('chapter', flat=True).distinct()) or list(TorahText.objects.filter(book=matched_book).values_list('chapter', flat=True).distinct())
+        db_chapters = list(ch_qs.values_list('chapter', flat=True).distinct()) or list(TorahText.objects.filter(book=matched_book).values_list('chapter', flat=True).distinct())
+        seen_ch = set()
+        raw_chapters = []
+        for ch_item in db_chapters:
+            fixed_ch = _fix_hebrew_numeral_order(ch_item)
+            if fixed_ch not in seen_ch:
+                seen_ch.add(fixed_ch)
+                raw_chapters.append(fixed_ch)
         raw_chapters.sort(key=safe_int)
         if not raw_chapters:
             return JsonResponse({'error': f'לא נמצאו פרקים עבור "{matched_book}".'})
 
         chosen_chapter = explicit_chapter if explicit_chapter in raw_chapters else raw_chapters[0]
-        ch_verses = list(TorahText.objects.filter(book=matched_book, chapter=chosen_chapter).values('verse', 'text_with_nikkud', 'clean_text'))
+        c_variants = _chapter_db_variants(chosen_chapter)
+        ch_verses = list(TorahText.objects.filter(book=matched_book, chapter__in=c_variants).values('verse', 'text_with_nikkud', 'clean_text'))
         ch_verses.sort(key=lambda x: safe_int(x['verse']))
 
         curr_idx = raw_chapters.index(chosen_chapter) if chosen_chapter in raw_chapters else 0
@@ -1080,7 +1146,7 @@ def tanakh_advanced_search_api(request):
     except ValueError:
         per_page = 10
 
-    search_cache_key = f"tanakh_srch_v51_{query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
+    search_cache_key = f"tanakh_srch_v52_{query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
     cached_search_data = cache.get(search_cache_key)
     if cached_search_data:
         return JsonResponse(cached_search_data, json_dumps_params={'ensure_ascii': False})
@@ -1176,9 +1242,10 @@ def tanakh_advanced_search_api(request):
                             if all((clean_words[i + j] == q_words[j]) if is_exact else (q_words[j] in clean_words[i + j]) for j in range(num_q_words)):
                                 matched_indices.update(range(i, i + num_q_words))
                     if matched_indices:
+                        fixed_ch = _fix_hebrew_numeral_order(m['chapter'])
                         results.append({
-                            'book': m['book'], 'chapter': m['chapter'], 'verse': format_verse_hebrew(m['verse']),
-                            'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], m['chapter']),
+                            'book': m['book'], 'chapter': fixed_ch, 'verse': format_verse_hebrew(m['verse']),
+                            'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], fixed_ch),
                             'text': _highlight_matched_words(raw_text, matched_indices),
                             'match_type': match_label
                         })
@@ -1218,12 +1285,13 @@ def tanakh_advanced_search_api(request):
                                     matched_indices.update(range(i, i + num_q_words))
 
                         if matched_indices:
+                            fixed_ch = _fix_hebrew_numeral_order(m['chapter'])
                             results.append({
                                 'book': m['book'],
-                                'chapter': m['chapter'],
+                                'chapter': fixed_ch,
                                 'verse': format_verse_hebrew(m['verse']),
                                 'raw_verse': m['verse'],
-                                'verse_label': get_verse_label(m['book'], m['chapter']),
+                                'verse_label': get_verse_label(m['book'], fixed_ch),
                                 'text': _highlight_matched_words(raw_text, matched_indices),
                                 'match_type': 'כתיב מלא / חסר ותחיליות'
                             })
@@ -1237,12 +1305,13 @@ def tanakh_advanced_search_api(request):
                 gem_q = Q(verse_gematria=target_val) | Q(words_gematria__contains=search_str) | Q(clean_text__icontains='<')
                 for m in qs.filter(gem_q).values('book', 'chapter', 'verse', 'text_with_nikkud', 'verse_gematria').iterator(chunk_size=2500):
                     raw_text = _sanitize_torah_verse_text(m['text_with_nikkud'] or "")
+                    fixed_ch = _fix_hebrew_numeral_order(m['chapter'])
                     if m['verse_gematria'] == target_val:
                         m_type = f'גימטריה מלאה לפסוק (הערך: {target_val})'
                         final_text = f'<mark style="background-color: rgba(255, 235, 59, 0.4); padding: 0 4px; border-radius: 4px; color: inherit;">{raw_text}</mark>'
                         results.append({
-                            'book': m['book'], 'chapter': m['chapter'], 'verse': format_verse_hebrew(m['verse']),
-                            'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], m['chapter']),
+                            'book': m['book'], 'chapter': fixed_ch, 'verse': format_verse_hebrew(m['verse']),
+                            'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], fixed_ch),
                             'text': final_text, 'match_type': m_type
                         })
                     else:
@@ -1257,8 +1326,8 @@ def tanakh_advanced_search_api(request):
                         final_text = WORD_TOKEN_RE.sub(_mark_gem_word, raw_text)
                         if has_word_hit:
                             results.append({
-                                'book': m['book'], 'chapter': m['chapter'], 'verse': format_verse_hebrew(m['verse']),
-                                'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], m['chapter']),
+                                'book': m['book'], 'chapter': fixed_ch, 'verse': format_verse_hebrew(m['verse']),
+                                'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], fixed_ch),
                                 'text': final_text, 'match_type': f'גימטריה למילה בפסוק (הערך: {target_val})'
                             })
 
@@ -1290,9 +1359,10 @@ def tanakh_advanced_search_api(request):
                         while match_pos != -1:
                             matched_word_indices.update(range(match_pos, match_pos + acr_len))
                             match_pos = letters_seq.find(target_acr, match_pos + 1)
+                        fixed_ch = _fix_hebrew_numeral_order(m['chapter'])
                         results.append({
-                            'book': m['book'], 'chapter': m['chapter'], 'verse': format_verse_hebrew(m['verse']),
-                            'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], m['chapter']),
+                            'book': m['book'], 'chapter': fixed_ch, 'verse': format_verse_hebrew(m['verse']),
+                            'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], fixed_ch),
                             'text': _highlight_matched_words(raw_text, matched_word_indices),
                             'match_type': m_label
                         })
@@ -1330,9 +1400,10 @@ def tanakh_advanced_search_api(request):
                         if all(clean_words_norm[i + j] == rev_words_norm[j] for j in range(num_q_words)):
                             matched_indices.update(range(i, i + num_q_words))
                     if matched_indices:
+                        fixed_ch = _fix_hebrew_numeral_order(m['chapter'])
                         results.append({
-                            'book': m['book'], 'chapter': m['chapter'], 'verse': format_verse_hebrew(m['verse']),
-                            'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], m['chapter']),
+                            'book': m['book'], 'chapter': fixed_ch, 'verse': format_verse_hebrew(m['verse']),
+                            'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], fixed_ch),
                             'text': _highlight_matched_words(raw_text, matched_indices),
                             'match_type': m_label
                         })
@@ -1427,9 +1498,10 @@ def tanakh_advanced_search_api(request):
                             last_idx = e_idx
                         out_parts.append(raw_text[last_idx:])
                         sample_w = matched_words_sample[0] if matched_words_sample else ""
+                        fixed_ch = _fix_hebrew_numeral_order(m['chapter'])
                         results.append({
-                            'book': m['book'], 'chapter': m['chapter'], 'verse': format_verse_hebrew(m['verse']),
-                            'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], m['chapter']),
+                            'book': m['book'], 'chapter': fixed_ch, 'verse': format_verse_hebrew(m['verse']),
+                            'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], fixed_ch),
                             'text': "".join(out_parts),
                             'match_type': f'דילוג 0 במילה ({sample_w})' if chosen_skip == 0 else f'דילוג {chosen_skip} במילה: "{sample_w}"',
                             'skip_distance': chosen_skip
@@ -1507,9 +1579,10 @@ def tanakh_advanced_search_api(request):
                             last_idx = e_idx
                         out_parts.append(raw_text[last_idx:])
                         cross_label = "חוצה מילים" if is_cross_word else "באותה מילה"
+                        fixed_ch = _fix_hebrew_numeral_order(m['chapter'])
                         results.append({
-                            'book': m['book'], 'chapter': m['chapter'], 'verse': format_verse_hebrew(m['verse']),
-                            'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], m['chapter']),
+                            'book': m['book'], 'chapter': fixed_ch, 'verse': format_verse_hebrew(m['verse']),
+                            'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], fixed_ch),
                             'text': "".join(out_parts), 'match_type': f'דילוג {chosen_skip} בפסוק ({cross_label})',
                             'skip_distance': chosen_skip
                         })
