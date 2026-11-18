@@ -26,21 +26,99 @@
     function toggleAccessibilityMenu() {
         const menu = document.getElementById('acc-main-menu');
         const toggle = document.getElementById('acc-floating-toggle');
-        if (menu.style.display === 'none') {
+        if (!menu || !toggle) return;
+        if (menu.style.display === 'none' || menu.style.display === '') {
             menu.style.display = 'block';
             toggle.style.display = 'none';
+            toggle.setAttribute('aria-expanded', 'true');
+            const firstFocusable = menu.querySelector('[tabindex="0"], button');
+            if (firstFocusable) {
+                setTimeout(() => firstFocusable.focus(), 20);
+            }
         } else {
             menu.style.display = 'none';
             toggle.style.display = 'flex';
+            toggle.setAttribute('aria-expanded', 'false');
+            setTimeout(() => toggle.focus(), 20);
         }
     }
-    function toggleAccSubMenu(id) { const submenu = document.getElementById(id); submenu.style.display = submenu.style.display === 'block' ? 'none' : 'block'; }
+    function toggleAccSubMenu(id) {
+        const submenu = document.getElementById(id);
+        if (!submenu) return;
+        const isOpen = submenu.style.display === 'block';
+        submenu.style.display = isOpen ? 'none' : 'block';
+    }
     
     let currentZoom = 1.0; 
     function changeFontSize(step) { currentZoom += step; if (currentZoom < 0.8) currentZoom = 0.8; if (currentZoom > 2.2) currentZoom = 2.2; document.documentElement.style.fontSize = (currentZoom * 100) + '%'; }
     function resetFontSize() { currentZoom = 1.0; document.documentElement.style.fontSize = '100%'; }
     function toggleA11yClass(className) { document.body.classList.toggle(className); }
-    function resetA11y() { resetFontSize(); document.body.className = ''; }
+    function resetA11y() {
+        resetFontSize();
+        const isDark = document.body.classList.contains('dark-mode');
+        document.body.className = isDark ? 'dark-mode' : '';
+    }
+
+    function initAccessibilityKeyboardSupport() {
+        const toggle = document.getElementById('acc-floating-toggle');
+        const menu = document.getElementById('acc-main-menu');
+        if (toggle) {
+            toggle.setAttribute('tabindex', '0');
+            toggle.setAttribute('role', 'button');
+            toggle.setAttribute('aria-label', 'פתיחת תפריט נגישות');
+            toggle.setAttribute('aria-controls', 'acc-main-menu');
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleAccessibilityMenu();
+                }
+            });
+        }
+
+        if (menu) {
+            menu.setAttribute('role', 'dialog');
+            menu.setAttribute('aria-label', 'תפריט נגישות');
+
+            const headerClickables = menu.querySelectorAll('.acc-header [onclick]');
+            headerClickables.forEach(el => {
+                el.setAttribute('tabindex', '0');
+                el.setAttribute('role', 'button');
+                if (!el.getAttribute('aria-label')) {
+                    const oc = el.getAttribute('onclick') || '';
+                    if (oc.includes('toggleAccessibilityMenu')) {
+                        el.setAttribute('aria-label', 'סגור תפריט נגישות');
+                    } else if (oc.includes('resetA11y')) {
+                        el.setAttribute('aria-label', 'איפוס הגדרות נגישות');
+                    }
+                }
+                el.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        el.click();
+                    }
+                });
+            });
+
+            const listItems = menu.querySelectorAll('.acc-menu-list > li');
+            listItems.forEach(li => {
+                li.setAttribute('tabindex', '0');
+                li.setAttribute('role', 'button');
+                li.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        li.click();
+                    }
+                });
+            });
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && menu && menu.style.display === 'block') {
+                toggleAccessibilityMenu();
+            }
+        });
+    }
 
     function openShareModal() {
         const shareData = {
@@ -201,6 +279,8 @@
     document.getElementById('globalQAInput').addEventListener('keypress', function(e) { if (e.key === 'Enter') sendQAMessage(); });
 
     document.addEventListener('DOMContentLoaded', () => {
+        initAccessibilityKeyboardSupport();
+
         const savedLang = localStorage.getItem('site_lang') || 'he';
         if(savedLang !== 'he') { applyLanguage(savedLang); }
         const savedTheme = localStorage.getItem('site_theme');
