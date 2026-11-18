@@ -1141,7 +1141,7 @@ def tanakh_advanced_search_api(request):
 
     try:
         per_page = int(request.GET.get('per_page', 10))
-        if per_page not in [10, 20, 50, 100]:
+        if per_page not in [10, 20, 50, 100, 500, 1000, 2500, 5000]:
             per_page = 10
     except ValueError:
         per_page = 10
