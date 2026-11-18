@@ -15,7 +15,7 @@ pyluach
 Pillow
 mammoth
 beautifulsoup4
-edge-tts
+edge-tts>=7.3.1
 chromadb
 sentence-transformers
 sentry-sdk
