@@ -1468,6 +1468,13 @@ def search_acronyms_api(request):
 def advanced_search_view(request):
     response = render(request, 'articles/advanced_search.html', {'current_page': 'advanced_search'})
     sync_script = """
+<style>
+.a11y-search-card-focusable:focus-visible {
+    outline: 3px solid #d4af37 !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.35) !important;
+}
+</style>
 <script>
 (function() {
     const initParams = new URLSearchParams(window.location.search);
@@ -1485,6 +1492,8 @@ def advanced_search_view(request):
     let userChangedSkip = false;
     let initialSearchExecuted = false;
     window.__currentSearchShareUrl = window.location.href;
+    window.__lastTorahSearchApiUrl = '';
+    window.__lastTorahSearchResponse = null;
 
     const origReplaceState = window.history.replaceState;
     const origPushState = window.history.pushState;
@@ -1524,8 +1533,11 @@ def advanced_search_view(request):
             .trim();
     }
 
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        const origWriteText = navigator.clipboard.writeText.bind(navigator.clipboard);
+    const origWriteText = (navigator.clipboard && navigator.clipboard.writeText)
+        ? navigator.clipboard.writeText.bind(navigator.clipboard)
+        : null;
+
+    if (origWriteText) {
         navigator.clipboard.writeText = function(text) {
             if (typeof text === 'string') {
                 if (text.includes('/advanced-search/?q=') && !text.includes('&book=') && window.__currentSearchShareUrl) {
@@ -1578,6 +1590,9 @@ def advanced_search_view(request):
 
     const origFetch = window.fetch;
     window.fetch = function(input, init) {
+        let isMainTorahSearchCall = false;
+        let capturedSearchUrl = '';
+
         if (typeof input === 'string' && input.includes('/api/tanakh-search/')) {
             try {
                 const u = new URL(input, window.location.origin);
@@ -1585,6 +1600,7 @@ def advanced_search_view(request):
                 const isUtilityCall = ['book_chapters', 'commentary', 'chapter_context', 'quick_open'].includes(reqType);
 
                 if (!isUtilityCall) {
+                    isMainTorahSearchCall = true;
                     if (initBook && !userChangedBook) {
                         u.searchParams.set('book', initBook);
                     }
@@ -1611,6 +1627,8 @@ def advanced_search_view(request):
                         u.searchParams.set('exact', initExact);
                     }
                     input = u.pathname + u.search;
+                    capturedSearchUrl = input;
+                    window.__lastTorahSearchApiUrl = capturedSearchUrl;
                     initialSearchExecuted = true;
 
                     const finalQ = (u.searchParams.get('q') || '').trim();
@@ -1642,8 +1660,146 @@ def advanced_search_view(request):
                 }
             } catch (e) {}
         }
-        return origFetch.call(this, input, init);
+
+        const fetchPromise = origFetch.call(this, input, init);
+        if (isMainTorahSearchCall) {
+            fetchPromise.then(resp => {
+                try {
+                    resp.clone().json().then(data => {
+                        if (data && Array.isArray(data.results)) {
+                            window.__lastTorahSearchResponse = data;
+                        }
+                    }).catch(() => {});
+                } catch (e) {}
+            }).catch(() => {});
+        }
+        return fetchPromise;
     };
+
+    // ייצוא והעתקה של כל התוצאות מכל העמודים בלחיצה על "העתק הכל" או "הורד כקובץ TXT" [LEB-UI-24]
+    function stripHtmlToPlain(html) {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html || '';
+        return (tmp.textContent || tmp.innerText || '').replace(/\\s+/g, ' ').trim();
+    }
+
+    async function fetchAllResultsForExport() {
+        const lastData = window.__lastTorahSearchResponse;
+        const lastUrl = window.__lastTorahSearchApiUrl;
+        if (!lastData || !Array.isArray(lastData.results) || lastData.results.length === 0) {
+            return null;
+        }
+        if (lastData.total <= lastData.results.length || !lastUrl) {
+            return { results: lastData.results, total: lastData.total };
+        }
+        try {
+            const u = new URL(lastUrl, window.location.origin);
+            u.searchParams.set('page', '1');
+            u.searchParams.set('per_page', '2500');
+            const resp = await origFetch.call(window, u.pathname + u.search);
+            const fullData = await resp.json();
+            if (fullData && Array.isArray(fullData.results) && fullData.results.length > 0) {
+                return { results: fullData.results, total: fullData.total || fullData.results.length };
+            }
+        } catch (e) {}
+        return { results: lastData.results, total: lastData.total };
+    }
+
+    function formatExportDocument(resultsList, totalCount) {
+        const u = new URL(window.__currentSearchShareUrl || window.location.href, window.location.origin);
+        const qVal = u.searchParams.get('q') || '';
+        const countExported = resultsList.length;
+        const scopeNote = (countExported === totalCount)
+            ? `נמצאו והועתקו כל ${totalCount} התוצאות`
+            : `נמצאו ${totalCount} תוצאות (מיוצאות ${countExported} תוצאות)`;
+
+        const lines = [
+            `תוצאות סריקה במאגר התורני - ספריית לייבוביץ`,
+            `חיפוש: "${qVal}" | ${scopeNote}`,
+            `קישור לחיפוש: ${window.__currentSearchShareUrl || window.location.href}`,
+            `=================================================================`
+        ];
+        resultsList.forEach((item, idx) => {
+            const vLabel = item.verse_label || 'פסוק';
+            const mType = item.match_type ? ` [${item.match_type}]` : '';
+            lines.push(`\\n${idx + 1}. ${item.book} | ${item.chapter} | ${vLabel} ${item.verse}${mType}`);
+            lines.push(stripHtmlToPlain(item.text));
+        });
+        return lines.join('\\n');
+    }
+
+    function showExportToast(msg) {
+        let toast = document.getElementById('lebExportToast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'lebExportToast';
+            toast.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1e293b;color:#f7e199;border:1.5px solid #d4af37;padding:10px 22px;border-radius:50px;font-weight:bold;z-index:999999;box-shadow:0 8px 25px rgba(0,0,0,0.35);transition:opacity 0.3s;';
+            document.body.appendChild(toast);
+        }
+        toast.textContent = msg;
+        toast.style.opacity = '1';
+        toast.style.display = 'block';
+        clearTimeout(toast.__hideTimer);
+        toast.__hideTimer = setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => { toast.style.display = 'none'; }, 300);
+        }, 3000);
+    }
+
+    document.addEventListener('click', async function(e) {
+        const btn = e.target.closest('button, [onclick], a.btn');
+        if (!btn) return;
+        const txt = (btn.innerText || '').replace(/\\s+/g, ' ').trim();
+        const isCopyAll = (txt === 'העתק הכל' || txt.includes('העתק הכל'));
+        const isDownloadTxt = (txt === 'הורד כקובץ TXT' || txt.includes('הורד כקובץ TXT'));
+        if (!isCopyAll && !isDownloadTxt) return;
+
+        // ודא שלא מדובר בחלונית "עיון במקור" אלא בתוצאות הסריקה במאגר
+        const parentBox = btn.closest('.card, section, div');
+        if (parentBox && (parentBox.innerText || '').includes('עיון במקור:') && !(parentBox.innerText || '').includes('תוצאות הסריקה במאגר')) {
+            return;
+        }
+        if (!window.__lastTorahSearchResponse || !Array.isArray(window.__lastTorahSearchResponse.results) || window.__lastTorahSearchResponse.results.length === 0) {
+            return;
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+
+        const origHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm ms-1"></span> מכין את כל התוצאות...';
+
+        try {
+            const payload = await fetchAllResultsForExport();
+            if (payload && payload.results && payload.results.length > 0) {
+                const formatted = formatExportDocument(payload.results, payload.total);
+                if (isCopyAll) {
+                    if (origWriteText) {
+                        await origWriteText(formatted);
+                    }
+                    showExportToast(`כל ${payload.results.length} התוצאות הועתקו בהצלחה!`);
+                } else if (isDownloadTxt) {
+                    const blob = new Blob([formatted], { type: 'text/plain;charset=utf-8' });
+                    const dlUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    const u = new URL(window.__currentSearchShareUrl || window.location.href, window.location.origin);
+                    const qClean = (u.searchParams.get('q') || 'results').replace(/[^א-תa-zA-Z0-9_-]/g, '_');
+                    a.href = dlUrl;
+                    a.download = `leblibrary_search_${qClean}_${payload.results.length}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(dlUrl);
+                    showExportToast(`קובץ TXT עם כל ${payload.results.length} התוצאות הורד בהצלחה!`);
+                }
+            }
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+        }
+    }, true);
 
     function getSettingsSidebar() {
         const els = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6, div, span, label'));
@@ -1735,7 +1891,6 @@ def advanced_search_view(request):
         };
         const targetLabel = typeTextMap[effectiveType];
 
-        // חיפוש מדויק של אלמנט הכפתור הלחיץ ([onclick] / [data-type] / button) ולא תגית טקסט פנימית [LEB-UI-22]
         const clickables = Array.from(sidebar.querySelectorAll('[onclick], [data-type], button'));
         for (const el of clickables) {
             const dt = (el.getAttribute('data-type') || '') + ' ' + (el.getAttribute('onclick') || '');
@@ -1752,6 +1907,78 @@ def advanced_search_view(request):
             }
         }
         return null;
+    }
+
+    // הנגשת כל כרטיסי בחירת המאגרים וכרטיסי סוג הפעולה לניווט מקלדת מלא (Tab / Shift+Tab / Enter / Space) [LEB-UI-25]
+    function initSearchCardsKeyboardA11y() {
+        const sidebar = getSettingsSidebar();
+        const corpusKeys = ['all', 'torah', 'tanakh', 'mishnah', 'tosefta', 'talmud', 'yerushalmi', 'rambam', 'shulchan_aruch'];
+        const typeKeys = ['text_exact', 'text_broad', 'text_fuzzy', 'gematria', 'rashei_tevot', 'sofei_tevot', 'reverse', 'els', 'els_verse'];
+
+        const corpusCards = [];
+        corpusKeys.forEach(k => {
+            const btn = findSidebarCorpusBtn(sidebar, k);
+            if (btn && !corpusCards.includes(btn)) corpusCards.push(btn);
+        });
+
+        const typeCards = [];
+        typeKeys.forEach(k => {
+            const btn = findSidebarTypeBtn(sidebar, k, '');
+            if (btn && !typeCards.includes(btn)) typeCards.push(btn);
+        });
+
+        // הוספת כל אלמנט לחיץ נוסף בסרגל ההגדרות שאינו כפתור או קישור טבעי
+        const extraClickables = Array.from(sidebar.querySelectorAll('[onclick], [data-corpus], [data-type]')).filter(el => {
+            const tag = el.tagName.toUpperCase();
+            return !['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA'].includes(tag)
+                && !corpusCards.includes(el)
+                && !typeCards.includes(el);
+        });
+
+        function syncAriaStates() {
+            corpusCards.forEach(card => {
+                const active = isCorpusBtnActive(card);
+                card.setAttribute('aria-checked', active ? 'true' : 'false');
+            });
+            typeCards.forEach(card => {
+                const bg = window.getComputedStyle(card).backgroundColor || '';
+                const isDarkBg = bg.includes('30, 41, 59') || bg.includes('15, 23, 42') || bg.includes('63, 64, 80');
+                const active = card.classList.contains('active') || card.classList.contains('selected') || isDarkBg;
+                card.setAttribute('aria-checked', active ? 'true' : 'false');
+            });
+        }
+
+        function bindCardA11y(card, roleName) {
+            if (!card) return;
+            const tag = card.tagName.toUpperCase();
+            if (!['BUTTON', 'A', 'INPUT', 'SELECT'].includes(tag)) {
+                card.setAttribute('tabindex', '0');
+                card.setAttribute('role', roleName);
+            }
+            card.classList.add('a11y-search-card-focusable');
+            const labelText = (card.innerText || '').replace(/\\s+/g, ' ').trim();
+            if (labelText && !card.getAttribute('aria-label')) {
+                card.setAttribute('aria-label', labelText);
+            }
+            if (!card.__a11yKeyBound) {
+                card.__a11yKeyBound = true;
+                card.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        card.click();
+                        setTimeout(syncAriaStates, 30);
+                    }
+                });
+                card.addEventListener('click', function() {
+                    setTimeout(syncAriaStates, 30);
+                });
+            }
+        }
+
+        corpusCards.forEach(c => bindCardA11y(c, 'checkbox'));
+        typeCards.forEach(c => bindCardA11y(c, 'radio'));
+        extraClickables.forEach(c => bindCardA11y(c, 'button'));
+        syncAriaStates();
     }
 
     function restoreExcludeBooksInSelect(sidebar) {
@@ -1781,6 +2008,7 @@ def advanced_search_view(request):
     }
 
     function applyUrlStateToUi(triggerSearchIfNeeded) {
+        initSearchCardsKeyboardA11y();
         if (!initBook && !initType && !initExact && !initExclude && !initSkip && !initQ) return;
         isRestoringUi = true;
         try {
@@ -1836,11 +2064,14 @@ def advanced_search_view(request):
             }
         } finally {
             isRestoringUi = false;
+            initSearchCardsKeyboardA11y();
         }
     }
 
     document.addEventListener('DOMContentLoaded', function() {
         const sidebar = getSettingsSidebar();
+        initSearchCardsKeyboardA11y();
+
         sidebar.addEventListener('click', function(e) {
             if (isRestoringUi) return;
             const clicked = e.target.closest('[onclick], [data-type], [data-corpus], [data-book], button');
@@ -1889,6 +2120,7 @@ def advanced_search_view(request):
         pass
     return response
 
+
 def aramaic_translator_view(request):
     context = _get_aramaic_context(request)
     response = render(request, 'articles/aramaic_translator.html', context)
@@ -1931,7 +2163,6 @@ document.addEventListener('DOMContentLoaded', function() {
     except Exception:
         pass
     return response
-
 
 @ratelimit(rate=30, timeout=60)
 def aramaic_translate_api(request):
