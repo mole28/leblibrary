@@ -200,7 +200,7 @@ BASE_ARAMAIC_DICTIONARY = {
     'טיבותא': {'he': 'טובה / הכרת טובה', 'dialect': 'בבלי, זוהר', 'cat': 'שם עצם', 'note': 'אחזיק ליה טיבותא (החזיק לו טובה)'},
     'טליא': {'he': 'נער / ילד / טלה', 'dialect': 'ירושלמי, בבלי, זוהר', 'cat': 'שם עצם', 'note': 'בנקבה: טליתא'},
     'טעמא': {'he': 'טעם / סיבה / נימוק הלכתי', 'dialect': 'בבלי, ירושלמי, זוהר', 'cat': 'שם עצם', 'note': 'מאי טעמא (מה הטעם)'},
-    'טسكא': {'he': 'מס קרקע שנתי למלכות', 'dialect': 'בבלי', 'cat': 'שם עצם', 'note': 'יהיב טסקא'},
+    'טסקא': {'he': 'מס קרקע שנתי למלכות', 'dialect': 'בבלי', 'cat': 'שם עצם', 'note': 'יהיב טסקא'},
 
     'יהיב': {'he': 'נותן / נתן', 'dialect': 'בבלי, ירושלמי, זוהר', 'cat': 'פועל', 'note': 'מאן דיהיב חיי יהיב מזוני'},
     'יומא': {'he': 'יום', 'dialect': 'בבלי, ירושלמי, זוהר', 'cat': 'שם עצם', 'note': 'יומא דכיפורי, כל יומא'},
@@ -209,7 +209,7 @@ BASE_ARAMAIC_DICTIONARY = {
     'יממא': {'he': 'יום / אור היום (לעומת ליליא - לילה)', 'dialect': 'בבלי, זוהר', 'cat': 'שם עצם', 'note': 'ביממא ובליליא'},
     'ינוקא': {'he': 'ילד / תינוק', 'dialect': 'בבלי, זוהר', 'cat': 'שם עצם', 'note': 'מדור ה"ינוקא" בספר הזוהר'},
     'יקרא': {'he': 'כבוד / תפארת / זוהר', 'dialect': 'בבלי, ירושלמי, זוהר', 'cat': 'שם עצם', 'note': 'יקרא דאורייתא (כבוד התורה)'},
-    'יתיב': {'he': 'יושב / ישב', 'dialect': 'בבלי, ירושלמי, זוהר', 'cat': 'פועל', 'note': 'יתיב רב אחא וقاמר'},
+    'יתיב': {'he': 'יושב / ישב', 'dialect': 'בבלי, ירושלמי, זוהר', 'cat': 'פועל', 'note': 'יתיב רב אחא וקאמר'},
     'יתיה': {'he': 'אותו (מקביל ל"ליה" בבבלי)', 'dialect': 'ירושלמי, זוהר', 'cat': 'מילת יחס', 'note': 'חמא יתיה (ראה אותו)'},
 
     'כד': {'he': 'כאשר / כש-', 'dialect': 'בבלי, ירושלמי, זוהר', 'cat': 'מילת זמן', 'note': 'כד הוה (כאשר היה)'},
@@ -466,7 +466,7 @@ ARAMAIC_VERB_ROOTS = [
     ]),
     ('ידע', 'ידע', 'בבלי, ירושלמי, זוהר', [
         ('ידע', 'יודע'), ('ידעי', 'יודעים'), ('ידעינן', 'אנו יודעים'),
-        ('דידע', 'שיודע'), ('קידע', 'יודע כעת'), ('לידע', 'יידע'), ('אודע', 'הודיע'), ('אشتמודע', 'הכיר')
+        ('דידע', 'שיודע'), ('קידע', 'יודע כעת'), ('לידע', 'יידע'), ('אודע', 'הודיע'), ('אשתמודע', 'הכיר')
     ]),
     ('שמע', 'שמע / הבין / למד', 'בבלי, ירושלמי, זוהר', [
         ('שמיע', 'שמוע / ידוע (שמיע ליה)'), ('שמעינן', 'אנו שומעים / לומדים'), ('דשמע', 'ששמע'),
@@ -555,7 +555,7 @@ ARAMAIC_VERB_ROOTS = [
         ('תקין', 'תיקן חכם'), ('תקינו', 'תיקנו חכמים'), ('מתקן', 'מתקן'),
         ('אתקין', 'התקין / הכין (אתקינו סעודתא)'), ('תיקונא', 'תיקון (תיקוני הזוהר)')
     ]),
-    ('קرب', 'קרב / הקריב', 'בבלי, ירושלמי, זוהר', [
+    ('קרב', 'קרב / הקריב', 'בבלי, ירושלמי, זוהר', [
         ('קריב', 'קרוב / מקריב'), ('מקרב', 'מקריב'), ('אקריב', 'הקריב קורבן'), ('אתקריב', 'נתקרב')
     ]),
     ('ברך', 'בירך', 'בבלי, ירושלמי, זוהר', [
@@ -572,7 +572,7 @@ ARAMAIC_VERB_ROOTS = [
 ARAMAIC_NOUN_STEMS = [
     ('מלכ', 'מלך', 'בבלי, ירושלמי, זוהר', 'שם עצם'),
     ('גבר', 'איש / אדם', 'בבלי, ירושלמי, זוהר', 'שם עצם'),
-    ('סفر', 'ספר / סופר', 'בבלי, ירושלמי, זוהר', 'שם עצם'),
+    ('ספר', 'ספר / סופר', 'בבלי, ירושלמי, זוהר', 'שם עצם'),
     ('בית', 'בית', 'בבלי, ירושלמי, זוהר', 'שם עצם'),
     ('דינ', 'דין / משפט', 'בבלי, ירושלמי, זוהר', 'שם עצם'),
     ('מילת', 'דבר / מילה / עניין', 'בבלי, ירושלמי, זוהר', 'שם עצם'),
@@ -651,6 +651,7 @@ ZOHAR_AUTHENTIC_CORPUS = [
 
 
 _COMPILED_LEXICON_CACHE = None
+_VALID_HEBREW_TERM_RE = re.compile(r'^[א-ת"״\'׳\-\s]+$')
 
 
 def get_full_compiled_lexicon():
@@ -734,13 +735,15 @@ def get_full_compiled_lexicon():
                     tts_d = json.load(f)
                     for k, v in tts_d.items():
                         k_clean = k.strip()
+                        if not _VALID_HEBREW_TERM_RE.match(k_clean):
+                            continue
                         v_clean = re.sub(r'[\u0591-\u05C7]', '', str(v)).strip()
                         if k_clean and k_clean not in full_lex and v_clean != k_clean:
                             full_lex[k_clean] = {
                                 'he': str(v).strip(),
                                 'dialect': 'בבלי, ירושלמי',
                                 'cat': 'ראשי תיבות ומונחים',
-                                'note': f'מונח וראשי תיבות בספרות הש"ס והפוסקים'
+                                'note': 'מונח וראשי תיבות בספרות הש"ס והפוסקים'
                             }
             except Exception:
                 pass
@@ -751,10 +754,16 @@ def get_full_compiled_lexicon():
             with open(learned_path, 'r', encoding='utf-8') as f:
                 learned_d = json.load(f)
                 for lk, lv in learned_d.items():
-                    q_term = lv.get('query') or lk.split('|')[-1]
-                    if q_term and q_term not in full_lex and lv.get('main_translation'):
+                    q_term = (lv.get('query') or lk.split('|')[-1] or '').strip()
+                    main_tr = (lv.get('main_translation') or '').strip()
+                    if (
+                        q_term and q_term not in full_lex and main_tr
+                        and _VALID_HEBREW_TERM_RE.match(q_term)
+                        and 'ראה הקשר הסוגיה' not in main_tr
+                        and 'לא נמצא' not in main_tr
+                    ):
                         full_lex[q_term] = {
-                            'he': lv['main_translation'],
+                            'he': main_tr,
                             'dialect': 'בבלי, ירושלמי, זוהר',
                             'cat': 'מונח תלמודי',
                             'note': lv.get('grammar_breakdown', '')
@@ -821,7 +830,7 @@ def _extract_senses_recursively(senses_list):
 
 
 def _query_sefaria_lexicon(word_to_query, full_lex, depth=0):
-    if depth > 1 or not word_to_query:
+    if depth > 1 or not word_to_query or not _VALID_HEBREW_TERM_RE.match(word_to_query):
         return None
     try:
         sef_url = f"https://www.sefaria.org/api/words/{urllib.parse.quote(word_to_query)}"
@@ -958,7 +967,7 @@ def execute_aramaic_translation(request):
         return {'error': 'נא להזין מילה, ביטוי או משפט לתרגום.'}, 400
 
     clean_q = re.sub(r'[^\w\sא-ת"״\'׳\-]', '', q).strip()
-    cache_key = f"aramaic_trans_v10_{direction}_{dialect}_{clean_q}"
+    cache_key = f"aramaic_trans_v12_{direction}_{dialect}_{clean_q}"
     cached_res = cache.get(cache_key)
     if cached_res:
         return cached_res, 200
@@ -968,6 +977,8 @@ def execute_aramaic_translation(request):
     NON_HEB_RE = re.compile(r'[^א-ת]+')
 
     def find_talmud_examples(search_term, target_dialect):
+        if re.search(r'[0-9a-zA-Z]', search_term):
+            return []
         heb_words = [w for w in re.findall(r'[א-ת]+', search_term) if len(w) >= 2]
         if not heb_words:
             return []
@@ -978,7 +989,7 @@ def execute_aramaic_translation(request):
             for z_item in ZOHAR_AUTHENTIC_CORPUS:
                 raw_t = z_item['text']
                 toks = list(WORD_TOKEN_RE.finditer(raw_t))
-                spans = [t.span() for t in toks if target_w in NON_HEB_RE.sub('', t.group(0))]
+                spans = [t.span() for t in toks if target_w == NON_HEB_RE.sub('', t.group(0)) or target_w in NON_HEB_RE.sub('', t.group(0))]
                 if spans:
                     s0, e0 = spans[0]
                     marked = (
@@ -995,17 +1006,6 @@ def execute_aramaic_translation(request):
                         'text': format_divine_name(marked),
                         'full_text': format_divine_name(marked)
                     })
-            if not examples:
-                entry_note = full_lex.get(clean_q, {}).get('note', f'התיבה "{clean_q}" בלשון ספר הזוהר הקדוש')
-                examples.append({
-                    'book': 'ספר הזוהר הקדוש',
-                    'chapter': 'לשון הזוהר',
-                    'verse': '1',
-                    'ref': 'ספר הזוהר הקדוש (מאגר לשון הזוהר)',
-                    'dialect_tag': 'ספר הזוהר',
-                    'text': format_divine_name(f'בספר הזוהר: <mark style="background-color: #fde047; color: #000; padding: 0 4px; border-radius: 4px; font-weight: bold;">{clean_q}</mark> — {entry_note}'),
-                    'full_text': format_divine_name(f'מקור מלשון ספר הזוהר הקדוש עבור "{clean_q}":\n\n{entry_note}')
-                })
             return examples[:3]
 
         if target_dialect == 'yerushalmi':
@@ -1046,9 +1046,9 @@ def execute_aramaic_translation(request):
         return examples
 
     talmud_examples = find_talmud_examples(clean_q, dialect)
-    resolved_data = _lookup_term_smart(clean_q, full_lex)
+    resolved_data = _lookup_term_smart(clean_q, full_lex) if not re.search(r'[0-9a-zA-Z]', clean_q) else None
 
-    if not resolved_data:
+    if not resolved_data and not re.search(r'[0-9a-zA-Z]', clean_q):
         words_in_phrase = [w for w in clean_q.split() if len(w) >= 2]
         if len(words_in_phrase) > 1:
             word_translations = []
@@ -1065,7 +1065,7 @@ def execute_aramaic_translation(request):
                     'usage_example': talmud_examples[0]['text'] if talmud_examples else ''
                 }
 
-    if not resolved_data:
+    if not resolved_data and not re.search(r'[0-9a-zA-Z]', clean_q):
         acr_hit = Acronym.objects.filter(Q(short=clean_q) | Q(short__icontains=clean_q)).first()
         if acr_hit:
             resolved_data = {
@@ -1077,20 +1077,29 @@ def execute_aramaic_translation(request):
             }
 
     if not resolved_data:
-        resolved_data = {
-            'detected_direction': 'ארמית ⇄ עברית',
-            'main_translation': f'ראה הקשר הסוגיה עבור "{clean_q}" בדוגמאות להלן',
-            'dialects_list': ['בבלי', 'ירושלמי', 'זוהר'],
-            'grammar_breakdown': 'תיבה מתוך מאגרי הש"ס והזוהר',
-            'usage_example': talmud_examples[0]['text'] if talmud_examples else ''
-        }
+        if talmud_examples:
+            resolved_data = {
+                'detected_direction': 'ארמית ⇄ עברית (אותר במקורות)',
+                'main_translation': f'התיבה "{clean_q}" אותרה במקורות התלמוד שלהלן',
+                'dialects_list': ['בבלי', 'ירושלמי', 'זוהר'],
+                'grammar_breakdown': 'המונח מופיע במקורות החיים שלהלן (ללא ערך מילוני עצמאי)',
+                'usage_example': talmud_examples[0]['text']
+            }
+        else:
+            resolved_data = {
+                'detected_direction': 'לא נמצא במאגר',
+                'main_translation': f'לא נמצא תרגום או מקור מאומת במאגר עבור "{clean_q}".',
+                'dialects_list': [],
+                'grammar_breakdown': 'המונח אינו מופיע במילון הארמי-עברי או במאגרי הש"ס והזוהר שבאתר.',
+                'usage_example': 'נא לוודא שהמילה הוקלדה באותיות עבריות תקניות וללא ספרות או שגיאות כתיב.'
+            }
 
     result_payload = {
         'query': clean_q,
         'selected_dialect': dialect,
         'detected_direction': resolved_data.get('detected_direction', 'ארמית ⇄ עברית'),
         'main_translation': format_divine_name(resolved_data.get('main_translation', '')),
-        'dialects_list': resolved_data.get('dialects_list', ['בבלי', 'ירושלמי', 'זוהר']),
+        'dialects_list': resolved_data.get('dialects_list', []),
         'grammar_breakdown': format_divine_name(resolved_data.get('grammar_breakdown', '')),
         'usage_example': format_divine_name(resolved_data.get('usage_example', '')),
         'talmud_examples': talmud_examples
