@@ -700,21 +700,33 @@ class ClusterEngine:
         if 'book_units' in _MEM_CACHE:
             return _MEM_CACHE['book_units']
 
+        def _clean_title(raw_t: str) -> str:
+            no_tags = re.sub(r'<[^>]+>', ' ', raw_t or '')
+            return re.sub(r'\s+', ' ', no_tags).strip()
+
         units = []
-        books = {b.pk: b for b in Book.objects.only('id', 'title', 'summary').all()}
+        books = {b.pk: b for b in Book.objects.only('id', 'title', 'summary', 'is_for_sale').all()}
         chapters = list(Chapter.objects.only('id', 'book_id', 'title', 'order').order_by('book_id', 'order', 'id'))
 
-        books_with_chapters = set()
+        books_with_chapters = {ch.book_id for ch in chapters if ch.book_id in books}
+
+        # מיפוי שם ספר -> מזהה העותק הקריא שלו (למניעת הפניה לעמוד רכישה כשקיים עותק קריא)
+        readable_book_id_by_title = {}
+        for b_id, book in books.items():
+            c_title = _clean_title(book.title)
+            if b_id in books_with_chapters or not getattr(book, 'is_for_sale', False):
+                if c_title not in readable_book_id_by_title or b_id in books_with_chapters:
+                    readable_book_id_by_title[c_title] = b_id
+
         seen_book_chapter_titles = set()
 
         for ch in chapters:
             book = books.get(ch.book_id)
             if not book:
                 continue
-            books_with_chapters.add(book.pk)
 
-            clean_b_title = re.sub(r'\s+', ' ', (book.title or '').strip())
-            clean_ch_title = re.sub(r'\s+', ' ', (ch.title or '').strip())
+            clean_b_title = _clean_title(book.title)
+            clean_ch_title = _clean_title(ch.title)
 
             dedup_title_key = (clean_b_title, clean_ch_title)
             if dedup_title_key in seen_book_chapter_titles:
@@ -738,30 +750,36 @@ class ClusterEngine:
                 'title': clean_ch_title,
                 'display_label': f"{clean_b_title} – {clean_ch_title}",
                 'badge': f'מתוך הספר "{clean_b_title}"',
+                'cta_label': 'לקריאת הפרק בספר',
                 'preview': b_summary[:130],
                 'url': f"/book/{book.pk}/?chapter={ch.pk}#chapter-{ch.pk}",
                 'signature': sig,
             })
 
         for b_id, book in books.items():
-            clean_b_title = re.sub(r'\s+', ' ', (book.title or '').strip())
+            clean_b_title = _clean_title(book.title)
             b_summary = cls.clean_text_fast(book.summary or '', 400)
             book_subject_title = clean_b_title.replace('וברכותיה', '').replace('וברכותיו', '')
             sig = cls._extract_distinctive_signature(book_subject_title, b_summary)
+
+            target_readable_id = readable_book_id_by_title.get(clean_b_title, b_id)
+            is_store_only = getattr(book, 'is_for_sale', False) and (target_readable_id == b_id) and (b_id not in books_with_chapters)
+
             units.append({
-                'unit_key': f"bk_{book.pk}",
+                'unit_key': f"bk_{b_id}",
                 'unit_type': 'book',
-                'book_id': book.pk,
+                'book_id': target_readable_id,
                 'book_title': clean_b_title,
                 'chapter_id': None,
                 'chapter_title': '',
                 'title': f'הספר "{clean_b_title}"',
                 'display_label': f'הספר "{clean_b_title}" (ספר שלם)',
-                'badge': 'ספר שלם בספרייה',
+                'badge': 'ספר לרכישה בחנות' if is_store_only else 'ספר שלם בספרייה',
+                'cta_label': 'לפרטי הספר ורכישה' if is_store_only else 'לקריאת הספר המלא',
                 'preview': b_summary[:140],
-                'url': f"/book/{book.pk}/",
+                'url': f"/book/{target_readable_id}/",
                 'signature': sig,
-                'has_subchapters': b_id in books_with_chapters,
+                'has_subchapters': (b_id in books_with_chapters) or is_store_only or (target_readable_id != b_id),
             })
 
         _MEM_CACHE['book_units'] = units

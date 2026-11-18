@@ -2,22 +2,22 @@ import json
 import urllib.request
 import re
 import os
-from django.http import JsonResponse, StreamingHttpResponse
+from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Q, Case, When, Value, IntegerField
 from django.urls import reverse
-
+from dotenv import load_dotenv
 from .models import Article, Chapter, Section, TorahText, QA, Acronym
 from .vector_store import search_similar_articles
+from .clusters_engine import ClusterEngine
 from .torah_engine import (
     TANAKH_NAMES, TORAH_NAMES, TORAH_CORE_CONCEPTS,
     calculate_gematria, format_divine_name, ratelimit,
     format_verse_hebrew, generate_word_variations,
     _resolve_torah_book_in_db, _resolve_torah_verse_obj, _IPV4_OPENER
 )
-
 
 def smart_hebrew_search(queryset, query, search_fields):
     if not query:
@@ -67,7 +67,6 @@ def smart_hebrew_search(queryset, query, search_fields):
 
     return results.annotate(relevance=score_expr).order_by('-relevance', '-pk')
 
-
 def get_text_fields(model_class):
     valid_fields = []
     try:
@@ -79,7 +78,6 @@ def get_text_fields(model_class):
         pass
     return valid_fields
 
-
 def get_item_title(item):
     for field in ['title', 'name', 'header', 'subject', 'question']:
         if hasattr(item, field):
@@ -90,7 +88,6 @@ def get_item_title(item):
         return str(item)
     except Exception:
         return f"{item.__class__.__name__} {getattr(item, 'pk', '')}"
-
 
 def get_item_text(item):
     text = ""
@@ -118,7 +115,6 @@ def get_item_text(item):
 
     text = re.sub(r'<[^>]+>', ' ', text)
     return re.sub(r'\s+', ' ', text).strip()
-
 
 def ai_document_search(queryset, search_query, search_fields, words, limit=4):
     if not search_fields or not words:
@@ -155,7 +151,6 @@ def ai_document_search(queryset, search_query, search_fields, words, limit=4):
     candidates.sort(key=get_score, reverse=True)
     return [c for c in candidates if get_score(c) > 0][:limit]
 
-
 def get_smart_content(text, query_words, max_chars=40000):
     if not text:
         return ""
@@ -180,24 +175,68 @@ def get_smart_content(text, query_words, max_chars=40000):
     end = min(len(text), start + max_chars)
     return ("... " if start > 0 else "") + text[start:end] + (" ..." if end < len(text) else "")
 
+def _local_nav_fallback(question: str) -> str:
+    q = (question or '').strip()
+    routes = [
+        (['אורך', 'אמה', 'טפח', 'אצבע', 'סנטימטר', 'מטר'], 'מחשבון מידות אורך בתורה', '/calculator/'),
+        (['נפח', 'כזית', 'כביצה', 'רביעית', 'לוג', 'מקווה'], 'מחשבון מידות נפח הלכתי', '/volume-calculator/'),
+        (['משקל', 'מטבע', 'שקל', 'פרוטה', 'דינר', 'גרם'], 'מחשבון משקל ומטבעות חז"ל', '/weight-calculator/'),
+        (['ספר', 'ספרים', 'חנות', 'רכישה', 'קניה'], 'ספריית הספרים והחנות', '/books/'),
+        (['מאמר', 'מאמרים', 'אינדקס', 'נושאים', 'מדור'], 'אינדקס המאמרים', '/index/'),
+        (['שו"ת', 'שות', 'שאלה', 'שאלות', 'תשובות'], 'מאגר שאלות ותשובות (שו"ת)', '/qa/'),
+        (['חיפוש', 'תנ"ך', 'תורה', 'גמרא', 'בבלי', 'רמב"ם', 'גימטריה', 'דילוג'], 'מנוע החיפוש התורני המתקדם', '/advanced-search/'),
+        (['ארמי', 'ארמית', 'מתרגם', 'תרגום', 'זוהר'], 'מתרגם ומילון ארמי-עברי', '/aramaic-translator/'),
+        (['ראשי תיבות', 'ר"ת', 'קיצור'], 'מילון ראשי תיבות תורני', '/advanced-search/?tab=acronyms'),
+        (['פרשה', 'פרשת'], 'מאמרים לפי פרשת השבוע', '/parasha/'),
+        (['חדש', 'לאחרונה', 'עלו'], 'תכנים שעלו לאחרונה', '/recently-added/'),
+        (['צור קשר', 'קשר', 'מייל', 'טלפון', 'פניה'], 'יצירת קשר', '/contact/'),
+        (['אודות', 'מי אתה', 'לייבוביץ'], 'אודות ספריית לייבוביץ', '/about/'),
+    ]
+    matched = []
+    for keywords, label, path in routes:
+        if any(kw in q for kw in keywords):
+            matched.append(f'<a href="{path}" target="_self" style="color: #2575fc; font-weight: bold; text-decoration: underline;">{label}</a>')
+    if matched:
+        return "תוכל להגיע ישירות לעמוד המבוקש כאן: " + " | ".join(matched)
+    return (
+        'תוכל לנווט במהירות דרך העמודים המרכזיים באתר: '
+        '<a href="/books/" style="color: #2575fc; font-weight: bold; text-decoration: underline;">ספרים</a> • '
+        '<a href="/index/" style="color: #2575fc; font-weight: bold; text-decoration: underline;">אינדקס מאמרים</a> • '
+        '<a href="/advanced-search/" style="color: #2575fc; font-weight: bold; text-decoration: underline;">מנוע חיפוש תורני</a> • '
+        '<a href="/calculator/" style="color: #2575fc; font-weight: bold; text-decoration: underline;">מחשבוני מידות</a>'
+    )
 
 @csrf_exempt
 @ratelimit(rate=20, timeout=86400)
 def ai_chat_endpoint(request):
     if request.method != 'POST':
-        return JsonResponse({'error': 'Invalid method'}, status=400)
+        return HttpResponse('שיטת בקשה לא חוקית.', status=400, content_type='text/plain; charset=utf-8')
 
     try:
-        API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
-        if not API_KEY:
-            return JsonResponse({'answer': 'Error: Missing API key.'})
+        load_dotenv()
+        API_KEY = (
+            os.environ.get('GEMINI_API_KEY', '').strip()
+            or os.environ.get('GOOGLE_API_KEY', '').strip()
+            or getattr(settings, 'GEMINI_API_KEY', '').strip()
+        )
 
         data = json.loads(request.body)
-        user_question = data.get('question', '')
+        user_question = data.get('question', '').strip()
         mode = data.get('mode', 'content')
 
         if not user_question:
-            return JsonResponse({'answer': 'Please provide a question.'})
+            return HttpResponse('אנא הזן שאלה כדי שאוכל לסייע לך.', content_type='text/plain; charset=utf-8')
+
+        if len(user_question) > 500:
+            return HttpResponse('השאלה ארוכה מדי. אנא נסח שאלה תורנית ממוקדת וקצרה יותר.', content_type='text/plain; charset=utf-8')
+
+        if not API_KEY:
+            if mode == 'nav':
+                return HttpResponse(_local_nav_fallback(user_question), content_type='text/plain; charset=utf-8')
+            return HttpResponse(
+                'עוזר ה-AI אינו זמין כרגע זמנית. בינתיים ניתן לחפש ישירות ב<a href="/advanced-search/" style="color: #d4af37; font-weight: bold; text-decoration: underline;">מנוע החיפוש התורני</a> או ב<a href="/index/" style="color: #d4af37; font-weight: bold; text-decoration: underline;">אינדקס המאמרים</a>.',
+                content_type='text/plain; charset=utf-8'
+            )
 
         unique_relevant_items = []
 
@@ -211,17 +250,22 @@ def ai_chat_endpoint(request):
                 "- שאלות ותשובות (שו\"ת): /qa/\n"
                 "- ספרים / חנות ספרים: /books/\n"
                 "- מחשבון מידות אורך: /calculator/\n"
-                "- מחשבון מידות נפח: /volume_calculator/\n"
-                "- מחשבון מידות משקל: /weight_calculator/\n"
+                "- מחשבון מידות נפח: /volume-calculator/\n"
+                "- מחשבון מידות משקל: /weight-calculator/\n"
                 "- עגלת קניות: /cart/\n"
                 "- קופה / תשלום: /checkout/\n"
-                "- אינדקס מאמרים: /article_index/\n"
+                "- אינדקס מאמרים ומסלולי לימוד: /index/\n"
                 "- פרשת שבוע: /parasha/\n"
-                "- נוספו לאחרונה: /recently_added/\n"
+                "- נוספו לאחרונה: /recently-added/\n"
                 "- תנאי שימוש: /terms/\n"
-                "- מילון ראשי תיבות: /acronyms/\n"
+                "- מילון ראשי תיבות: /advanced-search/?tab=acronyms\n"
             )
-            prompt = f"אתה עוזר וירטואלי באתר 'ספריית לייבוביץ'. עזור לגולש לנווט באתר.\n{nav_context}\nהגולש שואל אותך: '{user_question}'\nחובה עליך לשלב קישור בפורמט מרקדאון עם הנתיב היחסי."
+            prompt = (
+                f"אתה עוזר ניווט באתר התורני 'ספריית לייבוביץ'. עזור לגולש לנווט אך ורק לדפי האתר הרלוונטיים.\n"
+                f"אם השאלה אינה קשורה לתוכן האתר או לניווט בו, השב בנימוס שהנך מסייע רק בניווט בספריית לייבוביץ.\n"
+                f"{nav_context}\nהגולש שואל אותך: '{user_question}'\n"
+                f"חובה עליך לשלב קישור בפורמט מרקדאון עם הנתיב היחסי."
+            )
         else:
             clean_question = re.sub(r'[^\w\sא-ת]', '', user_question)
             stop_words = {'מהי', 'מה', 'מי', 'האם', 'מדוע', 'למה', 'איך', 'כיצד', 'מתי', 'היכן', 'איפה', 'של', 'על', 'את', 'עם'}
@@ -247,28 +291,56 @@ def ai_chat_endpoint(request):
             context_text = ""
             seen_urls = set()
 
-            def add_to_context(title, url, snippet):
+            def add_to_context(title, url, snippet, is_curated=False):
                 nonlocal context_text
                 if url not in seen_urls and snippet and len(snippet.strip()) > 10:
                     seen_urls.add(url)
-                    context_text += f"--- מקור: '{title}' ---\nקישור: {url}\n{snippet}\n\n"
-                    unique_relevant_items.append({'title': title, 'url': url})
+                    curated_tag = " [מקור קשור שאושר על ידי העורך הרב משה לייבוביץ]" if is_curated else ""
+                    context_text += f"--- מקור: '{title}'{curated_tag} ---\nקישור: {url}\n{snippet}\n\n"
+                    unique_relevant_items.append({'title': title, 'url': url, 'is_curated': is_curated})
 
             if acronym_matches:
                 acr_snippet = "\n".join([f"{a.short}: {a.meaning}" for a in acronym_matches])
-                add_to_context("מילון ראשי תיבות", request.build_absolute_uri(reverse('articles:acronyms_view')), acr_snippet)
+                add_to_context("מילון ראשי תיבות", request.build_absolute_uri('/advanced-search/?tab=acronyms'), acr_snippet)
 
             for item in semantic_results:
                 add_to_context(item.get('title', ''), item.get('url', ''), item.get('content_snippet', ''))
 
             for a in db_articles:
-                add_to_context(get_item_title(a), request.build_absolute_uri(reverse('articles:detail', args=[a.slug])), get_smart_content(get_item_text(a), words, max_chars=8000))
+                art_url = request.build_absolute_uri(reverse('articles:detail', args=[a.slug]))
+                add_to_context(get_item_title(a), art_url, get_smart_content(get_item_text(a), words, max_chars=8000))
+
+                try:
+                    learning_ctx = ClusterEngine.get_learning_context(a)
+                    if learning_ctx and learning_ctx.get('connections_status') != 'rejected':
+                        for b_unit in learning_ctx.get('book_units', [])[:2]:
+                            if b_unit.get('editorial_state') in ('manual', 'approved') or learning_ctx.get('connections_status') == 'approved':
+                                b_full_url = request.build_absolute_uri(b_unit['url'])
+                                b_title = f"{b_unit['book_title']} - {b_unit['title']}"
+                                b_snip = f"מקור קשור מתוך ספרי המחבר ({b_title}): {b_unit.get('preview', '')}"
+                                add_to_context(b_title, b_full_url, b_snip, is_curated=True)
+
+                        for q_unit in learning_ctx.get('related_qas', [])[:2]:
+                            if q_unit.get('editorial_state') in ('manual', 'approved') or learning_ctx.get('connections_status') == 'approved':
+                                q_full_url = request.build_absolute_uri(q_unit['url'])
+                                q_title = f"שו\"ת - {q_unit['question']}"
+                                q_snip = f"תשובת שו\"ת קשורה בסוגיה: {q_unit.get('preview', '')}"
+                                add_to_context(q_title, q_full_url, q_snip, is_curated=True)
+
+                        for rel_art in learning_ctx.get('related_articles', [])[:2]:
+                            if rel_art.get('editorial_state') in ('manual', 'approved'):
+                                rel_slug = rel_art['article']['slug']
+                                rel_title = rel_art['article']['title']
+                                rel_url = request.build_absolute_uri(reverse('articles:detail', args=[rel_slug]))
+                                add_to_context(rel_title, rel_url, f"מאמר המשך קשור בסוגיה זו שהוגדר על ידי המחבר: {rel_title}", is_curated=True)
+                except Exception:
+                    pass
 
             for c in db_chapters:
                 try:
                     book_id = getattr(c, 'book_id', None) or (c.book.id if hasattr(c, 'book') else None)
                     if book_id:
-                        url = f"{request.build_absolute_uri(reverse('articles:book_detail', args=[book_id]))}#chapter-{c.id}"
+                        url = f"{request.build_absolute_uri(reverse('articles:book_detail', args=[book_id]))}?chapter={c.id}#chapter-{c.id}"
                         title = f"{get_item_title(c.book) if hasattr(c, 'book') else 'ספר'} - {get_item_title(c)}"
                         add_to_context(title, url, get_smart_content(get_item_text(c), words, max_chars=8000))
                 except Exception:
@@ -280,7 +352,7 @@ def ai_chat_endpoint(request):
                     if chapter:
                         book_id = getattr(chapter, 'book_id', None) or (chapter.book.id if hasattr(chapter, 'book') else None)
                         if book_id:
-                            url = f"{request.build_absolute_uri(reverse('articles:book_detail', args=[book_id]))}#chapter-{chapter.id}"
+                            url = f"{request.build_absolute_uri(reverse('articles:book_detail', args=[book_id]))}?chapter={chapter.id}#chapter-{chapter.id}"
                             title = f"{get_item_title(chapter.book) if hasattr(chapter, 'book') else 'ספר'} - {get_item_title(chapter)}"
                             add_to_context(title, url, get_smart_content(get_item_text(s), words, max_chars=8000))
                 except Exception:
@@ -288,19 +360,23 @@ def ai_chat_endpoint(request):
 
             for qa_item in db_qas:
                 try:
-                    add_to_context(f"שו\"ת - {get_item_title(qa_item)}", request.build_absolute_uri(reverse('articles:qa')), get_smart_content(get_item_text(qa_item), words, max_chars=8000))
+                    qa_direct_url = request.build_absolute_uri(f"/qa/{qa_item.pk}/")
+                    add_to_context(f"שו\"ת - {get_item_title(qa_item)}", qa_direct_url, get_smart_content(get_item_text(qa_item), words, max_chars=8000))
                 except Exception:
                     pass
 
             if not unique_relevant_items:
-                return JsonResponse({'answer': 'מצטער, לא הצלחתי לאתר חומרים רלוונטיים במאגרי הספרייה לשאלתך. נסה לנסח אחרת.'})
+                return HttpResponse(
+                    'מצטער, לא הצלחתי לאתר חומרים רלוונטיים במאגרי הספרייה לשאלתך. נסה לנסח אחרת.',
+                    content_type='text/plain; charset=utf-8'
+                )
 
             prompt = (
                 f"אתה מסייע וירטואלי באתר 'ספריית לייבוביץ'.\n"
                 f"הגולש שואל אותך: '{user_question}'\n\n"
                 f"חוקי יסוד:\n"
                 f"1. ספק תשובה עניינית וישירה אך ורק מתוך המקורות שהובאו בפניך.\n"
-                f"2. הפנה את הגולש לקרוא את המאמר המקורי.\n"
+                f"2. הפנה את הגולש לקרוא את המאמרים והספרים המקוריים, ובמיוחד מקורות המסומנים ככאלו שאושרו על ידי העורך הרב משה לייבוביץ.\n"
                 f"3. ציין במפורש את שמו של המקור שעליו הסתמכת.\n"
                 f"4. אל תוסיף חתימה או משפטי סיום בסוף התשובה.\n"
                 f"5. המחבר משה לייבוביץ איננו עורך דין ואינו טוען רבני.\n\n"
@@ -323,7 +399,10 @@ def ai_chat_endpoint(request):
                     last_error = str(e)
 
             if not response:
-                yield f"מצטער, שגיאת תקשורת מול השרתים. נסה שוב בעוד מספר שניות. (שגיאה: {last_error})"
+                if mode == 'nav':
+                    yield _local_nav_fallback(user_question)
+                else:
+                    yield f"מצטער, שגיאת תקשורת מול השרתים. נסה שוב בעוד מספר שניות."
                 return
 
             try:
@@ -351,14 +430,16 @@ def ai_chat_endpoint(request):
                     sources_list_html = ""
                     for item in unique_relevant_items:
                         title, url = item.get('title', ''), item.get('url', '')
+                        is_curated = item.get('is_curated', False)
                         if title and url:
                             title_part = title.split('-')[-1].strip()
-                            if title in full_generated_text or (len(title_part) >= 4 and title_part in full_generated_text):
-                                sources_list_html += f"<li style='margin-bottom: 5px;'><a href='{url}' target='_blank' style='color: #d4af37; font-weight: bold; text-decoration: underline;'>{title}</a></li>"
+                            if is_curated or title in full_generated_text or (len(title_part) >= 4 and title_part in full_generated_text):
+                                badge_str = " <span style='font-size:0.8em; color:#8c6239;'>(המלצת המחבר)</span>" if is_curated else ""
+                                sources_list_html += f"<li style='margin-bottom: 5px;'><a href='{url}' target='_blank' style='color: #d4af37; font-weight: bold; text-decoration: underline;'>{title}</a>{badge_str}</li>"
                     if sources_list_html:
                         yield (
                             "<br><br><div style='margin-top: 15px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 0.95em;'>"
-                            "<strong>📚 מקורות מהספרייה (לחיץ):</strong>"
+                            "<strong>📚 מקורות וקישורים להרחבה בספרייה (לחיץ):</strong>"
                             f"<ul style='margin-top: 8px; padding-right: 20px; list-style-type: square;'>{sources_list_html}</ul></div>"
                         )
             except Exception as e:
@@ -366,10 +447,9 @@ def ai_chat_endpoint(request):
             finally:
                 response.close()
 
-        return StreamingHttpResponse(stream_google_response(), content_type='text/plain')
-    except Exception as e:
-        return JsonResponse({'answer': f'שגיאת שרת פנימית: {str(e)}'})
-
+        return StreamingHttpResponse(stream_google_response(), content_type='text/plain; charset=utf-8')
+    except Exception:
+        return HttpResponse('אירעה תקלה זמנית בעיבוד השאלה. אנא נסה שוב בעוד מספר שניות.', content_type='text/plain; charset=utf-8')
 
 @ratelimit(rate=30, timeout=60)
 def torah_ai_insights_api(request):
@@ -399,6 +479,7 @@ def torah_ai_insights_api(request):
         return norm_heb(rev[:-1]) + REGULAR_TO_FINAL.get(norm_heb(rev[-1]), norm_heb(rev[-1]))
 
     def call_gemini_fast(prompt_text):
+        load_dotenv()
         api_key = os.environ.get('GEMINI_API_KEY', '').strip() or getattr(settings, 'GEMINI_API_KEY', '').strip()
         if not api_key:
             return ""

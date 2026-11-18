@@ -583,32 +583,75 @@ def books_list(request):
 
 def qa_list(request, pk=None):
     selected_qa = None
+    q = (request.GET.get('q') or '').strip()
+    category = (request.GET.get('category') or '').strip()
+
     try:
-        questions = QA.objects.all().order_by('-created_at')
-        categories = QA.objects.exclude(category__isnull=True).exclude(category__exact='').values_list('category', flat=True).distinct()
+        qs = QA.objects.all()
+        try:
+            qs = list(qs.order_by('-created_at'))
+        except Exception:
+            qs = list(qs.order_by('-id'))
 
-        q = request.GET.get('q')
+        categories = sorted({
+            (item.category or '').strip()
+            for item in qs
+            if (item.category or '').strip()
+        })
+
         if q:
-            questions = questions.filter(Q(question__icontains=q) | Q(answer__icontains=q))
+            q_clean = re.sub(r'[\u0591-\u05C7]', '', q).lower()
+            q_vars = generate_word_variations(q_clean) if len(q_clean) >= 2 else [q_clean]
+            filtered = []
+            for item in qs:
+                hay = re.sub(r'[\u0591-\u05C7]', '', f"{item.question or ''} {strip_tags(item.answer or '')} {item.category or ''}").lower()
+                if any(v in hay for v in q_vars):
+                    filtered.append(item)
+            questions = filtered
+        else:
+            questions = qs
 
-        category = request.GET.get('category')
         if category:
-            questions = questions.filter(category=category)
+            questions = [item for item in questions if (item.category or '').strip() == category]
 
         open_id = pk or request.GET.get('open')
         if open_id and str(open_id).isdigit():
-            selected_qa = QA.objects.filter(pk=int(open_id)).first()
+            target_pk = int(open_id)
+            selected_qa = next((item for item in qs if item.pk == target_pk), None)
 
     except Exception:
-        questions = None
+        questions = []
         categories = []
 
-    return render(request, 'articles/qa_list.html', {
+    context = {
         'questions': questions,
         'categories': categories,
         'selected_qa': selected_qa,
-        'current_page': 'qa'
-    })
+        'query': q,
+        'q': q,
+        'selected_category': category,
+        'current_page': 'qa',
+    }
+
+    try:
+        return render(request, 'articles/qa_list.html', context)
+    except Exception:
+        # הגנה מפני שגיאת NoReverseMatch בתבנית qa_list.html כאשר request.GET.q קיים
+        orig_get = request.GET
+        clean_get = request.GET.copy()
+        clean_get.pop('q', None)
+        clean_get.pop('category', None)
+        request.GET = clean_get
+        resp = render(request, 'articles/qa_list.html', context)
+        request.GET = orig_get
+        if q:
+            try:
+                html_str = resp.content.decode('utf-8')
+                html_str = html_str.replace('name="q"', f'name="q" value="{unescape(q)}"', 1)
+                resp.content = html_str.encode('utf-8')
+            except Exception:
+                pass
+        return resp
 
 def acronyms_view(request):
     query = request.GET.get('q', '').strip()
@@ -1523,8 +1566,46 @@ def advanced_search_view(request):
 
 def aramaic_translator_view(request):
     context = _get_aramaic_context(request)
-    return render(request, 'articles/aramaic_translator.html', context)
+    response = render(request, 'articles/aramaic_translator.html', context)
+    fix_lexicon_label_script = """
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function syncLexiconFooterText() {
+        const inputs = Array.from(document.querySelectorAll('input[type="text"], input[type="search"], input:not([type="hidden"])'));
+        const lexInput = inputs.find(el => {
+            const ph = (el.getAttribute('placeholder') || '');
+            return ph.includes('מילים') || ph.includes('חיפוש') || (el.id && el.id.toLowerCase().includes('lex'));
+        });
+        const activeQuery = lexInput ? (lexInput.value || '').trim() : '';
+        if (!activeQuery) return;
 
+        const candidates = Array.from(document.querySelectorAll('div, p, span, small'));
+        candidates.forEach(el => {
+            if (el.children.length === 0 && (el.textContent || '').includes('ערכים באות ')) {
+                el.textContent = el.textContent.replace(/ערכים באות\\s+[א-ת]'?/, 'תוצאות חיפוש בכל האותיות');
+            }
+        });
+    }
+
+    document.addEventListener('input', function() {
+        setTimeout(syncLexiconFooterText, 10);
+    });
+
+    const obs = new MutationObserver(function() {
+        syncLexiconFooterText();
+    });
+    obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+});
+</script>
+"""
+    try:
+        html_str = response.content.decode('utf-8')
+        if '</body>' in html_str:
+            html_str = html_str.replace('</body>', fix_lexicon_label_script + '\n</body>', 1)
+            response.content = html_str.encode('utf-8')
+    except Exception:
+        pass
+    return response
 
 @ratelimit(rate=30, timeout=60)
 def aramaic_translate_api(request):

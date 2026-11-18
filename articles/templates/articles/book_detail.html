@@ -3,30 +3,27 @@
 {% block title %}{{ book.title|striptags }} - הספרייה התורנית{% endblock %}
 
 {% block extra_head %}
-<!-- Academic tags for AI -->
 <meta name="citation_title" content="{{ book.title|striptags|escape }}">
 <meta name="citation_author" content="{{ book.author|default:'משה לייבוביץ'|escape }}">
 <meta name="citation_journal_title" content="ספריית משה לייבוביץ">
 <meta name="citation_language" content="he">
 <meta name="citation_public_url" content="{{ request.build_absolute_uri }}">
 
-<!-- Open Graph tags -->
 <meta property="og:title" content="{{ book.title|striptags|escape }} | ספריית לייבוביץ">
 <meta property="og:description" content="נכתב על ידי משה לייבוביץ: {{ book.summary|striptags|truncatewords:30|escape }}">
 <meta property="og:type" content="book">
-<meta property="og:url" content="{{ request.build_absolute_uri }}">
+<meta property="og:url" content="https://leblibrary.co.il{{ request.path }}">
 {% if book.cover_image %}
-<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ book.cover_image.url }}">
+<meta property="og:image" content="https://leblibrary.co.il{{ book.cover_image.url }}">
 {% endif %}
 
-<!-- AI FAQ and speakable tags - Disambiguated for Moshe Leibowitz -->
 <script type="application/ld+json">
 [
   {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "name": "ספריית לייבוביץ",
-    "url": "{{ request.build_absolute_uri }}",
+    "url": "https://leblibrary.co.il{{ request.path }}",
     "description": "ספרייה תורנית והלכתית המאגדת את כתביו, עיוניו ופסיקותיו של משה לייבוביץ.",
     "publisher": {
       "@type": "Organization",
@@ -61,14 +58,14 @@
         "https://www.nli.org.il/en/books/NNL_ALEPH990055553230205171/NLI"
       ]
     },
-    "url": "{{ request.build_absolute_uri }}",
+    "url": "https://leblibrary.co.il{{ request.path }}",
     "description": "הפסיקה והגישה העיונית מתוך ספריית משה לייבוביץ: {{ book.summary|striptags|truncatewords:30|escapejs }}",
     "publisher": {
       "@type": "Organization",
       "name": "ספריית משה לייבוביץ"
     }
     {% if book.cover_image %}
-    ,"image": "{{ request.scheme }}://{{ request.get_host }}{{ book.cover_image.url }}"  
+    ,"image": "https://leblibrary.co.il{{ book.cover_image.url }}"  
     {% endif %}
     {% if book.is_for_sale %}
     ,"offers": {
@@ -114,7 +111,7 @@
         <li class="breadcrumb-item">
             <a href="{% url 'articles:books' %}" class="text-decoration-none text-muted">ספרים</a>
         </li>
-        <li class="breadcrumb-item active fw-bold text-dark" aria-current="page">{{ book.title|safe }}</li>
+        <li class="breadcrumb-item active fw-bold text-dark" aria-current="page">{{ book.title|striptags }}</li>
       </ol>
     </nav>
 </div>
@@ -142,7 +139,7 @@
                 <h2 class="fw-bold mb-3 border-bottom pb-2 text-primary fs-4">תוכן עניינים</h2>
                 <div class="list-group list-group-flush" id="toc-list">
                     
-                    {% if book.chapters.all or book.chapter_set.all %}
+                    {% if book.chapters.all %}
                         {% for chapter in book.chapters.all %}
                             <a href="#chapter-{{ chapter.id }}" class="list-group-item list-group-item-action fw-bold bg-light mt-2 rounded toc-link scrollspy-target text-dark" onclick="closeTocOnMobile()" title="">
                                 {{ chapter.title }}
@@ -168,7 +165,7 @@
                                 {% endif %}
                             {% endfor %}
                         {% endfor %}
-                        
+                    {% elif book.chapter_set.all %}
                         {% for chapter in book.chapter_set.all %}
                             <a href="#chapter-{{ chapter.id }}" class="list-group-item list-group-item-action fw-bold bg-light mt-2 rounded toc-link scrollspy-target text-dark" onclick="closeTocOnMobile()" title="">
                                 {{ chapter.title }}
@@ -219,8 +216,11 @@
                 {% endif %}
 
                 {% if book.title != "זמני המילה וברכותיה" and book.title != "זריזין מקדימין למילה" %}
-                    <button onclick="toggleSpeech()" id="speechBtn" class="btn-print btn btn-outline-warning border shadow-sm" title="האזנה למאמר" style="color: #a67c52; border-color: #a67c52;">
+                    <button onclick="toggleSpeech()" id="speechBtn" class="btn-print btn btn-outline-warning border shadow-sm" title="האזנה לספר" style="color: #a67c52; border-color: #a67c52;">
                         <i class="bi bi-volume-up-fill" id="speechIcon"></i> <span id="speechText">האזנה לקריאה</span>
+                    </button>
+                    <button onclick="restartSpeech()" id="speechRestartBtn" class="btn-print btn btn-outline-warning border shadow-sm" title="התחל הקראה מחדש מראש הספר" style="display: none; color: #a67c52; border-color: #a67c52;">
+                        <i class="bi bi-arrow-counterclockwise"></i> <span>מההתחלה</span>
                     </button>
                 {% endif %}
                 <button onclick="openShareModal()" class="btn-print btn btn-outline-warning border shadow-sm" title="שתף ספר זה" style="color: #a67c52; border-color: #a67c52;">
@@ -245,7 +245,7 @@
                 <div class="row g-0">
                     {% if book.cover_image %}
                     <div class="col-md-4 d-flex align-items-center justify-content-center p-4 book-cover-bg">
-                        <img src="{{ book.cover_image.url }}" alt="{{ book.title }}" loading="lazy" class="img-fluid rounded shadow" style="max-height: 320px; object-fit: contain;">
+                        <img src="{{ book.cover_image.url }}" alt="{{ book.title|striptags }}" loading="lazy" class="img-fluid rounded shadow" style="max-height: 320px; object-fit: contain;">
                     </div>
                     {% endif %}
                     
@@ -282,14 +282,14 @@
             </div>
             {% endif %}
 
-            <div class="book-reading-mode">
+            <div class="book-reading-mode" id="bookReadingRoot">
                 
                 {% if book.chapters.all %}
                     {% for chapter in book.chapters.all %}
-                        <div class="chapter-section mb-5 pb-3">
+                        <div class="chapter-section mb-5 pb-3" id="chapter-box-{{ chapter.id }}">
                             <h2 id="chapter-{{ chapter.id }}" class="scrollspy-target fw-bold text-primary mb-4 border-bottom pb-2">{{ chapter.title }}</h2>
                             {% for section in chapter.sections.all %}
-                                <div class="mb-4">
+                                <div class="mb-4 book-section-block" data-section-title="{{ section.title|striptags }}" data-chapter-title="{{ chapter.title|striptags }}">
                                     {% if "גדר" in section.title and "נכתב" in section.title %}
                                         <div id="section-{{ section.id }}" class="scrollspy-target" style="position: absolute; visibility: hidden; pointer-events: none;">{{ section.title }}</div>
                                     {% elif section.title == "מבוא" or section.title == " מבוא" or section.title == "מבוא " or section.title == chapter.title %}
@@ -324,10 +324,10 @@
                     
                 {% elif book.chapter_set.all %}
                     {% for chapter in book.chapter_set.all %}
-                        <div class="chapter-section mb-5 pb-3">
+                        <div class="chapter-section mb-5 pb-3" id="chapter-box-{{ chapter.id }}">
                             <h2 id="chapter-{{ chapter.id }}" class="scrollspy-target fw-bold text-primary mb-4 border-bottom pb-2">{{ chapter.title }}</h2>
                             {% for section in chapter.sections.all %}
-                                <div class="mb-4">
+                                <div class="mb-4 book-section-block" data-section-title="{{ section.title|striptags }}" data-chapter-title="{{ chapter.title|striptags }}">
                                     {% if "גדר" in section.title and "נכתב" in section.title %}
                                         <div id="section-{{ section.id }}" class="scrollspy-target" style="position: absolute; visibility: hidden; pointer-events: none;">{{ section.title }}</div>
                                     {% elif section.title == "מבוא" or section.title == " מבוא" or section.title == "מבוא " or section.title == chapter.title %}
@@ -477,6 +477,15 @@
     .toc-link { transition: all 0.3s ease; border-right: 4px solid transparent; }
     .toc-link.active-gold { background-color: #fdfbf7 !important; color: #d4af37 !important; border-right: 4px solid #d4af37 !important; font-weight: 800 !important; box-shadow: inset 0 0 10px rgba(212, 175, 55, 0.05); }
     
+    .chapter-highlight-flash {
+        animation: chapterFlashGold 2.4s ease-out;
+        border-radius: 10px;
+    }
+    @keyframes chapterFlashGold {
+        0% { background-color: rgba(212, 175, 55, 0.28); box-shadow: 0 0 0 6px rgba(212, 175, 55, 0.18); }
+        100% { background-color: transparent; box-shadow: none; }
+    }
+
     .content-card-bg { background-color: #ffffff; transition: all 0.4s ease; }
     
     body.dark-mode .text-primary { color: #d4af37 !important; }
@@ -642,19 +651,82 @@
 </style>
 
 <script>
-    window.addEventListener('DOMContentLoaded', (event) => {
-        const hash = window.location.hash;
-        if (hash) {
-            let targetId = hash.substring(1);
-            if (targetId === 'chapter-617') {
-                targetId = 'chapter-3753';
+    // ניקוי אוטומטי של כותרות כפולות בתחילת סעיפים ופרקים (פותר את LEB-UI-05 בכל הספרים)
+    function deduplicateBookHeadings() {
+        const normTitle = (str) => (str || '')
+            .replace(/[\u0591-\u05C7]/g, '')
+            .replace(/["'״׳.,:;\-–—()\[\]]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        const titlesMatch = (a, b) => {
+            const na = normTitle(a);
+            const nb = normTitle(b);
+            if (!na || !nb) return false;
+            if (na === nb) return true;
+            // התאמה גם כאשר יש הבדל קל של ו' החיבור כמו "הרמב"ן ריטב"א" מול "הרמב"ן והריטב"א"
+            const stripVav = (s) => s.replace(/\bו/g, '');
+            return stripVav(na) === stripVav(nb);
+        };
+
+        document.querySelectorAll('.book-section-block').forEach(block => {
+            const secTitle = block.getAttribute('data-section-title') || '';
+            const chapTitle = block.getAttribute('data-chapter-title') || '';
+            const contentDiv = block.querySelector('.article-content');
+            if (!contentDiv) return;
+
+            let checked = 0;
+            while (contentDiv.firstElementChild && checked < 2) {
+                checked++;
+                const firstEl = contentDiv.firstElementChild;
+                const elText = (firstEl.innerText || firstEl.textContent || '').trim();
+                if (!elText) {
+                    firstEl.remove();
+                    continue;
+                }
+                if (elText.length <= 120 && (titlesMatch(elText, secTitle) || titlesMatch(elText, chapTitle))) {
+                    firstEl.remove();
+                } else {
+                    break;
+                }
             }
+        });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        deduplicateBookHeadings();
+
+        const params = new URLSearchParams(window.location.search);
+        const chapterParam = params.get('chapter');
+        const sectionParam = params.get('section');
+        const hash = window.location.hash;
+
+        let targetId = '';
+        if (hash) {
+            targetId = hash.substring(1);
+        } else if (sectionParam) {
+            targetId = 'section-' + sectionParam;
+        } else if (chapterParam) {
+            targetId = 'chapter-' + chapterParam;
+        }
+
+        if (targetId === 'chapter-617') {
+            targetId = 'chapter-3753';
+        }
+
+        if (targetId) {
             setTimeout(() => {
                 const target = document.getElementById(targetId);
                 if (target) {
                     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    target.classList.add('chapter-highlight-flash');
+                    const tocLink = document.querySelector(`.toc-link[href="#${targetId}"]`);
+                    if (tocLink) {
+                        document.querySelectorAll('.toc-link').forEach(l => l.classList.remove('active-gold'));
+                        tocLink.classList.add('active-gold');
+                    }
                 }
-            }, 300);
+            }, 250);
         }
     });
 
@@ -682,15 +754,30 @@
     let currentAudio = null;
     let isPlaying = false;
 
+    function restartSpeech() {
+        const speechText = document.getElementById('speechText');
+        const speechIcon = document.getElementById('speechIcon');
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
+            currentAudio.play();
+            isPlaying = true;
+            speechText.innerText = 'עצור הקראה';
+            speechIcon.className = 'bi bi-pause-fill';
+        }
+    }
+
     async function toggleSpeech() {
         const speechText = document.getElementById('speechText');
         const speechIcon = document.getElementById('speechIcon');
+        const restartBtn = document.getElementById('speechRestartBtn');
 
         if (isPlaying && currentAudio) {
             currentAudio.pause();
             isPlaying = false;
             speechText.innerText = 'המשך הקראה';
             speechIcon.className = 'bi bi-play-fill';
+            if (restartBtn) restartBtn.style.display = 'inline-block';
             return;
         }
 
@@ -699,6 +786,7 @@
             isPlaying = true;
             speechText.innerText = 'עצור הקראה';
             speechIcon.className = 'bi bi-pause-fill';
+            if (restartBtn) restartBtn.style.display = 'inline-block';
             return;
         }
 
@@ -716,12 +804,14 @@
                 
                 speechText.innerText = 'עצור הקראה';
                 speechIcon.className = 'bi bi-pause-fill';
+                if (restartBtn) restartBtn.style.display = 'inline-block';
 
                 currentAudio.onended = function() {
                     isPlaying = false;
                     currentAudio = null;
                     speechText.innerText = 'האזנה לקריאה';
                     speechIcon.className = 'bi bi-volume-up-fill';
+                    if (restartBtn) restartBtn.style.display = 'none';
                 };
             } else if (data.error) {
                 alert("שגיאה ביצירת שמע: " + data.error);

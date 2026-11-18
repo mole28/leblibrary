@@ -23,7 +23,17 @@
         if (body.classList.contains('dark-mode')) { body.classList.remove('dark-mode'); localStorage.setItem('site_theme', 'light'); } 
         else { body.classList.add('dark-mode'); localStorage.setItem('site_theme', 'dark'); }
     }
-    function toggleAccessibilityMenu() { const menu = document.getElementById('acc-main-menu'); const toggle = document.getElementById('acc-floating-toggle'); if (menu.style.display === 'none') { menu.style.display = 'block'; toggle.style.display = 'none'; } else { menu.style.display = 'none'; toggle.style.display = 'block'; } }
+    function toggleAccessibilityMenu() {
+        const menu = document.getElementById('acc-main-menu');
+        const toggle = document.getElementById('acc-floating-toggle');
+        if (menu.style.display === 'none') {
+            menu.style.display = 'block';
+            toggle.style.display = 'none';
+        } else {
+            menu.style.display = 'none';
+            toggle.style.display = 'flex';
+        }
+    }
     function toggleAccSubMenu(id) { const submenu = document.getElementById(id); submenu.style.display = submenu.style.display === 'block' ? 'none' : 'block'; }
     
     let currentZoom = 1.0; 

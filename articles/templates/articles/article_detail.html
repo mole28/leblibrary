@@ -144,6 +144,9 @@
                     <button onclick="toggleSpeech()" id="speechBtn" class="btn-print btn btn-outline-warning border shadow-sm" title="האזנה למאמר" style="color: #a67c52; border-color: #a67c52;">
                         <i class="bi bi-volume-up-fill" id="speechIcon"></i> <span id="speechText">האזנה לקריאה</span>
                     </button>
+                    <button onclick="restartSpeech()" id="speechRestartBtn" class="btn-print btn btn-outline-warning border shadow-sm" title="התחל הקראה מחדש מראש המאמר" style="display: none; color: #a67c52; border-color: #a67c52;">
+                        <i class="bi bi-arrow-counterclockwise"></i> <span>מההתחלה</span>
+                    </button>
                     {% endif %}
                     <button onclick="openShareModal()" class="btn-print btn btn-outline-warning border shadow-sm" title="שתף מאמר זה" style="color: #a67c52; border-color: #a67c52;">
                         <i class="bi bi-share-fill"></i> שיתוף
@@ -282,7 +285,6 @@
                 <!-- ========================================================================= -->
                 <div class="bm-lux-container p-3 p-md-4 rounded-4">
                     
-                    <!-- כותרת מדור מזמינה וברורה (ללא "שלב ב'" וללא "יחידה 1 מתוך 3") -->
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pb-3 mb-3 bm-header-divider">
                         <div>
                             <div class="d-flex align-items-center gap-2 mb-1">
@@ -301,7 +303,6 @@
                         {% endif %}
                     </div>
 
-                    <!-- 1. מאמרי עיון קשורים בסוגיה (שמות המאמרים בלבד, בגריד מאוזן ללא חורים!) -->
                     {% if learning.related_articles %}
                     <div class="mb-4">
                         <div class="bm-sub-label mb-2">
@@ -328,7 +329,6 @@
                     </div>
                     {% endif %}
 
-                    <!-- 2. הרחבה בספרי המחבר (כרטיסים קומפקטיים ויוקרתיים) -->
                     {% if learning.book_units %}
                     <div class="mb-4">
                         <div class="bm-sub-label mb-2">
@@ -348,14 +348,14 @@
                                 <a href="{{ b_unit.url }}" class="bm-book-compact-card">
                                     <div>
                                         <div class="bm-book-badge">
-                                            <i class="bi bi-book ms-1" style="color: #d4af37;"></i>{{ b_unit.badge }}
+                                            <i class="bi bi-book ms-1" style="color: #d4af37;"></i>{{ b_unit.badge|striptags }}
                                         </div>
                                         <div class="bm-book-chapter-title">
-                                            {{ b_unit.title }}
+                                            {{ b_unit.title|striptags }}
                                         </div>
                                     </div>
                                     <div class="bm-book-footer">
-                                        <span>לקריאת הפרק בספר</span>
+                                        <span>{{ b_unit.cta_label|default:"לקריאת הפרק בספר" }}</span>
                                         <i class="bi bi-arrow-left-circle-fill"></i>
                                     </div>
                                 </a>
@@ -365,7 +365,6 @@
                     </div>
                     {% endif %}
 
-                    <!-- 3. שו"ת הלכה למעשה + כלי מחקר וחיפוש מקורות (מאוחדים בגריד חכם ללא שום חלל ריק) -->
                     {% if learning.related_qas or learning.smart_tools %}
                     <div>
                         <div class="bm-sub-label mb-2">
@@ -435,7 +434,6 @@
 </div>
 
 {% if user.is_superuser and admin_choices %}
-<!-- חלונית בונה הקשרים וכלי החיפוש המתקדם למנהל -->
 <div class="modal fade" id="adminBuilderModal" tabindex="-1" aria-hidden="true" dir="rtl">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content rounded-4 border-2" style="border-color: #d4af37;">
@@ -599,15 +597,30 @@
     let currentAudio = null;
     let isPlaying = false;
 
+    function restartSpeech() {
+        const speechText = document.getElementById('speechText');
+        const speechIcon = document.getElementById('speechIcon');
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
+            currentAudio.play();
+            isPlaying = true;
+            speechText.innerText = 'עצור הקראה';
+            speechIcon.className = 'bi bi-pause-fill';
+        }
+    }
+
     async function toggleSpeech() {
         const speechText = document.getElementById('speechText');
         const speechIcon = document.getElementById('speechIcon');
+        const restartBtn = document.getElementById('speechRestartBtn');
 
         if (isPlaying && currentAudio) {
             currentAudio.pause();
             isPlaying = false;
             speechText.innerText = 'המשך הקראה';
             speechIcon.className = 'bi bi-play-fill';
+            if (restartBtn) restartBtn.style.display = 'inline-block';
             return;
         }
 
@@ -616,6 +629,7 @@
             isPlaying = true;
             speechText.innerText = 'עצור הקראה';
             speechIcon.className = 'bi bi-pause-fill';
+            if (restartBtn) restartBtn.style.display = 'inline-block';
             return;
         }
 
@@ -633,12 +647,14 @@
                 
                 speechText.innerText = 'עצור הקראה';
                 speechIcon.className = 'bi bi-pause-fill';
+                if (restartBtn) restartBtn.style.display = 'inline-block';
 
                 currentAudio.onended = function() {
                     isPlaying = false;
                     currentAudio = null;
                     speechText.innerText = 'האזנה לקריאה';
                     speechIcon.className = 'bi bi-volume-up-fill';
+                    if (restartBtn) restartBtn.style.display = 'none';
                 };
             } else if (data.error) {
                 alert("שגיאה ביצירת שמע: " + data.error);
@@ -987,9 +1003,6 @@
 </script>
 
 <style>
-    /* ========================================================================= */
-    /* עיצוב יוקרתי, פרופורציונלי ומאוזן לאזור המשך העיון בתחתית המאמר */
-    /* ========================================================================= */
     .bm-lux-container {
         background: linear-gradient(145deg, #fcfaf5 0%, #f6f0e2 100%);
         border: 1.5px solid rgba(212, 175, 55, 0.65);
@@ -1037,7 +1050,6 @@
         color: #334155;
     }
 
-    /* גריד דינמי למאמרים קשורים (ללא חורים - מסתדר אוטומטית לפי 1, 2, 3, 4, 5 או 6 מאמרים) */
     .bm-articles-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -1080,7 +1092,6 @@
         transform: translateX(-3px);
     }
 
-    /* גריד קומפקטי ויוקרתי לפרקים בספרי המחבר */
     .bm-books-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -1134,7 +1145,6 @@
         color: #8c6239;
     }
 
-    /* גריד מאוחד לשו"ת ולכלי מחקר (מונע חורים כשיש כלי אחד או שניים) */
     .bm-tools-qa-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -1193,7 +1203,6 @@
         margin-top: 2px;
     }
 
-    /* התאמה למצב כהה (Dark Mode) */
     body.dark-mode .bm-lux-container {
         background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
         border-color: rgba(212, 175, 55, 0.5);

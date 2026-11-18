@@ -304,7 +304,14 @@
         .acc-submenu button { display: block; width: 100%; background-color: #fff; border: none; padding: 8px; margin-bottom: 8px; border-radius: 4px; font-weight: bold; color: #2c3e50; cursor: pointer; text-align: right; transition: background-color 0.2s; }
         .acc-submenu button:hover { background-color: #e9ecef; }
         body.a11y-high-contrast { background-color: #000 !important; color: #fff !important; }
-        body.a11y-invert-colors { filter: invert(100%); background-color: #000; }
+        body.a11y-invert-colors {
+          background-color: #000 !important;
+        }
+        body.a11y-invert-colors .top-navbar,
+        body.a11y-invert-colors .content-wrapper,
+        body.a11y-invert-colors .site-footer {
+            filter: invert(100%);
+        }
         body.a11y-readable-font * { font-family: Arial, Helvetica, sans-serif !important; }
         body.a11y-highlight-links a { background-color: #ffeb3b !important; color: #000 !important; text-decoration: underline !important; font-weight: bold; }
         body.a11y-highlight-headers h1, body.a11y-highlight-headers h2, body.a11y-highlight-headers h3, body.a11y-highlight-headers h4 { background-color: #000 !important; color: #fff !important; padding: 5px; border-radius: 4px; }

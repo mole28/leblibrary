@@ -408,6 +408,7 @@ def _extract_sefaria_he_list(he_data):
             flat.extend(_extract_sefaria_he_list(item))
     return flat
 
+
 RAMBAM_BOOKS_EN = {
     'רמב"ם הלכות יסודי התורה': 'Mishneh Torah, Foundations of the Torah',
     'רמב"ם הלכות דעות': 'Mishneh Torah, Human Dispositions',
@@ -574,6 +575,7 @@ def _extract_sefaria_verse_comments(data, verse_int, chap_int=0):
         return []
 
     return []
+
 
 def _fetch_commentary_for_source(book_name, chapter_name, verse_num, requested_commentator=''):
     b_str = _resolve_torah_book_in_db(book_name).replace('״', '"').replace('׳', "'")
@@ -752,6 +754,7 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num, requested_c
         cache.set(cache_key, payload, 3600 * 24)
     return payload
 
+
 def _match_comments_by_dibbur_hamatchil(all_comments_list, source_clean_text):
     if not source_clean_text or not all_comments_list:
         return []
@@ -812,20 +815,34 @@ def _fetch_sefaria_json_cached(sefaria_ref, extra_params="context=0&commentary=0
             continue
     return None
 
-# טבלת C מהירה להסרת ניקוד וטעמים בפקודה אחת (פי 25 מהר יותר מלולאת re.sub על כל מילה)
+
+# טבלת C מהירה להסרת ניקוד, תגיות inline (כגון אותיות רבתיות/זעירות <big>בְּ</big>רֵאשִׁית) ותווי בקרה
 _NIKKUD_RANGE_CHARS = (
     list(range(0x0591, 0x05BE)) +
-    [0x05BF, 0x05C1, 0x05C2, 0x05C4, 0x05C5, 0x05C7]
+    [0x05BF, 0x05C1, 0x05C2, 0x05C4, 0x05C5, 0x05C7, 0x034F, 0x200B, 0x200C, 0x200D, 0x200E, 0x200F, 0xFEFF]
 )
 _DELETE_NIKKUD_TRANS = {c: None for c in _NIKKUD_RANGE_CHARS}
+_INLINE_TAGS_RE = re.compile(r'<[^>]+>')
+_SPLIT_BERESHIT_RE = re.compile(r'^(\s*ב[\u0591-\u05c7]*)\s+(ר[\u0591-\u05c7]*א[\u0591-\u05c7]*ש[\u0591-\u05c7]*י[\u0591-\u05c7]*ת\b)')
 _HEB_WORDS_FAST_RE = re.compile(r'[א-ת]+')
 _WORD_TOKEN_GLOBAL_RE = re.compile(r'[א-ת\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7]+')
+
+
+def _sanitize_torah_verse_text(raw_text: str) -> str:
+    if not raw_text:
+        return ""
+    s = _INLINE_TAGS_RE.sub('', raw_text)
+    s = s.replace('\u034f', '').replace('\u200d', '').replace('\u200c', '').replace('\ufeff', '')
+    if 'ראש' in s:
+        s = _SPLIT_BERESHIT_RE.sub(r'\1\2', s)
+    return s
 
 
 def _fast_extract_clean_words(raw_text: str):
     if not raw_text:
         return []
-    return _HEB_WORDS_FAST_RE.findall(raw_text.translate(_DELETE_NIKKUD_TRANS))
+    s = _sanitize_torah_verse_text(raw_text)
+    return _HEB_WORDS_FAST_RE.findall(s.translate(_DELETE_NIKKUD_TRANS))
 
 
 def _extract_valid_spans_for_match(raw_text: str):
@@ -837,6 +854,7 @@ def _extract_valid_spans_for_match(raw_text: str):
 
 
 def _highlight_matched_words(raw_text: str, matched_indices: set) -> str:
+    raw_text = _sanitize_torah_verse_text(raw_text)
     valid_spans = _extract_valid_spans_for_match(raw_text)
     out_parts, last_idx = [], 0
     for w_i, (s_idx, e_idx) in enumerate(valid_spans):
@@ -908,7 +926,7 @@ def build_hebrew_fuzzy_patterns(word: str):
 def _build_fuzzy_sql_filter_for_word(word: str) -> Q:
     """
     בונה מסנן SQL חכם ומהיר עבור כתיב מלא/חסר המבוסס על צמדי אותיות שורש (Bigrams),
-    כך ש-95% מהשורות הלא-רלוונטיות מסוננות כבר ברמת SQLite מבלי לפספס אף וריאציית כתיב מלא/חסר.
+    כולל תמיכה בפסוקי מסורה עם תגיות אותיות רבתיות/זעירות (כגון <big>ב</big>ראשית).
     """
     clean_w = re.sub(r'[^א-ת]', '', word)
     if not clean_w:
@@ -935,6 +953,14 @@ def _build_fuzzy_sql_filter_for_word(word: str) -> Q:
                 Q(clean_text__icontains=f"{c1}ו{c2}") |
                 Q(clean_text__icontains=f"{c1}י{c2}")
             )
+        if len(skeleton) >= 3:
+            q_filter |= (
+                Q(clean_text__icontains='<') &
+                Q(clean_text__icontains=skeleton[1]) &
+                Q(clean_text__icontains=skeleton[-1])
+            )
+            if clean_w == 'בראשית':
+                q_filter |= (Q(book='בראשית') & Q(clean_text__icontains='ראשית'))
     else:
         for ch in skeleton:
             q_filter &= Q(clean_text__icontains=ch)
@@ -1050,7 +1076,7 @@ def tanakh_advanced_search_api(request):
     except ValueError:
         per_page = 10
 
-    search_cache_key = f"tanakh_srch_v46_{query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
+    search_cache_key = f"tanakh_srch_v50_{query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
     cached_search_data = cache.get(search_cache_key)
     if cached_search_data:
         return JsonResponse(cached_search_data, json_dumps_params={'ensure_ascii': False})
@@ -1118,11 +1144,19 @@ def tanakh_advanced_search_api(request):
                 num_q_words = len(q_words)
                 text_query = Q()
                 for target_w in q_words:
-                    text_query &= Q(clean_text__icontains=target_w)
+                    w_q = Q(clean_text__icontains=target_w)
+                    if len(target_w) >= 3:
+                        # תמיכה במילים עם אות רבתי/זעירא בתחילת או סוף המילה (כגון <big>ב</big>ראשית או ויקר<small>א</small>)
+                        w_q |= (Q(clean_text__icontains=target_w[1:]) & Q(clean_text__icontains='<'))
+                        w_q |= (Q(clean_text__icontains=target_w[:-1]) & Q(clean_text__icontains='<'))
+                        w_q |= Q(clean_text__icontains=f"{target_w[0]} {target_w[1:]}")
+                        if target_w == 'בראשית':
+                            w_q |= (Q(book='בראשית') & Q(clean_text__icontains='ראשית'))
+                    text_query &= w_q
 
                 match_label = 'חיפוש מדויק' if is_exact else 'חיפוש חופשי (רחב)'
-                for m in qs.filter(text_query).values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2500):
-                    raw_text = m.get('text_with_nikkud') or ""
+                for m in qs.filter(text_query).values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text').iterator(chunk_size=2500):
+                    raw_text = m.get('text_with_nikkud') or m.get('clean_text') or ""
                     if not raw_text:
                         continue
                     clean_words = _fast_extract_clean_words(raw_text)
@@ -1161,8 +1195,8 @@ def tanakh_advanced_search_api(request):
                     compiled_rxs = [wp[1] for wp in word_patterns]
                     rx0 = compiled_rxs[0]
 
-                    for m in qs.filter(text_query).values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2500):
-                        raw_text = m.get('text_with_nikkud') or ""
+                    for m in qs.filter(text_query).values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text').iterator(chunk_size=2500):
+                        raw_text = m.get('text_with_nikkud') or m.get('clean_text') or ""
                         if not raw_text:
                             continue
 
@@ -1197,19 +1231,33 @@ def tanakh_advanced_search_api(request):
             calculated_gematria_val = target_val
             if target_val > 0:
                 search_str = f",{target_val},"
-                for m in qs.filter(Q(verse_gematria=target_val) | Q(words_gematria__contains=search_str)).values('book', 'chapter', 'verse', 'text_with_nikkud', 'verse_gematria').iterator(chunk_size=2500):
-                    raw_text = m['text_with_nikkud']
+                gem_q = Q(verse_gematria=target_val) | Q(words_gematria__contains=search_str) | Q(clean_text__icontains='<')
+                for m in qs.filter(gem_q).values('book', 'chapter', 'verse', 'text_with_nikkud', 'verse_gematria').iterator(chunk_size=2500):
+                    raw_text = _sanitize_torah_verse_text(m['text_with_nikkud'] or "")
                     if m['verse_gematria'] == target_val:
                         m_type = f'גימטריה מלאה לפסוק (הערך: {target_val})'
                         final_text = f'<mark style="background-color: rgba(255, 235, 59, 0.4); padding: 0 4px; border-radius: 4px; color: inherit;">{raw_text}</mark>'
+                        results.append({
+                            'book': m['book'], 'chapter': m['chapter'], 'verse': format_verse_hebrew(m['verse']),
+                            'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], m['chapter']),
+                            'text': final_text, 'match_type': m_type
+                        })
                     else:
-                        m_type = f'גימטריה למילה בפסוק (הערך: {target_val})'
-                        final_text = WORD_TOKEN_RE.sub(lambda match: f'<mark style="background-color: rgba(255, 235, 59, 0.4); padding: 0 4px; border-radius: 4px; color: inherit;">{match.group(0)}</mark>' if calc_word_gem(match.group(0)) == target_val else match.group(0), raw_text)
-                    results.append({
-                        'book': m['book'], 'chapter': m['chapter'], 'verse': format_verse_hebrew(m['verse']),
-                        'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], m['chapter']),
-                        'text': final_text, 'match_type': m_type
-                    })
+                        has_word_hit = False
+                        def _mark_gem_word(match):
+                            nonlocal has_word_hit
+                            w_tok = match.group(0)
+                            if calc_word_gem(w_tok) == target_val:
+                                has_word_hit = True
+                                return f'<mark style="background-color: rgba(255, 235, 59, 0.4); padding: 0 4px; border-radius: 4px; color: inherit;">{w_tok}</mark>'
+                            return w_tok
+                        final_text = WORD_TOKEN_RE.sub(_mark_gem_word, raw_text)
+                        if has_word_hit:
+                            results.append({
+                                'book': m['book'], 'chapter': m['chapter'], 'verse': format_verse_hebrew(m['verse']),
+                                'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], m['chapter']),
+                                'text': final_text, 'match_type': f'גימטריה למילה בפסוק (הערך: {target_val})'
+                            })
 
         elif query_type in ['acronym', 'rashei_tevot', 'sofei_tevot', 'suffix'] and query_val:
             is_sofei = query_type in ['sofei_tevot', 'suffix']
@@ -1258,7 +1306,11 @@ def tanakh_advanced_search_api(request):
                 num_q_words = len(rev_words_norm)
                 text_query = Q()
                 for rw, rw_norm in zip(rev_words, rev_words_norm):
-                    text_query &= (Q(clean_text__icontains=rw) | Q(clean_text__icontains=rw_norm))
+                    w_q = Q(clean_text__icontains=rw) | Q(clean_text__icontains=rw_norm)
+                    if len(rw) >= 3:
+                        w_q |= (Q(clean_text__icontains=rw[1:]) & Q(clean_text__icontains='<'))
+                        w_q |= (Q(clean_text__icontains=rw[:-1]) & Q(clean_text__icontains='<'))
+                    text_query &= w_q
 
                 is_palindrome = (norm_heb("".join(q_words_raw)) == "".join(rev_words_norm))
                 m_label = f'פלינדרום ("{reversed_query_val}")' if is_palindrome else f'מילה הפוכה: "{reversed_query_val}"'
@@ -1294,7 +1346,7 @@ def tanakh_advanced_search_api(request):
                 skip_counts = {}
                 t0 = target_els[0]
                 for m in qs.filter(char_q).values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2500):
-                    raw_text = m.get('text_with_nikkud') or ""
+                    raw_text = _sanitize_torah_verse_text(m.get('text_with_nikkud') or "")
                     if not raw_text:
                         continue
                     fast_words = _fast_extract_clean_words(raw_text)
@@ -1391,10 +1443,9 @@ def tanakh_advanced_search_api(request):
                     char_q &= (Q(clean_text__icontains=ch) | Q(clean_text__icontains=fin_ch)) if fin_ch else Q(clean_text__icontains=ch)
 
                 t0, t1 = target_els[0], target_els[1]
-                NON_HEB_RE = re.compile(r'[^א-ת]+')
                 skip_counts = {}
                 for m in qs.filter(char_q).values('book', 'chapter', 'verse', 'text_with_nikkud').iterator(chunk_size=2500):
-                    raw_text = m.get('text_with_nikkud') or ""
+                    raw_text = _sanitize_torah_verse_text(m.get('text_with_nikkud') or "")
                     if not raw_text:
                         continue
                     fast_words = _fast_extract_clean_words(raw_text)
