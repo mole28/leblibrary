@@ -616,6 +616,7 @@
                                 <select id="auditTbKind" class="form-select form-select-sm fw-bold" onchange="updateAuditToolPreview()">
                                     <optgroup label="חיפוש במאגר התורני (תנ״ך, בבלי, רמב״ם...)">
                                         <option value="search_fuzzy">חיפוש כתיב מלא/חסר ותחיליות (מומלץ)</option>
+                                        <option value="search_fuzzy_morph">חיפוש כתיב מלא/חסר + יחיד/רבים</option>
                                         <option value="search_exact">חיפוש מדויק במאגר</option>
                                         <option value="search_text">חיפוש חופשי במאגר (כולל חלק ממילה)</option>
                                         <option value="search_gematria">חיפוש גימטריא במאגר</option>
@@ -948,6 +949,7 @@
                 'search_text': ['text_broad', `חיפוש "${displayQ}" במאגר התורני`, `${cLabel} • חיפוש חופשי`],
                 'search_exact': ['text_exact', `חיפוש "${displayQ}" במאגר התורני`, `${cLabel} • מילה מדויקת`],
                 'search_fuzzy': ['text_fuzzy', `חיפוש "${displayQ}" במאגר התורני`, `${cLabel} • כתיב מלא וחסר`],
+                'search_fuzzy_morph': ['text_fuzzy_morph', `חיפוש "${displayQ}" במאגר התורני`, `${cLabel} • מלא/חסר + יחיד/רבים`],
                 'search_gematria': ['gematria', `חיפוש גימטריא: "${displayQ}"`, `${cLabel} • השוואת ערך גימטרי`],
                 'search_rashei': ['acronym', `חיפוש ראשי תיבות: "${displayQ}"`, `${cLabel} • ראשי תיבות בפסוקים`],
                 'search_sofei': ['sofei_tevot', `חיפוש סופי תיבות: "${displayQ}"`, `${cLabel} • סופי תיבות בפסוקים`],

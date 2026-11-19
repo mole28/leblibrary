@@ -236,6 +236,10 @@
                                 <div class="action-card-header"><span>📝</span><span>כתיב מלא / חסר</span></div>
                                 <div class="action-card-sub">כולל ו' החיבור ואותיות שימוש</div>
                             </div>
+                            <div class="action-luxury-card a11y-search-card-focusable" data-action="text_fuzzy_morph" tabindex="0" role="radio" aria-checked="false" data-placeholder="הזן מילה או ביטוי (למשל: שואלי גשמים -> שואלין הגשמים / שואל גשם)...">
+                                <div class="action-card-header"><span>📚</span><span>מלא/חסר + יחיד/רבים</span></div>
+                                <div class="action-card-sub">כולל רבים, סמיכות וים/ין</div>
+                            </div>
                             <div class="action-luxury-card a11y-search-card-focusable" data-action="gematria" tabindex="0" role="radio" aria-checked="false" data-placeholder="הזן מילה, משפט או מספר לחישוב גימטריה...">
                                 <div class="action-card-header"><span>🔢</span><span>גימטריה</span></div>
                                 <div class="action-card-sub">מילים או ערך מספרי</div>
@@ -1007,7 +1011,9 @@ document.addEventListener('DOMContentLoaded', function() {
             'els': 'els',
             'skip': 'els',
             'dilugim': 'els',
-            'els_verse': 'els_verse'
+            'els_verse': 'els_verse',
+            'text_fuzzy_morph': 'text_fuzzy_morph',
+            'fuzzy_morph': 'text_fuzzy_morph',
         };
         return map[t] || 'text_exact';
     }
@@ -1189,7 +1195,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        if (mode === 'text_fuzzy') {
+        if (mode === 'text_fuzzy' || mode === 'text_fuzzy_morph') {
             const cleanHeb = text.replace(/[^א-ת\s]/g, '').trim();
             if (cleanHeb) {
                 const firstWord = cleanHeb.split(/\s+/)[0];
@@ -1197,7 +1203,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const defSample = base.length > 2 ? base[0] + base.slice(1, -1).replace(/[וי]/g, '') + base.slice(-1) : base;
                 const fullSample = defSample.length >= 2 ? defSample[0] + 'י' + defSample.slice(1) : defSample;
                 const variantsPreview = Array.from(new Set([defSample, fullSample, 'ו' + defSample, 'ו' + fullSample])).join(' • ');
-                smartHelperBox.innerHTML = `סורק כתיב מלא/חסר ותחיליות (למשל: <span style="color: #b8860b;">${variantsPreview}</span> וכו')`;
+                if (mode === 'text_fuzzy_morph') {
+                    smartHelperBox.innerHTML = `סורק כתיב מלא/חסר + יחיד/רבים, סמיכות וים/ין (למשל: <span style="color: #b8860b;">שואל • שואלים • שואלין • שואלי</span>)`;
+                } else {
+                    smartHelperBox.innerHTML = `סורק כתיב מלא/חסר ותחיליות בלבד (למשל: <span style="color: #b8860b;">${variantsPreview}</span> וכו')`;
+                }
                 smartHelperBox.style.display = 'block';
             } else {
                 smartHelperBox.style.display = 'none';

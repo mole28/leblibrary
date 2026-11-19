@@ -877,6 +877,8 @@ _INLINE_TAGS_RE = re.compile(r'<[^>]+>')
 _SPLIT_BERESHIT_RE = re.compile(r'^(\s*ב[\u0591-\u05c7]*)\s+(ר[\u0591-\u05c7]*א[\u0591-\u05c7]*ש[\u0591-\u05c7]*י[\u0591-\u05c7]*ת\b)')
 _HEB_WORDS_FAST_RE = re.compile(r'[א-ת]+')
 _WORD_TOKEN_GLOBAL_RE = re.compile(r'[א-ת\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7]+')
+_FINAL_TO_REG_MAP = {'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ'}
+_REG_TO_FINAL_MAP = {'כ': 'ך', 'מ': 'ם', 'נ': 'ן', 'פ': 'ף', 'צ': 'ץ'}
 
 
 def _sanitize_torah_verse_text(raw_text: str) -> str:
@@ -922,10 +924,30 @@ def _highlight_matched_words(raw_text: str, matched_indices: set) -> str:
     return "".join(out_parts)
 
 
+def _build_stem_fuzzy_body(stem: str) -> str:
+    n = len(stem)
+    if n == 0:
+        return ''
+    has_internal_matres = any(ch in ('ו', 'י') for ch in stem[1:-1])
+    parts = []
+    for idx, ch in enumerate(stem):
+        is_first = (idx == 0)
+        is_last = (idx == n - 1)
+        if not is_first and not is_last and ch in ('ו', 'י'):
+            parts.append(f'{re.escape(ch)}?')
+        else:
+            parts.append(re.escape(ch))
+            next_is_matres = (idx + 1 < n - 1) and (stem[idx + 1] in ('ו', 'י'))
+            if not is_last and not next_is_matres:
+                if not has_internal_matres or n >= 5:
+                    parts.append(r'[וי]?')
+    return "".join(parts)
+
+
 def build_hebrew_fuzzy_patterns(word: str):
     """
-    בונה תבניות Regex מדויקות לחיפוש כתיב מלא/חסר ותחיליות (ו' החיבור ואותיות מש"ה וכל"ב).
-    שומר באופן מוחלט על כל אותיות השורש שהוקלדו.
+    בונה תבניות Regex מדויקות לחיפוש כתיב מלא/חסר ותחיליות (ו' החיבור ואותיות מש"ה וכל"ב)
+    ללא שינוי יחיד/רבים.
     מחזיר: (mandatory_db_chars, clean_word_regex)
     """
     clean_w = re.sub(r'[^א-ת]', '', word)
@@ -947,25 +969,7 @@ def build_hebrew_fuzzy_patterns(word: str):
     for stem in stems:
         stem_mandatory = {stem[0], stem[-1]} | {c for c in stem if c not in ('ו', 'י')}
         mandatory_sets.append(stem_mandatory)
-
-        n = len(stem)
-        has_internal_matres = any(ch in ('ו', 'י') for ch in stem[1:-1])
-
-        parts = []
-        for idx, ch in enumerate(stem):
-            is_first = (idx == 0)
-            is_last = (idx == n - 1)
-
-            if not is_first and not is_last and ch in ('ו', 'י'):
-                parts.append(f'{re.escape(ch)}?')
-            else:
-                parts.append(re.escape(ch))
-                next_is_matres = (idx + 1 < n - 1) and (stem[idx + 1] in ('ו', 'י'))
-                if not is_last and not next_is_matres:
-                    if not has_internal_matres or n >= 5:
-                        parts.append(r'[וי]?')
-
-        branch_body = "".join(parts)
+        branch_body = _build_stem_fuzzy_body(stem)
         regex_branches.append(rf'{valid_prefix_rx}{branch_body}')
 
     common_mandatory = set.intersection(*mandatory_sets) if mandatory_sets else set(clean_w)
@@ -974,14 +978,196 @@ def build_hebrew_fuzzy_patterns(word: str):
     return list(common_mandatory), re.compile(combined_pattern)
 
 
-def _build_fuzzy_sql_filter_for_word(word: str) -> Q:
+def build_hebrew_fuzzy_morph_patterns(word: str):
     """
-    בונה מסנן SQL חכם ומהיר עבור כתיב מלא/חסר המבוסס על צמדי אותיות שורש (Bigrams),
-    כולל תמיכה בפסוקי מסורה עם תגיות אותיות רבתיות/זעירות (כגון <big>ב</big>ראשית).
+    בונה תבניות Regex לחיפוש כתיב מלא/חסר + תחיליות + נטיות יחיד/רבים, סמיכות וחילופי ים/ין
+    (למשל: שואלי/שואל/שואלים/שואלין, גשם/גשמים/גשמין/גשמי, קללה/קללת/קללות, מצוה/מצוות).
+    מחזיר: (sql_stems, clean_word_regex)
+    """
+    clean_w = re.sub(r'[^א-ת]', '', word)
+    if not clean_w:
+        return [], None
+
+    valid_prefix_rx = r'(?:ו?[הבכלמש]|ו|[בכלמש]ה|ש[בכלמ])?'
+
+    forms = [clean_w]
+    if clean_w.startswith('ו') and len(clean_w) >= 4:
+        without_vav = clean_w[1:]
+        if len([c for c in without_vav if c not in ('ו', 'י')]) >= 3:
+            forms.append(without_vav)
+
+    regex_branches = []
+    sql_stems = []
+
+    def add_stem_branches(base_reg: str, allow_bare: bool, suffix_alts: list):
+        if not base_reg:
+            return
+        if base_reg not in sql_stems:
+            sql_stems.append(base_reg)
+        last_reg = _FINAL_TO_REG_MAP.get(base_reg[-1], base_reg[-1])
+        last_fin = _REG_TO_FINAL_MAP.get(last_reg, last_reg)
+        full_body = _build_stem_fuzzy_body(base_reg[:-1] + last_reg)
+        esc_last = re.escape(last_reg)
+        body_before = full_body[:-len(esc_last)]
+
+        if allow_bare:
+            regex_branches.append(rf'{valid_prefix_rx}{body_before}{re.escape(last_fin)}')
+
+        if suffix_alts:
+            sfx_group = "|".join(suffix_alts)
+            regex_branches.append(rf'{valid_prefix_rx}{body_before}{esc_last}(?:{sfx_group})')
+
+    for form in forms:
+        handled_special = False
+
+        # סיומת ויות (כגון זכויות, רשויות, עדויות, מלכויות)
+        if form.endswith('ויות') and len(form) >= 6:
+            base = form[:-4]
+            base_reg = base[:-1] + _FINAL_TO_REG_MAP.get(base[-1], base[-1])
+            if len(base_reg) >= 2:
+                add_stem_branches(base_reg, allow_bare=False, suffix_alts=['ות', 'ויות', 'וית'])
+                handled_special = True
+
+        # רבים זכר / ארמית (ים / ין)
+        elif form.endswith(('ים', 'ין')) and len(form) >= 4:
+            base = form[:-2]
+            base_reg = base[:-1] + _FINAL_TO_REG_MAP.get(base[-1], base[-1])
+            non_matres = [c for c in base_reg if c not in ('ו', 'י')]
+            if len(base_reg) >= 3 or len(non_matres) >= 2:
+                sfx = ['ים', 'ין', 'י', 'ו?ת', 'ה'] if len(base_reg) >= 3 else ['ים', 'ין', 'י']
+                add_stem_branches(base_reg, allow_bare=True, suffix_alts=sfx)
+                handled_special = True
+
+        # רבים נקבה / סיומת ות (קללות, ברכות, שבתות, מצוות, שופרות, זכות)
+        elif form.endswith('ות') and len(form) >= 4:
+            base = form[:-2]
+            base_reg = base[:-1] + _FINAL_TO_REG_MAP.get(base[-1], base[-1])
+            non_matres = [c for c in base_reg if c not in ('ו', 'י')]
+            if len(base_reg) >= 3 or len(non_matres) >= 2:
+                if base_reg.endswith('ו') and len(base_reg) >= 3:
+                    core = base_reg.rstrip('ו')
+                    if len(core) >= 2:
+                        if core not in sql_stems:
+                            sql_stems.append(core)
+                        core_body = _build_stem_fuzzy_body(core)
+                        regex_branches.append(rf'{valid_prefix_rx}{core_body}ו{{1,2}}(?:ה|ת)')
+                        handled_special = True
+                if not handled_special:
+                    allow_bare = len(base_reg) >= 3 or base_reg in ('שמ', 'אב', 'אות')
+                    sfx = ['ה', 'ו?ת', 'ויות', 'ים', 'ין', 'י'] if len(base_reg) >= 3 else ['ה', 'ו?ת', 'ויות', 'ו{1,2}ה', 'ו{1,2}ת']
+                    add_stem_branches(base_reg, allow_bare=allow_bare, suffix_alts=sfx)
+                    handled_special = True
+
+        # נקבה יחיד / סמיכות (ה / ת) במילים באורך 4+
+        elif form.endswith(('ה', 'ת')) and len(form) >= 4:
+            base = form[:-1]
+            non_matres = [c for c in base if c not in ('ו', 'י')]
+            if len(base) >= 3 and len(non_matres) >= 2:
+                base_reg = base[:-1] + _FINAL_TO_REG_MAP.get(base[-1], base[-1])
+                if form.endswith('וה'):
+                    core = base_reg.rstrip('ו')
+                    if len(core) >= 2:
+                        if core not in sql_stems:
+                            sql_stems.append(core)
+                        core_body = _build_stem_fuzzy_body(core)
+                        regex_branches.append(rf'{valid_prefix_rx}{core_body}ו{{1,2}}(?:ה|ת)')
+                        handled_special = True
+                else:
+                    add_stem_branches(base_reg, allow_bare=False, suffix_alts=['ה', 'ו?ת', 'ים', 'ין', 'י'])
+                    handled_special = True
+
+        # מילות נקבה קצרות בנות 3 אותיות המסתיימות ב-ה (חלה->חלות, שדה->שדות, מצה->מצות)
+        elif form.endswith('ה') and len(form) == 3:
+            base = form[:-1]
+            non_matres = [c for c in base if c not in ('ו', 'י')]
+            if len(non_matres) == 2:
+                base_reg = base[:-1] + _FINAL_TO_REG_MAP.get(base[-1], base[-1])
+                add_stem_branches(base_reg, allow_bare=False, suffix_alts=['ה', 'ות', 'ת'])
+                handled_special = True
+
+        # סמיכות רבים (י) במילים באורך 4+ (שואלי, דברי, ספרי, גשמי, מלכי)
+        elif form.endswith('י') and len(form) >= 4:
+            base = form[:-1]
+            non_matres = [c for c in base if c not in ('ו', 'י')]
+            if len(base) >= 3 and len(non_matres) >= 2:
+                base_reg = base[:-1] + _FINAL_TO_REG_MAP.get(base[-1], base[-1])
+                add_stem_branches(base_reg, allow_bare=True, suffix_alts=['ים', 'ין', 'י', 'ו?ת', 'ה'])
+                handled_special = True
+
+        # צורת יסוד (יחיד רגיל כגון שבת, מלך, ספר, שופר, גשם, דין, שואל)
+        if not handled_special:
+            reg_self = form[:-1] + _FINAL_TO_REG_MAP.get(form[-1], form[-1])
+            add_stem_branches(reg_self, allow_bare=True, suffix_alts=['ים', 'ין', 'י', 'ות'])
+
+    unique_branches = list(dict.fromkeys(regex_branches))
+    combined_pattern = rf'^(?:{"|".join(unique_branches)})$'
+    return sql_stems, re.compile(combined_pattern)
+
+
+def _build_sql_bigram_q_for_stem(stem: str, clean_w: str = '', allow_final_swap: bool = False) -> Q:
+    q_filter = Q()
+    n = len(stem)
+    skeleton = []
+    for idx, ch in enumerate(stem):
+        if idx == 0 or idx == n - 1 or ch not in ('ו', 'י'):
+            skeleton.append(ch)
+
+    if len(skeleton) >= 2:
+        for i in range(len(skeleton) - 1):
+            c1 = skeleton[i]
+            c2_raw = skeleton[i + 1]
+            c2_reg = _FINAL_TO_REG_MAP.get(c2_raw, c2_raw)
+            c2_list = [c2_raw]
+            if allow_final_swap and i == len(skeleton) - 2:
+                c2_fin = _REG_TO_FINAL_MAP.get(c2_reg, c2_reg)
+                c2_list = list(dict.fromkeys([c2_reg, c2_fin]))
+
+            pair_q = Q()
+            for c2 in c2_list:
+                pair_q |= (
+                    Q(clean_text__icontains=f"{c1}{c2}") |
+                    Q(clean_text__icontains=f"{c1}ו{c2}") |
+                    Q(clean_text__icontains=f"{c1}י{c2}")
+                )
+            q_filter &= pair_q
+
+        if len(skeleton) >= 3:
+            last_reg = _FINAL_TO_REG_MAP.get(skeleton[-1], skeleton[-1])
+            last_fin = _REG_TO_FINAL_MAP.get(last_reg, last_reg)
+            last_q = Q(clean_text__icontains=last_reg) | Q(clean_text__icontains=last_fin)
+            q_filter |= (
+                Q(clean_text__icontains='<') &
+                Q(clean_text__icontains=skeleton[1]) &
+                last_q
+            )
+            if clean_w == 'בראשית':
+                q_filter |= (Q(book='בראשית') & Q(clean_text__icontains='ראשית'))
+    else:
+        for ch in skeleton:
+            c_reg = _FINAL_TO_REG_MAP.get(ch, ch)
+            c_fin = _REG_TO_FINAL_MAP.get(c_reg, c_reg)
+            q_filter &= (Q(clean_text__icontains=c_reg) | Q(clean_text__icontains=c_fin))
+
+    return q_filter
+
+
+def _build_fuzzy_sql_filter_for_word(word: str, include_morph: bool = False, morph_stems=None) -> Q:
+    """
+    בונה מסנן SQL חכם ומהיר עבור כתיב מלא/חסר (עם או בלי נטיות יחיד/רבים),
+    המבוסס על צמדי אותיות שורש (Bigrams) ותומך באותיות סופיות ותגיות מסורה.
     """
     clean_w = re.sub(r'[^א-ת]', '', word)
     if not clean_w:
         return Q()
+
+    if include_morph:
+        stems = morph_stems if morph_stems is not None else build_hebrew_fuzzy_morph_patterns(clean_w)[0]
+        if not stems:
+            return Q()
+        combined_q = Q()
+        for st in stems:
+            combined_q |= _build_sql_bigram_q_for_stem(st, clean_w=clean_w, allow_final_swap=True)
+        return combined_q
 
     common_stem = clean_w
     if clean_w.startswith('ו') and len(clean_w) >= 4:
@@ -989,34 +1175,7 @@ def _build_fuzzy_sql_filter_for_word(word: str) -> Q:
         if len([c for c in without_vav if c not in ('ו', 'י')]) >= 3:
             common_stem = without_vav
 
-    q_filter = Q()
-    n = len(common_stem)
-    skeleton = []
-    for idx, ch in enumerate(common_stem):
-        if idx == 0 or idx == n - 1 or ch not in ('ו', 'י'):
-            skeleton.append(ch)
-
-    if len(skeleton) >= 2:
-        for i in range(len(skeleton) - 1):
-            c1, c2 = skeleton[i], skeleton[i + 1]
-            q_filter &= (
-                Q(clean_text__icontains=f"{c1}{c2}") |
-                Q(clean_text__icontains=f"{c1}ו{c2}") |
-                Q(clean_text__icontains=f"{c1}י{c2}")
-            )
-        if len(skeleton) >= 3:
-            q_filter |= (
-                Q(clean_text__icontains='<') &
-                Q(clean_text__icontains=skeleton[1]) &
-                Q(clean_text__icontains=skeleton[-1])
-            )
-            if clean_w == 'בראשית':
-                q_filter |= (Q(book='בראשית') & Q(clean_text__icontains='ראשית'))
-    else:
-        for ch in skeleton:
-            q_filter &= Q(clean_text__icontains=ch)
-
-    return q_filter
+    return _build_sql_bigram_q_for_stem(common_stem, clean_w=clean_w, allow_final_swap=False)
 
 
 @ratelimit(rate=45, timeout=60)
@@ -1027,6 +1186,7 @@ def tanakh_advanced_search_api(request):
     query_val = request.GET.get('q', '').strip()
     book_filter = request.GET.get('book', 'torah').strip()
     is_exact = request.GET.get('exact', 'false').lower() == 'true'
+    include_plural = request.GET.get('include_plural', 'false').lower() == 'true'
     exclude_books_param = request.GET.get('exclude_books', '').strip()
     skip_param = request.GET.get('skip', '').strip()
     try:
@@ -1146,7 +1306,9 @@ def tanakh_advanced_search_api(request):
     except ValueError:
         per_page = 10
 
-    search_cache_key = f"tanakh_srch_v52_{query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
+    effective_query_type = 'text_fuzzy_morph' if (query_type == 'text_fuzzy' and include_plural) else query_type
+
+    search_cache_key = f"tanakh_srch_v53_{effective_query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
     cached_search_data = cache.get(search_cache_key)
     if cached_search_data:
         return JsonResponse(cached_search_data, json_dumps_params={'ensure_ascii': False})
@@ -1204,10 +1366,10 @@ def tanakh_advanced_search_api(request):
     active_skip = int(skip_param) if skip_param.isdigit() else None
 
     try:
-        if query_type in ['text', 'text_exact', 'text_broad'] and query_val:
-            if query_type == 'text_exact':
+        if effective_query_type in ['text', 'text_exact', 'text_broad'] and query_val:
+            if effective_query_type == 'text_exact':
                 is_exact = True
-            elif query_type == 'text_broad':
+            elif effective_query_type == 'text_broad':
                 is_exact = False
             q_words = re.sub(r'[^א-ת\s]', '', query_val.replace('י-ה-ו-ה', 'יהוה')).strip().split()
             if q_words:
@@ -1250,20 +1412,29 @@ def tanakh_advanced_search_api(request):
                             'match_type': match_label
                         })
 
-        elif query_type == 'text_fuzzy' and query_val:
+        elif effective_query_type in ['text_fuzzy', 'text_fuzzy_morph'] and query_val:
+            use_morph = (effective_query_type == 'text_fuzzy_morph')
             q_words = re.sub(r'[^א-ת\s]', '', query_val.replace('י-ה-ו-ה', 'יהוה')).strip().split()
             if q_words:
-                word_patterns = [build_hebrew_fuzzy_patterns(w) for w in q_words]
-                word_patterns = [wp for wp in word_patterns if wp[1] is not None]
+                word_patterns = [
+                    build_hebrew_fuzzy_morph_patterns(w) if use_morph else build_hebrew_fuzzy_patterns(w)
+                    for w in q_words
+                ]
+                valid_pairs = [(w, wp) for w, wp in zip(q_words, word_patterns) if wp[1] is not None]
 
-                if word_patterns:
-                    num_q_words = len(word_patterns)
+                if valid_pairs:
+                    num_q_words = len(valid_pairs)
                     text_query = Q()
-                    for w_str in q_words:
-                        text_query &= _build_fuzzy_sql_filter_for_word(w_str)
+                    for w_str, (stems_or_chars, _) in valid_pairs:
+                        text_query &= _build_fuzzy_sql_filter_for_word(
+                            w_str,
+                            include_morph=use_morph,
+                            morph_stems=stems_or_chars if use_morph else None
+                        )
 
-                    compiled_rxs = [wp[1] for wp in word_patterns]
+                    compiled_rxs = [wp[1] for _, wp in valid_pairs]
                     rx0 = compiled_rxs[0]
+                    fuzzy_match_label = 'כתיב מלא/חסר + יחיד/רבים' if use_morph else 'כתיב מלא / חסר ותחיליות'
 
                     for m in qs.filter(text_query).values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text').iterator(chunk_size=2500):
                         raw_text = m.get('text_with_nikkud') or m.get('clean_text') or ""
@@ -1293,10 +1464,10 @@ def tanakh_advanced_search_api(request):
                                 'raw_verse': m['verse'],
                                 'verse_label': get_verse_label(m['book'], fixed_ch),
                                 'text': _highlight_matched_words(raw_text, matched_indices),
-                                'match_type': 'כתיב מלא / חסר ותחיליות'
+                                'match_type': fuzzy_match_label
                             })
 
-        elif query_type == 'gematria' and query_val:
+        elif effective_query_type == 'gematria' and query_val:
             calc_word_gem = lambda w: sum(HEBREW_GEMATRIA.get(c, 0) for c in re.sub(r'[^א-ת]', '', w))
             target_val = int(query_val) if query_val.isdigit() else calc_word_gem(query_val)
             calculated_gematria_val = target_val
@@ -1331,8 +1502,8 @@ def tanakh_advanced_search_api(request):
                                 'text': final_text, 'match_type': f'גימטריה למילה בפסוק (הערך: {target_val})'
                             })
 
-        elif query_type in ['acronym', 'rashei_tevot', 'sofei_tevot', 'suffix'] and query_val:
-            is_sofei = query_type in ['sofei_tevot', 'suffix']
+        elif effective_query_type in ['acronym', 'rashei_tevot', 'sofei_tevot', 'suffix'] and query_val:
+            is_sofei = effective_query_type in ['sofei_tevot', 'suffix']
             target_acr = norm_heb(re.sub(r'[^א-ת]', '', query_val))
             if target_acr:
                 acr_len = len(target_acr)
@@ -1367,7 +1538,7 @@ def tanakh_advanced_search_api(request):
                             'match_type': m_label
                         })
 
-        elif query_type in ['reverse', 'palindrome'] and query_val:
+        elif effective_query_type in ['reverse', 'palindrome'] and query_val:
             q_words_raw = re.findall(r'[א-ת]+', query_val)
             if q_words_raw:
                 rev_words = []
@@ -1408,7 +1579,7 @@ def tanakh_advanced_search_api(request):
                             'match_type': m_label
                         })
 
-        elif query_type in ['els', 'skip', 'dilugim'] and query_val:
+        elif effective_query_type in ['els', 'skip', 'dilugim'] and query_val:
             target_els = norm_heb(re.sub(r'[^א-ת]', '', query_val))
             k = len(target_els)
             if k >= 2:
@@ -1508,7 +1679,7 @@ def tanakh_advanced_search_api(request):
                         })
                 available_skips = [{'skip': s_d, 'count': skip_counts[s_d]} for s_d in sorted(skip_counts.keys())]
 
-        elif query_type == 'els_verse' and query_val:
+        elif effective_query_type == 'els_verse' and query_val:
             target_els = norm_heb(re.sub(r'[^א-ת]', '', query_val))
             k = len(target_els)
             if k >= 2:
