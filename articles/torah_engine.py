@@ -5,6 +5,7 @@ import http.client
 import socket
 import re
 import time
+import hashlib
 from functools import wraps
 from django.http import JsonResponse
 from django.core.cache import cache
@@ -924,37 +925,47 @@ def _highlight_matched_words(raw_text: str, matched_indices: set) -> str:
     return "".join(out_parts)
 
 
+_VALID_HEB_PREFIX_RX = r'(?:ו?כש|ו?ש[בכלמ]ה?|ו?[בכלמש]ה|ו?[הבכלמש]|ו)?'
+
+
 def _build_stem_fuzzy_body(stem: str) -> str:
     n = len(stem)
     if n == 0:
         return ''
     has_internal_matres = any(ch in ('ו', 'י') for ch in stem[1:-1])
     parts = []
-    for idx, ch in enumerate(stem):
+    idx = 0
+    while idx < n:
+        ch = stem[idx]
         is_first = (idx == 0)
         is_last = (idx == n - 1)
         if not is_first and not is_last and ch in ('ו', 'י'):
-            parts.append(f'{re.escape(ch)}?')
+            # תמיכה מלאה באמות קריאה כפולות (כגון שהחיינו/שהחינו, מצוות/מצות, דיינים/דינים, עוונות/עונות)
+            run_end = idx
+            while run_end < n - 1 and stem[run_end] == ch:
+                run_end += 1
+            max_rep = max(2, run_end - idx)
+            parts.append(f'{re.escape(ch)}{{0,{max_rep}}}')
+            idx = run_end
         else:
             parts.append(re.escape(ch))
             next_is_matres = (idx + 1 < n - 1) and (stem[idx + 1] in ('ו', 'י'))
             if not is_last and not next_is_matres:
                 if not has_internal_matres or n >= 5:
                     parts.append(r'[וי]?')
+            idx += 1
     return "".join(parts)
 
 
 def build_hebrew_fuzzy_patterns(word: str):
     """
     בונה תבניות Regex מדויקות לחיפוש כתיב מלא/חסר ותחיליות (ו' החיבור ואותיות מש"ה וכל"ב)
-    ללא שינוי יחיד/רבים.
+    ללא שינוי יחיד/רבים. מבטיח מתמטית שכל התאמה מדויקת נכללת תמיד בתוצאות.
     מחזיר: (mandatory_db_chars, clean_word_regex)
     """
     clean_w = re.sub(r'[^א-ת]', '', word)
     if not clean_w:
         return [], None
-
-    valid_prefix_rx = r'(?:ו?[הבכלמש]|ו|[בכלמש]ה|ש[בכלמ])?'
 
     stems = [clean_w]
     if clean_w.startswith('ו') and len(clean_w) >= 4:
@@ -963,17 +974,18 @@ def build_hebrew_fuzzy_patterns(word: str):
         if len(consonants_after) >= 3:
             stems.append(without_vav)
 
-    regex_branches = []
+    regex_branches = [rf'{_VALID_HEB_PREFIX_RX}{re.escape(clean_w)}']
     mandatory_sets = []
 
     for stem in stems:
         stem_mandatory = {stem[0], stem[-1]} | {c for c in stem if c not in ('ו', 'י')}
         mandatory_sets.append(stem_mandatory)
         branch_body = _build_stem_fuzzy_body(stem)
-        regex_branches.append(rf'{valid_prefix_rx}{branch_body}')
+        regex_branches.append(rf'{_VALID_HEB_PREFIX_RX}{branch_body}')
 
+    unique_branches = list(dict.fromkeys(regex_branches))
     common_mandatory = set.intersection(*mandatory_sets) if mandatory_sets else set(clean_w)
-    combined_pattern = rf'^(?:{"|".join(regex_branches)})$'
+    combined_pattern = rf'^(?:{"|".join(unique_branches)})$'
 
     return list(common_mandatory), re.compile(combined_pattern)
 
@@ -982,13 +994,15 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
     """
     בונה תבניות Regex לחיפוש כתיב מלא/חסר + תחיליות + נטיות יחיד/רבים, סמיכות וחילופי ים/ין
     (למשל: שואלי/שואל/שואלים/שואלין, גשם/גשמים/גשמין/גשמי, קללה/קללת/קללות, מצוה/מצוות).
+    מבטיח מתמטית הכלה מלאה של כל תוצאות החיפוש המדויק וכתיב מלא/חסר הבסיסי.
     מחזיר: (sql_stems, clean_word_regex)
     """
     clean_w = re.sub(r'[^א-ת]', '', word)
     if not clean_w:
         return [], None
 
-    valid_prefix_rx = r'(?:ו?[הבכלמש]|ו|[בכלמש]ה|ש[בכלמ])?'
+    _, basic_rx = build_hebrew_fuzzy_patterns(clean_w)
+    basic_inner = basic_rx.pattern[4:-2] if basic_rx else rf'{_VALID_HEB_PREFIX_RX}{re.escape(clean_w)}'
 
     forms = [clean_w]
     if clean_w.startswith('ו') and len(clean_w) >= 4:
@@ -996,8 +1010,8 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
         if len([c for c in without_vav if c not in ('ו', 'י')]) >= 3:
             forms.append(without_vav)
 
-    regex_branches = []
-    sql_stems = []
+    regex_branches = [basic_inner]
+    sql_stems = [clean_w]
 
     def add_stem_branches(base_reg: str, allow_bare: bool, suffix_alts: list):
         if not base_reg:
@@ -1011,11 +1025,11 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
         body_before = full_body[:-len(esc_last)]
 
         if allow_bare:
-            regex_branches.append(rf'{valid_prefix_rx}{body_before}{re.escape(last_fin)}')
+            regex_branches.append(rf'{_VALID_HEB_PREFIX_RX}{body_before}{re.escape(last_fin)}')
 
         if suffix_alts:
             sfx_group = "|".join(suffix_alts)
-            regex_branches.append(rf'{valid_prefix_rx}{body_before}{esc_last}(?:{sfx_group})')
+            regex_branches.append(rf'{_VALID_HEB_PREFIX_RX}{body_before}{esc_last}(?:{sfx_group})')
 
     for form in forms:
         handled_special = False
@@ -1050,7 +1064,7 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
                         if core not in sql_stems:
                             sql_stems.append(core)
                         core_body = _build_stem_fuzzy_body(core)
-                        regex_branches.append(rf'{valid_prefix_rx}{core_body}ו{{1,2}}(?:ה|ת)')
+                        regex_branches.append(rf'{_VALID_HEB_PREFIX_RX}{core_body}ו{{1,2}}(?:ה|ת)')
                         handled_special = True
                 if not handled_special:
                     allow_bare = len(base_reg) >= 3 or base_reg in ('שמ', 'אב', 'אות')
@@ -1070,7 +1084,7 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
                         if core not in sql_stems:
                             sql_stems.append(core)
                         core_body = _build_stem_fuzzy_body(core)
-                        regex_branches.append(rf'{valid_prefix_rx}{core_body}ו{{1,2}}(?:ה|ת)')
+                        regex_branches.append(rf'{_VALID_HEB_PREFIX_RX}{core_body}ו{{1,2}}(?:ה|ת)')
                         handled_special = True
                 else:
                     add_stem_branches(base_reg, allow_bare=False, suffix_alts=['ה', 'ו?ת', 'ים', 'ין', 'י'])
@@ -1107,28 +1121,30 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
 def _build_sql_bigram_q_for_stem(stem: str, clean_w: str = '', allow_final_swap: bool = False) -> Q:
     q_filter = Q()
     n = len(stem)
-    skeleton = []
-    for idx, ch in enumerate(stem):
-        if idx == 0 or idx == n - 1 or ch not in ('ו', 'י'):
-            skeleton.append(ch)
+    skeleton_positions = [idx for idx, ch in enumerate(stem) if idx == 0 or idx == n - 1 or ch not in ('ו', 'י')]
+    skeleton = [stem[i] for i in skeleton_positions]
 
     if len(skeleton) >= 2:
         for i in range(len(skeleton) - 1):
+            pos1, pos2 = skeleton_positions[i], skeleton_positions[i + 1]
             c1 = skeleton[i]
             c2_raw = skeleton[i + 1]
+            orig_gap = stem[pos1 + 1 : pos2]
+
             c2_reg = _FINAL_TO_REG_MAP.get(c2_raw, c2_raw)
             c2_list = [c2_raw]
             if allow_final_swap and i == len(skeleton) - 2:
                 c2_fin = _REG_TO_FINAL_MAP.get(c2_reg, c2_reg)
                 c2_list = list(dict.fromkeys([c2_reg, c2_fin]))
 
+            gaps = ['', 'ו', 'י', 'יי', 'וו', 'וי', 'יו']
+            if orig_gap and orig_gap not in gaps:
+                gaps.append(orig_gap)
+
             pair_q = Q()
             for c2 in c2_list:
-                pair_q |= (
-                    Q(clean_text__icontains=f"{c1}{c2}") |
-                    Q(clean_text__icontains=f"{c1}ו{c2}") |
-                    Q(clean_text__icontains=f"{c1}י{c2}")
-                )
+                for g in gaps:
+                    pair_q |= Q(clean_text__icontains=f"{c1}{g}{c2}")
             q_filter &= pair_q
 
         if len(skeleton) >= 3:
@@ -1154,17 +1170,24 @@ def _build_sql_bigram_q_for_stem(stem: str, clean_w: str = '', allow_final_swap:
 def _build_fuzzy_sql_filter_for_word(word: str, include_morph: bool = False, morph_stems=None) -> Q:
     """
     בונה מסנן SQL חכם ומהיר עבור כתיב מלא/חסר (עם או בלי נטיות יחיד/רבים),
-    המבוסס על צמדי אותיות שורש (Bigrams) ותומך באותיות סופיות ותגיות מסורה.
+    המבוסס על צמדי אותיות שורש (Bigrams) עם תמיכה באמות קריאה כפולות (יי/וו/וי/יו),
+    אותיות סופיות, תגיות מסורה והבטחה מוחלטת שהמילה המדויקת עצמה תמיד עוברת את המסנן.
     """
     clean_w = re.sub(r'[^א-ת]', '', word)
     if not clean_w:
         return Q()
 
+    exact_q = Q(clean_text__icontains=clean_w)
+    if len(clean_w) >= 3:
+        exact_q |= (Q(clean_text__icontains=clean_w[1:]) & Q(clean_text__icontains='<'))
+        exact_q |= (Q(clean_text__icontains=clean_w[:-1]) & Q(clean_text__icontains='<'))
+        exact_q |= Q(clean_text__icontains=f"{clean_w[0]} {clean_w[1:]}")
+
     if include_morph:
         stems = morph_stems if morph_stems is not None else build_hebrew_fuzzy_morph_patterns(clean_w)[0]
         if not stems:
-            return Q()
-        combined_q = Q()
+            return exact_q
+        combined_q = exact_q
         for st in stems:
             combined_q |= _build_sql_bigram_q_for_stem(st, clean_w=clean_w, allow_final_swap=True)
         return combined_q
@@ -1175,7 +1198,7 @@ def _build_fuzzy_sql_filter_for_word(word: str, include_morph: bool = False, mor
         if len([c for c in without_vav if c not in ('ו', 'י')]) >= 3:
             common_stem = without_vav
 
-    return _build_sql_bigram_q_for_stem(common_stem, clean_w=clean_w, allow_final_swap=False)
+    return exact_q | _build_sql_bigram_q_for_stem(common_stem, clean_w=clean_w, allow_final_swap=False)
 
 
 @ratelimit(rate=45, timeout=60)
@@ -1308,7 +1331,8 @@ def tanakh_advanced_search_api(request):
 
     effective_query_type = 'text_fuzzy_morph' if (query_type == 'text_fuzzy' and include_plural) else query_type
 
-    search_cache_key = f"tanakh_srch_v53_{effective_query_type}_{query_val}_{book_filter}_{is_exact}_{exclude_books_param}_{skip_param}_{page}_{per_page}"
+    _raw_cache_key = f"v54|{effective_query_type}|{query_val}|{book_filter}|{is_exact}|{exclude_books_param}|{skip_param}|{page}|{per_page}"
+    search_cache_key = "tanakh_srch_v54_" + hashlib.md5(_raw_cache_key.encode("utf-8")).hexdigest()
     cached_search_data = cache.get(search_cache_key)
     if cached_search_data:
         return JsonResponse(cached_search_data, json_dumps_params={'ensure_ascii': False})
