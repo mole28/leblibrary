@@ -4,44 +4,122 @@
 
 {% block content %}
 <style>
-    .ed-badge-manual { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; font-size: 0.72rem; }
-    .ed-badge-approved { background: #dcfce7; color: #166534; border: 1px solid #86efac; font-size: 0.72rem; }
-    .ed-badge-ai { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-size: 0.72rem; }
-    .ed-item-box { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 8px; margin-bottom: 6px; transition: all 0.2s; }
+    .ed-badge-manual { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; font-size: 0.7rem; font-weight: 700; }
+    .ed-badge-approved { background: #dcfce7; color: #166534; border: 1px solid #86efac; font-size: 0.7rem; font-weight: 700; }
+    .ed-badge-ai { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-size: 0.7rem; font-weight: 700; }
+
+    .ed-item-box {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 7px 9px;
+        margin-bottom: 7px;
+        transition: box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+    .ed-item-box:hover {
+        box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06);
+        border-color: #cbd5e1;
+    }
     .ed-item-box.state-manual { border-right: 4px solid #2563eb; background: #f8fafc; }
     .ed-item-box.state-approved { border-right: 4px solid #16a34a; background: #f0fdf4; }
-    .ed-item-box.state-ai_suggested { border-right: 4px solid #f59e0b; }
+    .ed-item-box.state-ai_suggested { border-right: 4px solid #f59e0b; background: #fffdf7; }
+
+    .ed-item-content { min-width: 0; flex: 1; }
+    .ed-item-link {
+        display: block;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+    .ed-tool-subtitle {
+        font-size: 0.73rem;
+        color: #64748b;
+        margin-top: 3px;
+        line-height: 1.3;
+        background: rgba(212, 175, 55, 0.1);
+        border-radius: 6px;
+        padding: 2px 6px;
+        display: inline-block;
+    }
+
+    .status-btn { font-size: 0.76rem; font-weight: 600; padding: 4px 6px; }
     .status-btn.active-approved { background-color: #16a34a !important; color: #fff !important; border-color: #16a34a !important; }
     .status-btn.active-pending { background-color: #f59e0b !important; color: #000 !important; border-color: #f59e0b !important; }
     .status-btn.active-rejected { background-color: #dc2626 !important; color: #fff !important; border-color: #dc2626 !important; }
-    tr.row-status-rejected { opacity: 0.65; background-color: #fef2f2 !important; }
+
+    .filter-pill-btn { transition: all 0.18s ease; font-weight: 600; }
+    .filter-pill-btn.active-filter {
+        box-shadow: 0 0 0 2px #f7e199 !important;
+        transform: translateY(-1px);
+    }
+
+    tr.row-status-rejected { opacity: 0.68; background-color: #fef2f2 !important; }
     tr.row-status-approved { background-color: #f0fdf4 !important; }
+    #editorialTable thead th {
+        position: sticky;
+        top: 0;
+        z-index: 4;
+        background: #1e293b;
+        color: #f7e199;
+        font-size: 0.9rem;
+        white-space: nowrap;
+        border-bottom: 2px solid #d4af37;
+    }
+    #editorialTable tbody td { vertical-align: top; }
 
     .corpus-chip {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 5px 11px;
-        border-radius: 8px;
-        border: 1px solid #cbd5e1;
+        padding: 6px 12px;
+        border-radius: 9px;
+        border: 1.5px solid #cbd5e1;
         background: #ffffff;
+        color: #334155;
         cursor: pointer;
         font-size: 0.85rem;
         font-weight: 600;
         user-select: none;
-        transition: all 0.15s ease;
+        transition: all 0.16s ease;
     }
     .corpus-chip:hover {
         border-color: #b8860b;
         background: #fffdf7;
     }
+    .corpus-chip:has(input:checked) {
+        background: linear-gradient(135deg, #fcf3cf 0%, #f5dc86 100%);
+        border-color: #b8860b;
+        color: #1f1a10;
+        box-shadow: 0 2px 6px rgba(212, 175, 55, 0.22);
+    }
     .corpus-chip input[type="checkbox"] {
         cursor: pointer;
         accent-color: #1e293b;
     }
+
+    .tool-live-preview-card {
+        background: linear-gradient(145deg, #fdfbf7 0%, #f7f0df 100%);
+        border: 1.5px solid #d4af37;
+        border-radius: 12px;
+        padding: 12px 14px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .tool-live-preview-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #1e293b;
+        color: #f7e199;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.15rem;
+        flex-shrink: 0;
+    }
 </style>
 
-<div class="container-fluid py-4" style="max-width: 1600px;" dir="rtl">
+<div class="container-fluid py-4" style="max-width: 1680px;" dir="rtl">
 
     <div class="p-4 mb-4 rounded-4 shadow-sm" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 2px solid #d4af37; color: #f8fafc;">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3 pb-3" style="border-bottom: 1px solid rgba(212,175,55,0.3);">
@@ -54,17 +132,17 @@
                 </p>
             </div>
 
-            <div class="d-flex gap-2 flex-wrap">
-                <button type="button" onclick="filterRows('all')" class="btn btn-outline-light btn-sm px-3 py-2 rounded-3">
-                    הכל: <b>{{ report.total_articles }}</b>
+            <div class="d-flex gap-2 flex-wrap" id="statusFilterGroup">
+                <button type="button" data-filter="all" onclick="filterRows('all')" class="btn btn-outline-light btn-sm px-3 py-2 rounded-3 filter-pill-btn active-filter">
+                    הכל: <b id="cnt-all">{{ report.total_articles }}</b>
                 </button>
-                <button type="button" onclick="filterRows('approved')" class="btn btn-sm px-3 py-2 rounded-3" style="background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; color: #fff;">
+                <button type="button" data-filter="approved" onclick="filterRows('approved')" class="btn btn-sm px-3 py-2 rounded-3 filter-pill-btn" style="background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; color: #fff;">
                     ✅ מאושרים: <b id="cnt-approved">{{ report.approved_count }}</b>
                 </button>
-                <button type="button" onclick="filterRows('pending')" class="btn btn-sm px-3 py-2 rounded-3" style="background: rgba(245, 158, 11, 0.22); border: 1px solid #f59e0b; color: #fde68a;">
+                <button type="button" data-filter="pending" onclick="filterRows('pending')" class="btn btn-sm px-3 py-2 rounded-3 filter-pill-btn" style="background: rgba(245, 158, 11, 0.22); border: 1px solid #f59e0b; color: #fde68a;">
                     🟡 ממתינים לבדיקה: <b id="cnt-pending">{{ report.pending_count }}</b>
                 </button>
-                <button type="button" onclick="filterRows('rejected')" class="btn btn-sm px-3 py-2 rounded-3" style="background: rgba(239, 68, 68, 0.22); border: 1px solid #ef4444; color: #fecaca;">
+                <button type="button" data-filter="rejected" onclick="filterRows('rejected')" class="btn btn-sm px-3 py-2 rounded-3 filter-pill-btn" style="background: rgba(239, 68, 68, 0.22); border: 1px solid #ef4444; color: #fecaca;">
                     ❌ נדחו (ללא קשרים): <b id="cnt-rejected">{{ report.rejected_count }}</b>
                 </button>
             </div>
@@ -72,9 +150,9 @@
 
         <form method="post" class="row g-3 align-items-center bg-dark bg-opacity-50 p-3 rounded-3 border border-secondary">
             {% csrf_token %}
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label fw-bold mb-1" style="color: #f7e199;">
-                    <i class="bi bi-sliders ms-1"></i>סף רגישות להצעות AI (`MIN_CONNECTION_SCORE`):
+                    <i class="bi bi-sliders ms-1"></i>סף רגישות להצעות AI:
                 </label>
                 <div class="d-flex align-items-center gap-2">
                     <input type="number" name="min_connection_score" value="{{ report.active_min_score }}" min="10" max="70" step="2" class="form-control form-control-sm fw-bold text-center" style="max-width: 85px;">
@@ -84,7 +162,14 @@
                 </div>
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-3">
+                <label class="form-label fw-bold mb-1" style="color: #f7e199;">
+                    <i class="bi bi-search ms-1"></i>איתור מהיר בטבלה:
+                </label>
+                <input type="text" id="auditTableQuickSearch" class="form-control form-control-sm" placeholder="חפש מאמר או אשכול..." oninput="applyAuditTableFilters()">
+            </div>
+
+            <div class="col-md-3">
                 <label class="form-label fw-bold mb-1" style="color: #f7e199;">
                     <i class="bi bi-lightning-charge-fill ms-1"></i>אישור גורף לכל הדו"ח:
                 </label>
@@ -95,13 +180,13 @@
                 </div>
             </div>
 
-            <div class="col-md-4 d-flex flex-column gap-2">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="small fw-bold" style="color: #f7e199;">חשיפה לגולשים באתר:</span>
+            <div class="col-md-3 d-flex flex-column gap-2">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                    <span class="small fw-bold" style="color: #f7e199;">חשיפה לגולשים:</span>
                     {% if report.public_enabled %}
                         <span class="badge bg-success">פתוח לכלל הגולשים ✓</span>
                     {% else %}
-                        <span class="badge bg-warning text-dark">מוצגים רק מאמרים שסימנת כ"מאושר" 🔒</span>
+                        <span class="badge bg-warning text-dark">רק מאושרים 🔒</span>
                     {% endif %}
                 </div>
                 {% if report.public_enabled %}
@@ -110,7 +195,7 @@
                 </button>
                 {% else %}
                 <button type="submit" name="action" value="enable_public" class="btn btn-success btn-sm fw-bold">
-                    פתח את כל המאמרים (מלבד נדחים) לכלל הגולשים!
+                    פתח את כל המאמרים (מלבד נדחים) לגולשים
                 </button>
                 {% endif %}
             </div>
@@ -118,24 +203,24 @@
     </div>
 
     <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
-        <div class="table-responsive">
-            <table class="table align-middle mb-0" id="editorialTable">
-                <thead style="background: #1e293b; color: #f7e199;">
+        <div class="table-responsive" style="max-height: 78vh;">
+            <table class="table align-top mb-0" id="editorialTable">
+                <thead>
                     <tr>
-                        <th class="py-3 px-3" style="width: 18%;">מאמר ופעולות מהירות</th>
-                        <th class="py-3" style="width: 15%;">אשכול לימוד (AI מול עורך)</th>
-                        <th class="py-3" style="width: 22%;">מאמרים קשורים (הכל)</th>
-                        <th class="py-3" style="width: 19%;">פרקים בספרים (הכל)</th>
+                        <th class="py-3 px-3" style="width: 16%;">מאמר ופעולות מהירות</th>
+                        <th class="py-3" style="width: 14%;">אשכול לימוד (AI מול עורך)</th>
+                        <th class="py-3" style="width: 21%;">מאמרים קשורים (הכל)</th>
+                        <th class="py-3" style="width: 18%;">פרקים בספרים (הכל)</th>
                         <th class="py-3" style="width: 13%;">שו"ת קשור</th>
-                        <th class="py-3" style="width: 13%;">כלי מחקר וחיפוש</th>
+                        <th class="py-3" style="width: 18%;">כלי מחקר וחיפוש</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for row in report.rows %}
-                    <tr id="audit-art-{{ row.article.pk }}" data-status="{{ row.connections_status }}" class="row-status-{{ row.connections_status }}">
+                    <tr id="audit-art-{{ row.article.pk }}" data-status="{{ row.connections_status }}" data-search="{{ row.article.title|lower }} {{ row.cluster_title|lower }}" class="row-status-{{ row.connections_status }}">
                         
                         <td class="px-3 py-3">
-                            <a href="{% url 'articles:detail' slug=row.article.slug %}" target="_blank" class="fw-bold text-decoration-none text-dark d-block mb-2" style="font-size: 1rem;">
+                            <a href="{% url 'articles:detail' slug=row.article.slug %}" target="_blank" class="fw-bold text-decoration-none text-dark d-block mb-2" style="font-size: 0.98rem; line-height: 1.35;">
                                 {{ row.article.title }} <i class="bi bi-box-arrow-up-left small text-muted"></i>
                             </a>
 
@@ -153,25 +238,25 @@
 
                             {% if row.has_ai_suggestions %}
                             <div class="d-flex flex-column gap-1 pt-1 border-top">
-                                <button type="button" onclick="batchAiForArticle('{{ row.article.pk }}', 'approve_all_ai_for_article')" class="btn btn-sm btn-success fw-bold py-1" style="font-size: 0.75rem;">
-                                    ✅ אשר את כל הצעות ה-AI למאמר זה
+                                <button type="button" onclick="batchAiForArticle('{{ row.article.pk }}', 'approve_all_ai_for_article')" class="btn btn-sm btn-success fw-bold py-1" style="font-size: 0.74rem;">
+                                    ✅ אשר את כל הצעות ה-AI למאמר
                                 </button>
-                                <button type="button" onclick="batchAiForArticle('{{ row.article.pk }}', 'reject_all_ai_for_article')" class="btn btn-sm btn-outline-danger fw-bold py-1" style="font-size: 0.75rem;">
-                                    ❌ דחה את כל הצעות ה-AI למאמר זה
+                                <button type="button" onclick="batchAiForArticle('{{ row.article.pk }}', 'reject_all_ai_for_article')" class="btn btn-sm btn-outline-danger fw-bold py-1" style="font-size: 0.74rem;">
+                                    ❌ דחה את כל הצעות ה-AI למאמר
                                 </button>
                             </div>
                             {% endif %}
                         </td>
 
-                        <td>
+                        <td class="py-3">
                             <div class="p-2 rounded-3 mb-2 border" style="background: #f8fafc;">
                                 <div class="small fw-bold text-dark mb-1">
                                     אשכול: <span class="badge bg-dark text-warning">{{ row.cluster_title }}</span>
                                 </div>
-                                <div class="small text-muted" style="font-size: 0.76rem;">
+                                <div class="small text-muted" style="font-size: 0.75rem;">
                                     🤖 AI הציע: <b>{{ row.ai_cluster_title }}</b>
                                 </div>
-                                <div class="small mt-1" style="font-size: 0.76rem;">
+                                <div class="small mt-1" style="font-size: 0.75rem;">
                                     ✍️ עורך קבע:
                                     {% if row.is_cluster_overridden %}
                                         <b class="text-primary">{{ row.editor_cluster_title }}</b>
@@ -195,29 +280,31 @@
                             </button>
                             {% endif %}
 
-                            <div class="small text-muted mt-1" style="font-size: 0.73rem;">
+                            <div class="small text-muted mt-1" style="font-size: 0.72rem; line-height: 1.4;">
                                 {% for kw, pts in row.breakdown %}
-                                    <span>{{ kw }} ({{ pts }}),</span>
+                                    <span>{{ kw }} ({{ pts }}){% if not forloop.last %}, {% endif %}</span>
                                 {% endfor %}
                             </div>
                         </td>
 
-                        <td>
+                        <td class="py-3">
                             {% for rel in row.related_articles|slice:":4" %}
-                            <div class="ed-item-box state-{{ rel.editorial_state }} d-flex justify-content-between align-items-center">
-                                <div class="pe-1">
-                                    {% if rel.editorial_state == 'manual' %}
-                                        <span class="badge ed-badge-manual ms-1">➕ ידני</span>
-                                    {% elif rel.editorial_state == 'approved' %}
-                                        <span class="badge ed-badge-approved ms-1">✅ מאושר</span>
-                                    {% else %}
-                                        <span class="badge ed-badge-ai ms-1">🤖 AI ({{ rel.score }})</span>
-                                    {% endif %}
-                                    <a href="{% url 'articles:detail' slug=rel.article.slug %}" target="_blank" class="text-decoration-none text-dark fw-semibold small">
+                            <div class="ed-item-box state-{{ rel.editorial_state }} d-flex justify-content-between align-items-start gap-2">
+                                <div class="ed-item-content">
+                                    <div class="mb-1">
+                                        {% if rel.editorial_state == 'manual' %}
+                                            <span class="badge ed-badge-manual">➕ ידני</span>
+                                        {% elif rel.editorial_state == 'approved' %}
+                                            <span class="badge ed-badge-approved">✅ מאושר</span>
+                                        {% else %}
+                                            <span class="badge ed-badge-ai">🤖 AI ({{ rel.score }})</span>
+                                        {% endif %}
+                                    </div>
+                                    <a href="{% url 'articles:detail' slug=rel.article.slug %}" target="_blank" class="ed-item-link text-decoration-none text-dark fw-semibold small">
                                         {{ rel.article.title }}
                                     </a>
                                 </div>
-                                <div class="d-flex gap-1 ms-1 flex-shrink-0">
+                                <div class="d-flex gap-1 flex-shrink-0">
                                     {% if rel.editorial_state == 'ai_suggested' %}
                                     <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_approve', 'articles', '{{ rel.article.pk }}')" class="btn btn-sm btn-success py-0 px-2" title="אשר קשר זה">✅</button>
                                     {% endif %}
@@ -230,19 +317,19 @@
 
                             {% if row.related_articles|length > 4 or row.extra_candidate_articles %}
                             <details class="mb-2">
-                                <summary class="btn btn-sm btn-warning w-100 fw-bold py-1" style="font-size: 0.76rem;">
-                                    🔽 הצג עוד הצעות מאמרים ({{ row.related_articles|slice:"4:"|length }} חזקים + {{ row.extra_candidate_articles|length }} משניים)
+                                <summary class="btn btn-sm btn-warning w-100 fw-bold py-1" style="font-size: 0.75rem;">
+                                    🔽 הצג עוד הצעות ({{ row.related_articles|slice:"4:"|length }} חזקים + {{ row.extra_candidate_articles|length }} משניים)
                                 </summary>
                                 <div class="pt-2">
                                     {% for rel in row.related_articles|slice:"4:" %}
-                                    <div class="ed-item-box state-{{ rel.editorial_state }} d-flex justify-content-between align-items-center">
-                                        <div class="pe-1">
-                                            <span class="badge ed-badge-ai ms-1">🤖 AI ({{ rel.score }})</span>
-                                            <a href="{% url 'articles:detail' slug=rel.article.slug %}" target="_blank" class="text-decoration-none text-dark fw-semibold small">
+                                    <div class="ed-item-box state-{{ rel.editorial_state }} d-flex justify-content-between align-items-start gap-2">
+                                        <div class="ed-item-content">
+                                            <span class="badge ed-badge-ai mb-1">🤖 AI ({{ rel.score }})</span>
+                                            <a href="{% url 'articles:detail' slug=rel.article.slug %}" target="_blank" class="ed-item-link text-decoration-none text-dark fw-semibold small">
                                                 {{ rel.article.title }}
                                             </a>
                                         </div>
-                                        <div class="d-flex gap-1 ms-1 flex-shrink-0">
+                                        <div class="d-flex gap-1 flex-shrink-0">
                                             <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_approve', 'articles', '{{ rel.article.pk }}')" class="btn btn-sm btn-success py-0 px-2">✅</button>
                                             <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_reject', 'articles', '{{ rel.article.pk }}')" class="btn btn-sm btn-outline-danger py-0 px-2">❌</button>
                                         </div>
@@ -250,14 +337,14 @@
                                     {% endfor %}
 
                                     {% for ex in row.extra_candidate_articles %}
-                                    <div class="ed-item-box d-flex justify-content-between align-items-center" style="background: #fffbeb; border-right: 3px dashed #d97706;">
-                                        <div class="pe-1">
-                                            <span class="badge bg-secondary text-white ms-1" style="font-size: 0.68rem;">משני ({{ ex.score }})</span>
-                                            <a href="{% url 'articles:detail' slug=ex.article.slug %}" target="_blank" class="text-decoration-none text-dark small">
+                                    <div class="ed-item-box d-flex justify-content-between align-items-start gap-2" style="background: #fffbeb; border-right: 3px dashed #d97706;">
+                                        <div class="ed-item-content">
+                                            <span class="badge bg-secondary text-white mb-1" style="font-size: 0.68rem;">משני ({{ ex.score }})</span>
+                                            <a href="{% url 'articles:detail' slug=ex.article.slug %}" target="_blank" class="ed-item-link text-decoration-none text-dark small">
                                                 {{ ex.article.title }}
                                             </a>
                                         </div>
-                                        <div class="d-flex gap-1 ms-1 flex-shrink-0">
+                                        <div class="d-flex gap-1 flex-shrink-0">
                                             <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_approve', 'articles', '{{ ex.article.pk }}')" class="btn btn-sm btn-success py-0 px-2" title="אשר והוסף">✅</button>
                                             <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_reject', 'articles', '{{ ex.article.pk }}')" class="btn btn-sm btn-outline-danger py-0 px-2" title="דחה">❌</button>
                                         </div>
@@ -273,12 +360,12 @@
 
                             {% if row.rejected_articles %}
                             <details class="mt-1 small text-muted">
-                                <summary style="cursor: pointer; font-size: 0.76rem;">❌ נדחו על ידך ({{ row.rejected_articles|length }})</summary>
+                                <summary style="cursor: pointer; font-size: 0.75rem;">❌ נדחו על ידך ({{ row.rejected_articles|length }})</summary>
                                 <div class="pt-1">
                                     {% for rj in row.rejected_articles %}
                                     <div class="d-flex justify-content-between align-items-center border-bottom py-1">
-                                        <span class="text-decoration-line-through text-danger" style="font-size: 0.76rem;">{{ rj.title }}</span>
-                                        <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_unreject', 'articles', '{{ rj.pk }}')" class="btn btn-link btn-sm p-0 text-secondary" style="font-size: 0.74rem;">שחזר</button>
+                                        <span class="text-decoration-line-through text-danger" style="font-size: 0.75rem;">{{ rj.title }}</span>
+                                        <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_unreject', 'articles', '{{ rj.pk }}')" class="btn btn-link btn-sm p-0 text-secondary" style="font-size: 0.73rem;">שחזר</button>
                                     </div>
                                     {% endfor %}
                                 </div>
@@ -286,22 +373,24 @@
                             {% endif %}
                         </td>
 
-                        <td>
+                        <td class="py-3">
                             {% for b in row.book_units|slice:":4" %}
-                            <div class="ed-item-box state-{{ b.editorial_state }} d-flex justify-content-between align-items-center">
-                                <div class="pe-1">
-                                    {% if b.editorial_state == 'manual' %}
-                                        <span class="badge ed-badge-manual ms-1">➕ ידני</span>
-                                    {% elif b.editorial_state == 'approved' %}
-                                        <span class="badge ed-badge-approved ms-1">✅ מאושר</span>
-                                    {% else %}
-                                        <span class="badge ed-badge-ai ms-1">🤖 AI ({{ b.match_score }})</span>
-                                    {% endif %}
-                                    <a href="{{ b.url }}" target="_blank" class="text-decoration-none fw-semibold small" style="color: #8c6239;">
+                            <div class="ed-item-box state-{{ b.editorial_state }} d-flex justify-content-between align-items-start gap-2">
+                                <div class="ed-item-content">
+                                    <div class="mb-1">
+                                        {% if b.editorial_state == 'manual' %}
+                                            <span class="badge ed-badge-manual">➕ ידני</span>
+                                        {% elif b.editorial_state == 'approved' %}
+                                            <span class="badge ed-badge-approved">✅ מאושר</span>
+                                        {% else %}
+                                            <span class="badge ed-badge-ai">🤖 AI ({{ b.match_score }})</span>
+                                        {% endif %}
+                                    </div>
+                                    <a href="{{ b.url }}" target="_blank" class="ed-item-link text-decoration-none fw-semibold small" style="color: #8c6239;">
                                         📖 {{ b.book_title }} – {{ b.title }}
                                     </a>
                                 </div>
-                                <div class="d-flex gap-1 ms-1 flex-shrink-0">
+                                <div class="d-flex gap-1 flex-shrink-0">
                                     {% if b.editorial_state == 'ai_suggested' %}
                                     <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_approve', 'books', '{{ b.unit_key }}')" class="btn btn-sm btn-success py-0 px-2" title="אשר פרק זה">✅</button>
                                     {% endif %}
@@ -314,19 +403,19 @@
 
                             {% if row.book_units|length > 4 or row.extra_candidate_books %}
                             <details class="mb-2">
-                                <summary class="btn btn-sm btn-warning w-100 fw-bold py-1" style="font-size: 0.76rem;">
+                                <summary class="btn btn-sm btn-warning w-100 fw-bold py-1" style="font-size: 0.75rem;">
                                     🔽 הצג עוד פרקים ({{ row.book_units|slice:"4:"|length }} חזקים + {{ row.extra_candidate_books|length }} משניים)
                                 </summary>
                                 <div class="pt-2">
                                     {% for b in row.book_units|slice:"4:" %}
-                                    <div class="ed-item-box state-{{ b.editorial_state }} d-flex justify-content-between align-items-center">
-                                        <div class="pe-1">
-                                            <span class="badge ed-badge-ai ms-1">🤖 AI ({{ b.match_score }})</span>
-                                            <a href="{{ b.url }}" target="_blank" class="text-decoration-none fw-semibold small" style="color: #8c6239;">
+                                    <div class="ed-item-box state-{{ b.editorial_state }} d-flex justify-content-between align-items-start gap-2">
+                                        <div class="ed-item-content">
+                                            <span class="badge ed-badge-ai mb-1">🤖 AI ({{ b.match_score }})</span>
+                                            <a href="{{ b.url }}" target="_blank" class="ed-item-link text-decoration-none fw-semibold small" style="color: #8c6239;">
                                                 📖 {{ b.book_title }} – {{ b.title }}
                                             </a>
                                         </div>
-                                        <div class="d-flex gap-1 ms-1 flex-shrink-0">
+                                        <div class="d-flex gap-1 flex-shrink-0">
                                             <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_approve', 'books', '{{ b.unit_key }}')" class="btn btn-sm btn-success py-0 px-2">✅</button>
                                             <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_reject', 'books', '{{ b.unit_key }}')" class="btn btn-sm btn-outline-danger py-0 px-2">❌</button>
                                         </div>
@@ -334,14 +423,14 @@
                                     {% endfor %}
 
                                     {% for exb in row.extra_candidate_books %}
-                                    <div class="ed-item-box d-flex justify-content-between align-items-center" style="background: #fffbeb; border-right: 3px dashed #d97706;">
-                                        <div class="pe-1">
-                                            <span class="badge bg-secondary text-white ms-1" style="font-size: 0.68rem;">משני ({{ exb.match_score }})</span>
-                                            <a href="{{ exb.url }}" target="_blank" class="text-decoration-none small" style="color: #8c6239;">
+                                    <div class="ed-item-box d-flex justify-content-between align-items-start gap-2" style="background: #fffbeb; border-right: 3px dashed #d97706;">
+                                        <div class="ed-item-content">
+                                            <span class="badge bg-secondary text-white mb-1" style="font-size: 0.68rem;">משני ({{ exb.match_score }})</span>
+                                            <a href="{{ exb.url }}" target="_blank" class="ed-item-link text-decoration-none small" style="color: #8c6239;">
                                                 📖 {{ exb.book_title }} – {{ exb.title }}
                                             </a>
                                         </div>
-                                        <div class="d-flex gap-1 ms-1 flex-shrink-0">
+                                        <div class="d-flex gap-1 flex-shrink-0">
                                             <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_approve', 'books', '{{ exb.unit_key }}')" class="btn btn-sm btn-success py-0 px-2">✅</button>
                                             <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_reject', 'books', '{{ exb.unit_key }}')" class="btn btn-sm btn-outline-danger py-0 px-2">❌</button>
                                         </div>
@@ -357,12 +446,12 @@
 
                             {% if row.rejected_books %}
                             <details class="mt-1 small text-muted">
-                                <summary style="cursor: pointer; font-size: 0.76rem;">❌ פרקים שנדחו ({{ row.rejected_books|length }})</summary>
+                                <summary style="cursor: pointer; font-size: 0.75rem;">❌ פרקים שנדחו ({{ row.rejected_books|length }})</summary>
                                 <div class="pt-1">
                                     {% for rjb in row.rejected_books %}
                                     <div class="d-flex justify-content-between align-items-center border-bottom py-1">
-                                        <span class="text-decoration-line-through text-danger" style="font-size: 0.76rem;">{{ rjb.label }}</span>
-                                        <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_unreject', 'books', '{{ rjb.unit_key }}')" class="btn btn-link btn-sm p-0 text-secondary" style="font-size: 0.74rem;">שחזר</button>
+                                        <span class="text-decoration-line-through text-danger" style="font-size: 0.75rem;">{{ rjb.label }}</span>
+                                        <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_unreject', 'books', '{{ rjb.unit_key }}')" class="btn btn-link btn-sm p-0 text-secondary" style="font-size: 0.73rem;">שחזר</button>
                                     </div>
                                     {% endfor %}
                                 </div>
@@ -370,22 +459,24 @@
                             {% endif %}
                         </td>
 
-                        <td>
+                        <td class="py-3">
                             {% for q in row.related_qas %}
-                            <div class="ed-item-box state-{{ q.editorial_state }} d-flex justify-content-between align-items-center">
-                                <div class="pe-1">
-                                    {% if q.editorial_state == 'manual' %}
-                                        <span class="badge ed-badge-manual ms-1">➕ ידני</span>
-                                    {% elif q.editorial_state == 'approved' %}
-                                        <span class="badge ed-badge-approved ms-1">✅ מאושר</span>
-                                    {% else %}
-                                        <span class="badge ed-badge-ai ms-1">🤖 AI ({{ q.match_score }})</span>
-                                    {% endif %}
-                                    <a href="{{ q.url }}" target="_blank" class="text-decoration-none fw-semibold small text-primary">
-                                        ⚖️ {{ q.question|truncatechars:42 }}
+                            <div class="ed-item-box state-{{ q.editorial_state }} d-flex justify-content-between align-items-start gap-2">
+                                <div class="ed-item-content">
+                                    <div class="mb-1">
+                                        {% if q.editorial_state == 'manual' %}
+                                            <span class="badge ed-badge-manual">➕ ידני</span>
+                                        {% elif q.editorial_state == 'approved' %}
+                                            <span class="badge ed-badge-approved">✅ מאושר</span>
+                                        {% else %}
+                                            <span class="badge ed-badge-ai">🤖 AI ({{ q.match_score }})</span>
+                                        {% endif %}
+                                    </div>
+                                    <a href="{{ q.url }}" target="_blank" class="ed-item-link text-decoration-none fw-semibold small text-primary">
+                                        ⚖️ {{ q.question|truncatechars:45 }}
                                     </a>
                                 </div>
-                                <div class="d-flex gap-1 ms-1 flex-shrink-0">
+                                <div class="d-flex gap-1 flex-shrink-0">
                                     {% if q.editorial_state == 'ai_suggested' %}
                                     <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_approve', 'qas', '{{ q.qa_id }}')" class="btn btn-sm btn-success py-0 px-2" title="אשר שו&quot;ת זה">✅</button>
                                     {% endif %}
@@ -402,12 +493,12 @@
 
                             {% if row.rejected_qas %}
                             <details class="mt-1 small text-muted">
-                                <summary style="cursor: pointer; font-size: 0.76rem;">❌ שו"ת שנדחו ({{ row.rejected_qas|length }})</summary>
+                                <summary style="cursor: pointer; font-size: 0.75rem;">❌ שו"ת שנדחו ({{ row.rejected_qas|length }})</summary>
                                 <div class="pt-1">
                                     {% for rjq in row.rejected_qas %}
                                     <div class="d-flex justify-content-between align-items-center border-bottom py-1">
-                                        <span class="text-decoration-line-through text-danger" style="font-size: 0.76rem;">{{ rjq.question|truncatechars:35 }}</span>
-                                        <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_unreject', 'qas', '{{ rjq.qa_id }}')" class="btn btn-link btn-sm p-0 text-secondary" style="font-size: 0.74rem;">שחזר</button>
+                                        <span class="text-decoration-line-through text-danger" style="font-size: 0.75rem;">{{ rjq.question|truncatechars:35 }}</span>
+                                        <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_unreject', 'qas', '{{ rjq.qa_id }}')" class="btn btn-link btn-sm p-0 text-secondary" style="font-size: 0.73rem;">שחזר</button>
                                     </div>
                                     {% endfor %}
                                 </div>
@@ -415,22 +506,27 @@
                             {% endif %}
                         </td>
 
-                        <td>
+                        <td class="py-3">
                             {% for t in row.smart_tools %}
-                            <div class="ed-item-box state-{{ t.editorial_state }} d-flex justify-content-between align-items-center">
-                                <div class="pe-1">
-                                    {% if t.editorial_state == 'manual' %}
-                                        <span class="badge ed-badge-manual ms-1">➕ ידני</span>
-                                    {% elif t.editorial_state == 'approved' %}
-                                        <span class="badge ed-badge-approved ms-1">✅ מאושר</span>
-                                    {% else %}
-                                        <span class="badge ed-badge-ai ms-1">🤖 AI</span>
-                                    {% endif %}
-                                    <a href="{{ t.url }}" target="_blank" class="text-decoration-none fw-bold small text-dark">
+                            <div class="ed-item-box state-{{ t.editorial_state }} d-flex justify-content-between align-items-start gap-2">
+                                <div class="ed-item-content">
+                                    <div class="mb-1">
+                                        {% if t.editorial_state == 'manual' %}
+                                            <span class="badge ed-badge-manual">➕ ידני</span>
+                                        {% elif t.editorial_state == 'approved' %}
+                                            <span class="badge ed-badge-approved">✅ מאושר</span>
+                                        {% else %}
+                                            <span class="badge ed-badge-ai">🤖 AI</span>
+                                        {% endif %}
+                                    </div>
+                                    <a href="{{ t.url }}" target="_blank" class="ed-item-link text-decoration-none fw-bold small text-dark" title="{{ t.url }}">
                                         <i class="bi {{ t.icon }} ms-1" style="color: #b8860b;"></i>{{ t.title }}
                                     </a>
+                                    {% if t.subtitle %}
+                                    <div class="ed-tool-subtitle">{{ t.subtitle }}</div>
+                                    {% endif %}
                                 </div>
-                                <div class="d-flex gap-1 ms-1 flex-shrink-0">
+                                <div class="d-flex gap-1 flex-shrink-0">
                                     {% if t.editorial_state == 'ai_suggested' %}
                                     <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_approve', 'tools', '{{ t.tool_key|escapejs }}')" class="btn btn-sm btn-success py-0 px-2" title="אשר כלי זה">✅</button>
                                     {% endif %}
@@ -447,12 +543,12 @@
 
                             {% if row.rejected_tools %}
                             <details class="mt-1 small text-muted">
-                                <summary style="cursor: pointer; font-size: 0.76rem;">❌ כלים שהוסרו ({{ row.rejected_tools|length }})</summary>
+                                <summary style="cursor: pointer; font-size: 0.75rem;">❌ כלים שהוסרו ({{ row.rejected_tools|length }})</summary>
                                 <div class="pt-1">
                                     {% for rjt in row.rejected_tools %}
                                     <div class="d-flex justify-content-between align-items-center border-bottom py-1">
-                                        <span class="text-decoration-line-through text-danger" style="font-size: 0.75rem;">{{ rjt.title }}</span>
-                                        <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_unreject', 'tools', '{{ rjt.tool_key|escapejs }}')" class="btn btn-link btn-sm p-0 text-secondary" style="font-size: 0.74rem;">שחזר</button>
+                                        <span class="text-decoration-line-through text-danger" style="font-size: 0.74rem;">{{ rjt.title }}</span>
+                                        <button type="button" onclick="editorialItemAction('{{ row.article.pk }}', 'item_unreject', 'tools', '{{ rjt.tool_key|escapejs }}')" class="btn btn-link btn-sm p-0 text-secondary" style="font-size: 0.73rem;">שחזר</button>
                                     </div>
                                     {% endfor %}
                                 </div>
@@ -473,11 +569,11 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content rounded-4 border-2" style="border-color: #d4af37;">
             <div class="modal-header text-white" style="background: #1e293b;">
-                <h5 class="modal-title fw-bold" id="manualModalTitle">➕ הוספת קשר ידני</h5>
-                <button type="button" class="btn-close btn-close-white ms-0 me-auto" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title fw-bold" id="manualModalTitle" style="color: #f7e199;">➕ הוספת קשר ידני</h5>
+                <button type="button" class="btn-close btn-close-white ms-0 me-auto" data-bs-dismiss="modal" aria-label="סגור"></button>
             </div>
             <div class="modal-body p-4">
-                <p class="small text-muted mb-2">מוסיף קשר קבוע עבור המאמר: <strong id="manualModalArticleName" class="text-dark"></strong></p>
+                <p class="small text-muted mb-3">מוסיף קשר קבוע עבור המאמר: <strong id="manualModalArticleName" class="text-dark"></strong></p>
 
                 <input type="text" id="manualFilterInput" class="form-control mb-2" placeholder="הקלד לחיפוש מהיר ברשימה..." oninput="filterManualSelect()">
 
@@ -519,9 +615,9 @@
                                 <label class="small fw-bold mb-1">1. סוג הכלי / החיפוש:</label>
                                 <select id="auditTbKind" class="form-select form-select-sm fw-bold" onchange="updateAuditToolPreview()">
                                     <optgroup label="חיפוש במאגר התורני (תנ״ך, בבלי, רמב״ם...)">
-                                        <option value="search_text">חיפוש מילה / ביטוי במאגר</option>
+                                        <option value="search_fuzzy">חיפוש כתיב מלא/חסר ותחיליות (מומלץ)</option>
                                         <option value="search_exact">חיפוש מדויק במאגר</option>
-                                        <option value="search_fuzzy">חיפוש כתיב מלא/חסר ותחיליות</option>
+                                        <option value="search_text">חיפוש חופשי במאגר (כולל חלק ממילה)</option>
                                         <option value="search_gematria">חיפוש גימטריא במאגר</option>
                                         <option value="search_rashei">ראשי תיבות בפסוקים (ר״ת)</option>
                                         <option value="search_sofei">סופי תיבות בפסוקים (ס״ת)</option>
@@ -539,17 +635,16 @@
                                         <option value="calc_weight">מחשבון משקל ומטבעות חז״ל</option>
                                     </optgroup>
                                     <optgroup label="התאמה אישית מלאה">
-                                        <option value="custom_free">כפתור / קישור חופשי ("כל המצאה אחרת")</option>
+                                        <option value="custom_free">כפתור / קישור חופשי מותאם אישית</option>
                                     </optgroup>
                                 </select>
                             </div>
 
                             <div class="col-md-6" id="auditTbQueryCol">
                                 <label class="small fw-bold mb-1">2. מילה / ביטוי לחיפוש:</label>
-                                <input type="text" id="auditTbQuery" class="form-control form-control-sm" placeholder="למשל: חזקה" oninput="updateAuditToolPreview()">
+                                <input type="text" id="auditTbQuery" class="form-control form-control-sm fw-bold" placeholder="למשל: קללות" oninput="updateAuditToolPreview()">
                             </div>
 
-                            <!-- 3. בחירה מרובה של מאגרים ספציפיים לפי בחירת העורך -->
                             <div class="col-md-12" id="auditTbCorpusCol">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <label class="small fw-bold mb-0">3. באילו מאגרים לחפש? (ניתן לסמן מאגר אחד, מספר מאגרים יחד, או הכל):</label>
@@ -595,19 +690,29 @@
                             </div>
                         </div>
 
-                        <hr class="my-2">
+                        <div class="tool-live-preview-card my-3">
+                            <div class="tool-live-preview-icon"><i id="auditPreviewIcon" class="bi bi-search"></i></div>
+                            <div style="min-width: 0; flex: 1;">
+                                <div class="fw-bold text-dark" id="auditPreviewTitle" style="font-size: 0.96rem;"></div>
+                                <div class="small text-muted" id="auditPreviewSubtitle" style="font-size: 0.8rem;"></div>
+                            </div>
+                            <a id="auditPreviewTestLink" href="/advanced-search/" target="_blank" class="btn btn-sm btn-outline-dark fw-bold rounded-pill px-3 flex-shrink-0">
+                                בדוק קישור ↗
+                            </a>
+                        </div>
+
                         <div class="row g-2">
                             <div class="col-md-6">
                                 <label class="small fw-bold">כותרת הכפתור (ניתנת לעריכה חופשית):</label>
-                                <input type="text" id="auditTbFinalTitle" class="form-control form-control-sm fw-bold">
+                                <input type="text" id="auditTbFinalTitle" class="form-control form-control-sm fw-bold" oninput="syncLiveToolPreviewFromInputs()">
                             </div>
                             <div class="col-md-6">
                                 <label class="small fw-bold">תת-כותרת:</label>
-                                <input type="text" id="auditTbFinalSubtitle" class="form-control form-control-sm">
+                                <input type="text" id="auditTbFinalSubtitle" class="form-control form-control-sm" oninput="syncLiveToolPreviewFromInputs()">
                             </div>
                             <div class="col-md-12">
                                 <label class="small fw-bold">כתובת הקישור (URL):</label>
-                                <input type="text" id="auditTbFinalUrl" class="form-control form-control-sm" dir="ltr">
+                                <input type="text" id="auditTbFinalUrl" class="form-control form-control-sm" dir="ltr" oninput="syncLiveToolPreviewFromInputs()">
                             </div>
                         </div>
                     </div>
@@ -625,6 +730,7 @@
     const CSRF_TOKEN = "{{ csrf_token }}";
     let currentModalArticlePk = 0;
     let currentModalType = 'articles';
+    let activeStatusFilter = 'all';
     let manualModalInstance = null;
 
     async function postEditorialUpdate(payload) {
@@ -640,6 +746,24 @@
         return await resp.json();
     }
 
+    function updateStatusCounters() {
+        const rows = Array.from(document.querySelectorAll('#editorialTable tbody tr'));
+        let approved = 0, pending = 0, rejected = 0;
+        rows.forEach(tr => {
+            if (tr.dataset.status === 'approved') approved++;
+            else if (tr.dataset.status === 'rejected') rejected++;
+            else pending++;
+        });
+        const elAll = document.getElementById('cnt-all');
+        const elApp = document.getElementById('cnt-approved');
+        const elPen = document.getElementById('cnt-pending');
+        const elRej = document.getElementById('cnt-rejected');
+        if (elAll) elAll.textContent = rows.length;
+        if (elApp) elApp.textContent = approved;
+        if (elPen) elPen.textContent = pending;
+        if (elRej) elRej.textContent = rejected;
+    }
+
     async function setArticleStatus(articlePkStr, actionStr, btnEl) {
         const articlePk = parseInt(articlePkStr, 10);
         const res = await postEditorialUpdate({ article_pk: articlePk, ed_action: actionStr });
@@ -651,6 +775,8 @@
             const group = btnEl.parentElement.querySelectorAll('.status-btn');
             group.forEach(b => b.classList.remove('active-approved', 'active-pending', 'active-rejected'));
             btnEl.classList.add('active-' + newStatus);
+            updateStatusCounters();
+            applyAuditTableFilters();
         }
     }
 
@@ -699,6 +825,14 @@
     function openAddModalFromBtn(btnEl, targetType) {
         currentModalArticlePk = parseInt(btnEl.getAttribute('data-pk'), 10);
         currentModalType = targetType;
+
+        const titleByType = {
+            'articles': '➕ הוספת מאמר קשור ידנית',
+            'books': '➕ הוספת פרק או ספר קשור ידנית',
+            'qas': '➕ הוספת שו"ת קשור ידנית',
+            'tools': '➕ הוספת כלי מחקר / חיפוש מותאם'
+        };
+        document.getElementById('manualModalTitle').innerText = titleByType[targetType] || '➕ הוספת קשר ידני';
         document.getElementById('manualModalArticleName').innerText = btnEl.getAttribute('data-title') || '';
         document.getElementById('manualFilterInput').value = '';
         document.getElementById('manualFilterInput').style.display = (targetType === 'tools') ? 'none' : 'block';
@@ -710,6 +844,9 @@
         document.getElementById('selectWrapTools').style.display = (targetType === 'tools') ? 'block' : 'none';
 
         if (targetType === 'tools') {
+            document.getElementById('auditTbQuery').value = '';
+            document.getElementById('auditTbKind').value = 'search_fuzzy';
+            toggleAllAuditCorpora(true);
             updateAuditToolPreview();
         }
 
@@ -717,6 +854,10 @@
             manualModalInstance = new bootstrap.Modal(document.getElementById('manualAddModal'));
         }
         manualModalInstance.show();
+
+        if (targetType === 'tools') {
+            setTimeout(() => document.getElementById('auditTbQuery').focus(), 200);
+        }
     }
 
     function filterManualSelect() {
@@ -763,11 +904,35 @@
         return { param: values.join(','), label: labelStr };
     }
 
+    function getToolIconClass(kind) {
+        const iconMap = {
+            'aramaic_translator': 'bi-translate',
+            'acronyms_dict': 'bi-alphabet-uppercase',
+            'calc_length': 'bi-rulers',
+            'calc_volume': 'bi-cup-straw',
+            'calc_weight': 'bi-coin'
+        };
+        return iconMap[kind] || 'bi-search';
+    }
+
+    function syncLiveToolPreviewFromInputs() {
+        const kind = document.getElementById('auditTbKind').value;
+        const title = document.getElementById('auditTbFinalTitle').value.trim();
+        const subtitle = document.getElementById('auditTbFinalSubtitle').value.trim();
+        const url = document.getElementById('auditTbFinalUrl').value.trim() || '/advanced-search/';
+
+        document.getElementById('auditPreviewIcon').className = 'bi ' + getToolIconClass(kind);
+        document.getElementById('auditPreviewTitle').textContent = title || 'כותרת הכפתור';
+        document.getElementById('auditPreviewSubtitle').textContent = subtitle || '';
+        document.getElementById('auditPreviewTestLink').href = url;
+    }
+
     function updateAuditToolPreview() {
         const kindEl = document.getElementById('auditTbKind');
         if (!kindEl) return;
         const kind = kindEl.value;
-        const q = (document.getElementById('auditTbQuery').value || '').trim() || 'חזקה';
+        const rawQ = (document.getElementById('auditTbQuery').value || '').trim();
+        const displayQ = rawQ || 'מילת חיפוש';
         const corpusInfo = getSelectedAuditCorporaInfo();
         const corpus = corpusInfo.param;
         const cLabel = corpusInfo.label;
@@ -780,31 +945,31 @@
             qCol.style.display = 'block';
             cCol.style.display = 'block';
             const typeMap = {
-                'search_text': ['text_broad', `חיפוש "${q}" במאגר התורני`, `${cLabel} • חיפוש חופשי`],
-                'search_exact': ['text_exact', `חיפוש "${q}" במאגר התורני`, `${cLabel} • מילה מדויקת`],
-                'search_fuzzy': ['text_fuzzy', `חיפוש "${q}" במאגר התורני`, `${cLabel} • כתיב מלא וחסר`],
-                'search_gematria': ['gematria', `חיפוש גימטריא: "${q}"`, `${cLabel} • השוואת ערך גימטרי`],
-                'search_rashei': ['rashei_tevot', `חיפוש ראשי תיבות: "${q}"`, `${cLabel} • ראשי תיבות בפסוקים`],
-                'search_sofei': ['sofei_tevot', `חיפוש סופי תיבות: "${q}"`, `${cLabel} • סופי תיבות בפסוקים`],
-                'search_reverse': ['reverse', `היפוך אותיות: "${q}"`, `${cLabel} • מילים הפוכות ופלינדרום`],
-                'search_els': ['els', `דילוגי אותיות: "${q}"`, `${cLabel} • מרווחי אותיות במילה`],
-                'search_els_verse': ['els_verse', `דילוגי אותיות בפסוק: "${q}"`, `${cLabel} • דילוגים חוצי מילים`]
+                'search_text': ['text_broad', `חיפוש "${displayQ}" במאגר התורני`, `${cLabel} • חיפוש חופשי`],
+                'search_exact': ['text_exact', `חיפוש "${displayQ}" במאגר התורני`, `${cLabel} • מילה מדויקת`],
+                'search_fuzzy': ['text_fuzzy', `חיפוש "${displayQ}" במאגר התורני`, `${cLabel} • כתיב מלא וחסר`],
+                'search_gematria': ['gematria', `חיפוש גימטריא: "${displayQ}"`, `${cLabel} • השוואת ערך גימטרי`],
+                'search_rashei': ['acronym', `חיפוש ראשי תיבות: "${displayQ}"`, `${cLabel} • ראשי תיבות בפסוקים`],
+                'search_sofei': ['sofei_tevot', `חיפוש סופי תיבות: "${displayQ}"`, `${cLabel} • סופי תיבות בפסוקים`],
+                'search_reverse': ['reverse', `היפוך אותיות: "${displayQ}"`, `${cLabel} • מילים הפוכות ופלינדרום`],
+                'search_els': ['els', `דילוגי אותיות: "${displayQ}"`, `${cLabel} • מרווחי אותיות במילה`],
+                'search_els_verse': ['els_verse', `דילוגי אותיות בפסוק: "${displayQ}"`, `${cLabel} • דילוגים חוצי מילים`]
             }[kind];
             title = typeMap[1];
             subtitle = typeMap[2];
-            url = `/advanced-search/?q=${encodeURIComponent(q)}&type=${typeMap[0]}&book=${corpus}`;
+            url = `/advanced-search/?q=${encodeURIComponent(rawQ)}&type=${typeMap[0]}&book=${corpus}`;
         } else if (kind === 'acronyms_dict') {
             qCol.style.display = 'block';
             cCol.style.display = 'none';
-            title = q ? `פענוח ראשי תיבות "${q}" במילון` : 'מילון ראשי תיבות תורני';
+            title = rawQ ? `פענוח ראשי תיבות "${rawQ}" במילון` : 'מילון ראשי תיבות תורני';
             subtitle = 'חיפוש ופענוח ראשי תיבות וקיצורים בספרות התורנית';
-            url = `/advanced-search/?tab=acronyms&q=${encodeURIComponent(q)}`;
+            url = rawQ ? `/advanced-search/?tab=acronyms&q=${encodeURIComponent(rawQ)}` : '/advanced-search/?tab=acronyms';
         } else if (kind === 'aramaic_translator') {
             qCol.style.display = 'block';
             cCol.style.display = 'none';
-            title = 'מתרגם ארמי ⇄ עברי לש"ס';
+            title = rawQ ? `תרגום "${rawQ}" במתרגם הארמי` : 'מתרגם ארמי ⇄ עברי לש"ס';
             subtitle = 'פענוח ותרגום מונחי התלמוד הבבלי, הירושלמי והזוהר';
-            url = q ? `/aramaic-translator/?q=${encodeURIComponent(q)}` : '/aramaic-translator/';
+            url = rawQ ? `/aramaic-translator/?q=${encodeURIComponent(rawQ)}` : '/aramaic-translator/';
         } else if (kind === 'calc_length') {
             qCol.style.display = 'none';
             cCol.style.display = 'none';
@@ -830,30 +995,37 @@
             subtitle = 'לחץ לפתיחה';
             url = '/advanced-search/';
         }
+
         document.getElementById('auditTbFinalTitle').value = title;
         document.getElementById('auditTbFinalSubtitle').value = subtitle;
         document.getElementById('auditTbFinalUrl').value = url;
+        syncLiveToolPreviewFromInputs();
     }
 
     async function submitManualAdd() {
         let chosenValue = '';
         if (currentModalType === 'tools') {
             const kind = document.getElementById('auditTbKind').value;
+            const rawQ = (document.getElementById('auditTbQuery').value || '').trim();
             const fTitle = document.getElementById('auditTbFinalTitle').value.trim();
             const fSub = document.getElementById('auditTbFinalSubtitle').value.trim();
             const fUrl = document.getElementById('auditTbFinalUrl').value.trim();
-            const iconMap = {
-                'aramaic_translator': 'bi-translate',
-                'acronyms_dict': 'bi-alphabet-uppercase',
-                'calc_length': 'bi-rulers',
-                'calc_volume': 'bi-cup-straw',
-                'calc_weight': 'bi-coin'
-            };
+
+            if (kind.startsWith('search_') && !rawQ && fUrl.includes('?q=&')) {
+                alert('נא להזין מילה או ביטוי לחיפוש בשדה "מילה / ביטוי לחיפוש".');
+                document.getElementById('auditTbQuery').focus();
+                return;
+            }
+            if (!fTitle || !fUrl) {
+                alert('נא לוודא שכותרת הכפתור וכתובת הקישור מלאות.');
+                return;
+            }
+
             chosenValue = 'custom_json:' + JSON.stringify({
                 title: fTitle,
                 subtitle: fSub,
                 url: fUrl,
-                icon: iconMap[kind] || 'bi-search'
+                icon: getToolIconClass(kind)
             });
         } else {
             const mapId = {
@@ -884,14 +1056,21 @@
         }
     }
 
-    function filterRows(statusFilter) {
+    function applyAuditTableFilters() {
+        const q = (document.getElementById('auditTableQuickSearch')?.value || '').trim().toLowerCase();
         document.querySelectorAll('#editorialTable tbody tr').forEach(tr => {
-            if (statusFilter === 'all' || tr.dataset.status === statusFilter) {
-                tr.style.display = '';
-            } else {
-                tr.style.display = 'none';
-            }
+            const statusOk = (activeStatusFilter === 'all' || tr.dataset.status === activeStatusFilter);
+            const searchOk = (!q || (tr.dataset.search || '').includes(q));
+            tr.style.display = (statusOk && searchOk) ? '' : 'none';
         });
+    }
+
+    function filterRows(statusFilter) {
+        activeStatusFilter = statusFilter;
+        document.querySelectorAll('#statusFilterGroup .filter-pill-btn').forEach(btn => {
+            btn.classList.toggle('active-filter', btn.getAttribute('data-filter') === statusFilter);
+        });
+        applyAuditTableFilters();
     }
 
     document.addEventListener('DOMContentLoaded', function() {

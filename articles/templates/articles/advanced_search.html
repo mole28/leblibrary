@@ -57,6 +57,12 @@
     .action-card-sub { font-size: 0.75rem; color: #64748b; margin-top: 2px; line-height: 1.2; }
     .action-luxury-card.active .action-card-sub { color: #e2e8f0; }
 
+    .a11y-search-card-focusable:focus-visible {
+        outline: 3px solid #d4af37 !important;
+        outline-offset: 2px !important;
+        box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.35) !important;
+    }
+
     .search-input-luxury-wrap { position: relative; display: flex; align-items: center; }
     .clear-search-btn { position: absolute; left: 12px; background: #eee5ce; border: none; color: #5c4b23; width: 26px; height: 26px; border-radius: 50%; font-size: 0.85rem; font-weight: bold; cursor: pointer; display: none; align-items: center; justify-content: center; transition: all 0.15s ease; z-index: 3; }
     .clear-search-btn:hover { background: #d4af37; color: #fff; }
@@ -165,40 +171,40 @@
                 <form id="advancedSearchForm">
                     <div class="mb-3">
                         <label class="form-label fw-bold mb-2" style="color: #334155; font-size: 0.95rem;">1. בחר מאגרי חיפוש (ניתן לשלב מספר מאגרים):</label>
-                        <div class="corpus-luxury-grid" id="corpusGrid">
-                            <div class="corpus-luxury-btn full-width" id="corpusAllBtn">
+                        <div class="corpus-luxury-grid" id="corpusGrid" role="group" aria-label="בחר מאגרי חיפוש">
+                            <div class="corpus-luxury-btn full-width a11y-search-card-focusable" id="corpusAllBtn" tabindex="0" role="checkbox" aria-checked="false" aria-label="כל המאגרים יחד">
                                 <span class="corpus-check-indicator">✓</span>
                                 <span>כל המאגרים יחד</span>
                             </div>
-                            <div class="corpus-luxury-btn active" data-corpus="torah">
+                            <div class="corpus-luxury-btn active a11y-search-card-focusable" data-corpus="torah" tabindex="0" role="checkbox" aria-checked="true" aria-label="תורה">
                                 <span>📜 תורה</span>
                                 <span class="corpus-check-indicator">✓</span>
                             </div>
-                            <div class="corpus-luxury-btn" data-corpus="tanakh">
+                            <div class="corpus-luxury-btn a11y-search-card-focusable" data-corpus="tanakh" tabindex="0" role="checkbox" aria-checked="false" aria-label="תנ״ך שלם">
                                 <span>📖 תנ"ך שלם</span>
                                 <span class="corpus-check-indicator">✓</span>
                             </div>
-                            <div class="corpus-luxury-btn" data-corpus="mishnah">
+                            <div class="corpus-luxury-btn a11y-search-card-focusable" data-corpus="mishnah" tabindex="0" role="checkbox" aria-checked="false" aria-label="משנה">
                                 <span>⚖️ משנה</span>
                                 <span class="corpus-check-indicator">✓</span>
                             </div>
-                            <div class="corpus-luxury-btn" data-corpus="tosefta">
+                            <div class="corpus-luxury-btn a11y-search-card-focusable" data-corpus="tosefta" tabindex="0" role="checkbox" aria-checked="false" aria-label="תוספתא">
                                 <span>🏺 תוספתא</span>
                                 <span class="corpus-check-indicator">✓</span>
                             </div>
-                            <div class="corpus-luxury-btn" data-corpus="talmud">
+                            <div class="corpus-luxury-btn a11y-search-card-focusable" data-corpus="talmud" tabindex="0" role="checkbox" aria-checked="false" aria-label="תלמוד בבלי">
                                 <span>🏛️ תלמוד בבלי</span>
                                 <span class="corpus-check-indicator">✓</span>
                             </div>
-                            <div class="corpus-luxury-btn" data-corpus="yerushalmi">
+                            <div class="corpus-luxury-btn a11y-search-card-focusable" data-corpus="yerushalmi" tabindex="0" role="checkbox" aria-checked="false" aria-label="תלמוד ירושלמי">
                                 <span>🕍 תלמוד ירושלמי</span>
                                 <span class="corpus-check-indicator">✓</span>
                             </div>
-                            <div class="corpus-luxury-btn" data-corpus="rambam">
+                            <div class="corpus-luxury-btn a11y-search-card-focusable" data-corpus="rambam" tabindex="0" role="checkbox" aria-checked="false" aria-label="רמב״ם (משנה תורה)">
                                 <span>👑 רמב"ם (משנה תורה)</span>
                                 <span class="corpus-check-indicator">✓</span>
                             </div>
-                            <div class="corpus-luxury-btn" data-corpus="shulchan_aruch">
+                            <div class="corpus-luxury-btn a11y-search-card-focusable" data-corpus="shulchan_aruch" tabindex="0" role="checkbox" aria-checked="false" aria-label="שולחן ערוך">
                                 <span>📚 שולחן ערוך</span>
                                 <span class="corpus-check-indicator">✓</span>
                             </div>
@@ -217,40 +223,40 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold mb-2" style="color: #334155; font-size: 0.95rem;">2. בחר סוג פעולה:</label>
                         <input type="hidden" id="searchAction" value="text_exact">
-                        <div class="action-luxury-grid" id="actionGrid">
-                            <div class="action-luxury-card active" data-action="text_exact" data-placeholder="הזן מילה או ביטוי מדויק (למשל: משה)...">
+                        <div class="action-luxury-grid" id="actionGrid" role="radiogroup" aria-label="בחר סוג פעולה">
+                            <div class="action-luxury-card active a11y-search-card-focusable" data-action="text_exact" tabindex="0" role="radio" aria-checked="true" data-placeholder="הזן מילה או ביטוי מדויק (למשל: משה)...">
                                 <div class="action-card-header"><span>🎯</span><span>מילה מדויקת</span></div>
                                 <div class="action-card-sub">המילה השלמה בלבד</div>
                             </div>
-                            <div class="action-luxury-card" data-action="text_broad" data-placeholder="הזן אותיות לחיפוש רחב (למשל: משה -> חמשה)...">
+                            <div class="action-luxury-card a11y-search-card-focusable" data-action="text_broad" tabindex="0" role="radio" aria-checked="false" data-placeholder="הזן אותיות לחיפוש רחב (למשל: משה -> חמשה)...">
                                 <div class="action-card-header"><span>🔍</span><span>חיפוש חופשי</span></div>
                                 <div class="action-card-sub">כולל חלק ממילה</div>
                             </div>
-                            <div class="action-luxury-card" data-action="text_fuzzy" data-placeholder="הזן מילה לחיפוש כתיב מלא/חסר ותחיליות (למשל: הנחלתי -> והינחלתי)...">
+                            <div class="action-luxury-card a11y-search-card-focusable" data-action="text_fuzzy" tabindex="0" role="radio" aria-checked="false" data-placeholder="הזן מילה לחיפוש כתיב מלא/חסר ותחיליות (למשל: הנחלתי -> והינחלתי)...">
                                 <div class="action-card-header"><span>📝</span><span>כתיב מלא / חסר</span></div>
                                 <div class="action-card-sub">כולל ו' החיבור ואותיות שימוש</div>
                             </div>
-                            <div class="action-luxury-card" data-action="gematria" data-placeholder="הזן מילה, משפט או מספר לחישוב גימטריה...">
+                            <div class="action-luxury-card a11y-search-card-focusable" data-action="gematria" tabindex="0" role="radio" aria-checked="false" data-placeholder="הזן מילה, משפט או מספר לחישוב גימטריה...">
                                 <div class="action-card-header"><span>🔢</span><span>גימטריה</span></div>
                                 <div class="action-card-sub">מילים או ערך מספרי</div>
                             </div>
-                            <div class="action-luxury-card" data-action="acronym" data-placeholder="הזן ראשי תיבות ברצף (למשל: בבא)...">
+                            <div class="action-luxury-card a11y-search-card-focusable" data-action="acronym" tabindex="0" role="radio" aria-checked="false" data-placeholder="הזן ראשי תיבות ברצף (למשל: בבא)...">
                                 <div class="action-card-header"><span>🔠</span><span>ראשי תיבות</span></div>
                                 <div class="action-card-sub">אותיות פותחות (ר"ת)</div>
                             </div>
-                            <div class="action-luxury-card" data-action="sofei_tevot" data-placeholder="הזן סופי תיבות ברצף (למשל: תא -> בראשית ברא)...">
+                            <div class="action-luxury-card a11y-search-card-focusable" data-action="sofei_tevot" tabindex="0" role="radio" aria-checked="false" data-placeholder="הזן סופי תיבות ברצף (למשל: תא -> בראשית ברא)...">
                                 <div class="action-card-header"><span>🔡</span><span>סופי תיבות</span></div>
                                 <div class="action-card-sub">אותיות חותמות (ס"ת)</div>
                             </div>
-                            <div class="action-luxury-card" data-action="reverse" data-placeholder="הזן מילה להיפוך אותיות (למשל: ארב -> ברא)...">
+                            <div class="action-luxury-card a11y-search-card-focusable" data-action="reverse" tabindex="0" role="radio" aria-checked="false" data-placeholder="הזן מילה להיפוך אותיות (למשל: ארב -> ברא)...">
                                 <div class="action-card-header"><span>🔄</span><span>מילים הפוכות</span></div>
                                 <div class="action-card-sub">היפוך / פלינדרום</div>
                             </div>
-                            <div class="action-luxury-card" data-action="els" data-placeholder="הזן מילה לדילוגים במילה בודדת (למשל: משה)...">
+                            <div class="action-luxury-card a11y-search-card-focusable" data-action="els" tabindex="0" role="radio" aria-checked="false" data-placeholder="הזן מילה לדילוגים במילה בודדת (למשל: משה)...">
                                 <div class="action-card-header"><span>⚡</span><span>דילוגים במילה</span></div>
                                 <div class="action-card-sub">מרווח אותיות במילה</div>
                             </div>
-                            <div class="action-luxury-card" data-action="els_verse" data-placeholder="הזן אותיות לדילוגים לאורך הפסוק (למשל: משה)...">
+                            <div class="action-luxury-card a11y-search-card-focusable" data-action="els_verse" tabindex="0" role="radio" aria-checked="false" data-placeholder="הזן אותיות לדילוגים לאורך הפסוק (למשל: משה)...">
                                 <div class="action-card-header"><span>📜</span><span>דילוגים בפסוק</span></div>
                                 <div class="action-card-sub">דילוג חוצה מילים</div>
                             </div>
@@ -360,13 +366,13 @@
                         <i class="bi bi-journal-richtext ms-2" style="color: #d4af37;"></i>תוצאות הסריקה במאגר
                     </h4>
                     <div id="exportToolbar" style="display: none; gap: 8px; flex-wrap: wrap; align-items: center;">
-                        <button type="button" class="export-toolbar-btn" onclick="copyAllResultsToClipboard()">
+                        <button type="button" id="copyAllResultsBtn" class="export-toolbar-btn" onclick="copyAllResultsToClipboard()">
                             <i class="bi bi-clipboard-check"></i> העתק הכל
                         </button>
                         <button type="button" class="share-luxury-btn" onclick="shareSearchResults()">
                             <i class="bi bi-share-fill"></i> שתף
                         </button>
-                        <button type="button" class="result-action-btn" onclick="downloadResultsAsText()">
+                        <button type="button" id="downloadTxtResultsBtn" class="result-action-btn" onclick="downloadResultsAsText()">
                             <i class="bi bi-download"></i> הורד כקובץ TXT
                         </button>
                         <button type="button" class="clear-screen-luxury-btn" onclick="clearResultsScreen()" title="נקה את התוצאות והחזר את המסך למצבו ההתחלתי">
@@ -478,7 +484,7 @@
             </div>
 
             <div class="col-md-6 col-lg-4">
-                <div class="compact-tool-card">
+                <div class="compact-tool-card" id="bottomAcronymsCard">
                     <div>
                         <div class="d-flex align-items-center mb-2 pb-2" style="border-bottom: 1.5px solid #d4af37;">
                             <i class="bi bi-journal-text ms-2" style="font-size: 1.2rem; color: #d4af37;"></i>
@@ -611,6 +617,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentPage = 1;
     let currentSkipFilter = '';
     let lastFetchedResults = [];
+    let lastSearchApiUrl = '';
+    let lastSearchIsQuickBrowse = false;
     let lastSearchMeta = { query: '', actionTitle: '', total: 0 };
     let preparedSharePayload = { title: '', text: '', url: window.location.href };
     const commentaryMemoryCache = {};
@@ -953,6 +961,8 @@ document.addEventListener('DOMContentLoaded', function() {
         placeholder.style.display = 'block';
         panelTitle.innerHTML = `<i class="bi bi-journal-richtext ms-2" style="color: #d4af37;"></i>תוצאות הסריקה במאגר`;
         lastFetchedResults = [];
+        lastSearchApiUrl = '';
+        lastSearchIsQuickBrowse = false;
     };
 
     const ALL_CORPORA_KEYS = ['torah', 'tanakh', 'mishnah', 'tosefta', 'talmud', 'yerushalmi', 'rambam', 'shulchan_aruch'];
@@ -970,6 +980,50 @@ document.addEventListener('DOMContentLoaded', function() {
     const elsPreselectSkip = document.getElementById('elsPreselectSkip');
     const smartHelperBox = document.getElementById('smartHelperBox');
     const elsSkipsBar = document.getElementById('elsSkipsBar');
+
+    function normalizeActionType(rawType, rawExact) {
+        const t = String(rawType || '').trim().toLowerCase();
+        const ex = String(rawExact || '').trim().toLowerCase();
+        if (!t) {
+            return ex === 'false' ? 'text_broad' : 'text_exact';
+        }
+        if (t === 'text') {
+            return ex === 'true' ? 'text_exact' : 'text_broad';
+        }
+        const map = {
+            'text_exact': 'text_exact',
+            'exact': 'text_exact',
+            'text_broad': 'text_broad',
+            'broad': 'text_broad',
+            'text_fuzzy': 'text_fuzzy',
+            'fuzzy': 'text_fuzzy',
+            'gematria': 'gematria',
+            'acronym': 'acronym',
+            'rashei_tevot': 'acronym',
+            'sofei_tevot': 'sofei_tevot',
+            'suffix': 'sofei_tevot',
+            'reverse': 'reverse',
+            'palindrome': 'reverse',
+            'els': 'els',
+            'skip': 'els',
+            'dilugim': 'els',
+            'els_verse': 'els_verse'
+        };
+        return map[t] || 'text_exact';
+    }
+
+    function setActiveActionCard(actionKey) {
+        const matchedCard = actionCards.find(c => c.getAttribute('data-action') === actionKey) || actionCards[0];
+        if (!matchedCard) return;
+        actionCards.forEach(c => {
+            const isActive = (c === matchedCard);
+            c.classList.toggle('active', isActive);
+            c.setAttribute('aria-checked', isActive ? 'true' : 'false');
+        });
+        const act = matchedCard.getAttribute('data-action');
+        searchActionInput.value = act;
+        searchQueryInput.placeholder = matchedCard.getAttribute('data-placeholder') || '';
+    }
 
     function updateExcludeBooksList() {
         const prevSelected = new Set(Array.from(excludeSelect.selectedOptions).map(o => o.value));
@@ -1003,6 +1057,23 @@ document.addEventListener('DOMContentLoaded', function() {
         clearExcludesBtn.style.display = excludeSelect.selectedOptions.length > 0 ? 'inline-block' : 'none';
     }
 
+    function restoreExcludeBooksInSelect(rawExcludeParam) {
+        const raw = String(rawExcludeParam || '').trim();
+        if (!raw) return;
+        const rawTokens = raw.split(',').map(s => s.trim()).filter(Boolean);
+        const plainNames = rawTokens.map(s => s.includes(':') ? s.split(':').slice(1).join(':').trim() : s);
+
+        Array.from(excludeSelect.options).forEach(opt => {
+            const val = (opt.value || '').trim();
+            const txt = (opt.text || '').trim();
+            const valPlain = val.includes(':') ? val.split(':').slice(1).join(':').trim() : val;
+            if (rawTokens.includes(val) || plainNames.includes(valPlain) || plainNames.includes(txt)) {
+                opt.selected = true;
+            }
+        });
+        clearExcludesBtn.style.display = excludeSelect.selectedOptions.length > 0 ? 'inline-block' : 'none';
+    }
+
     excludeSelect.addEventListener('change', () => {
         clearExcludesBtn.style.display = excludeSelect.selectedOptions.length > 0 ? 'inline-block' : 'none';
     });
@@ -1016,11 +1087,30 @@ document.addEventListener('DOMContentLoaded', function() {
     function syncCorpusButtonsUI() {
         const isAll = selectedCorpora.size === ALL_CORPORA_KEYS.length;
         corpusAllBtn.classList.toggle('active', isAll);
+        corpusAllBtn.setAttribute('aria-checked', isAll ? 'true' : 'false');
         corpusBtns.forEach(btn => {
             const key = btn.getAttribute('data-corpus');
-            btn.classList.toggle('active', selectedCorpora.has(key));
+            const active = selectedCorpora.has(key);
+            btn.classList.toggle('active', active);
+            btn.setAttribute('aria-checked', active ? 'true' : 'false');
         });
         updateExcludeBooksList();
+    }
+
+    function initSearchCardsKeyboardA11y() {
+        const allCards = [corpusAllBtn, ...corpusBtns, ...actionCards];
+        allCards.forEach(card => {
+            if (!card || card.__a11yKeyBound) return;
+            card.__a11yKeyBound = true;
+            card.classList.add('a11y-search-card-focusable');
+            card.setAttribute('tabindex', '0');
+            card.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    card.click();
+                }
+            });
+        });
     }
 
     corpusBtns.forEach(btn => {
@@ -1048,21 +1138,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (searchQueryInput.value.trim()) performSearch(1);
     });
 
-    syncCorpusButtonsUI();
-
     actionCards.forEach(card => {
         card.addEventListener('click', () => {
-            actionCards.forEach(c => c.classList.remove('active'));
-            card.classList.add('active');
             const act = card.getAttribute('data-action');
-            searchActionInput.value = act;
-            searchQueryInput.placeholder = card.getAttribute('data-placeholder') || '';
+            setActiveActionCard(act);
             currentSkipFilter = '';
             elsPreselectSkip.value = '';
             updateHelperBox();
             if (searchQueryInput.value.trim()) performSearch(1);
         });
     });
+
+    initSearchCardsKeyboardA11y();
+    syncCorpusButtonsUI();
 
     elsPreselectSkip.addEventListener('change', () => {
         currentSkipFilter = elsPreselectSkip.value;
@@ -1737,8 +1825,35 @@ document.addEventListener('DOMContentLoaded', function() {
         openFullChapterModal(res.book, res.chapter, res.verse, res.verse_label || 'פסוק');
     };
 
+    function buildShareableCurrentUrl() {
+        const query = searchQueryInput.value.trim();
+        if (!query) return window.location.href;
+        const mode = searchActionInput.value;
+        const isAll = selectedCorpora.size === ALL_CORPORA_KEYS.length;
+        const corpusParam = isAll ? 'all' : Array.from(selectedCorpora).join(',');
+        const selectedExcludes = Array.from(excludeSelect.selectedOptions).map(o => o.value).join(',');
+
+        const params = new URLSearchParams();
+        params.set('q', query);
+        params.set('type', mode);
+        params.set('book', corpusParam);
+        if (selectedExcludes) params.set('exclude_books', selectedExcludes);
+        if ((mode === 'els' || mode === 'els_verse') && currentSkipFilter !== '') {
+            params.set('skip', currentSkipFilter);
+        }
+        return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+    }
+
+    function syncBrowserUrlFromState() {
+        const fullUrl = buildShareableCurrentUrl();
+        if (fullUrl && window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', fullUrl);
+        }
+    }
+
     function performSearch(pageNum) {
         currentPage = pageNum || 1;
+        lastSearchIsQuickBrowse = false;
         const placeholder = document.getElementById('resultsPlaceholder');
         const resultsArea = document.getElementById('resultsArea');
         const exportToolbar = document.getElementById('exportToolbar');
@@ -1748,6 +1863,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const query = searchQueryInput.value.trim();
         if (!query) return;
 
+        syncBrowserUrlFromState();
         panelTitle.innerHTML = `<i class="bi bi-journal-richtext ms-2" style="color: #d4af37;"></i>תוצאות הסריקה במאגר`;
 
         const isAll = selectedCorpora.size === ALL_CORPORA_KEYS.length;
@@ -1781,6 +1897,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if ((mode === 'els' || mode === 'els_verse') && currentSkipFilter !== '') {
             url += `&skip=${encodeURIComponent(currentSkipFilter)}`;
         }
+        lastSearchApiUrl = url;
 
         fetch(url)
             .then(resp => resp.json())
@@ -1840,7 +1957,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     const safeBook = escapeJsAndHtml(res.book);
                     const safeChapter = escapeJsAndHtml(res.chapter);
                     const safeRawVerse = escapeJsAndHtml(res.raw_verse || res.verse);
-                    const commLabel = getCommentatorLabelForBook(res.book, res.chapter);
                     const drawerId = `commDrawer_res_${idx}`;
 
                     const commBtnHtml = buildCommentaryButtonsHtml(res.book, res.chapter, safeBook, safeChapter, safeRawVerse, drawerId);
@@ -1907,6 +2023,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.openQuickSourceReader = function(explicitBook, explicitChapter, corpusHint) {
         if (!explicitBook) return;
+        lastSearchIsQuickBrowse = true;
+        lastSearchApiUrl = '';
         const placeholder = document.getElementById('resultsPlaceholder');
         const resultsArea = document.getElementById('resultsArea');
         const exportToolbar = document.getElementById('exportToolbar');
@@ -1939,7 +2057,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const chDisplay = formatChapterTitle(chName, bName);
                 const safeBook = escapeJsAndHtml(bName);
                 const safeChapter = escapeJsAndHtml(chName);
-                const commLabel = getCommentatorLabelForBook(bName, chName);
 
                 const chapterSelectEl = document.getElementById('browseChapterSelect');
                 if (chapterSelectEl && activeBrowseBook === bName) {
@@ -2033,6 +2150,17 @@ document.addEventListener('DOMContentLoaded', function() {
         return (tmp.textContent || tmp.innerText || '').replace(/\s+/g, ' ').trim();
     }
 
+    function cleanCopiedTorahText(text) {
+        if (typeof text !== 'string') return '';
+        return text
+            .replace(/(?:💬\s*)?פירוש\s+(?:רש["״]י|רבינו עובדיה מברטנורא|ברטנורא|מגיד משנה|כסף משנה|פני משה|באר היטב)\s*/g, '')
+            .replace(/(?:✨\s*)?ניתוח\s+AI(?:\s+של\s+הנתונים)?\s*/g, '')
+            .replace(/הצג\s+פרק\s+מלא\s*/g, '')
+            .replace(/העתק\s+פרק\s+מלא\s*/g, '')
+            .replace(/[ \t]{2,}/g, ' ')
+            .trim();
+    }
+
     function showToast(msg) {
         const toast = document.getElementById('copyToast');
         document.getElementById('copyToastText').textContent = msg;
@@ -2088,7 +2216,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const verseLabel = res.verse_label || 'פסוק';
         const hebVerse = toHebrewLetters(res.verse);
         const cleanTxt = stripHtmlTags(res.text);
-        const shareUrl = `${window.location.origin}${window.location.pathname}?q=${encodeURIComponent(lastSearchMeta.query)}`;
+        const shareUrl = buildShareableCurrentUrl();
         triggerUniversalShare(
             `${res.book} | ${chDisplay} | ${verseLabel} ${hebVerse}`,
             `"${cleanTxt}"`,
@@ -2096,13 +2224,39 @@ document.addEventListener('DOMContentLoaded', function() {
         );
     };
 
-    window.copyAllResultsToClipboard = function() {
-        if (!lastFetchedResults.length) return;
+    async function fetchAllResultsForExport() {
+        if (!lastFetchedResults.length) return [];
+        if (lastSearchIsQuickBrowse || lastSearchMeta.total <= lastFetchedResults.length || !lastSearchApiUrl) {
+            return lastFetchedResults;
+        }
+        try {
+            const u = new URL(lastSearchApiUrl, window.location.origin);
+            u.searchParams.set('page', '1');
+            u.searchParams.set('per_page', '2500');
+            const resp = await fetch(u.pathname + u.search);
+            const fullData = await resp.json();
+            if (fullData && Array.isArray(fullData.results) && fullData.results.length > 0) {
+                return fullData.results.map(r => ({
+                    ...r,
+                    raw_verse: r.raw_verse || r.verse,
+                    verse: toHebrewLetters(r.verse)
+                }));
+            }
+        } catch (e) {}
+        return lastFetchedResults;
+    }
+
+    function formatExportLines(resultsList) {
+        const total = lastSearchMeta.total || resultsList.length;
+        const scopeText = (resultsList.length === total)
+            ? `נמצאו והועתקו כל ${total} התוצאות`
+            : `נמצאו ${total} תוצאות (מיוצאות ${resultsList.length} תוצאות)`;
         const lines = [];
-        lines.push(`מתוך מאגר החיפוש התורני - ספריית לייבוביץ`);
-        lines.push(`חיפוש: "${lastSearchMeta.query}" (${lastSearchMeta.actionTitle}) | נמצאו ${lastSearchMeta.total} תוצאות:`);
-        lines.push(`--------------------------------------------------`);
-        lastFetchedResults.forEach((res, i) => {
+        lines.push(`מתוך מאגר החיפוש התורני - ספריית לייבוביץ (https://leblibrary.co.il)`);
+        lines.push(`חיפוש: "${lastSearchMeta.query}" (${lastSearchMeta.actionTitle}) | ${scopeText}:`);
+        lines.push(`קישור: ${buildShareableCurrentUrl()}`);
+        lines.push(`==================================================\n`);
+        resultsList.forEach((res, i) => {
             const chDisplay = formatChapterTitle(res.chapter, res.book);
             const verseLabel = res.verse_label || 'פסוק';
             const hebVerse = toHebrewLetters(res.verse);
@@ -2111,9 +2265,28 @@ document.addEventListener('DOMContentLoaded', function() {
             lines.push(`${i + 1}. ${res.book}, ${chDisplay}, ${verseLabel} ${hebVerse}${note}:`);
             lines.push(`"${cleanTxt}"\n`);
         });
-        navigator.clipboard.writeText(lines.join('\n')).then(() => {
-            showToast(`${lastFetchedResults.length} תוצאות הועתקו במסודר!`);
-        });
+        return lines.join('\n');
+    }
+
+    window.copyAllResultsToClipboard = async function() {
+        if (!lastFetchedResults.length) return;
+        const btn = document.getElementById('copyAllResultsBtn');
+        const origHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm ms-1"></span>מכין הכל...';
+        }
+        try {
+            const allRes = await fetchAllResultsForExport();
+            const textOut = formatExportLines(allRes);
+            await navigator.clipboard.writeText(textOut);
+            showToast(`כל ${allRes.length} התוצאות הועתקו במסודר!`);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+            }
+        }
     };
 
     window.shareSearchResults = function() {
@@ -2126,7 +2299,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const cleanTxt = stripHtmlTags(res.text);
             previewLines.push(`${i + 1}. ${res.book} (${chDisplay}, ${verseLabel} ${hebVerse}): "${cleanTxt}"`);
         });
-        const shareUrl = `${window.location.origin}${window.location.pathname}?q=${encodeURIComponent(lastSearchMeta.query)}`;
+        const shareUrl = buildShareableCurrentUrl();
         triggerUniversalShare(
             `תוצאות חיפוש במאגר התורני עבור "${lastSearchMeta.query}" (${lastSearchMeta.total} תוצאות)`,
             previewLines.join('\n\n'),
@@ -2134,25 +2307,33 @@ document.addEventListener('DOMContentLoaded', function() {
         );
     };
 
-    window.downloadResultsAsText = function() {
+    window.downloadResultsAsText = async function() {
         if (!lastFetchedResults.length) return;
-        const lines = [];
-        lines.push(`מאגר החיפוש התורני - ספריית לייבוביץ (https://leblibrary.co.il)`);
-        lines.push(`חיפוש: "${lastSearchMeta.query}" (${lastSearchMeta.actionTitle})`);
-        lines.push(`==================================================\n`);
-        lastFetchedResults.forEach((res, i) => {
-            const chDisplay = formatChapterTitle(res.chapter, res.book);
-            const verseLabel = res.verse_label || 'פסוק';
-            const hebVerse = toHebrewLetters(res.verse);
-            const cleanTxt = stripHtmlTags(res.text);
-            lines.push(`${i + 1}. ${res.book} | ${chDisplay} | ${verseLabel} ${hebVerse} (${res.match_type || ''}):`);
-            lines.push(`${cleanTxt}\n`);
-        });
-        const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `תוצאות_חיפוש_${lastSearchMeta.query}.txt`;
-        a.click();
+        const btn = document.getElementById('downloadTxtResultsBtn');
+        const origHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm ms-1"></span>מכין קובץ...';
+        }
+        try {
+            const allRes = await fetchAllResultsForExport();
+            const textOut = formatExportLines(allRes);
+            const blob = new Blob([textOut], { type: 'text/plain;charset=utf-8' });
+            const dlUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = dlUrl;
+            a.download = `תוצאות_חיפוש_${lastSearchMeta.query}_${allRes.length}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(dlUrl);
+            showToast(`קובץ TXT עם כל ${allRes.length} התוצאות הורד!`);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+            }
+        }
     };
 
     window.openFullChapterModal = function(bookName, chapterName, targetVerse, verseLabel) {
@@ -2185,7 +2366,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const safeBook = escapeJsAndHtml(bookName);
                 const safeChapter = escapeJsAndHtml(chapterName);
-                const commLabel = getCommentatorLabelForBook(bookName, chapterName);
                 const targetHeb = toHebrewLetters(targetVerse);
 
                 let html = '';
@@ -2225,7 +2405,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const rows = Array.from(document.querySelectorAll('#chapterModalBody .chapter-context-verse'));
         if (!rows.length) return;
         const lines = [title, '-----------------------------------------'];
-        rows.forEach(r => lines.push(r.innerText.replace(/\s+/g, ' ').trim()));
+        rows.forEach(r => {
+            const clone = r.cloneNode(true);
+            clone.querySelectorAll('button, .commentary-badge-trigger, .commentary-inline-drawer').forEach(el => el.remove());
+            const cleanLine = cleanCopiedTorahText((clone.textContent || '').replace(/\s+/g, ' ').trim());
+            if (cleanLine) lines.push(cleanLine);
+        });
         navigator.clipboard.writeText(lines.join('\n')).then(() => {
             showToast('הפרק המלא הועתק ללוח!');
         });
@@ -2496,21 +2681,14 @@ document.addEventListener('DOMContentLoaded', function() {
         );
     };
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const initialQ = urlParams.get('q');
-    if (initialQ && initialQ.trim()) {
-        searchQueryInput.value = initialQ.trim();
-        updateHelperBox();
-        performSearch(1);
-    }
-
     const acrInput = document.getElementById('bottomAcronymInput');
     const acrResults = document.getElementById('bottomAcronymResults');
     const acrRadios = document.querySelectorAll('input[name="bottomAcronymType"]');
     let acrTimer;
+    let runBottomAcronymSearch = null;
 
     if (acrInput && acrResults) {
-        function searchBottomAcronyms() {
+        runBottomAcronymSearch = function() {
             const q = acrInput.value.trim();
             const sType = document.querySelector('input[name="bottomAcronymType"]:checked').value;
             if (!q) {
@@ -2535,14 +2713,78 @@ document.addEventListener('DOMContentLoaded', function() {
                 .catch(() => {
                     acrResults.innerHTML = '<div style="color: #e53e3e; text-align: center; padding-top: 28px;">שגיאה בביצוע החיפוש.</div>';
                 });
-        }
+        };
 
         acrInput.addEventListener('input', () => {
             clearTimeout(acrTimer);
-            acrTimer = setTimeout(searchBottomAcronyms, 300);
+            acrTimer = setTimeout(runBottomAcronymSearch, 300);
         });
-        acrRadios.forEach(r => r.addEventListener('change', searchBottomAcronyms));
+        acrRadios.forEach(r => r.addEventListener('change', runBottomAcronymSearch));
     }
+
+    // שחזור טבעי ומלא של כל פרמטרי ה-URL (מאגרים, סוג פעולה, החרגות, דילוג ושאילתה)
+    function applyUrlStateToUiWithRetry(attemptsLeft, triggerSearchIfNeeded = true) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = (urlParams.get('tab') || '').trim().toLowerCase();
+        const initialQ = (urlParams.get('q') || '').trim();
+        const bookParam = (urlParams.get('book') || '').trim();
+        const typeParam = (urlParams.get('type') || '').trim();
+        const exactParam = (urlParams.get('exact') || '').trim();
+        const excludeParam = (urlParams.get('exclude_books') || '').trim();
+        const skipParam = (urlParams.get('skip') || '').trim();
+        const pageParam = parseInt(urlParams.get('page') || '1', 10) || 1;
+
+        if (tabParam === 'acronyms') {
+            const acrCard = document.getElementById('bottomAcronymsCard');
+            if (acrCard) {
+                setTimeout(() => acrCard.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+            }
+            if (acrInput && initialQ) {
+                acrInput.value = initialQ;
+                if (runBottomAcronymSearch) runBottomAcronymSearch();
+            }
+            return;
+        }
+
+        if (bookParam) {
+            const tokens = bookParam.split(',').map(s => s.trim()).filter(Boolean);
+            if (tokens.includes('all')) {
+                selectedCorpora = new Set(ALL_CORPORA_KEYS);
+            } else {
+                const validKeys = tokens.filter(k => ALL_CORPORA_KEYS.includes(k));
+                if (validKeys.length > 0) {
+                    selectedCorpora = new Set(validKeys);
+                }
+            }
+            syncCorpusButtonsUI();
+        }
+
+        if (excludeParam) {
+            restoreExcludeBooksInSelect(excludeParam);
+        }
+
+        if (typeParam || exactParam) {
+            const normalizedAction = normalizeActionType(typeParam, exactParam);
+            setActiveActionCard(normalizedAction);
+        }
+
+        if (skipParam !== '' && /^\d+$/.test(skipParam)) {
+            currentSkipFilter = skipParam;
+            elsPreselectSkip.value = skipParam;
+        }
+
+        if (initialQ) {
+            searchQueryInput.value = initialQ;
+            updateHelperBox();
+            if (triggerSearchIfNeeded) {
+                performSearch(pageParam);
+            }
+        } else {
+            updateHelperBox();
+        }
+    }
+
+    applyUrlStateToUiWithRetry(1, true);
 
     window.runMiniAramaicTranslate = function() {
         const q = document.getElementById('miniAramaicInput').value.trim();
