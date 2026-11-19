@@ -1,11 +1,13 @@
 /* TEAM */
-Developer & Creator: Moshe (משה)
-Site: ספריית לייבוביץ (LebLibrary)
-Location: Israel
+Creator & Author: Moshe (משה)
+Site: ספריית לייבוביץ (LebLibrary) - https://leblibrary.co.il/
+Location: Tirat Carmel, Israel
 Contact: https://leblibrary.co.il/contact/
 
 /* SITE */
-Standards: HTML5, CSS3, JavaScript, PWA, Schema.org
+Last update: 2026/11
+Language: Hebrew (RTL)
+Standards: HTML5, CSS3, JavaScript, PWA, Schema.org, Digital Asset Links
 Software: Python, Django, Bootstrap 5
-Components: Service Worker, AI Navigation Assistant, Halachic Calculators
+Components: Advanced Torah Search Engine, Aramaic Translator, Halachic Calculators, AI Navigation Assistant, Service Worker
 Target: Torah learners, researchers, and the general public

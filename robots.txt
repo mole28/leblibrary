@@ -1,6 +1,0 @@
-User-agent: *
-Disallow: /api/
-Disallow: /admin/
-Disallow: /api/
-Disallow: /cart/
-Sitemap: https://leblibrary.co.il/sitemap.xml
