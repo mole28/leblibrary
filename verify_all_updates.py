@@ -496,7 +496,7 @@ def check_templates_and_assets(rep):
 # ============================================================================
 # חלק ג': בדיקות אלגוריתם מתמטיות + Django Runtime מלא מול מסד הנתונים
 # ============================================================================
-def check_algorithm_and_django_runtime(rep):
+def check_algorithm_and_django_runtime(rep, is_offline=False):
     rep.section("חלק ג': בדיקות אלגוריתם מתמטיות + Django Runtime מלא")
 
     def _chk_math_fuzzy_engine():
@@ -571,14 +571,14 @@ def check_algorithm_and_django_runtime(rep):
         client = Client(HTTP_HOST="leblibrary.co.il")
         issues = []
 
-        # robots.txt
-        r = client.get("/robots.txt")
+        # robots.txt (secure=True כדי למנוע הפניית 301 מ-SECURE_SSL_REDIRECT)
+        r = client.get("/robots.txt", secure=True)
         r_txt = r.content.decode("utf-8", errors="replace")
         if r.status_code != 200 or "Allow: /api/ai-search/" not in r_txt or "Disallow: /connections-audit/" not in r_txt:
             issues.append(f"/robots.txt לא תקין (HTTP {r.status_code})")
 
         # manifest.json
-        m = client.get("/manifest.json")
+        m = client.get("/manifest.json", secure=True)
         if m.status_code != 200:
             issues.append(f"/manifest.json החזיר HTTP {m.status_code}")
         else:
@@ -589,12 +589,12 @@ def check_algorithm_and_django_runtime(rep):
                 issues.append("/manifest.json חסר shortcuts")
 
         # llms.txt & llms-full.txt
-        l1 = client.get("/llms.txt")
+        l1 = client.get("/llms.txt", secure=True)
         l1_txt = l1.content.decode("utf-8", errors="replace")
         if l1.status_code != 200 or "IDENTITY DISAMBIGUATION" not in l1_txt or "/index/" not in l1_txt or "יחיד/רבים" not in l1_txt:
             issues.append(f"/llms.txt חסר תוכן מעודכן (HTTP {l1.status_code})")
 
-        l2 = client.get("/llms-full.txt")
+        l2 = client.get("/llms-full.txt", secure=True)
         l2_txt = l2.content.decode("utf-8", errors="replace")
         if l2.status_code != 200 or "IDENTITY DISAMBIGUATION" not in l2_txt:
             issues.append(f"/llms-full.txt לא תקין (HTTP {l2.status_code})")
@@ -606,7 +606,7 @@ def check_algorithm_and_django_runtime(rep):
             ("/humans.txt", "Aramaic Translator"),
             ("/.well-known/assetlinks.json", "il.co.leblibrary.v2"),
         ]:
-            resp = client.get(ep)
+            resp = client.get(ep, secure=True)
             body = resp.content.decode("utf-8", errors="replace")
             if resp.status_code != 200 or expected_tok not in body:
                 issues.append(f"{ep} נכשל (HTTP {resp.status_code})")
@@ -621,9 +621,14 @@ def check_algorithm_and_django_runtime(rep):
         from articles.views import advanced_search_view
 
         rf = RequestFactory()
-        resp = advanced_search_view(
-            rf.get("/advanced-search/?q=שואלי גשמים&type=text_fuzzy_morph&book=mishnah", HTTP_HOST="leblibrary.co.il")
-        )
+        try:
+            resp = advanced_search_view(
+                rf.get("/advanced-search/?q=שואלי גשמים&type=text_fuzzy_morph&book=mishnah", HTTP_HOST="leblibrary.co.il")
+            )
+        except ValueError as exc:
+            if is_offline and "Missing staticfiles manifest entry" in str(exc):
+                return "WARN", f"סביבה מקומית בלי collectstatic עדכני ({exc}) — יאומת בשרת Ubuntu"
+            raise
         if resp.status_code != 200:
             return False, f"HTTP {resp.status_code}"
         html = resp.content.decode("utf-8")
@@ -638,7 +643,11 @@ def check_algorithm_and_django_runtime(rep):
     def _chk_django_shehecheyanu_superset():
         bootstrap_django()
         from django.test import RequestFactory
+        from articles.models import TorahText
         from articles.torah_engine import tanakh_advanced_search_api
+
+        if is_offline and not TorahText.objects.filter(book__startswith="שולחן ערוך ").exists():
+            return "WARN", "מסד הנתונים המקומי אינו מכיל שולחן ערוך — ייבדק במלואו בשרת Ubuntu"
 
         rf = RequestFactory()
         with warnings.catch_warnings(record=True) as caught:
@@ -678,7 +687,11 @@ def check_algorithm_and_django_runtime(rep):
     def _chk_django_shoali_geshamim():
         bootstrap_django()
         from django.test import RequestFactory
+        from articles.models import TorahText
         from articles.torah_engine import tanakh_advanced_search_api
+
+        if is_offline and not TorahText.objects.filter(book="ברכות").exists():
+            return "WARN", "מסד הנתונים המקומי אינו מכיל משנה/ירושלמי — ייבדק במלואו בשרת Ubuntu"
 
         rf = RequestFactory()
         r_basic = json.loads(tanakh_advanced_search_api(
@@ -706,7 +719,10 @@ def check_algorithm_and_django_runtime(rep):
     def _chk_django_bereshit_and_shema():
         bootstrap_django()
         from django.test import RequestFactory
+        from articles.models import TorahText
         from articles.torah_engine import tanakh_advanced_search_api
+
+        has_mishnah_local = TorahText.objects.filter(book="ברכות").exclude(chapter__startswith="דף").exists()
 
         rf = RequestFactory()
         b_exact = json.loads(tanakh_advanced_search_api(
@@ -723,6 +739,8 @@ def check_algorithm_and_django_runtime(rep):
         if b_exact < 1 or b_fuzzy < b_exact:
             issues.append(f"בראשית בתורה: exact={b_exact}, fuzzy={b_fuzzy}")
         if m_shema < 1:
+            if is_offline and not has_mishnah_local:
+                return "WARN", f"בראשית בתורה עבר (exact={b_exact}, fuzzy={b_fuzzy}); משנה אינה במסד המקומי — תיבדק בשרת Ubuntu"
             issues.append(f"שמע במשנה: fuzzy={m_shema}")
         return len(issues) == 0, "; ".join(issues) or f"Note: בראשית(exact={b_exact}, fuzzy={b_fuzzy}), שמע(mishnah={m_shema})"
 
@@ -888,7 +906,7 @@ def main():
     rep = Report()
     check_core_python_files(rep)
     check_templates_and_assets(rep)
-    check_algorithm_and_django_runtime(rep)
+    check_algorithm_and_django_runtime(rep, is_offline=args.offline)
     if not args.offline:
         check_live_production(rep)
 
