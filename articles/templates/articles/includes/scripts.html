@@ -345,24 +345,33 @@
             });
         }
 
-        var aiModal = document.getElementById('aiQAModal');
-        if (aiModal) {
-            aiModal.addEventListener('hide.bs.modal', function () {
-                if (document.activeElement) { document.activeElement.blur(); }
+        ['aiQAModal', 'aiGlobalNavModal', 'luxShareModal'].forEach(function(modalId) {
+            var mEl = document.getElementById(modalId);
+            if (!mEl || mEl.__focusManagerBound) return;
+            mEl.__focusManagerBound = true;
+            mEl.addEventListener('show.bs.modal', function(e) {
+                var opener = e.relatedTarget || document.activeElement;
+                if (opener && opener !== document.body && opener !== document.documentElement && !mEl.contains(opener)) {
+                    mEl.__returnFocusEl = opener;
+                }
             });
-        }
-        var navModal = document.getElementById('aiGlobalNavModal');
-        if (navModal) {
-            navModal.addEventListener('hide.bs.modal', function () {
-                if (document.activeElement) { document.activeElement.blur(); }
+            mEl.addEventListener('hide.bs.modal', function() {
+                if (document.activeElement && mEl.contains(document.activeElement)) {
+                    document.activeElement.blur();
+                }
             });
-        }
-        var shareModal = document.getElementById('luxShareModal');
-        if (shareModal) {
-            shareModal.addEventListener('hide.bs.modal', function () {
-                if (document.activeElement) { document.activeElement.blur(); }
+            mEl.addEventListener('hidden.bs.modal', function() {
+                var target = mEl.__returnFocusEl;
+                mEl.__returnFocusEl = null;
+                if (target && target.isConnected && typeof target.focus === 'function') {
+                    window.requestAnimationFrame(function() {
+                        if (target.isConnected) {
+                            target.focus();
+                        }
+                    });
+                }
             });
-        }
+        });
     });
 
     window.addEventListener('scroll', function() {
@@ -512,6 +521,14 @@
             'י"ם': 'ירושלים',
             'נר\'': 'נראה',
             'עי\'': 'עיין',
+            'ועי\'': 'ועיין',
+            'בעי\'': 'בעינן (צריך / נדרש בארמית)',
+            'ובעי\'': 'ובעינן (וצריך / ונדרש בארמית)',
+            'דבעי\'': 'דבעינן (שצריך / שנדרש בארמית)',
+            'שבעי\'': 'שבעינן (שצריך / שנדרש בארמית)',
+            'בעיי\'': 'בעינן (צריך / נדרש בארמית)',
+            'לעי\'': 'לעיל',
+            'להל\'': 'להלן',
             'שד"ח': 'שדי חמד',
             'משנ"ב': 'משנה ברורה',
             'שו"ע': 'שולחן ערוך',
@@ -547,7 +564,39 @@
             'ר"ל': 'ריש לקיש'
         };
 
-        const hebrewPrefixes = ['ו', 'ב', 'ל', 'מ', 'ש', 'ה', 'וכ', 'וש', 'מה', 'שה', 'לכש'];
+        const hebrewPrefixes = ['לכש', 'וכ', 'וש', 'מה', 'שה', 'וד', 'ו', 'ב', 'ל', 'מ', 'ש', 'ה', 'ד'];
+        const singleQuoteAllowedPrefixes = {
+            "עי'": ['ו'],
+            "נר'": ['ו', 'ש', 'ד'],
+            "בעי'": ['ו', 'ד', 'ש'],
+            "דאו'": ['ו', 'ב', 'ל', 'מ', 'ש', 'ד', 'מה', 'שה'],
+            "הל'": ['ו', 'ב', 'מ'],
+            "סנ'": ['ו', 'ב'],
+            "פס'": ['ו', 'ב'],
+            "וכו'": ['ו']
+        };
+
+        function resolveAcronymMeaning(normalizedWord) {
+            if (acronymDict[normalizedWord]) {
+                return acronymDict[normalizedWord];
+            }
+            if (normalizedWord.length <= 2) {
+                return null;
+            }
+            for (let prefix of hebrewPrefixes) {
+                if (!normalizedWord.startsWith(prefix)) continue;
+                const baseWord = normalizedWord.substring(prefix.length);
+                if (!acronymDict[baseWord]) continue;
+                if (baseWord.includes('"')) {
+                    return acronymDict[baseWord];
+                }
+                const allowed = singleQuoteAllowedPrefixes[baseWord];
+                if (allowed && allowed.includes(prefix)) {
+                    return acronymDict[baseWord];
+                }
+            }
+            return null;
+        }
 
         function walkTextNodes(node) {
             let next;
@@ -571,16 +620,7 @@
                 while ((match = regex.exec(text)) !== null) {
                     let word = match[0];
                     let normalizedWord = word.replace(/['׳`]/g, "'").replace(/["״”“]/g, '"');
-                    let meaning = acronymDict[normalizedWord];
-                    
-                    if (!meaning && normalizedWord.length > 2) {
-                        for (let prefix of hebrewPrefixes) {
-                            if (normalizedWord.startsWith(prefix) && acronymDict[normalizedWord.substring(prefix.length)]) {
-                                meaning = acronymDict[normalizedWord.substring(prefix.length)];
-                                break;
-                            }
-                        }
-                    }
+                    let meaning = resolveAcronymMeaning(normalizedWord);
 
                     if (meaning) {
                         hasMatch = true;

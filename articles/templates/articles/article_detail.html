@@ -13,7 +13,7 @@
 {% endif %}
 
 <meta property="og:title" content="{{ article.title|striptags|escape }} | ספריית לייבוביץ">
-<meta property="og:description" content="נכתב על ידי משה לייבוביץ: {{ article.content|striptags|truncatewords:30|escape }}">
+<meta property="og:description" content="נכתב על ידי משה לייבוביץ: {{ article_excerpt|escape }}">
 <meta property="og:type" content="article">
 <meta property="og:url" content="{{ request.build_absolute_uri }}">
 
@@ -61,7 +61,7 @@
     {% if article.created_at %}
     "datePublished": "{{ article.created_at|date:'Y-m-d' }}",
     {% endif %}
-    "description": "הפסיקה והגישה העיונית מתוך ספריית משה לייבוביץ: {{ article.content|striptags|truncatewords:30|escapejs }}",
+    "description": "הפסיקה והגישה העיונית מתוך ספריית משה לייבוביץ: {{ article_excerpt|escapejs }}",
     "url": "{{ request.build_absolute_uri }}",
     "publisher": {
       "@type": "Organization",
@@ -211,7 +211,6 @@
             <section class="beit-midrash-continuation mt-5 pt-3 hide-in-zen" id="bmContinuationSection" dir="rtl">
                 
                 {% if user.is_superuser %}
-                <!-- סרגל ניהול ועריכה חי למנהל בלבד (מוסתר לחלוטין מגולשים) -->
                 <div class="p-3 mb-3 rounded-3 shadow-sm" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 1.5px solid #d4af37; color: #f8fafc;">
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -280,9 +279,6 @@
                 </div>
                 {% endif %}
 
-                <!-- ========================================================================= -->
-                <!-- תיבת המשך העיון בסוגיה - עיצוב יוקרתי, פרופורציונלי ונקי לקורא -->
-                <!-- ========================================================================= -->
                 <div class="bm-lux-container p-3 p-md-4 rounded-4">
                     
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pb-3 mb-3 bm-header-divider">

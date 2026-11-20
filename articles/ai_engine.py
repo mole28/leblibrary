@@ -2,6 +2,7 @@ import json
 import urllib.request
 import re
 import os
+import hashlib
 from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
@@ -14,7 +15,7 @@ from .vector_store import search_similar_articles
 from .clusters_engine import ClusterEngine
 from .torah_engine import (
     TANAKH_NAMES, TORAH_NAMES, TORAH_CORE_CONCEPTS,
-    calculate_gematria, format_divine_name, ratelimit,
+    calculate_gematria, strip_editorial_markers, _auto_heal_parasha_gematria_in_db, format_divine_name, ratelimit,
     format_verse_hebrew, generate_word_variations,
     _resolve_torah_book_in_db, _resolve_torah_verse_obj, _IPV4_OPENER
 )
@@ -459,7 +460,9 @@ def torah_ai_insights_api(request):
     chapter = request.GET.get('chapter', '').strip()
     verse = request.GET.get('verse', '').strip()
 
-    cache_key = f"torah_ai_v10_{mode}_{book}_{chapter}_{verse}_{query}"
+    _auto_heal_parasha_gematria_in_db()
+    _raw_ai_cache_key = f"v11|{mode}|{book}|{chapter}|{verse}|{query}"
+    cache_key = "torah_ai_v11_" + hashlib.md5(_raw_ai_cache_key.encode("utf-8")).hexdigest()
     cached_resp = cache.get(cache_key)
     if cached_resp:
         return JsonResponse(cached_resp, json_dumps_params={'ensure_ascii': False})
@@ -653,14 +656,19 @@ def torah_ai_insights_api(request):
         gem_tanakh_verses, gem_word_verses = [], []
 
         if q_gem > 0:
-            for gv in TorahText.objects.filter(book__in=TANAKH_NAMES, verse_gematria=q_gem).exclude(chapter__startswith='דף').values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:2]:
+            for gv in TorahText.objects.filter(book__in=TANAKH_NAMES, verse_gematria=q_gem).exclude(chapter__startswith='דף').values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:20]:
+                gv_raw = gv['text_with_nikkud'] or gv['clean_text'] or ''
+                if calculate_gematria(gv_raw) != q_gem:
+                    continue
                 gem_tanakh_verses.append({
                     'ref': f"{gv['book']} {gv['chapter']}:{format_verse_hebrew(gv['verse'])}",
-                    'text': format_divine_name(gv['text_with_nikkud'] or gv['clean_text'])
+                    'text': format_divine_name(gv_raw)
                 })
+                if len(gem_tanakh_verses) >= 2:
+                    break
             seen_gem_words = set()
             for gw in TorahText.objects.filter(book__in=TORAH_NAMES, words_gematria__contains=f",{q_gem},").exclude(chapter__startswith='דף').values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text')[:25]:
-                raw_t = gw.get('text_with_nikkud') or gw.get('clean_text') or ''
+                raw_t = strip_editorial_markers(gw.get('text_with_nikkud') or gw.get('clean_text') or '')
                 for tok in WORD_TOKEN_RE.finditer(raw_t):
                     w_clean = NON_HEB_RE.sub('', tok.group(0))
                     if len(w_clean) >= 2 and w_clean != search_core and calculate_gematria(w_clean) == q_gem:
@@ -790,14 +798,23 @@ def torah_ai_insights_api(request):
                 return JsonResponse({'error': 'לא נמצא פסוק או מקור לניתוח.'}, status=404)
 
             v_heb_disp = format_verse_hebrew(verse_obj.verse)
-            raw_text = format_divine_name(verse_obj.text_with_nikkud or verse_obj.clean_text)
-            clean_words = [w for w in [NON_HEB_RE.sub('', m.group(0)) for m in WORD_TOKEN_RE.finditer(raw_text)] if len(w) >= 2]
-            v_gem = verse_obj.verse_gematria or calculate_gematria(verse_obj.clean_text or '')
+            src_verse_text = verse_obj.text_with_nikkud or verse_obj.clean_text or ''
+            raw_text = format_divine_name(src_verse_text)
+            calc_text = strip_editorial_markers(src_verse_text)
+            clean_words = [w for w in [NON_HEB_RE.sub('', m.group(0)) for m in WORD_TOKEN_RE.finditer(calc_text)] if len(w) >= 2]
+            v_gem = calculate_gematria(calc_text)
 
-            equal_verses = [
-                {'ref': f"{ev.book} {ev.chapter}:{format_verse_hebrew(ev.verse)}", 'text': format_divine_name(ev.text_with_nikkud or ev.clean_text)}
-                for ev in TorahText.objects.filter(book__in=TANAKH_NAMES, verse_gematria=v_gem).exclude(id=verse_obj.id).exclude(chapter__startswith='דף')[:4]
-            ]
+            equal_verses = []
+            for ev in TorahText.objects.filter(book__in=TANAKH_NAMES, verse_gematria=v_gem).exclude(id=verse_obj.id).exclude(chapter__startswith='דף')[:25]:
+                ev_src = ev.text_with_nikkud or ev.clean_text or ''
+                if calculate_gematria(ev_src) != v_gem:
+                    continue
+                equal_verses.append({
+                    'ref': f"{ev.book} {ev.chapter}:{format_verse_hebrew(ev.verse)}",
+                    'text': format_divine_name(ev_src)
+                })
+                if len(equal_verses) >= 4:
+                    break
 
             word_gem_matches, seen_words = [], set()
             for w in clean_words:
@@ -810,7 +827,7 @@ def torah_ai_insights_api(request):
                     if len(word_gem_matches) >= 6:
                         break
 
-            letters_seq = NON_HEB_RE.sub('', raw_text).translate(FINAL_TO_REGULAR)
+            letters_seq = NON_HEB_RE.sub('', calc_text).translate(FINAL_TO_REGULAR)
             els_findings, n_len = [], len(letters_seq)
             for concept in TORAH_CORE_CONCEPTS:
                 c_norm = norm_heb(concept)

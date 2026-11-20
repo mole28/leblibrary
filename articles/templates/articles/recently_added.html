@@ -22,10 +22,10 @@
                     {% endif %}
                 </div>
                 <p class="article-text text-muted" style="font-size: 1.05rem;">
-                    {{ article.content|striptags|truncatewords:25|safe }}
+                    {{ article.clean_excerpt }}
                 </p>
                 <div class="mt-auto pt-3 border-top">
-                    <a href="{% url 'articles:detail' article.pk %}" class="btn btn-outline-primary btn-sm rounded-pill px-4 fw-semibold" style="color: #2575fc; border-color: #2575fc;">כניסה למאמר</a>
+                    <a href="{% url 'articles:detail' article.slug|default:article.pk %}" class="btn btn-outline-primary btn-sm rounded-pill px-4 fw-semibold" style="color: #2575fc; border-color: #2575fc;">כניסה למאמר</a>
                 </div>
             </div>
         </div>

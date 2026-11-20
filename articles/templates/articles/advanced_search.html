@@ -2178,6 +2178,55 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => { toast.style.display = 'none'; }, 2800);
     }
 
+    function captureModalReturnFocus(modalEl, triggerEl) {
+        if (!modalEl) return null;
+        let opener = (triggerEl && triggerEl.nodeType === 1) ? triggerEl : document.activeElement;
+        if (opener && (opener === document.body || opener === document.documentElement || modalEl.contains(opener))) {
+            opener = null;
+        }
+        if (opener) {
+            modalEl.__returnFocusEl = opener;
+        }
+        return modalEl.__returnFocusEl || null;
+    }
+
+    function showAccessibleModal(modalEl, triggerEl) {
+        if (!modalEl) return;
+        const opener = captureModalReturnFocus(modalEl, triggerEl);
+        const modalObj = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modalObj.show(opener || undefined);
+    }
+
+    ['chapterContextModal', 'codeFinderModal', 'shareResultModal'].forEach(modalId => {
+        const modalEl = document.getElementById(modalId);
+        if (!modalEl || modalEl.__focusManagerBound) return;
+        modalEl.__focusManagerBound = true;
+
+        modalEl.addEventListener('show.bs.modal', function(e) {
+            if (!modalEl.__returnFocusEl) {
+                captureModalReturnFocus(modalEl, e.relatedTarget || document.activeElement);
+            }
+        });
+
+        modalEl.addEventListener('hide.bs.modal', function() {
+            if (document.activeElement && modalEl.contains(document.activeElement) && typeof document.activeElement.blur === 'function') {
+                document.activeElement.blur();
+            }
+        });
+
+        modalEl.addEventListener('hidden.bs.modal', function() {
+            const target = modalEl.__returnFocusEl;
+            modalEl.__returnFocusEl = null;
+            if (target && target.isConnected && typeof target.focus === 'function') {
+                window.requestAnimationFrame(function() {
+                    if (target.isConnected) {
+                        target.focus();
+                    }
+                });
+            }
+        });
+    });
+
     window.triggerUniversalShare = function(title, textBody, shareUrl) {
         const fullShareString = `${title}\n\n${textBody}\n\nלחיפוש וניתוח בספריית לייבוביץ:\n${shareUrl}`;
         preparedSharePayload = { title: title, text: fullShareString, url: shareUrl };
@@ -2193,8 +2242,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         document.getElementById('shareWhatsappLink').href = `https://api.whatsapp.com/send?text=${encodeURIComponent(fullShareString)}`;
         document.getElementById('shareEmailLink').href = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(fullShareString)}`;
-        const modalObj = bootstrap.Modal.getOrCreateInstance(document.getElementById('shareResultModal'));
-        modalObj.show();
+        showAccessibleModal(document.getElementById('shareResultModal'));
     };
 
     window.copyPreparedShareText = function() {
@@ -2360,8 +2408,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
 
-        const modalObj = bootstrap.Modal.getOrCreateInstance(modalEl);
-        modalObj.show();
+        showAccessibleModal(modalEl);
 
         const url = `/api/tanakh-search/?type=chapter_context&target_book=${encodeURIComponent(bookName)}&target_chapter=${encodeURIComponent(chapterName)}`;
         fetch(url)
@@ -2446,8 +2493,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
 
-        const modalObj = bootstrap.Modal.getOrCreateInstance(modalEl);
-        modalObj.show();
+        showAccessibleModal(modalEl);
 
         const url = `/api/torah-ai-insights/?mode=code_finder&book=${encodeURIComponent(bookName)}&chapter=${encodeURIComponent(chapterName)}&verse=${encodeURIComponent(verseNum)}`;
         fetch(url)
@@ -2732,7 +2778,6 @@ document.addEventListener('DOMContentLoaded', function() {
         acrRadios.forEach(r => r.addEventListener('change', runBottomAcronymSearch));
     }
 
-    // שחזור טבעי ומלא של כל פרמטרי ה-URL (מאגרים, סוג פעולה, החרגות, דילוג ושאילתה)
     function applyUrlStateToUiWithRetry(attemptsLeft, triggerSearchIfNeeded = true) {
         const urlParams = new URLSearchParams(window.location.search);
         const tabParam = (urlParams.get('tab') || '').trim().toLowerCase();

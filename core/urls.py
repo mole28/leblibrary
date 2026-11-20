@@ -16,7 +16,6 @@ sitemaps = {
     'books': BookSitemap,
 }
 
-
 def robots_txt(request):
     lines = [
         "User-agent: *",
@@ -67,7 +66,6 @@ def robots_txt(request):
     ]
     return HttpResponse("\n".join(lines), content_type="text/plain")
 
-
 def llms_full_txt(request):
     articles = Article.objects.filter(is_published=True).order_by('-created_at')[:50]
     books = Book.objects.all()
@@ -88,11 +86,10 @@ def llms_full_txt(request):
     content += "\n## מאמרים אחרונים:\n"
     for article in articles:
         content += f"### {article.title}\n"
-        clean_text = re.sub(r'<[^>]+>', '', article.content)[:300] if article.content else ""
+        clean_text = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', article.content)).strip()[:300] if article.content else ""
         content += f"{clean_text}...\n\n"
 
     return HttpResponse(content, content_type='text/plain; charset=utf-8')
-
 
 def openapi_schema(request):
     schema = {
@@ -134,7 +131,6 @@ def openapi_schema(request):
         "components": {"schemas": {}}
     }
     return JsonResponse(schema, json_dumps_params={'ensure_ascii': False, 'indent': 2})
-
 
 def manifest_json(request):
     manifest = {
@@ -190,7 +186,6 @@ def manifest_json(request):
         "android_package_name": "il.co.leblibrary.v2"
     }
     return JsonResponse(manifest, json_dumps_params={'ensure_ascii': False, 'indent': 2})
-
 
 urlpatterns = [
     path('admin/', admin.site.urls),

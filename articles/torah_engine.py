@@ -13,7 +13,6 @@ from django.db.models import Q
 from django.utils.html import strip_tags
 from .models import TorahText
 
-
 class _HTTPSConnectionIPv4(http.client.HTTPSConnection):
     def connect(self):
         addrs = socket.getaddrinfo(self.host, self.port or 443, socket.AF_INET, socket.SOCK_STREAM)
@@ -33,14 +32,11 @@ class _HTTPSConnectionIPv4(http.client.HTTPSConnection):
             raise last_err or OSError("IPv4 connection failed")
         self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
 
-
 class _HTTPSHandlerIPv4(urllib.request.HTTPSHandler):
     def https_open(self, req):
         return self.do_open(_HTTPSConnectionIPv4, req, context=self._context)
 
-
 _IPV4_OPENER = urllib.request.build_opener(_HTTPSHandlerIPv4())
-
 
 HEBREW_GEMATRIA = {
     'א': 1, 'ב': 2, 'ג': 3, 'ד': 4, 'ה': 5, 'ו': 6, 'ז': 7, 'ח': 8, 'ט': 9,
@@ -175,17 +171,16 @@ TORAH_CORE_CONCEPTS = [
     'מזל', 'נס', 'פדיון', 'שכינה', 'נבואה', 'ענוה', 'טהרה'
 ]
 
-# תיקון סדר אותיות בסימנים ופרקים שבהם טו/טז הוצבו לפני אותיות המאות (כגון טות -> תטו, טזת -> תטז, טותק -> תקטו) [LEB-UI-16]
 _MISORDERED_TU_TZ_RE = re.compile(r'(?<![א-ת])(ט[וז])([ק-ת]+)(?![א-ת])')
 _PROPER_TU_TZ_RE = re.compile(r'(?<![א-ת])([ק-ת]+)(ט[וז])(?![א-ת])')
+_EDITORIAL_MARKER_RE = re.compile(r'\{\s*[א-ת"״\'׳\s]{1,6}\s*\}')
 _CHAPTERS_DB_HEALED = False
-
+_GEMATRIA_DB_HEALED = False
 
 def _fix_hebrew_numeral_order(label: str) -> str:
     if not label:
         return ''
     return _MISORDERED_TU_TZ_RE.sub(r'\2\1', str(label))
-
 
 def _chapter_db_variants(chapter_str: str) -> list:
     c = str(chapter_str or '').strip()
@@ -198,7 +193,6 @@ def _chapter_db_variants(chapter_str: str) -> list:
         if candidate and candidate not in out:
             out.append(candidate)
     return out
-
 
 def _auto_heal_misordered_chapters_in_db():
     global _CHAPTERS_DB_HEALED
@@ -221,15 +215,51 @@ def _auto_heal_misordered_chapters_in_db():
     except Exception:
         pass
 
+def strip_editorial_markers(text):
+    if not text:
+        return ""
+    s = _INLINE_TAGS_RE.sub('', str(text))
+    s = _EDITORIAL_MARKER_RE.sub(' ', s)
+    s = s.replace('\u034f', '').replace('\u200d', '').replace('\u200c', '').replace('\ufeff', '')
+    if 'ראש' in s:
+        s = _SPLIT_BERESHIT_RE.sub(r'\1\2', s)
+    return s
 
 def calculate_gematria(text):
-    return sum(HEBREW_GEMATRIA.get(char, 0) for char in text)
+    clean = strip_editorial_markers(text)
+    return sum(HEBREW_GEMATRIA.get(char, 0) for char in clean)
 
+def _auto_heal_parasha_gematria_in_db():
+    global _GEMATRIA_DB_HEALED
+    if _GEMATRIA_DB_HEALED:
+        return
+    _GEMATRIA_DB_HEALED = True
+    try:
+        dirty_rows = list(
+            TorahText.objects.filter(
+                Q(text_with_nikkud__contains='{') | Q(clean_text__contains='{') |
+                Q(text_with_nikkud__contains='<') | Q(clean_text__contains='<')
+            ).only('id', 'text_with_nikkud', 'clean_text', 'verse_gematria', 'words_gematria')
+        )
+        to_update = []
+        for row in dirty_rows:
+            src_txt = row.text_with_nikkud or row.clean_text or ''
+            sanitized = strip_editorial_markers(src_txt)
+            true_v_gem = sum(HEBREW_GEMATRIA.get(c, 0) for c in sanitized)
+            words = _HEB_WORDS_FAST_RE.findall(sanitized.translate(_DELETE_NIKKUD_TRANS))
+            true_w_gem = (',' + ','.join(str(sum(HEBREW_GEMATRIA.get(c, 0) for c in w)) for w in words) + ',') if words else ''
+            if row.verse_gematria != true_v_gem or row.words_gematria != true_w_gem:
+                row.verse_gematria = true_v_gem
+                row.words_gematria = true_w_gem
+                to_update.append(row)
+        if to_update:
+            TorahText.objects.bulk_update(to_update, ['verse_gematria', 'words_gematria'], batch_size=500)
+    except Exception:
+        pass
 
 def format_divine_name(text):
     if not text:
         return ""
-    # תיקון מראה מקום שגוי בתוספתא ברכות א, ג: (שופטים ד) -> (שופטים ז, יט) [LEB-UI-13]
     if 'שופטים' in text and 'אשמורת' in text:
         text = re.sub(r'\(\s*שופטים\s+ד[\'׳]?\s*\)', '(שופטים ז, יט)', text)
 
@@ -241,7 +271,6 @@ def format_divine_name(text):
         re.UNICODE
     )
     return pattern.sub(r'\1-\2-\3-\4', text)
-
 
 def ratelimit(rate=30, timeout=60):
     def decorator(view_func):
@@ -264,7 +293,6 @@ def ratelimit(rate=30, timeout=60):
         return _wrapped_view
     return decorator
 
-
 def int_to_hebrew(num):
     if num <= 0:
         return str(num)
@@ -286,7 +314,6 @@ def int_to_hebrew(num):
             num -= val
     return result
 
-
 def format_verse_hebrew(val):
     s = str(val or '').strip()
     if not s:
@@ -297,7 +324,6 @@ def format_verse_hebrew(val):
     if m:
         return int_to_hebrew(int(m.group(1)))
     return _fix_hebrew_numeral_order(s)
-
 
 def parse_hebrew_number(val):
     s = str(val or '').strip()
@@ -325,7 +351,6 @@ def parse_hebrew_number(val):
             return sum(HEBREW_GEMATRIA.get(c, 0) for c in heb_token)
     return 0
 
-
 def generate_word_variations(word):
     variations = {word}
     if len(word) > 3 and word[0] in 'הבוכשמל':
@@ -333,7 +358,6 @@ def generate_word_variations(word):
     if len(word) > 4 and word[:2] in ['וה', 'בה', 'מה', 'שה', 'כה', 'וש', 'ול', 'וכ', 'ומ']:
         variations.add(word[2:])
     return list(variations)
-
 
 def get_book_order(book_name, chapter_name=""):
     name = str(book_name or '').strip()
@@ -360,7 +384,6 @@ def get_book_order(book_name, chapter_name=""):
         return sa_order.get(name, 610)
     return BOOK_ORDER.get(name, 999)
 
-
 def safe_int(v, default=0):
     if isinstance(v, int):
         return v
@@ -380,7 +403,6 @@ def safe_int(v, default=0):
         return heb_num * 10 + amud
     return default
 
-
 def _resolve_torah_book_in_db(book_name):
     b = str(book_name or '').strip()
     if not b:
@@ -392,7 +414,6 @@ def _resolve_torah_book_in_db(book_name):
     if TorahText.objects.filter(book=alt_b).exists():
         return alt_b
     return b
-
 
 def _resolve_torah_verse_obj(book_name, chapter_name, verse_val):
     b = _resolve_torah_book_in_db(book_name)
@@ -416,14 +437,13 @@ def _resolve_torah_verse_obj(book_name, chapter_name, verse_val):
             obj = all_ch[v_int - 1]
     return obj
 
-
 def _generate_spelling_variants(title_str):
     variants = [title_str]
     replacements = [
         ('ייבום', 'יבום'), ('כלאיים', 'כלאים'), ('מעשה הקורבנות', 'מעשה הקרבנות'),
         ('קורבן פסח', 'קרבן פסח'), ('מלווה ולווה', 'מלוה ולוה'), ('גזילה ואבידה', 'גזלה ואבדה'),
         ('זכייה ומתנה', 'זכיה ומתנה'), ('שאלה ופיקדון', 'שאלה ופקדון'), ('מקוואות', 'מקואות'),
-        ('מקואות', 'מקואות'), ('ידים', 'ידיים'), ('ידיים', 'ידים'), ('מדות', 'מידות'),
+        ('מקואות', 'מקוואות'), ('ידים', 'ידיים'), ('ידיים', 'ידים'), ('מדות', 'מידות'),
         ('מידות', 'מדות'), ('עדיות', 'עדויות'), ('נדה', 'נידה'), ('נידה', 'נדה'),
         ('ביכורים ושאר מתנות כהונה שבגבולין', 'ביכורים'),
         ('סנהדרין והעונשין המסורין להם', 'סנהדרין'),
@@ -437,7 +457,6 @@ def _generate_spelling_variants(title_str):
                 variants.append(v_new)
     return variants
 
-
 def _get_tanakh_en_book(book_str):
     b_clean = str(book_str or '').strip()
     b_clean = re.sub(r"['\"׳״]", "", b_clean)
@@ -449,7 +468,6 @@ def _get_tanakh_en_book(book_str):
             return en_name
     return ''
 
-
 def _extract_sefaria_he_list(he_data):
     flat = []
     if isinstance(he_data, str):
@@ -459,7 +477,6 @@ def _extract_sefaria_he_list(he_data):
         for item in he_data:
             flat.extend(_extract_sefaria_he_list(item))
     return flat
-
 
 RAMBAM_BOOKS_EN = {
     'רמב"ם הלכות יסודי התורה': 'Mishneh Torah, Foundations of the Torah',
@@ -548,7 +565,6 @@ RAMBAM_BOOKS_EN = {
     'רמב"ם הלכות מלכים ומלחמות': 'Mishneh Torah, Kings and Wars',
 }
 
-
 def _is_commentary_item_for_verse(c_item, chap_int, verse_int):
     if not isinstance(c_item, dict):
         return False
@@ -567,7 +583,6 @@ def _is_commentary_item_for_verse(c_item, chap_int, verse_int):
         if (chap_int > 0 and c_num != chap_int) or (verse_int > 0 and v_num != verse_int):
             return False
     return True
-
 
 def _extract_sefaria_verse_comments(data, verse_int, chap_int=0):
     if not isinstance(data, dict):
@@ -627,7 +642,6 @@ def _extract_sefaria_verse_comments(data, verse_int, chap_int=0):
         return []
 
     return []
-
 
 def _fetch_commentary_for_source(book_name, chapter_name, verse_num, requested_commentator=''):
     b_str = _resolve_torah_book_in_db(book_name).replace('״', '"').replace('׳', "'")
@@ -806,7 +820,6 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num, requested_c
         cache.set(cache_key, payload, 3600 * 24)
     return payload
 
-
 def _match_comments_by_dibbur_hamatchil(all_comments_list, source_clean_text):
     if not source_clean_text or not all_comments_list:
         return []
@@ -844,7 +857,6 @@ def _match_comments_by_dibbur_hamatchil(all_comments_list, source_clean_text):
 
     return matched
 
-
 def _fetch_sefaria_json_cached(sefaria_ref, extra_params="context=0&commentary=0"):
     c_key = f"sefaria_ipv4_v45_{ urllib.parse.quote(sefaria_ref) }_{extra_params}"
     cached = cache.get(c_key)
@@ -867,8 +879,6 @@ def _fetch_sefaria_json_cached(sefaria_ref, extra_params="context=0&commentary=0
             continue
     return None
 
-
-# טבלת C מהירה להסרת ניקוד, תגיות inline (כגון אותיות רבתיות/זעירות <big>בְּ</big>רֵאשִׁית) ותווי בקרה
 _NIKKUD_RANGE_CHARS = (
     list(range(0x0591, 0x05BE)) +
     [0x05BF, 0x05C1, 0x05C2, 0x05C4, 0x05C5, 0x05C7, 0x034F, 0x200B, 0x200C, 0x200D, 0x200E, 0x200F, 0xFEFF]
@@ -881,7 +891,6 @@ _WORD_TOKEN_GLOBAL_RE = re.compile(r'[א-ת\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4
 _FINAL_TO_REG_MAP = {'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ'}
 _REG_TO_FINAL_MAP = {'כ': 'ך', 'מ': 'ם', 'נ': 'ן', 'פ': 'ף', 'צ': 'ץ'}
 
-
 def _sanitize_torah_verse_text(raw_text: str) -> str:
     if not raw_text:
         return ""
@@ -891,21 +900,22 @@ def _sanitize_torah_verse_text(raw_text: str) -> str:
         s = _SPLIT_BERESHIT_RE.sub(r'\1\2', s)
     return s
 
-
 def _fast_extract_clean_words(raw_text: str):
     if not raw_text:
         return []
-    s = _sanitize_torah_verse_text(raw_text)
+    s = strip_editorial_markers(raw_text)
     return _HEB_WORDS_FAST_RE.findall(s.translate(_DELETE_NIKKUD_TRANS))
 
-
 def _extract_valid_spans_for_match(raw_text: str):
+    excluded = [m.span() for m in _EDITORIAL_MARKER_RE.finditer(raw_text)]
     spans = []
     for tok in _WORD_TOKEN_GLOBAL_RE.finditer(raw_text):
+        s_idx, e_idx = tok.span()
+        if excluded and any(ex_s <= s_idx and e_idx <= ex_e for ex_s, ex_e in excluded):
+            continue
         if any('א' <= ch <= 'ת' for ch in tok.group(0)):
-            spans.append(tok.span())
+            spans.append((s_idx, e_idx))
     return spans
-
 
 def _highlight_matched_words(raw_text: str, matched_indices: set) -> str:
     raw_text = _sanitize_torah_verse_text(raw_text)
@@ -924,9 +934,7 @@ def _highlight_matched_words(raw_text: str, matched_indices: set) -> str:
     out_parts.append(raw_text[last_idx:])
     return "".join(out_parts)
 
-
 _VALID_HEB_PREFIX_RX = r'(?:ו?כש|ו?ש[בכלמ]ה?|ו?[בכלמש]ה|ו?[הבכלמש]|ו)?'
-
 
 def _build_stem_fuzzy_body(stem: str) -> str:
     n = len(stem)
@@ -940,12 +948,10 @@ def _build_stem_fuzzy_body(stem: str) -> str:
         is_first = (idx == 0)
         is_last = (idx == n - 1)
         if not is_first and not is_last and ch in ('ו', 'י'):
-            # תמיכה מלאה באמות קריאה כפולות (כגון שהחיינו/שהחינו, מצוות/מצות, דיינים/דינים, עוונות/עונות)
             run_end = idx
             while run_end < n - 1 and stem[run_end] == ch:
                 run_end += 1
             max_rep = max(2, run_end - idx)
-            # ו' עיצורית לפני ה' סופית (כגון מצוה/מצווה, שלווה/שלוה, ענוה/ענווה) אינה נופלת לחלוטין (למניעת מצוה->מצה)
             min_rep = 1 if (ch == 'ו' and run_end == n - 1 and stem[-1] == 'ה') else 0
             parts.append(f'{re.escape(ch)}{{{min_rep},{max_rep}}}')
             idx = run_end
@@ -958,13 +964,7 @@ def _build_stem_fuzzy_body(stem: str) -> str:
             idx += 1
     return "".join(parts)
 
-
 def build_hebrew_fuzzy_patterns(word: str):
-    """
-    בונה תבניות Regex מדויקות לחיפוש כתיב מלא/חסר ותחיליות (ו' החיבור ואותיות מש"ה וכל"ב)
-    ללא שינוי יחיד/רבים. מבטיח מתמטית שכל התאמה מדויקת נכללת תמיד בתוצאות.
-    מחזיר: (mandatory_db_chars, clean_word_regex)
-    """
     clean_w = re.sub(r'[^א-ת]', '', word)
     if not clean_w:
         return [], None
@@ -991,14 +991,7 @@ def build_hebrew_fuzzy_patterns(word: str):
 
     return list(common_mandatory), re.compile(combined_pattern)
 
-
 def build_hebrew_fuzzy_morph_patterns(word: str):
-    """
-    בונה תבניות Regex לחיפוש כתיב מלא/חסר + תחיליות + נטיות יחיד/רבים, סמיכות וחילופי ים/ין
-    (למשל: שואלי/שואל/שואלים/שואלין, גשם/גשמים/גשמין/גשמי, קללה/קללת/קללות, מצוה/מצוות).
-    מבטיח מתמטית הכלה מלאה של כל תוצאות החיפוש המדויק וכתיב מלא/חסר הבסיסי.
-    מחזיר: (sql_stems, clean_word_regex)
-    """
     clean_w = re.sub(r'[^א-ת]', '', word)
     if not clean_w:
         return [], None
@@ -1036,7 +1029,6 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
     for form in forms:
         handled_special = False
 
-        # סיומת ויות (כגון זכויות, רשויות, עדויות, מלכויות)
         if form.endswith('ויות') and len(form) >= 6:
             base = form[:-4]
             base_reg = base[:-1] + _FINAL_TO_REG_MAP.get(base[-1], base[-1])
@@ -1044,7 +1036,6 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
                 add_stem_branches(base_reg, allow_bare=False, suffix_alts=['ות', 'ויות', 'וית'])
                 handled_special = True
 
-        # רבים זכר / ארמית (ים / ין)
         elif form.endswith(('ים', 'ין')) and len(form) >= 4:
             base = form[:-2]
             base_reg = base[:-1] + _FINAL_TO_REG_MAP.get(base[-1], base[-1])
@@ -1054,7 +1045,6 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
                 add_stem_branches(base_reg, allow_bare=True, suffix_alts=sfx)
                 handled_special = True
 
-        # רבים נקבה / סיומת ות (קללות, ברכות, שבתות, מצוות, שופרות, זכות)
         elif form.endswith('ות') and len(form) >= 4:
             base = form[:-2]
             base_reg = base[:-1] + _FINAL_TO_REG_MAP.get(base[-1], base[-1])
@@ -1074,7 +1064,6 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
                     add_stem_branches(base_reg, allow_bare=allow_bare, suffix_alts=sfx)
                     handled_special = True
 
-        # נקבה יחיד / סמיכות (ה / ת) במילים באורך 4+
         elif form.endswith(('ה', 'ת')) and len(form) >= 4:
             base = form[:-1]
             non_matres = [c for c in base if c not in ('ו', 'י')]
@@ -1092,7 +1081,6 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
                     add_stem_branches(base_reg, allow_bare=False, suffix_alts=['ה', 'ו?ת', 'ים', 'ין', 'י'])
                     handled_special = True
 
-        # מילות נקבה קצרות בנות 3 אותיות המסתיימות ב-ה (חלה->חלות, שדה->שדות, מצה->מצות)
         elif form.endswith('ה') and len(form) == 3:
             base = form[:-1]
             non_matres = [c for c in base if c not in ('ו', 'י')]
@@ -1101,7 +1089,6 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
                 add_stem_branches(base_reg, allow_bare=False, suffix_alts=['ה', 'ות', 'ת'])
                 handled_special = True
 
-        # סמיכות רבים (י) במילים באורך 4+ (שואלי, דברי, ספרי, גשמי, מלכי)
         elif form.endswith('י') and len(form) >= 4:
             base = form[:-1]
             non_matres = [c for c in base if c not in ('ו', 'י')]
@@ -1110,7 +1097,6 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
                 add_stem_branches(base_reg, allow_bare=True, suffix_alts=['ים', 'ין', 'י', 'ו?ת', 'ה'])
                 handled_special = True
 
-        # צורת יסוד (יחיד רגיל כגון שבת, מלך, ספר, שופר, גשם, דין, שואל)
         if not handled_special:
             reg_self = form[:-1] + _FINAL_TO_REG_MAP.get(form[-1], form[-1])
             add_stem_branches(reg_self, allow_bare=True, suffix_alts=['ים', 'ין', 'י', 'ות'])
@@ -1118,7 +1104,6 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
     unique_branches = list(dict.fromkeys(regex_branches))
     combined_pattern = rf'^(?:{"|".join(unique_branches)})$'
     return sql_stems, re.compile(combined_pattern)
-
 
 def _build_sql_bigram_q_for_stem(stem: str, clean_w: str = '', allow_final_swap: bool = False) -> Q:
     q_filter = Q()
@@ -1168,13 +1153,7 @@ def _build_sql_bigram_q_for_stem(stem: str, clean_w: str = '', allow_final_swap:
 
     return q_filter
 
-
 def _build_fuzzy_sql_filter_for_word(word: str, include_morph: bool = False, morph_stems=None) -> Q:
-    """
-    בונה מסנן SQL חכם ומהיר עבור כתיב מלא/חסר (עם או בלי נטיות יחיד/רבים),
-    המבוסס על צמדי אותיות שורש (Bigrams) עם תמיכה באמות קריאה כפולות (יי/וו/וי/יו),
-    אותיות סופיות, תגיות מסורה והבטחה מוחלטת שהמילה המדויקת עצמה תמיד עוברת את המסנן.
-    """
     clean_w = re.sub(r'[^א-ת]', '', word)
     if not clean_w:
         return Q()
@@ -1201,7 +1180,6 @@ def _build_fuzzy_sql_filter_for_word(word: str, include_morph: bool = False, mor
             common_stem = without_vav
 
     return exact_q | _build_sql_bigram_q_for_stem(common_stem, clean_w=clean_w, allow_final_swap=False)
-
 
 @ratelimit(rate=45, timeout=60)
 def tanakh_advanced_search_api(request):
@@ -1333,8 +1311,8 @@ def tanakh_advanced_search_api(request):
 
     effective_query_type = 'text_fuzzy_morph' if (query_type == 'text_fuzzy' and include_plural) else query_type
 
-    _raw_cache_key = f"v54|{effective_query_type}|{query_val}|{book_filter}|{is_exact}|{exclude_books_param}|{skip_param}|{page}|{per_page}"
-    search_cache_key = "tanakh_srch_v54_" + hashlib.md5(_raw_cache_key.encode("utf-8")).hexdigest()
+    _raw_cache_key = f"v55|{effective_query_type}|{query_val}|{book_filter}|{is_exact}|{exclude_books_param}|{skip_param}|{page}|{per_page}"
+    search_cache_key = "tanakh_srch_v55_" + hashlib.md5(_raw_cache_key.encode("utf-8")).hexdigest()
     cached_search_data = cache.get(search_cache_key)
     if cached_search_data:
         return JsonResponse(cached_search_data, json_dumps_params={'ensure_ascii': False})
@@ -1494,16 +1472,18 @@ def tanakh_advanced_search_api(request):
                             })
 
         elif effective_query_type == 'gematria' and query_val:
+            _auto_heal_parasha_gematria_in_db()
             calc_word_gem = lambda w: sum(HEBREW_GEMATRIA.get(c, 0) for c in re.sub(r'[^א-ת]', '', w))
             target_val = int(query_val) if query_val.isdigit() else calc_word_gem(query_val)
             calculated_gematria_val = target_val
             if target_val > 0:
                 search_str = f",{target_val},"
                 gem_q = Q(verse_gematria=target_val) | Q(words_gematria__contains=search_str) | Q(clean_text__icontains='<')
-                for m in qs.filter(gem_q).values('book', 'chapter', 'verse', 'text_with_nikkud', 'verse_gematria').iterator(chunk_size=2500):
-                    raw_text = _sanitize_torah_verse_text(m['text_with_nikkud'] or "")
+                for m in qs.filter(gem_q).values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text', 'verse_gematria').iterator(chunk_size=2500):
+                    raw_text = _sanitize_torah_verse_text(m['text_with_nikkud'] or m['clean_text'] or "")
                     fixed_ch = _fix_hebrew_numeral_order(m['chapter'])
-                    if m['verse_gematria'] == target_val:
+                    true_verse_gem = calculate_gematria(raw_text)
+                    if true_verse_gem == target_val:
                         m_type = f'גימטריה מלאה לפסוק (הערך: {target_val})'
                         final_text = f'<mark style="background-color: rgba(255, 235, 59, 0.4); padding: 0 4px; border-radius: 4px; color: inherit;">{raw_text}</mark>'
                         results.append({
@@ -1512,9 +1492,13 @@ def tanakh_advanced_search_api(request):
                             'text': final_text, 'match_type': m_type
                         })
                     else:
+                        excluded_ranges = [em.span() for em in _EDITORIAL_MARKER_RE.finditer(raw_text)]
                         has_word_hit = False
                         def _mark_gem_word(match):
                             nonlocal has_word_hit
+                            s_i, e_i = match.span()
+                            if excluded_ranges and any(es <= s_i and e_i <= ee for es, ee in excluded_ranges):
+                                return match.group(0)
                             w_tok = match.group(0)
                             if calc_word_gem(w_tok) == target_val:
                                 has_word_hit = True

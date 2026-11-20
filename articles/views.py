@@ -78,7 +78,6 @@ from .ai_engine import (
 )
 from .aramaic_engine import aramaic_translator_view as _get_aramaic_context, execute_aramaic_translation
 
-
 def _load_local_env():
     for env_path in [
         os.path.join(settings.BASE_DIR, '.env'),
@@ -95,9 +94,7 @@ def _load_local_env():
             except Exception:
                 pass
 
-
 _load_local_env()
-
 
 def get_base_schema_json():
     return json.dumps({
@@ -150,7 +147,6 @@ def get_base_schema_json():
         ]
     }, ensure_ascii=False)
 
-
 def translate_haftarah(text):
     if not text:
         return ""
@@ -176,7 +172,6 @@ def translate_haftarah(text):
     text = re.sub(r'\d+', lambda m: int_to_hebrew(int(m.group())), text)
     text = text.replace(':', ', ')
     return text
-
 
 def get_jewish_calendar_info():
     today = datetime.date.today()
@@ -231,6 +226,24 @@ def get_jewish_calendar_info():
 
     return cal_data
 
+_BLOCK_TAG_BOUNDARY_RE = re.compile(r'</?(?:p|div|br|h[1-6]|li|ul|ol|tr|td|th|blockquote|section|article|header|footer|hr)[^>]*>', re.IGNORECASE)
+
+def _build_clean_excerpt(html_content, max_words=25):
+    if not html_content:
+        return ""
+    text = re.sub(r'<style[^>]*>.*?</style>', ' ', str(html_content), flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'<script[^>]*>.*?</script>', ' ', text, flags=re.IGNORECASE | re.DOTALL)
+    text = _BLOCK_TAG_BOUNDARY_RE.sub(' ', text)
+    text = text.replace('><', '> <')
+    text = strip_tags(text)
+    text = unescape(text).replace('\xa0', ' ')
+    text = re.sub(r'\s+', ' ', text).strip()
+    if not max_words or max_words <= 0:
+        return text
+    words = text.split(' ')
+    if len(words) <= max_words:
+        return text
+    return ' '.join(words[:max_words]) + '…'
 
 def article_list(request):
     query = request.GET.get('q')
@@ -302,7 +315,6 @@ def article_list(request):
         'schema_json_ld': get_base_schema_json()
     })
 
-
 def article_detail(request, slug):
     slug_str = str(slug).strip()
     article = Article.objects.filter(slug=slug_str).first()
@@ -332,13 +344,13 @@ def article_detail(request, slug):
 
         return render(request, 'articles/article_detail.html', {
             'article': article,
+            'article_excerpt': _build_clean_excerpt(article.content, max_words=30),
             'learning': learning_ctx,
             'admin_choices': admin_choices,
             'current_page': 'articles',
         })
 
     raise Http404(f"העמוד '{slug_str}' לא נמצא.")
-
 
 @login_required
 def connections_audit_view(request):
@@ -406,7 +418,6 @@ def connections_audit_view(request):
         'current_page': 'articles',
     })
 
-
 @login_required
 def article_create(request):
     if request.method == 'POST':
@@ -416,7 +427,6 @@ def article_create(request):
             ping_indexnow(request.build_absolute_uri(reverse('articles:detail', args=[article.slug])))
         return redirect('articles:list')
     return render(request, 'articles/article_form.html', {'form': ArticleForm(), 'current_page': 'articles'})
-
 
 @login_required
 def article_edit(request, slug):
@@ -433,7 +443,6 @@ def article_edit(request, slug):
         return redirect('articles:detail', slug=article.slug)
     return render(request, 'articles/article_form.html', {'form': ArticleForm(instance=article), 'current_page': 'articles'})
 
-
 @login_required
 def article_delete(request, slug):
     if str(slug).isdigit():
@@ -444,7 +453,6 @@ def article_delete(request, slug):
     if request.method == 'POST':
         article.delete()
     return redirect('articles:list')
-
 
 class _SMTP_IPv4(smtplib.SMTP):
     def _get_socket(self, host, port, timeout):
@@ -460,7 +468,6 @@ class _SMTP_IPv4(smtplib.SMTP):
             except Exception as e:
                 last_err = e
         raise last_err or OSError("Could not connect via IPv4")
-
 
 def _send_gmail_ipv4(subject, body, recipient_list, reply_to_email=None):
     from email.mime.text import MIMEText
@@ -504,7 +511,6 @@ def _send_gmail_ipv4(subject, body, recipient_list, reply_to_email=None):
     server.sendmail(smtp_user, recipient_list, msg.as_string())
     server.quit()
     return True
-
 
 def contact(request):
     if request.method == 'POST':
@@ -553,35 +559,28 @@ def contact(request):
 
     return render(request, 'articles/contact.html', {'current_page': 'contact'})
 
-
 def calculator(request):
     mida_book = Book.objects.filter(title__icontains='מידה').first()
     return render(request, 'articles/calculator.html', {'current_page': 'calculator', 'mida_book': mida_book})
-
 
 def volume_calculator(request):
     mida_book = Book.objects.filter(title__icontains='מידה').first()
     return render(request, 'articles/volume_calculator.html', {'current_page': 'calculator', 'mida_book': mida_book})
 
-
 def weight_calculator(request):
     mida_book = Book.objects.filter(title__icontains='מידה').first()
     return render(request, 'articles/weight_calculator.html', {'current_page': 'calculator', 'mida_book': mida_book})
-
 
 @cache_page(60 * 60 * 24)
 def about(request):
     return render(request, 'articles/about.html', {'current_page': 'about', 'schema_json_ld': get_base_schema_json()})
 
-
 @cache_page(60 * 60 * 24)
 def terms(request):
     return render(request, 'articles/terms.html', {'current_page': 'terms'})
 
-
 def books_list(request):
     return books(request)
-
 
 def qa_list(request, pk=None):
     selected_qa = None
@@ -654,7 +653,6 @@ def qa_list(request, pk=None):
                 pass
         return resp
 
-
 def acronyms_view(request):
     query = request.GET.get('q', '').strip()
     search_type = request.GET.get('type', 'short')
@@ -683,7 +681,6 @@ def acronyms_view(request):
         'search_type': search_type,
         'current_page': 'acronyms'
     })
-
 
 def article_index(request):
     selected_cluster_id = request.GET.get('cluster', '').strip()
@@ -718,11 +715,11 @@ def article_index(request):
         'current_page': 'articles'
     })
 
-
 def recently_added(request):
-    recent_articles = Article.objects.filter(is_published=True).order_by('-id')[:12]
+    recent_articles = list(Article.objects.filter(is_published=True).order_by('-id')[:12])
+    for art in recent_articles:
+        art.clean_excerpt = _build_clean_excerpt(art.content, max_words=25)
     return render(request, 'articles/recently_added.html', {'articles': recent_articles, 'current_page': 'recently_added'})
-
 
 def parasha_list(request):
     selected_parasha = request.GET.get('p')
@@ -731,7 +728,6 @@ def parasha_list(request):
         parasha_q = Q(parasha__icontains=f",{selected_parasha},") | Q(parasha=selected_parasha)
         articles = Article.objects.filter(parasha_q, is_published=True).order_by('-created_at')
     return render(request, 'articles/parasha_list.html', {'current_page': 'parasha', 'selected_parasha': selected_parasha, 'articles': articles})
-
 
 def book_detail(request, pk):
     book = get_object_or_404(
@@ -763,7 +759,6 @@ def book_detail(request, pk):
         'current_page': 'books',
         'schema_json_ld': book_schema
     })
-
 
 def books(request):
     q = (request.GET.get('q') or '').strip()
@@ -936,7 +931,6 @@ document.addEventListener('DOMContentLoaded', function() {
         pass
     return response
 
-
 def live_search(request):
     q = request.GET.get('q', '').strip()
     if len(q) < 2:
@@ -959,7 +953,6 @@ def live_search(request):
 
     cache.set(cache_key, results, timeout=300)
     return JsonResponse({'results': results})
-
 
 @ratelimit(rate=30, timeout=60)
 def ai_open_search(request):
@@ -1020,7 +1013,6 @@ def ai_open_search(request):
         'results': results
     }, json_dumps_params={'ensure_ascii': False})
 
-
 def _get_or_create_cart(request):
     if request.user.is_authenticated:
         cart, _ = Cart.objects.get_or_create(user=request.user)
@@ -1030,7 +1022,6 @@ def _get_or_create_cart(request):
             request.session.create()
         cart, _ = Cart.objects.get_or_create(session_id=request.session.session_key)
         return cart
-
 
 def add_to_cart(request, book_id):
     book = Book.objects.filter(id=book_id, is_for_sale=True).first()
@@ -1044,7 +1035,6 @@ def add_to_cart(request, book_id):
     messages.success(request, f'הספר "{book.title}" נוסף לעגלת הקניות בהצלחה.')
     return redirect('articles:cart_detail')
 
-
 def remove_from_cart(request, item_id):
     cart = _get_or_create_cart(request)
     item = CartItem.objects.filter(id=item_id, cart=cart).first()
@@ -1053,13 +1043,11 @@ def remove_from_cart(request, item_id):
         messages.info(request, 'הפריט הוסר מעגלת הקניות.')
     return redirect('articles:cart_detail')
 
-
 def cart_detail(request):
     cart = _get_or_create_cart(request)
     items = cart.items.select_related('book').all()
     total_price = sum(item.get_total_price() for item in items)
     return render(request, 'articles/cart_detail.html', {'cart': cart, 'items': items, 'total_price': total_price, 'current_page': 'cart'})
-
 
 def checkout(request):
     cart = _get_or_create_cart(request)
@@ -1095,7 +1083,6 @@ def checkout(request):
         return render(request, 'articles/order_success.html', {'order': order})
     return render(request, 'articles/checkout.html', {'items': items, 'total_price': total_price, 'current_page': 'cart'})
 
-
 def ping_indexnow(article_url):
     host = "leblibrary.co.il"
     key = "mosheleibowitzkey123"
@@ -1105,13 +1092,11 @@ def ping_indexnow(article_url):
     except Exception:
         pass
 
-
 @receiver([post_save, post_delete], sender=Article)
 @receiver([post_save, post_delete], sender=Book)
 def clear_cache_on_db_change(sender, instance, **kwargs):
     cache.clear()
     ClusterEngine.clear_memory_cache()
-
 
 def load_tts_dictionary():
     dict_path = os.path.join(settings.BASE_DIR, 'tts_dictionary.json')
@@ -1230,7 +1215,6 @@ def load_tts_dictionary():
         'תשב"ץ': 'תשובות שמעון בן צמח'
     }
 
-
 def apply_tts_dictionary(text):
     if not text:
         return ""
@@ -1271,7 +1255,6 @@ def apply_tts_dictionary(text):
 
     return text.strip()
 
-
 def generate_audio_sync(text, file_path):
     async def _generate():
         communicate = edge_tts.Communicate(text, "he-IL-AvriNeural")
@@ -1281,7 +1264,6 @@ def generate_audio_sync(text, file_path):
         asyncio.run(_generate())
     except Exception as e:
         raise Exception(f"Edge-TTS Error: {str(e)}")
-
 
 def generate_article_audio_background(article_id):
     try:
@@ -1323,7 +1305,6 @@ def generate_article_audio_background(article_id):
     except Exception:
         pass
 
-
 @receiver(post_save, sender=Article)
 def trigger_article_audio_pregeneration(sender, instance, created, **kwargs):
     if instance.is_published:
@@ -1336,7 +1317,6 @@ def trigger_article_audio_pregeneration(sender, instance, created, **kwargs):
                 pass
 
         transaction.on_commit(lambda: threading.Thread(target=generate_article_audio_background, args=(instance.id,)).start())
-
 
 def get_article_audio(request, identifier):
     try:
@@ -1389,7 +1369,6 @@ def get_article_audio(request, identifier):
 
     return JsonResponse({'audio_url': audio_url})
 
-
 def get_book_audio(request, book_id):
     try:
         book = Book.objects.get(id=book_id)
@@ -1434,7 +1413,6 @@ def get_book_audio(request, book_id):
 
     return JsonResponse({'audio_url': audio_url})
 
-
 def search_acronyms_api(request):
     query = request.GET.get('q', '').strip()
     search_type = request.GET.get('type', 'short')
@@ -1463,10 +1441,8 @@ def search_acronyms_api(request):
 
     return JsonResponse({'results': results})
 
-
 def advanced_search_view(request):
     return render(request, 'articles/advanced_search.html', {'current_page': 'advanced_search'})
-
 
 def aramaic_translator_view(request):
     context = _get_aramaic_context(request)
