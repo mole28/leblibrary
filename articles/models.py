@@ -1,13 +1,12 @@
 from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
-from django.urls import reverse  # <--- התוספת החשובה כדי לייצר קישורים נכונים
+from django.urls import reverse
 
 import re
+from html import unescape
 from bs4 import BeautifulSoup
-# ------------------------------------------
-# ייבוא מעודכן עבור CKEditor 5
-# ------------------------------------------
+from django.utils.html import strip_tags
 from django_ckeditor_5.fields import CKEditor5Field
 
 from pyluach import dates
@@ -19,33 +18,215 @@ try:
 except ImportError:
     mammoth = None
 
-# ==========================================
-# פונקציית עיבוד גלובלית לייבוא מוורד (Mammoth)
-# ==========================================
+_EXCERPT_BLOCK_TAG_RE = re.compile(
+    r'</?(?:p|div|br|h[1-6]|li|ul|ol|tr|td|th|blockquote|section|article|header|footer|hr)[^>]*>',
+    re.IGNORECASE,
+)
+
+def build_clean_excerpt(html_content, max_words=25):
+    if not html_content:
+        return ""
+    text = re.sub(r'<style[^>]*>.*?</style>', ' ', str(html_content), flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'<script[^>]*>.*?</script>', ' ', text, flags=re.IGNORECASE | re.DOTALL)
+    text = _EXCERPT_BLOCK_TAG_RE.sub(' ', text)
+    text = text.replace('><', '> <')
+    text = strip_tags(text)
+    text = unescape(text).replace('\xa0', ' ')
+    text = re.sub(r'\s+', ' ', text).strip()
+    if not max_words or max_words <= 0:
+        return text
+    words = text.split(' ')
+    if len(words) <= max_words:
+        return text
+    return ' '.join(words[:max_words]) + '…'
+
+def normalize_article_footnotes_html(html_content):
+    if not html_content:
+        return html_content
+    if '_ftn' not in html_content and '_edn' not in html_content and 'footnote' not in html_content:
+        return html_content
+
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    ftn_ref_re = re.compile(r'^_?(?:ftnref|ednref)(\d+)$', re.IGNORECASE)
+    ftn_def_re = re.compile(r'^_?(?:ftn|edn)(\d+)$', re.IGNORECASE)
+
+    tokens = []
+    for a in soup.find_all('a'):
+        name_attr = (a.get('name') or '').strip()
+        id_attr = (a.get('id') or '').strip()
+        href_attr = (a.get('href') or '').strip()
+
+        m_ref = ftn_ref_re.match(name_attr) or ftn_ref_re.match(id_attr)
+        m_def = ftn_def_re.match(name_attr) or ftn_def_re.match(id_attr)
+
+        if not m_ref and not m_def and href_attr.startswith('#'):
+            target_part = href_attr[1:]
+            if ftn_def_re.match(target_part):
+                m_ref = ftn_def_re.match(target_part)
+            elif ftn_ref_re.match(target_part):
+                m_def = ftn_ref_re.match(target_part)
+
+        if m_ref:
+            tokens.append(('ref', int(m_ref.group(1)), a))
+        elif m_def:
+            tokens.append(('def', int(m_def.group(1)), a))
+
+    if tokens:
+        open_ref_runs = []
+        current_ref_run = None
+        current_def_run = None
+        next_group_id = 1
+
+        def finalize_def_run(def_run):
+            nonlocal next_group_id
+            if not def_run or not open_ref_runs:
+                return
+            def_nums = {n for n, _ in def_run}
+
+            chosen_idx = None
+            for idx in range(len(open_ref_runs) - 1, -1, -1):
+                if open_ref_runs[idx]['nums'] == def_nums:
+                    chosen_idx = idx
+                    break
+            if chosen_idx is None:
+                for idx in range(len(open_ref_runs) - 1, -1, -1):
+                    r_nums = open_ref_runs[idx]['nums']
+                    if def_nums.issubset(r_nums) or r_nums.issubset(def_nums):
+                        chosen_idx = idx
+                        break
+            if chosen_idx is None:
+                best_overlap = 0
+                for idx in range(len(open_ref_runs) - 1, -1, -1):
+                    ov = len(open_ref_runs[idx]['nums'] & def_nums)
+                    if ov > best_overlap:
+                        best_overlap = ov
+                        chosen_idx = idx
+            if chosen_idx is None:
+                return
+
+            ref_run = open_ref_runs.pop(chosen_idx)
+            gid = next_group_id
+            next_group_id += 1
+
+            seen_ref_nums = {}
+            for num, a_tag in ref_run['items']:
+                count = seen_ref_nums.get(num, 0) + 1
+                seen_ref_nums[num] = count
+                ref_id = f"fn-ref-{gid}-{num}" if count == 1 else f"fn-ref-{gid}-{num}-{count}"
+                a_tag['id'] = ref_id
+                a_tag['href'] = f"#fn-note-{gid}-{num}"
+                a_tag['data-fn-group'] = str(gid)
+                a_tag['data-fn-num'] = str(num)
+                a_tag['aria-label'] = f"הערת שוליים {num}"
+                if a_tag.has_attr('name'):
+                    del a_tag['name']
+                classes = [c for c in (a_tag.get('class') or []) if c not in ('footnote-ref', 'footnote-backref')]
+                classes.append('footnote-ref')
+                a_tag['class'] = classes
+
+            seen_def_nums = set()
+            for num, a_tag in def_run:
+                if num in seen_def_nums:
+                    continue
+                seen_def_nums.add(num)
+                a_tag['id'] = f"fn-note-{gid}-{num}"
+                a_tag['href'] = f"#fn-ref-{gid}-{num}"
+                a_tag['data-fn-group'] = str(gid)
+                a_tag['data-fn-num'] = str(num)
+                a_tag['title'] = "חזרה למקום הקריאה בטקסט"
+                a_tag['aria-label'] = f"חזרה להפניה {num} בטקסט"
+                if a_tag.has_attr('name'):
+                    del a_tag['name']
+                classes = [c for c in (a_tag.get('class') or []) if c not in ('footnote-ref', 'footnote-backref')]
+                classes.append('footnote-backref')
+                a_tag['class'] = classes
+                parent_el = a_tag.find_parent(['div', 'p', 'li'])
+                if parent_el and parent_el.has_attr('id') and ftn_def_re.match(parent_el['id']):
+                    del parent_el['id']
+
+        for kind, num, a_tag in tokens:
+            if kind == 'ref':
+                if current_def_run is not None:
+                    finalize_def_run(current_def_run)
+                    current_def_run = None
+                if current_ref_run is None or (num == 1 and len(current_ref_run['items']) > 0):
+                    current_ref_run = {'nums': set(), 'items': []}
+                    open_ref_runs.append(current_ref_run)
+                current_ref_run['nums'].add(num)
+                current_ref_run['items'].append((num, a_tag))
+            else:
+                current_ref_run = None
+                if current_def_run is None:
+                    current_def_run = [(num, a_tag)]
+                else:
+                    def_nums_so_far = {n for n, _ in current_def_run}
+                    if num in def_nums_so_far or (num == 1 and any(n > 1 for n in def_nums_so_far)):
+                        finalize_def_run(current_def_run)
+                        current_def_run = [(num, a_tag)]
+                    else:
+                        current_def_run.append((num, a_tag))
+
+        if current_def_run is not None:
+            finalize_def_run(current_def_run)
+
+    for a in soup.find_all('a'):
+        classes = a.get('class')
+        if classes and len(classes) != len(set(classes)):
+            a['class'] = list(dict.fromkeys(classes))
+
+    fn_target_divs = {}
+    for el in soup.find_all(id=re.compile(r'^footnote-\d+$')):
+        fn_target_divs[el['id']] = el
+
+    if fn_target_divs:
+        seen_fn_refs = {}
+        for a in soup.find_all('a', href=re.compile(r'^#footnote-\d+$')):
+            target_id = a['href'][1:]
+            if target_id in fn_target_divs:
+                num = target_id.replace('footnote-', '')
+                if not a.get('id'):
+                    cnt = seen_fn_refs.get(num, 0) + 1
+                    seen_fn_refs[num] = cnt
+                    a['id'] = f"footnote-ref-{num}" if cnt == 1 else f"footnote-ref-{num}-{cnt}"
+                classes = list(dict.fromkeys([c for c in (a.get('class') or []) if c != 'footnote-backref'] + ['footnote-ref']))
+                a['class'] = classes
+                target_el = fn_target_divs[target_id]
+                if not target_el.find('a', class_='footnote-backref'):
+                    back_a = soup.new_tag(
+                        'a',
+                        href=f"#{a['id']}",
+                        attrs={
+                            'class': 'footnote-backref ms-2',
+                            'title': 'חזרה למקום הקריאה בטקסט',
+                            'aria-label': f'חזרה להפניה {num} בטקסט',
+                        },
+                    )
+                    back_a.string = '↩'
+                    target_el.append(back_a)
+
+    return str(soup)
+
 def process_mammoth_html(raw_html):
     if not raw_html: return ""
     soup = BeautifulSoup(raw_html, 'html.parser')
 
-    #סידור ההפניות בתוך המאמר והוספת סוגריים [1]
     for ref in soup.find_all('a', id=re.compile(r'^footnote-ref-')):
         clean_num = ref.get_text(strip=True).replace('[', '').replace(']', '')
-        ref.string = f"[{clean_num}]" # הוספת סוגריים מרובעים מסביב למספר
+        ref.string = f"[{clean_num}]"
         ref['class'] = ref.get('class', []) + ['footnote-ref']
         if ref.parent and ref.parent.name != 'sup':
             ref.wrap(soup.new_tag('sup'))
 
-    # 2. חילוץ כל ההערות מהתחתית
     footnotes_dict = {}
     for li in soup.find_all('li', id=re.compile(r'^footnote-')):
         fn_id = li['id']
-        # מחיקת החצים לחזרה למעלה
         for back_link in li.find_all('a', href=re.compile(r'^#footnote-ref-')):
             parent = back_link.parent
             back_link.decompose()
             if parent and parent.name == 'sup' and not parent.get_text(strip=True):
                 parent.decompose()
         
-        # ביטול פסקאות שגורמות לשבירת שורות
         for p in li.find_all('p'):
             p.unwrap()
             
@@ -56,7 +237,6 @@ def process_mammoth_html(raw_html):
         if not ol.get_text(strip=True):
             ol.extract()
 
-    # 3. בניה מחדש של תחתית המאמר עם הערות בעיצוב חלק (Flexbox)
     if footnotes_dict:
         hr = soup.new_tag('hr', style='border: 0; border-top: 5px solid #2c3e50; margin: 60px 0 40px 0; opacity: 1;')
         h2 = soup.new_tag('h2', style='text-align: center; color: #d4af37; margin-bottom: 30px; font-weight: bold;')
@@ -83,13 +263,11 @@ def process_mammoth_html(raw_html):
         soup.append(h2)
         soup.append(container)
 
-    # 4. ניקוי פסקאות ריקות
     for p in soup.find_all('p'):
         if not p.get_text(strip=True) and not p.find(['img', 'iframe']):
             p.decompose()
 
     return str(soup)
-
 
 def clean_word_html(html_content):
     if not html_content: return html_content
@@ -151,15 +329,20 @@ def clean_word_html(html_content):
             if current_fn:
                 current_fn['elements'].append(p.extract())
 
+    word_anchor_re = re.compile(r'^(?:_?(?:ftn|edn)(?:ref)?|fn-(?:ref|note)-)', re.IGNORECASE)
     for a in soup.find_all('a'):
         href = a.get('href', '')
+        a_name = a.get('name', '')
+        a_id = a.get('id', '')
+        if word_anchor_re.match(a_name) or word_anchor_re.match(a_id) or (href.startswith('#') and word_anchor_re.match(href[1:])):
+            continue
         if href.startswith('#'):
             text = a.get_text(strip=True)
             clean_num = re.sub(r'\D', '', text)
             if clean_num and clean_num.isdigit():
-                a.string = f"[{clean_num}]" # הוספת סוגריים מרובעים!
+                a.string = f"[{clean_num}]"
                 a['href'] = f"#footnote-{clean_num}"
-                a['class'] = a.get('class', []) + ['footnote-ref']
+                a['class'] = list(dict.fromkeys((a.get('class') or []) + ['footnote-ref']))
                 if a.parent and a.parent.name != 'sup':
                     a.wrap(soup.new_tag('sup'))
                     
@@ -169,7 +352,7 @@ def clean_word_html(html_content):
             clean_num = re.sub(r'\D', '', text)
             if clean_num and clean_num.isdigit():
                 a = soup.new_tag('a', href=f"#footnote-{clean_num}", class_="footnote-ref")
-                a.string = f"[{clean_num}]" # הוספת סוגריים מרובעים!
+                a.string = f"[{clean_num}]"
                 sup.string = ''
                 sup.append(a)
 
@@ -213,7 +396,7 @@ def clean_word_html(html_content):
     for p in soup.find_all('p'):
         if not p.get_text(strip=True) and not p.find(['img', 'iframe']): p.decompose()
 
-    return str(soup)
+    return normalize_article_footnotes_html(str(soup))
 
 PARASHA_CHOICES = [
     ('general', 'מאמר כללי (לא קשור לפרשה)'),
@@ -246,7 +429,6 @@ PARASHA_CHOICES = [
 
 class Article(models.Model):
     title = models.CharField(max_length=200, verbose_name="כותרת המאמר")
-    # התוספת החדשה: שדה הסלאג שייצר URL חכם!
     slug = models.SlugField(max_length=255, unique=True, allow_unicode=True, verbose_name="קישור (Slug)", blank=True, null=True)
     parasha = models.CharField(max_length=500, default=',general,', verbose_name="שיוך לפרשות שבוע", blank=True)
     word_file = models.FileField(upload_to='word_imports/', blank=True, null=True, verbose_name="ייבוא אוטומטי מוורד (מומלץ למאמרים עם הערות!)")
@@ -257,10 +439,51 @@ class Article(models.Model):
 
     @property
     def hebrew_date_auto(self):
-        if self.created_at: 
-            heb_date = dates.HebrewDate.from_pydate(self.created_at.date())
-            return heb_date.hebrew_date_string() 
+        if self.created_at:
+            try:
+                local_dt = timezone.localtime(self.created_at) if timezone.is_aware(self.created_at) else self.created_at
+                heb_date = dates.HebrewDate.from_pydate(local_dt.date())
+                return heb_date.hebrew_date_string()
+            except Exception:
+                return ""
         return ""
+
+    @property
+    def display_hebrew_date(self):
+        manual = (self.hebrew_date or "").strip()
+        if manual:
+            return manual
+        return self.hebrew_date_auto
+
+    @property
+    def display_gregorian_date(self):
+        if self.created_at:
+            try:
+                local_dt = timezone.localtime(self.created_at) if timezone.is_aware(self.created_at) else self.created_at
+                return local_dt.strftime('%d.%m.%Y')
+            except Exception:
+                return ""
+        return ""
+
+    @property
+    def display_full_date(self):
+        heb = self.display_hebrew_date
+        greg = self.display_gregorian_date
+        if heb and greg:
+            return f"{heb} ({greg})"
+        return heb or greg
+
+    @property
+    def clean_excerpt(self):
+        return build_clean_excerpt(self.content, max_words=25)
+
+    @property
+    def short_excerpt(self):
+        return build_clean_excerpt(self.content, max_words=20)
+
+    @property
+    def meta_excerpt(self):
+        return build_clean_excerpt(self.content, max_words=30)
 
     @property
     def is_new(self):
@@ -269,13 +492,10 @@ class Article(models.Model):
 
     def __str__(self): return self.title
 
-    # הנה התוספת הקריטית שפותרת את בעיית הקישורים מתוך האתר! 
-    # מעכשיו האתר ייצר קישור מהסלאג הטקסטואלי ולא מה-ID המספרי.
     def get_absolute_url(self):
         return reverse('articles:detail', kwargs={'slug': self.slug})
 
     def save(self, *args, **kwargs):
-        # מערכת לייצור אוטומטי של סלאגים בעברית מכותרת המאמר
         if not self.slug:
             self.slug = slugify(self.title, allow_unicode=True)
             if not self.slug:
@@ -298,15 +518,17 @@ class Article(models.Model):
                 print(f"Error parsing word: {e}")
         else:
             self.content = clean_word_html(self.content)
-                
-        super().save(*args, **kwargs)
 
+        if not (self.hebrew_date or "").strip() and self.created_at:
+            self.hebrew_date = self.hebrew_date_auto
+
+        super().save(*args, **kwargs)
 
 class Book(models.Model):
     title = models.CharField(max_length=200, verbose_name="שם הספר")
     author = models.CharField(max_length=100, verbose_name="מחבר")
     cover_image = models.ImageField(upload_to='books/covers/', blank=True, null=True, verbose_name="תמונת כריכה")
-    pdf_file = models.FileField(upload_to='books/pdfs/', blank=True, null=True, verbose_name="קובץ PDF להורדה") # השורה החדשה!
+    pdf_file = models.FileField(upload_to='books/pdfs/', blank=True, null=True, verbose_name="קובץ PDF להורדה")
     summary = CKEditor5Field(config_name='extends', verbose_name="תקציר הספר", blank=True, null=True)
     price = models.DecimalField(max_digits=6, decimal_places=2, default=0.00, verbose_name="מחיר הספר")
     is_for_sale = models.BooleanField(default=False, verbose_name="זמין לרכישה")
@@ -324,14 +546,12 @@ class Book(models.Model):
 
     def __str__(self): return self.title
 
-
 class Chapter(models.Model):
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='chapters', verbose_name="ספר")
     title = models.CharField(max_length=200, verbose_name="כותרת (למשל: סימן א)")
     order = models.PositiveIntegerField(verbose_name="סדר")
 
     def __str__(self): return f"{self.book.title} | {self.title}"
-
 
 class Section(models.Model):
     chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE, related_name='sections', verbose_name="פרק")
@@ -356,7 +576,6 @@ class Section(models.Model):
             self.content = clean_word_html(self.content)
                 
         super().save(*args, **kwargs)
-
 
 class Acronym(models.Model):
     short = models.CharField(max_length=100, db_index=True, verbose_name="ראשי תיבות")
@@ -454,9 +673,6 @@ class TorahText(models.Model):
     text_with_nikkud = models.TextField(verbose_name="טקסט מנוקד")
     clean_text = models.TextField(verbose_name="טקסט נקי (ללא ניקוד ורווחים)", blank=True)
     
-    # -------------------------------------------------------------
-    # התוספת לחישוב גימטריה מהיר מראש ברמת הדאטה-בייס! (היוקרתי)
-    # -------------------------------------------------------------
     verse_gematria = models.IntegerField(default=0, db_index=True)
     words_gematria = models.TextField(blank=True, null=True)
 

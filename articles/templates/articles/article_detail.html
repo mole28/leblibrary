@@ -177,12 +177,13 @@
                 
                 <p class="text-muted fs-5 mt-3">
                     <span class="d-inline-block">
-                        <i class="bi bi-calendar3"></i> 
-                        <time datetime="{% if article.created_at %}{{ article.created_at|date:'Y-m-d' }}{% endif %}">{{ article.hebrew_date }}</time>
-                        
-                        <span class="mx-2 opacity-50">|</span>
-                        
-                        <i class="bi bi-clock"></i>
+                        {% if article.display_full_date %}
+                        <i class="bi bi-calendar3" aria-hidden="true"></i>
+                        <span>פורסם:</span>
+                        <time {% if article.created_at %}datetime="{{ article.created_at|date:'Y-m-d' }}"{% endif %}>{{ article.display_hebrew_date }}{% if article.display_gregorian_date %} (<span dir="ltr">{{ article.display_gregorian_date }}</span>){% endif %}</time>
+                        <span class="mx-2 opacity-50" aria-hidden="true">|</span>
+                        {% endif %}
+                        <i class="bi bi-clock" aria-hidden="true"></i>
                         {% with words=article.content|striptags|wordcount %}
                             {% if words < 200 %}
                                 דקת קריאה
@@ -203,7 +204,7 @@
             </header>
 
             <div class="article-content book-reading-mode" id="articleBodyContent">
-                {{ article.content|safe }}
+                {{ rendered_content|default:article.content|safe }}
             </div>
 
             {% if learning %}
@@ -1338,6 +1339,24 @@
     
     sup:hover, .footnote-ref:hover {
         text-decoration: underline !important;
+    }
+    .footnote-backref {
+        text-decoration: none !important;
+        color: #b8860b !important;
+        font-weight: 700 !important;
+        cursor: pointer;
+    }
+    .footnote-backref:hover {
+        text-decoration: underline !important;
+        color: #8c6239 !important;
+    }
+    @keyframes fnTargetPulse {
+        0% { background-color: rgba(212, 175, 55, 0.36); box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.25); }
+        100% { background-color: transparent; box-shadow: none; }
+    }
+    .footnote-target-pulse {
+        border-radius: 6px;
+        animation: fnTargetPulse 2.2s ease-out;
     }
 </style>
 {% endblock %}

@@ -17,8 +17,8 @@
                 <h3 class="fw-bold mb-3" style="color: #1a252f; font-size: 1.5rem;">{{ article.title }}</h3>
                 <div class="d-flex align-items-center mb-3">
                     <span class="badge bg-light text-dark border"><i class="bi bi-clock-history me-1"></i> חדש</span>
-                    {% if article.hebrew_date %}
-                        <small class="text-muted ms-auto">{{ article.hebrew_date }}</small>
+                    {% if article.display_full_date %}
+                        <small class="text-muted me-auto"><i class="bi bi-calendar3 ms-1" aria-hidden="true"></i><span>פורסם:</span> <time {% if article.created_at %}datetime="{{ article.created_at|date:'Y-m-d' }}"{% endif %}>{{ article.display_hebrew_date }}{% if article.display_gregorian_date %} (<span dir="ltr">{{ article.display_gregorian_date }}</span>){% endif %}</time></small>
                     {% endif %}
                 </div>
                 <p class="article-text text-muted" style="font-size: 1.05rem;">

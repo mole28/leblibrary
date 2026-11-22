@@ -401,69 +401,127 @@
 
         let activeLink = null;
 
+        function resolveAnchorTarget(targetId) {
+            if (!targetId) return null;
+            const byId = document.getElementById(targetId);
+            if (byId) return byId;
+            try {
+                return document.querySelector(`a[name="${CSS.escape(targetId)}"]`);
+            } catch (err) {
+                return document.querySelector(`a[name="${targetId}"]`);
+            }
+        }
+
+        function resolveHighlightContainer(targetEl) {
+            if (!targetEl) return null;
+            const tag = targetEl.tagName.toLowerCase();
+            if ((tag === 'a' || tag === 'span') && targetEl.parentElement) {
+                const parentTag = targetEl.parentElement.tagName.toLowerCase();
+                if (parentTag === 'p' || parentTag === 'li' || parentTag === 'div') {
+                    return targetEl.parentElement;
+                }
+            }
+            return targetEl;
+        }
+
+        function scrollAndPulseTarget(targetEl, targetId) {
+            if (!targetEl) return;
+            const container = resolveHighlightContainer(targetEl);
+            container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (targetId && window.history && window.history.replaceState) {
+                window.history.replaceState(null, '', '#' + targetId);
+            }
+            container.classList.remove('footnote-target-pulse');
+            void container.offsetWidth;
+            container.classList.add('footnote-target-pulse');
+            if (typeof targetEl.focus === 'function') {
+                if (!targetEl.hasAttribute('tabindex') && targetEl.tagName.toLowerCase() !== 'a') {
+                    targetEl.setAttribute('tabindex', '-1');
+                }
+                targetEl.focus({ preventScroll: true });
+            }
+        }
+
         const footnoteLinks = document.querySelectorAll('a[href^="#"]');
 
         footnoteLinks.forEach(link => {
-            const targetId = link.getAttribute('href').substring(1);
+            const hrefVal = link.getAttribute('href') || '';
+            const targetId = hrefVal.substring(1);
             if (!targetId) return;
-            
-            const targetElement = document.getElementById(targetId) || document.querySelector(`a[name="${targetId}"]`);
 
-            if (targetElement) {
-                const showPopup = (e) => {
-                    let contentNode = targetElement;
-                    
-                    if (targetElement.tagName.toLowerCase() === 'a' || targetElement.tagName.toLowerCase() === 'span') {
-                        if (targetElement.parentElement && targetElement.parentElement.innerText.length > targetElement.innerText.length) {
-                            contentNode = targetElement.parentElement;
-                        }
-                    }
+            const targetElement = resolveAnchorTarget(targetId);
+            if (!targetElement) return;
 
-                    let clone = contentNode.cloneNode(true);
-                    
-                    const backLinks = clone.querySelectorAll('a[href^="#"]');
-                    backLinks.forEach(bl => bl.remove());
-                    
-                    popup.innerHTML = clone.innerHTML.trim();
-                    activeLink = link;
+            const isFootnoteNav =
+                link.classList.contains('footnote-ref') ||
+                link.classList.contains('footnote-backref') ||
+                /^(?:fn-(?:note|ref)-|footnote-|_?ftn|_?edn)/i.test(targetId);
 
-                    const rect = link.getBoundingClientRect();
-                    
-                    let top = rect.top + window.scrollY - popup.offsetHeight - 15;
-                    let left = rect.left + window.scrollX + (rect.width / 2) - (popup.offsetWidth / 2);
-                    
-                    if (top < window.scrollY) {
-                        top = rect.bottom + window.scrollY + 15;
-                    }
-                    
-                    if (left < 10) left = 10;
-                    if (left + popup.offsetWidth > window.innerWidth - 10) {
-                        left = window.innerWidth - popup.offsetWidth - 10;
-                    }
+            const isBackref =
+                link.classList.contains('footnote-backref') ||
+                /^(?:fn-ref-|footnote-ref-|_?ftnref|_?ednref)/i.test(targetId);
 
-                    popup.style.top = top + 'px';
-                    popup.style.left = left + 'px';
-                    popup.classList.add('show');
-                };
+            const showPopup = () => {
+                if (isBackref) return;
+                const contentNode = resolveHighlightContainer(targetElement);
+                const clone = contentNode.cloneNode(true);
+                clone.querySelectorAll('a[href^="#"]').forEach(bl => bl.remove());
+                const previewHtml = clone.innerHTML.trim();
+                if (!previewHtml) return;
 
-                const hidePopup = () => {
-                    popup.classList.remove('show');
-                    activeLink = null;
-                };
+                popup.innerHTML = previewHtml;
+                activeLink = link;
 
+                const rect = link.getBoundingClientRect();
+                let top = rect.top + window.scrollY - popup.offsetHeight - 15;
+                let left = rect.left + window.scrollX + (rect.width / 2) - (popup.offsetWidth / 2);
+
+                if (top < window.scrollY) {
+                    top = rect.bottom + window.scrollY + 15;
+                }
+                if (left < 10) left = 10;
+                if (left + popup.offsetWidth > window.innerWidth - 10) {
+                    left = window.innerWidth - popup.offsetWidth - 10;
+                }
+
+                popup.style.top = top + 'px';
+                popup.style.left = left + 'px';
+                popup.classList.add('show');
+            };
+
+            const hidePopup = () => {
+                popup.classList.remove('show');
+                activeLink = null;
+            };
+
+            if (!isBackref) {
                 link.addEventListener('mouseenter', showPopup);
                 link.addEventListener('mouseleave', hidePopup);
-
-                link.addEventListener('click', (e) => {
-                    if (activeLink !== link) {
-                        e.preventDefault(); 
-                        showPopup(e);
-                    } else {
-                        hidePopup();
-                    }
-                });
             }
+
+            link.addEventListener('click', (e) => {
+                if (isFootnoteNav) {
+                    e.preventDefault();
+                    hidePopup();
+                    scrollAndPulseTarget(targetElement, targetId);
+                    return;
+                }
+                if (activeLink !== link) {
+                    e.preventDefault();
+                    showPopup();
+                } else {
+                    hidePopup();
+                }
+            });
         });
+
+        if (window.location.hash && window.location.hash.length > 1) {
+            const initialId = decodeURIComponent(window.location.hash.substring(1));
+            const initialTarget = resolveAnchorTarget(initialId);
+            if (initialTarget && /^(?:fn-(?:note|ref)-|footnote-)/i.test(initialId)) {
+                setTimeout(() => scrollAndPulseTarget(initialTarget, initialId), 150);
+            }
+        }
 
         document.addEventListener('click', (e) => {
             if (activeLink && !activeLink.contains(e.target) && !popup.contains(e.target)) {
@@ -471,7 +529,7 @@
                 activeLink = null;
             }
         });
-        
+
         window.addEventListener('scroll', () => {
             if (popup.classList.contains('show') && activeLink) {
                 popup.classList.remove('show');

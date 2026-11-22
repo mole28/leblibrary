@@ -32,7 +32,7 @@ from django.urls import reverse
 from django.db import models, transaction
 from django.utils.html import strip_tags
 from .forms import ArticleForm
-from .models import Article, Book, Chapter, Section, Cart, CartItem, Order, OrderItem, TorahText, QA, Acronym
+from .models import Article, Book, Chapter, Section, Cart, CartItem, Order, OrderItem, TorahText, QA, Acronym, normalize_article_footnotes_html
 from .emails import send_order_confirmation
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
@@ -344,6 +344,7 @@ def article_detail(request, slug):
 
         return render(request, 'articles/article_detail.html', {
             'article': article,
+            'rendered_content': normalize_article_footnotes_html(article.content or ''),
             'article_excerpt': _build_clean_excerpt(article.content, max_words=30),
             'learning': learning_ctx,
             'admin_choices': admin_choices,
@@ -716,9 +717,7 @@ def article_index(request):
     })
 
 def recently_added(request):
-    recent_articles = list(Article.objects.filter(is_published=True).order_by('-id')[:12])
-    for art in recent_articles:
-        art.clean_excerpt = _build_clean_excerpt(art.content, max_words=25)
+    recent_articles = Article.objects.filter(is_published=True).order_by('-id')[:12]
     return render(request, 'articles/recently_added.html', {'articles': recent_articles, 'current_page': 'recently_added'})
 
 def parasha_list(request):
