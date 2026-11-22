@@ -182,6 +182,43 @@ def _fix_hebrew_numeral_order(label: str) -> str:
         return ''
     return _MISORDERED_TU_TZ_RE.sub(r'\2\1', str(label))
 
+def _resolve_chapter_in_list(explicit_chapter: str, raw_chapters: list) -> str:
+    if not raw_chapters:
+        return ''
+    target = _fix_hebrew_numeral_order(str(explicit_chapter or '').strip())
+    if not target:
+        return raw_chapters[0]
+    if target in raw_chapters:
+        return target
+
+    strip_re = re.compile(r'^(?:פרק|סימן|דף|הלכה|משנה|סעיף)\s+')
+    clean_punct = lambda s: re.sub(r'["״\'׳\s]+', ' ', s).strip()
+    t_norm = clean_punct(strip_re.sub('', target))
+    t_is_daf = target.startswith('דף')
+    t_is_amud_b = ('עמוד ב' in target or ':' in target or 'ע"ב' in target or 'ע״ב' in target)
+    t_num = parse_hebrew_number(target)
+
+    for ch in raw_chapters:
+        ch_norm = clean_punct(strip_re.sub('', str(ch)))
+        if ch_norm == t_norm:
+            return ch
+
+    if t_num > 0:
+        t_heb = int_to_hebrew(t_num)
+        for ch in raw_chapters:
+            ch_str = str(ch)
+            if t_is_daf or ch_str.startswith('דף'):
+                ch_is_amud_b = ('עמוד ב' in ch_str or ':' in ch_str or 'ע"ב' in ch_str or 'ע״ב' in ch_str)
+                if parse_hebrew_number(ch_str) == t_num and ch_is_amud_b == t_is_amud_b:
+                    return ch
+            else:
+                ch_num = parse_hebrew_number(ch_str)
+                if ch_num == t_num or clean_punct(strip_re.sub('', ch_str)) in (str(t_num), t_heb):
+                    return ch
+
+    return raw_chapters[0]
+
+
 def _chapter_db_variants(chapter_str: str) -> list:
     c = str(chapter_str or '').strip()
     if not c:
@@ -1285,7 +1322,7 @@ def tanakh_advanced_search_api(request):
         if not raw_chapters:
             return JsonResponse({'error': f'לא נמצאו פרקים עבור "{matched_book}".'})
 
-        chosen_chapter = explicit_chapter if explicit_chapter in raw_chapters else raw_chapters[0]
+        chosen_chapter = _resolve_chapter_in_list(explicit_chapter, raw_chapters)
         c_variants = _chapter_db_variants(chosen_chapter)
         ch_verses = list(TorahText.objects.filter(book=matched_book, chapter__in=c_variants).values('verse', 'text_with_nikkud', 'clean_text'))
         ch_verses.sort(key=lambda x: safe_int(x['verse']))
