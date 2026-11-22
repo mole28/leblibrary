@@ -789,6 +789,19 @@ document.addEventListener('DOMContentLoaded', function() {
     let activeBrowseCorpus = '';
     let activeBrowseSubgroupIdx = 0;
     let activeBrowseBook = '';
+    let activeBrowseState = { corpus: '', book: '', chapter: '', verseLabel: '' };
+
+    function inferBrowseCorpusForBook(bookName, chapterName) {
+        const b = String(bookName || '').trim();
+        const c = String(chapterName || '').trim();
+        if (b.startsWith('רמב"ם ') || b.startsWith('רמב״ם ')) return 'rambam';
+        if (b.startsWith('שולחן ערוך ')) return 'shulchan_aruch';
+        if (b.startsWith('ירושלמי ')) return 'yerushalmi';
+        if (b.startsWith('תוספתא ')) return 'tosefta';
+        if (c.startsWith('דף')) return 'talmud';
+        if (BOOKS_CATALOG.tanakh.some(g => g.books.includes(b))) return 'tanakh';
+        return 'mishnah';
+    }
 
     function shortBookDisplayName(bookName, corpusKey) {
         let s = String(bookName || '');
@@ -802,20 +815,29 @@ document.addEventListener('DOMContentLoaded', function() {
     window.resetBrowseSelection = function() {
         activeBrowseCorpus = '';
         activeBrowseBook = '';
+        activeBrowseState = { corpus: '', book: '', chapter: '', verseLabel: '' };
         document.querySelectorAll('#browseCorpusBar .browse-corpus-btn').forEach(b => b.classList.remove('active'));
+        const chSel = document.getElementById('browseChapterSelect');
+        if (chSel) chSel.value = '';
         document.getElementById('browseBooksArea').style.display = 'none';
         document.getElementById('browseSelectorsRow').style.display = 'none';
         document.getElementById('resetBrowseBoxBtn').style.display = 'none';
     };
 
-    window.selectBrowseCorpus = function(corpusKey, btnEl) {
+    window.selectBrowseCorpus = function(corpusKey, btnEl, preferredBook = '', preferredChapter = '') {
         activeBrowseCorpus = corpusKey;
-        activeBrowseSubgroupIdx = 0;
-        document.querySelectorAll('#browseCorpusBar .browse-corpus-btn').forEach(b => b.classList.remove('active'));
-        if (btnEl) btnEl.classList.add('active');
+        const groups = BOOKS_CATALOG[corpusKey] || [];
+        let initialGroupIdx = 0;
+        if (preferredBook) {
+            const foundIdx = groups.findIndex(g => g.books.includes(preferredBook));
+            if (foundIdx >= 0) initialGroupIdx = foundIdx;
+        }
+        activeBrowseSubgroupIdx = initialGroupIdx;
+        document.querySelectorAll('#browseCorpusBar .browse-corpus-btn').forEach(b => {
+            b.classList.toggle('active', b === btnEl || b.getAttribute('data-bcorpus') === corpusKey);
+        });
         document.getElementById('resetBrowseBoxBtn').style.display = 'inline-block';
 
-        const groups = BOOKS_CATALOG[corpusKey] || [];
         const subgroupsBar = document.getElementById('browseSubgroupsBar');
         const booksArea = document.getElementById('browseBooksArea');
         booksArea.style.display = 'block';
@@ -826,7 +848,7 @@ document.addEventListener('DOMContentLoaded', function() {
             groups.forEach((g, idx) => {
                 const tab = document.createElement('button');
                 tab.type = 'button';
-                tab.className = 'browse-subgroup-tab' + (idx === 0 ? ' active' : '');
+                tab.className = 'browse-subgroup-tab' + (idx === initialGroupIdx ? ' active' : '');
                 tab.textContent = g.group;
                 tab.onclick = () => {
                     activeBrowseSubgroupIdx = idx;
@@ -865,11 +887,15 @@ document.addEventListener('DOMContentLoaded', function() {
             bookSelect.appendChild(optGroup);
         });
 
-        renderBrowseBooksPills(corpusKey, 0);
+        const chosenBook = (preferredBook && groups.some(g => g.books.includes(preferredBook)))
+            ? preferredBook
+            : ((groups[0] && groups[0].books[0]) ? groups[0].books[0] : '');
 
-        const firstBook = (groups[0] && groups[0].books[0]) ? groups[0].books[0] : '';
-        if (firstBook) {
-            selectBrowseBook(firstBook, false);
+        activeBrowseBook = chosenBook;
+        renderBrowseBooksPills(corpusKey, initialGroupIdx);
+
+        if (chosenBook) {
+            selectBrowseBook(chosenBook, false, preferredChapter);
         }
     };
 
@@ -896,7 +922,7 @@ document.addEventListener('DOMContentLoaded', function() {
         selectBrowseBook(bookName, false);
     };
 
-    window.selectBrowseBook = function(bookName, autoOpenFirstChapter) {
+    window.selectBrowseBook = function(bookName, autoOpenFirstChapter, presetChapter = '') {
         activeBrowseBook = bookName;
         document.querySelectorAll('#browseBooksGrid .browse-book-pill').forEach(btn => {
             btn.classList.toggle('active', btn.getAttribute('data-bname') === bookName);
@@ -937,7 +963,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 chapterSelect.innerHTML = html;
 
-                if (autoOpenFirstChapter && chapters[0]) {
+                const desiredChapter = presetChapter || (activeBrowseState.book === bookName ? activeBrowseState.chapter : '');
+                if (desiredChapter) {
+                    const matchedOpt = chapters.find(ch => String(ch) === String(desiredChapter) || formatChapterTitle(ch, bookName) === formatChapterTitle(desiredChapter, bookName));
+                    if (matchedOpt) {
+                        chapterSelect.value = matchedOpt;
+                    }
+                } else if (autoOpenFirstChapter && chapters[0]) {
                     chapterSelect.value = chapters[0];
                     openQuickSourceReader(bookName, chapters[0], activeBrowseCorpus);
                 }
@@ -957,6 +989,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const resultsArea = document.getElementById('resultsArea');
         const exportToolbar = document.getElementById('exportToolbar');
         const panelTitle = document.getElementById('mainResultsPanelTitle');
+        const chapterSelectEl = document.getElementById('browseChapterSelect');
 
         resultsArea.innerHTML = '';
         resultsArea.style.display = 'none';
@@ -967,7 +1000,26 @@ document.addEventListener('DOMContentLoaded', function() {
         lastFetchedResults = [];
         lastSearchApiUrl = '';
         lastSearchIsQuickBrowse = false;
+        activeBrowseState = { corpus: '', book: '', chapter: '', verseLabel: '' };
+        if (chapterSelectEl) {
+            chapterSelectEl.value = '';
+        }
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname);
+        }
     };
+
+    const browseChapterSelectEl = document.getElementById('browseChapterSelect');
+    if (browseChapterSelectEl) {
+        browseChapterSelectEl.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && this.value && activeBrowseBook) {
+                const resArea = document.getElementById('resultsArea');
+                if (!resArea || resArea.style.display === 'none' || activeBrowseState.chapter !== this.value) {
+                    openQuickSourceReader(activeBrowseBook, this.value, activeBrowseCorpus);
+                }
+            }
+        });
+    }
 
     const ALL_CORPORA_KEYS = ['torah', 'tanakh', 'mishnah', 'tosefta', 'talmud', 'yerushalmi', 'rambam', 'shulchan_aruch'];
     let selectedCorpora = new Set(['torah']);
@@ -1836,6 +1888,15 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     function buildShareableCurrentUrl() {
+        if (lastSearchIsQuickBrowse && activeBrowseState && activeBrowseState.book) {
+            const params = new URLSearchParams();
+            params.set('mode', 'browse');
+            if (activeBrowseState.corpus) params.set('corpus', activeBrowseState.corpus);
+            params.set('target_book', activeBrowseState.book);
+            if (activeBrowseState.chapter) params.set('target_chapter', activeBrowseState.chapter);
+            return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+        }
+
         const query = searchQueryInput.value.trim();
         if (!query) return window.location.href;
         const mode = searchActionInput.value;
@@ -1851,6 +1912,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if ((mode === 'els' || mode === 'els_verse') && currentSkipFilter !== '') {
             params.set('skip', currentSkipFilter);
         }
+        if (currentPage > 1) {
+            params.set('page', String(currentPage));
+        }
         return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
     }
 
@@ -1864,6 +1928,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function performSearch(pageNum) {
         currentPage = pageNum || 1;
         lastSearchIsQuickBrowse = false;
+        activeBrowseState = { corpus: '', book: '', chapter: '', verseLabel: '' };
         const placeholder = document.getElementById('resultsPlaceholder');
         const resultsArea = document.getElementById('resultsArea');
         const exportToolbar = document.getElementById('exportToolbar');
@@ -2068,11 +2133,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 const safeBook = escapeJsAndHtml(bName);
                 const safeChapter = escapeJsAndHtml(chName);
 
+                const resolvedCorpus = cHint || inferBrowseCorpusForBook(bName, chName);
+                activeBrowseState = {
+                    corpus: resolvedCorpus,
+                    book: bName,
+                    chapter: chName,
+                    verseLabel: vLabel
+                };
+
                 const chapterSelectEl = document.getElementById('browseChapterSelect');
                 if (chapterSelectEl && activeBrowseBook === bName) {
                     chapterSelectEl.value = chName;
                 }
 
+                syncBrowserUrlFromState();
                 panelTitle.innerHTML = `<i class="bi bi-book-half ms-2" style="color: #d4af37;"></i>עיון במקור: ${bName} — ${chDisplay}`;
 
                 lastFetchedResults = data.verses.map(v => ({
@@ -2350,7 +2424,8 @@ document.addEventListener('DOMContentLoaded', function() {
     window.shareSearchResults = function() {
         if (!lastFetchedResults.length) return;
         const previewLines = [];
-        lastFetchedResults.slice(0, 5).forEach((res, i) => {
+        const maxPreview = lastSearchIsQuickBrowse ? 10 : 5;
+        lastFetchedResults.slice(0, maxPreview).forEach((res, i) => {
             const chDisplay = formatChapterTitle(res.chapter, res.book);
             const verseLabel = res.verse_label || 'פסוק';
             const hebVerse = toHebrewLetters(res.verse);
@@ -2358,8 +2433,11 @@ document.addEventListener('DOMContentLoaded', function() {
             previewLines.push(`${i + 1}. ${res.book} (${chDisplay}, ${verseLabel} ${hebVerse}): "${cleanTxt}"`);
         });
         const shareUrl = buildShareableCurrentUrl();
+        const shareTitle = (lastSearchIsQuickBrowse && activeBrowseState && activeBrowseState.book)
+            ? `עיון במקור: ${activeBrowseState.book} — ${formatChapterTitle(activeBrowseState.chapter, activeBrowseState.book)}`
+            : `תוצאות חיפוש במאגר התורני עבור "${lastSearchMeta.query}" (${lastSearchMeta.total} תוצאות)`;
         triggerUniversalShare(
-            `תוצאות חיפוש במאגר התורני עבור "${lastSearchMeta.query}" (${lastSearchMeta.total} תוצאות)`,
+            shareTitle,
             previewLines.join('\n\n'),
             shareUrl
         );
@@ -2476,7 +2554,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.shareModalInsights = function() {
         const title = document.getElementById('codeFinderModalTitle').innerText.trim();
         const bodyTxt = document.getElementById('codeFinderModalBody').innerText.trim();
-        triggerUniversalShare(title, bodyTxt, window.location.href);
+        triggerUniversalShare(title, bodyTxt, buildShareableCurrentUrl());
     };
 
     window.openAutomatedCodeFinder = function(bookName, chapterName, verseNum) {
@@ -2729,7 +2807,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.shareSynthesisResult = function(topicName, gemVal) {
         const bodyEl = document.getElementById('sermonBodyText');
         if (!bodyEl) return;
-        const shareUrl = `${window.location.origin}${window.location.pathname}?q=${encodeURIComponent(topicName)}`;
+        const shareUrl = `${window.location.origin}${window.location.pathname}?q=${encodeURIComponent(topicName)}&type=text_broad&book=all`;
         triggerUniversalShare(
             `חיבור הנתונים לרעיון משותף: ${topicName} (גימטריה: ${gemVal}) | ספריית לייבוביץ`,
             bodyEl.innerText.trim(),
@@ -2780,6 +2858,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function applyUrlStateToUiWithRetry(attemptsLeft, triggerSearchIfNeeded = true) {
         const urlParams = new URLSearchParams(window.location.search);
+        const modeParam = (urlParams.get('mode') || '').trim().toLowerCase();
+        const targetBookParam = (urlParams.get('target_book') || '').trim();
+        const targetChapterParam = (urlParams.get('target_chapter') || '').trim();
+        const browseCorpusParam = (urlParams.get('corpus') || '').trim().toLowerCase();
         const tabParam = (urlParams.get('tab') || '').trim().toLowerCase();
         const initialQ = (urlParams.get('q') || '').trim();
         const bookParam = (urlParams.get('book') || '').trim();
@@ -2788,6 +2870,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const excludeParam = (urlParams.get('exclude_books') || '').trim();
         const skipParam = (urlParams.get('skip') || '').trim();
         const pageParam = parseInt(urlParams.get('page') || '1', 10) || 1;
+
+        if ((modeParam === 'browse' || targetBookParam) && targetBookParam) {
+            const resolvedCorpus = browseCorpusParam || inferBrowseCorpusForBook(targetBookParam, targetChapterParam);
+            const corpusBtn = document.querySelector(`#browseCorpusBar .browse-corpus-btn[data-bcorpus="${resolvedCorpus}"]`);
+            activeBrowseState = {
+                corpus: resolvedCorpus,
+                book: targetBookParam,
+                chapter: targetChapterParam,
+                verseLabel: ''
+            };
+            if (BOOKS_CATALOG[resolvedCorpus]) {
+                selectBrowseCorpus(resolvedCorpus, corpusBtn, targetBookParam, targetChapterParam);
+            }
+            if (triggerSearchIfNeeded) {
+                openQuickSourceReader(targetBookParam, targetChapterParam, resolvedCorpus);
+            }
+            return;
+        }
 
         if (tabParam === 'acronyms') {
             const acrCard = document.getElementById('bottomAcronymsCard');

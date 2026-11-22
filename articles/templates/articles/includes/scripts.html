@@ -705,3 +705,26 @@
         contentAreas.forEach(area => walkTextNodes(area));
     });
 </script>
+<style>
+    body:not(.dark-mode):not(.a11y-high-contrast) .lux-acronym {
+        color: #7a4f16 !important;
+        border-bottom: 1.5px dotted rgba(122, 79, 22, 0.55) !important;
+        transition: background-color 0.18s ease, color 0.18s ease;
+    }
+    body:not(.dark-mode):not(.a11y-high-contrast) .lux-acronym:hover,
+    body:not(.dark-mode):not(.a11y-high-contrast) .lux-acronym:focus-visible {
+        color: #5c3a0e !important;
+        background-color: rgba(212, 175, 55, 0.14);
+        border-radius: 3px;
+    }
+    body.dark-mode:not(.a11y-high-contrast) .lux-acronym {
+        color: #f3d36b !important;
+        border-bottom: 1.5px dotted rgba(243, 211, 107, 0.55) !important;
+    }
+    body.dark-mode:not(.a11y-high-contrast) .lux-acronym:hover,
+    body.dark-mode:not(.a11y-high-contrast) .lux-acronym:focus-visible {
+        color: #f7e199 !important;
+        background-color: rgba(243, 211, 107, 0.14);
+        border-radius: 3px;
+    }
+</style>
