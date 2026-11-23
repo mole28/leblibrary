@@ -108,6 +108,43 @@ def _is_automated_crawler(request):
     ua = (request.META.get('HTTP_USER_AGENT') or '').strip()
     return bool(ua and _BOT_UA_RE.search(ua))
 
+PARASHA_CANONICAL_NAMES = (
+    'בראשית', 'נח', 'לך לך', 'וירא', 'חיי שרה', 'תולדות', 'ויצא', 'וישלח', 'וישב', 'מקץ', 'ויגש', 'ויחי',
+    'שמות', 'וארא', 'בא', 'בשלח', 'יתרו', 'משפטים', 'תרומה', 'תצוה', 'כי תשא', 'ויקהל', 'פקודי',
+    'ויקרא', 'צו', 'שמיני', 'תזריע', 'מצורע', 'אחרי מות', 'קדושים', 'אמור', 'בהר', 'בחוקתי',
+    'במדבר', 'נשא', 'בהעלותך', 'שלח לך', 'קרח', 'חקת', 'בלק', 'פינחס', 'מטות', 'מסעי',
+    'דברים', 'ואתחנן', 'עקב', 'ראה', 'שופטים', 'כי תצא', 'כי תבוא', 'ניצבים', 'וילך', 'האזינו', 'וזאת הברכה',
+)
+_PARASHA_SLUG_TO_NAME = {name.replace(' ', '-'): name for name in PARASHA_CANONICAL_NAMES}
+_PARASHA_SLUG_TO_NAME.update({name: name for name in PARASHA_CANONICAL_NAMES})
+
+def _parasha_to_slug(name):
+    return re.sub(r'\s+', '-', str(name or '').strip())
+
+def _resolve_parasha_name(raw_value):
+    cleaned = re.sub(r'\s+', ' ', str(raw_value or '').replace('-', ' ')).strip()
+    if not cleaned:
+        return ''
+    if cleaned in _PARASHA_SLUG_TO_NAME:
+        return _PARASHA_SLUG_TO_NAME[cleaned]
+    slug_key = _parasha_to_slug(cleaned)
+    return _PARASHA_SLUG_TO_NAME.get(slug_key, cleaned)
+
+def _extract_article_parashot(raw_parasha):
+    if not raw_parasha:
+        return []
+    out = []
+    seen = set()
+    for token in str(raw_parasha).split(','):
+        name = re.sub(r'\s+', ' ', token).strip()
+        if not name or name.lower() == 'general':
+            continue
+        canonical = _resolve_parasha_name(name)
+        if canonical and canonical not in seen:
+            seen.add(canonical)
+            out.append((canonical, _parasha_to_slug(canonical)))
+    return out
+
 def get_base_schema_json():
     return json.dumps({
         "@context": "https://schema.org",
@@ -267,7 +304,6 @@ def article_list(request):
         return render(request, 'articles/article_list.html', {
             'articles': articles, 'latest_articles': None, 'reading_books': None, 'sale_books': None,
             'parasha_article': None, 'jewish_cal': None, 'query': query, 'current_page': 'home',
-            'schema_json_ld': get_base_schema_json()
         })
 
     today_str = str(datetime.date.today())
@@ -324,7 +360,6 @@ def article_list(request):
         'latest_qa': latest_qa,
         'jewish_cal': jewish_cal,
         'current_page': 'home',
-        'schema_json_ld': get_base_schema_json()
     })
 
 def article_detail(request, slug):
@@ -358,6 +393,7 @@ def article_detail(request, slug):
             'article': article,
             'rendered_content': normalize_article_footnotes_html(article.content or ''),
             'article_excerpt': _build_clean_excerpt(article.content, max_words=30),
+            'article_parashot': _extract_article_parashot(article.parasha),
             'learning': learning_ctx,
             'admin_choices': admin_choices,
             'current_page': 'articles',
@@ -601,7 +637,7 @@ def weight_calculator(request):
 
 @cache_page(60 * 60 * 24)
 def about(request):
-    return render(request, 'articles/about.html', {'current_page': 'about', 'schema_json_ld': get_base_schema_json()})
+    return render(request, 'articles/about.html', {'current_page': 'about'})
 
 @cache_page(60 * 60 * 24)
 def terms(request):
@@ -747,43 +783,63 @@ def recently_added(request):
     recent_articles = Article.objects.filter(is_published=True).order_by('-id')[:12]
     return render(request, 'articles/recently_added.html', {'articles': recent_articles, 'current_page': 'recently_added'})
 
-def parasha_list(request):
-    selected_parasha = request.GET.get('p')
+def parasha_list(request, parasha_name=None):
+    query_p = (request.GET.get('p') or '').strip()
+    if query_p and not parasha_name:
+        resolved_q = _resolve_parasha_name(query_p)
+        target_slug = _parasha_to_slug(resolved_q)
+        if target_slug:
+            return redirect('articles:parasha_detail', parasha_name=target_slug, permanent=True)
+
+    selected_parasha = None
+    selected_parasha_slug = ''
+    is_known_parasha = False
     articles = None
-    if selected_parasha:
+    if parasha_name:
+        selected_parasha = _resolve_parasha_name(parasha_name)
+        selected_parasha_slug = _parasha_to_slug(selected_parasha)
+        if parasha_name != selected_parasha_slug and selected_parasha in PARASHA_CANONICAL_NAMES:
+            return redirect('articles:parasha_detail', parasha_name=selected_parasha_slug, permanent=True)
+        is_known_parasha = selected_parasha in PARASHA_CANONICAL_NAMES
         parasha_q = Q(parasha__icontains=f",{selected_parasha},") | Q(parasha=selected_parasha)
         articles = Article.objects.filter(parasha_q, is_published=True).order_by('-created_at')
-    return render(request, 'articles/parasha_list.html', {'current_page': 'parasha', 'selected_parasha': selected_parasha, 'articles': articles})
+
+    return render(request, 'articles/parasha_list.html', {
+        'current_page': 'parasha',
+        'selected_parasha': selected_parasha,
+        'selected_parasha_slug': selected_parasha_slug,
+        'is_known_parasha': is_known_parasha,
+        'articles': articles,
+    })
 
 def book_detail(request, pk):
     book = get_object_or_404(
         Book.objects.prefetch_related('chapters__sections'),
         pk=pk
     )
-    book_schema = json.dumps({
-        "@context": "https://schema.org",
-        "@type": "Book",
-        "@id": f"https://leblibrary.co.il/book/{book.pk}/#book",
-        "name": strip_tags(book.title or ""),
-        "author": {
-            "@type": "Person",
-            "name": "הרב משה לייבוביץ",
-            "homeLocation": "טירת כרמל",
-            "url": "https://leblibrary.co.il/about/"
-        },
-        "publisher": {
-            "@type": "Organization",
-            "name": "ספריית לייבוביץ - LebLibrary"
-        },
-        "inLanguage": "he",
-        "url": f"https://leblibrary.co.il/book/{book.pk}/",
-        "description": strip_tags(book.summary or book.title or "")[:300]
-    }, ensure_ascii=False)
+    book_chapters = list(book.chapters.all())
+    for chapter in book_chapters:
+        chapter_sections = list(chapter.sections.all())
+        for sec in chapter_sections:
+            raw_sec_html = getattr(sec, 'content', '') or ''
+            if raw_sec_html:
+                norm_html = normalize_article_footnotes_html(raw_sec_html)
+                sec_prefix = f"s{sec.pk}-"
+                norm_html = norm_html.replace('fn-note-', f'fn-note-{sec_prefix}').replace('fn-ref-', f'fn-ref-{sec_prefix}')
+                sec.rendered_content = norm_html
+            else:
+                sec.rendered_content = ''
+        chapter.rendered_sections = chapter_sections
+
+    rendered_book_summary = normalize_article_footnotes_html(book.summary or '') if (book.summary and not book_chapters) else (book.summary or '')
+    book_excerpt = _build_clean_excerpt(book.summary or book.title or '', max_words=35)
 
     return render(request, 'articles/book_detail.html', {
         'book': book,
+        'book_chapters': book_chapters,
+        'rendered_book_summary': rendered_book_summary,
+        'book_excerpt': book_excerpt,
         'current_page': 'books',
-        'schema_json_ld': book_schema
     })
 
 def books(request):
@@ -1512,46 +1568,7 @@ def advanced_search_view(request):
 
 def aramaic_translator_view(request):
     context = _get_aramaic_context(request)
-    response = render(request, 'articles/aramaic_translator.html', context)
-    fix_lexicon_label_script = """
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    function syncLexiconFooterText() {
-        const inputs = Array.from(document.querySelectorAll('input[type="text"], input[type="search"], input:not([type="hidden"])'));
-        const lexInput = inputs.find(el => {
-            const ph = (el.getAttribute('placeholder') || '');
-            return ph.includes('מילים') || ph.includes('חיפוש') || (el.id && el.id.toLowerCase().includes('lex'));
-        });
-        const activeQuery = lexInput ? (lexInput.value || '').trim() : '';
-        if (!activeQuery) return;
-
-        const candidates = Array.from(document.querySelectorAll('div, p, span, small'));
-        candidates.forEach(el => {
-            if (el.children.length === 0 && (el.textContent || '').includes('ערכים באות ')) {
-                el.textContent = el.textContent.replace(/ערכים באות\\s+[א-ת]'?/, 'תוצאות חיפוש בכל האותיות');
-            }
-        });
-    }
-
-    document.addEventListener('input', function() {
-        setTimeout(syncLexiconFooterText, 10);
-    });
-
-    const obs = new MutationObserver(function() {
-        syncLexiconFooterText();
-    });
-    obs.observe(document.body, { childList: true, subtree: true, characterData: true });
-});
-</script>
-"""
-    try:
-        html_str = response.content.decode('utf-8')
-        if '</body>' in html_str:
-            html_str = html_str.replace('</body>', fix_lexicon_label_script + '\n</body>', 1)
-            response.content = html_str.encode('utf-8')
-    except Exception:
-        pass
-    return response
+    return render(request, 'articles/aramaic_translator.html', context)
 
 @ratelimit(rate=30, timeout=60)
 def aramaic_translate_api(request):

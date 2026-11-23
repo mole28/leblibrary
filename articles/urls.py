@@ -7,19 +7,16 @@ from .models import Article, Book
 
 app_name = 'articles'
 
-
 def legacy_article_id_redirect(request, pk):
     article = Article.objects.filter(pk=pk).first()
     if article and getattr(article, 'slug', None):
         return redirect('articles:detail', slug=article.slug, permanent=True)
     return redirect('articles:list', permanent=True)
 
-
 def safe_book_detail(request, pk):
     if not Book.objects.filter(pk=pk).exists():
         return redirect('articles:books', permanent=True)
     return views.book_detail(request, pk=pk)
-
 
 urlpatterns = [
     path('', views.article_list, name='list'),
@@ -38,6 +35,7 @@ urlpatterns = [
     path('qa/', views.qa_list, name='qa'),
     path('qa/<int:pk>/', views.qa_list, name='qa_detail'),
     path('parasha/', views.parasha_list, name='parasha'),
+    path('parasha/<str:parasha_name>/', views.parasha_list, name='parasha_detail'),
 
     path('calculator/', views.calculator, name='calculator'),
     path('volume-calculator/', views.volume_calculator, name='volume_calculator'),

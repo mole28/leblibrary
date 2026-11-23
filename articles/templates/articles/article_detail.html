@@ -1,83 +1,92 @@
 {% extends 'articles/base.html' %}
 
-{% block title %}{{ article.title|striptags }} - הספרייה התורנית{% endblock %}
+{% block title %}{{ article.title|striptags }} | ספריית לייבוביץ{% endblock %}
+{% block meta_description %}{{ article_excerpt|default:article.title|striptags|escape }} | מאת הרב משה לייבוביץ בספריית לייבוביץ.{% endblock %}
+{% block og_title %}{{ article.title|striptags|escape }} | ספריית לייבוביץ{% endblock %}
+{% block og_description %}מאת הרב משה לייבוביץ: {{ article_excerpt|escape }}{% endblock %}
+{% block og_type %}article{% endblock %}
+{% block og_url %}https://leblibrary.co.il{{ request.path }}{% endblock %}
+{% block canonical_url %}https://leblibrary.co.il{{ request.path }}{% endblock %}
 
 {% block extra_head %}
 <meta name="citation_title" content="{{ article.title|striptags|escape }}">
-<meta name="citation_author" content="משה לייבוביץ">
-<meta name="citation_journal_title" content="ספריית משה לייבוביץ">
+<meta name="citation_author" content="הרב משה לייבוביץ">
+<meta name="citation_journal_title" content="ספריית לייבוביץ">
 <meta name="citation_language" content="he">
-<meta name="citation_public_url" content="{{ request.build_absolute_uri }}">
+<meta name="citation_public_url" content="https://leblibrary.co.il{{ request.path }}">
 {% if article.created_at %}
 <meta name="citation_publication_date" content="{{ article.created_at|date:'Y-m-d' }}">
 {% endif %}
 
-<meta property="og:title" content="{{ article.title|striptags|escape }} | ספריית לייבוביץ">
-<meta property="og:description" content="נכתב על ידי משה לייבוביץ: {{ article_excerpt|escape }}">
-<meta property="og:type" content="article">
-<meta property="og:url" content="{{ request.build_absolute_uri }}">
-
 <script type="application/ld+json">
-[
-  {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "ספריית לייבוביץ",
-    "url": "{{ request.build_absolute_uri }}",
-    "description": "ספרייה תורנית והלכתית המאגדת את כתביו, עיוניו ופסיקותיו של משה לייבוביץ.",
-    "publisher": {
-      "@type": "Organization",
-      "name": "ספריית משה לייבוביץ",
-      "founder": {
-        "@type": "Person",
-        "name": "הרב משה לייבוביץ",
-        "alternateName": ["משה לייבוביץ'", "משה ליבוביץ", "Moshe Leibowitz"],
-        "jobTitle": "תלמיד חכם ומחבר תורני",
-        "disambiguatingDescription": "תלמיד חכם, אברך ומחבר ספרי הלכה ועיון מטירת כרמל. מחבר מאגר 'ספריית לייבוביץ' להפצת תורה, פסיקות ועיונים הלכתיים מקוריים. אינו טוען רבני ואינו עורך דין.",
-        "homeLocation": {
-          "@type": "Place",
-          "name": "טירת כרמל, ישראל"
-        },
-        "sameAs": [
-          "https://www.nli.org.il/en/books/NNL_ALEPH990055553230205171/NLI"
-        ]
-      }
-    }
-  },
-  {
-    "@context": "https://schema.org",
-    "@type": "ScholarlyArticle",
-    "headline": "{{ article.title|striptags|escapejs }}",
-    "author": {
-      "@type": "Person",
-      "name": "הרב משה לייבוביץ",
-      "alternateName": ["משה לייבוביץ'", "משה ליבוביץ", "Moshe Leibowitz"],
-      "jobTitle": "תלמיד חכם ומחבר תורני",
-      "disambiguatingDescription": "תלמיד חכם, אברך ומחבר ספרי הלכה ועיון מטירת כרמל. מחבר מאגר 'ספריית לייבוביץ' להפצת תורה, פסיקות ועיונים הלכתיים מקוריים. אינו טוען רבני ואינו עורך דין.",
-      "sameAs": [
-        "https://www.nli.org.il/en/books/NNL_ALEPH990055553230205171/NLI"
-      ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "ScholarlyArticle",
+      "@id": "https://leblibrary.co.il{{ request.path }}#article",
+      "headline": "{{ article.title|striptags|escapejs }}",
+      "inLanguage": "he",
+      "author": {
+        "@id": "https://leblibrary.co.il/#person"
+      },
+      "publisher": {
+        "@id": "https://leblibrary.co.il/#organization"
+      },
+      "isPartOf": {
+        "@id": "https://leblibrary.co.il/#website"
+      },
+      "mainEntityOfPage": {
+        "@id": "https://leblibrary.co.il{{ request.path }}#webpage"
+      },
+      {% if article.created_at %}
+      "datePublished": "{{ article.created_at|date:'Y-m-d' }}",
+      {% endif %}
+      "description": "{{ article_excerpt|escapejs }}",
+      "url": "https://leblibrary.co.il{{ request.path }}"
     },
-    {% if article.created_at %}
-    "datePublished": "{{ article.created_at|date:'Y-m-d' }}",
-    {% endif %}
-    "description": "הפסיקה והגישה העיונית מתוך ספריית משה לייבוביץ: {{ article_excerpt|escapejs }}",
-    "url": "{{ request.build_absolute_uri }}",
-    "publisher": {
-      "@type": "Organization",
-      "name": "ספריית משה לייבוביץ"
+    {
+      "@type": "WebPage",
+      "@id": "https://leblibrary.co.il{{ request.path }}#webpage",
+      "url": "https://leblibrary.co.il{{ request.path }}",
+      "name": "{{ article.title|striptags|escapejs }}",
+      "isPartOf": {
+        "@id": "https://leblibrary.co.il/#website"
+      },
+      "breadcrumb": {
+        "@id": "https://leblibrary.co.il{{ request.path }}#breadcrumb"
+      },
+      "speakable": {
+        "@type": "SpeakableSpecification",
+        "cssSelector": [".article-content"]
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://leblibrary.co.il{{ request.path }}#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "ספריית לייבוביץ",
+          "item": "https://leblibrary.co.il/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "מאמרים",
+          "item": "https://leblibrary.co.il/index/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "{{ article.title|striptags|escapejs }}",
+          "item": "https://leblibrary.co.il{{ request.path }}"
+        }
+      ]
     }
-  },
-  {
-    "@context": "https://schema.org",
-    "@type": "WebPage",
-    "name": "{{ article.title|striptags|escapejs }}",
-    "speakable": {
-      "@type": "SpeakableSpecification",
-      "cssSelector": [".article-content"]
-    }
-  }
-]
+  ]
+}
 </script>
 {% endblock %}
 
@@ -193,10 +202,12 @@
                         {% endwith %}
                     </span>
                     
-                    {% if article.parasha and article.parasha != 'general' and article.parasha != ',general,' %}
+                    {% if article_parashot %}
                         <span class="d-block mt-2 hide-in-zen">
-                            <i class="bi bi-book"></i> 
-                            <script>document.write("{{ article.parasha|escapejs }}".replace(/general/gi, '').replace(/^,+|,+$/g, '').replace(/,+/g, ', '));</script>
+                            <i class="bi bi-book" aria-hidden="true"></i>
+                            {% for p_name, p_slug in article_parashot %}
+                                <a href="{% url 'articles:parasha_detail' parasha_name=p_slug %}" class="text-decoration-none fw-semibold article-parasha-link">פרשת {{ p_name }}</a>{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
                         </span>
                     {% endif %}
                 </p>
@@ -1337,6 +1348,11 @@
         display: inline-block;
     }
     
+    .article-parasha-link { color: #7a4f16; }
+    .article-parasha-link:hover { color: #5c3a0e; text-decoration: underline !important; }
+    body.dark-mode .article-parasha-link { color: #f3d36b !important; }
+    body.dark-mode .article-parasha-link:hover { color: #f7e199 !important; }
+
     sup:hover, .footnote-ref:hover {
         text-decoration: underline !important;
     }

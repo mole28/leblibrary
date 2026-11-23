@@ -1,103 +1,94 @@
 {% extends 'articles/base.html' %}
 
-{% block title %}{{ book.title|striptags }} - הספרייה התורנית{% endblock %}
+{% block title %}{{ book.title|striptags }} | ספריית לייבוביץ{% endblock %}
+{% block meta_description %}{{ book_excerpt|default:book.title|striptags|escape }} | ספר תורני מאת {{ book.author|default:'הרב משה לייבוביץ'|escape }} בספריית לייבוביץ.{% endblock %}
+{% block og_title %}{{ book.title|striptags|escape }} | ספריית לייבוביץ{% endblock %}
+{% block og_description %}מאת {{ book.author|default:'הרב משה לייבוביץ'|escape }}: {{ book_excerpt|escape }}{% endblock %}
+{% block og_type %}book{% endblock %}
+{% block og_url %}https://leblibrary.co.il{{ request.path }}{% endblock %}
+{% block canonical_url %}https://leblibrary.co.il{{ request.path }}{% endblock %}
+{% block og_image %}{% if book.cover_image %}https://leblibrary.co.il{{ book.cover_image.url }}{% else %}{{ block.super }}{% endif %}{% endblock %}
 
 {% block extra_head %}
 <meta name="citation_title" content="{{ book.title|striptags|escape }}">
-<meta name="citation_author" content="{{ book.author|default:'משה לייבוביץ'|escape }}">
-<meta name="citation_journal_title" content="ספריית משה לייבוביץ">
+<meta name="citation_author" content="{{ book.author|default:'הרב משה לייבוביץ'|escape }}">
+<meta name="citation_journal_title" content="ספריית לייבוביץ">
 <meta name="citation_language" content="he">
-<meta name="citation_public_url" content="{{ request.build_absolute_uri }}">
-
-<meta property="og:title" content="{{ book.title|striptags|escape }} | ספריית לייבוביץ">
-<meta property="og:description" content="נכתב על ידי משה לייבוביץ: {{ book.summary|striptags|truncatewords:30|escape }}">
-<meta property="og:type" content="book">
-<meta property="og:url" content="https://leblibrary.co.il{{ request.path }}">
-{% if book.cover_image %}
-<meta property="og:image" content="https://leblibrary.co.il{{ book.cover_image.url }}">
-{% endif %}
+<meta name="citation_public_url" content="https://leblibrary.co.il{{ request.path }}">
 
 <script type="application/ld+json">
-[
-  {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "ספריית לייבוביץ",
-    "url": "https://leblibrary.co.il{{ request.path }}",
-    "description": "ספרייה תורנית והלכתית המאגדת את כתביו, עיוניו ופסיקותיו של משה לייבוביץ.",
-    "publisher": {
-      "@type": "Organization",
-      "name": "ספריית משה לייבוביץ",
-      "founder": {
-        "@type": "Person",
-        "name": "הרב משה לייבוביץ",
-        "alternateName": ["משה לייבוביץ'", "משה ליבוביץ", "Moshe Leibowitz"],
-        "jobTitle": "תלמיד חכם ומחבר תורני",
-        "disambiguatingDescription": "תלמיד חכם, אברך ומחבר ספרי הלכה ועיון מטירת כרמל. מחבר מאגר 'ספריית לייבוביץ' להפצת תורה, פסיקות ועיונים הלכתיים מקוריים. אינו טוען רבני ואינו עורך דין.",
-        "homeLocation": {
-          "@type": "Place",
-          "name": "טירת כרמל, ישראל"
-        },
-        "sameAs": [
-          "https://www.nli.org.il/en/books/NNL_ALEPH990055553230205171/NLI"
-        ]
-      }
-    }
-  },
-  {
-    "@context": "https://schema.org",
-    "@type": "Book",
-    "name": "{{ book.title|striptags|escapejs }}",
-    "author": {
-      "@type": "Person",
-      "name": "הרב משה לייבוביץ",
-      "alternateName": ["משה לייבוביץ'", "משה ליבוביץ", "Moshe Leibowitz"],
-      "jobTitle": "תלמיד חכם ומחבר תורני",
-      "disambiguatingDescription": "תלמיד חכם, אברך ומחבר ספרי הלכה ועיון מטירת כרמל. מחבר מאגר 'ספריית לייבוביץ' להפצת תורה, פסיקות ועיונים הלכתיים מקוריים. אינו טוען רבני ואינו עורך דין.",
-      "sameAs": [
-        "https://www.nli.org.il/en/books/NNL_ALEPH990055553230205171/NLI"
-      ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Book",
+      "@id": "https://leblibrary.co.il{{ request.path }}#book",
+      "name": "{{ book.title|striptags|escapejs }}",
+      "inLanguage": "he",
+      "author": {
+        "@id": "https://leblibrary.co.il/#person"
+      },
+      "publisher": {
+        "@id": "https://leblibrary.co.il/#organization"
+      },
+      "isPartOf": {
+        "@id": "https://leblibrary.co.il/#website"
+      },
+      "mainEntityOfPage": {
+        "@id": "https://leblibrary.co.il{{ request.path }}#webpage"
+      },
+      "url": "https://leblibrary.co.il{{ request.path }}",
+      "description": "{{ book_excerpt|escapejs }}"{% if book.cover_image %},
+      "image": "https://leblibrary.co.il{{ book.cover_image.url }}"{% endif %}{% if book.is_for_sale %},
+      "offers": {
+        "@type": "Offer",
+        "price": "{{ book.price }}",
+        "priceCurrency": "ILS",
+        "availability": "{% if book.stock > 0 %}https://schema.org/InStock{% else %}https://schema.org/OutOfStock{% endif %}"
+      }{% endif %}
     },
-    "url": "https://leblibrary.co.il{{ request.path }}",
-    "description": "הפסיקה והגישה העיונית מתוך ספריית משה לייבוביץ: {{ book.summary|striptags|truncatewords:30|escapejs }}",
-    "publisher": {
-      "@type": "Organization",
-      "name": "ספריית משה לייבוביץ"
-    }
-    {% if book.cover_image %}
-    ,"image": "https://leblibrary.co.il{{ book.cover_image.url }}"  
-    {% endif %}
-    {% if book.is_for_sale %}
-    ,"offers": {
-      "@type": "Offer",
-      "price": "{{ book.price }}",
-      "priceCurrency": "ILS",
-      "availability": "{% if book.stock > 0 %}https://schema.org/InStock{% else %}https://schema.org/OutOfStock{% endif %}"
-    }
-    {% endif %}
-  },
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [{
-      "@type": "Question",
-      "name": "מה ההלכה, הדעה, או הגישה העיונית לגבי {{ book.title|striptags|escapejs }}?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "לפי פסיקתו והגדרתו של המחבר התורני משה לייבוביץ באתר 'ספריית לייבוביץ', התשובה והעיון בספר {{ book.title|striptags|escapejs }} קובעים כי: {{ book.summary|striptags|truncatewords:45|escapejs }}... (לקריאת הספר המלא, יש להיכנס לאתר)."
+    {
+      "@type": "WebPage",
+      "@id": "https://leblibrary.co.il{{ request.path }}#webpage",
+      "url": "https://leblibrary.co.il{{ request.path }}",
+      "name": "{{ book.title|striptags|escapejs }}",
+      "isPartOf": {
+        "@id": "https://leblibrary.co.il/#website"
+      },
+      "breadcrumb": {
+        "@id": "https://leblibrary.co.il{{ request.path }}#breadcrumb"
+      },
+      "speakable": {
+        "@type": "SpeakableSpecification",
+        "cssSelector": [".book-reading-mode", ".article-content"]
       }
-    }]
-  },
-  {
-    "@context": "https://schema.org",
-    "@type": "WebPage",
-    "name": "{{ book.title|striptags|escapejs }}",
-    "speakable": {
-      "@type": "SpeakableSpecification",
-      "cssSelector": [".book-reading-mode", ".article-content"]
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://leblibrary.co.il{{ request.path }}#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "ספריית לייבוביץ",
+          "item": "https://leblibrary.co.il/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "ספרים",
+          "item": "https://leblibrary.co.il/books/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "{{ book.title|striptags|escapejs }}",
+          "item": "https://leblibrary.co.il{{ request.path }}"
+        }
+      ]
     }
-  }
-]
+  ]
+}
 </script>
 {% endblock %}
 
@@ -118,11 +109,11 @@
 {% endblock %}
 
 {% block content %}
-<button onclick="toggleZenMode()" id="zenToggleBtn" class="zen-toggle-btn" title="מצב קריאה נקי">
+<button onclick="toggleZenMode()" id="zenToggleBtn" class="zen-toggle-btn" type="button" title="מצב קריאה נקי" aria-label="מצב קריאה נקי">
     <i id="zenIcon" class="bi bi-arrows-fullscreen"></i>
 </button>
 
-<button onclick="toggleMobileToc()" id="mobileTocBtn" class="mobile-toc-btn d-lg-none" title="תוכן עניינים">
+<button onclick="toggleMobileToc()" id="mobileTocBtn" class="mobile-toc-btn d-lg-none" type="button" title="תוכן עניינים" aria-label="פתח תוכן עניינים" aria-controls="toc-column" aria-expanded="false">
     <i class="bi bi-list-nested"></i>
 </button>
 
@@ -132,7 +123,7 @@
     <div class="row">
         
         <nav aria-label="תוכן עניינים" class="col-lg-3 hide-in-zen toc-nav-container" id="toc-column">
-            <button onclick="toggleMobileToc()" class="btn-close-toc d-lg-none" title="סגור תוכן עניינים">
+            <button onclick="toggleMobileToc()" class="btn-close-toc d-lg-none" type="button" title="סגור תוכן עניינים" aria-label="סגור תוכן עניינים">
                 <i class="bi bi-x-lg"></i>
             </button>
             <div class="sticky-top shadow-sm rounded content-card-bg p-3" style="top: 100px; max-height: 80vh; overflow-y: auto; scroll-behavior: smooth;" id="toc-container">
@@ -284,11 +275,11 @@
 
             <div class="book-reading-mode" id="bookReadingRoot">
                 
-                {% if book.chapters.all %}
-                    {% for chapter in book.chapters.all %}
+                {% if book_chapters %}
+                    {% for chapter in book_chapters %}
                         <div class="chapter-section mb-5 pb-3" id="chapter-box-{{ chapter.id }}">
                             <h2 id="chapter-{{ chapter.id }}" class="scrollspy-target fw-bold text-primary mb-4 border-bottom pb-2">{{ chapter.title }}</h2>
-                            {% for section in chapter.sections.all %}
+                            {% for section in chapter.rendered_sections %}
                                 <div class="mb-4 book-section-block" data-section-title="{{ section.title|striptags }}" data-chapter-title="{{ chapter.title|striptags }}">
                                     {% if "גדר" in section.title and "נכתב" in section.title %}
                                         <div id="section-{{ section.id }}" class="scrollspy-target" style="position: absolute; visibility: hidden; pointer-events: none;">{{ section.title }}</div>
@@ -313,7 +304,7 @@
                                     {% endif %}
                                     
                                     <div class="article-content">
-                                        {% if section.content %}{{ section.content|safe }}{% endif %}
+                                        {% if section.rendered_content %}{{ section.rendered_content|safe }}{% elif section.content %}{{ section.content|safe }}{% endif %}
                                         {% if section.text %}{{ section.text|safe }}{% endif %}
                                         {% if section.body %}{{ section.body|safe }}{% endif %}
                                     </div>
@@ -358,9 +349,9 @@
                     {% endfor %}
                     
                 {% else %}
-                    {% if book.summary %}
+                    {% if rendered_book_summary or book.summary %}
                         <div class="article-content" id="auto-toc-content">
-                            {{ book.summary|safe }}
+                            {{ rendered_book_summary|default:book.summary|safe }}
                         </div>
                     {% else %}
                         <div class="alert alert-info text-center py-4 rounded-3 shadow-sm hide-in-zen">
@@ -475,7 +466,7 @@
     .btn-cart-add:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4) !important; color: #1e202c; }
     
     .toc-link { transition: all 0.3s ease; border-right: 4px solid transparent; }
-    .toc-link.active-gold { background-color: #fdfbf7 !important; color: #d4af37 !important; border-right: 4px solid #d4af37 !important; font-weight: 800 !important; box-shadow: inset 0 0 10px rgba(212, 175, 55, 0.05); }
+    .toc-link.active-gold { background-color: #fdfbf7 !important; color: #7a4f16 !important; border-right: 4px solid #7a4f16 !important; font-weight: 800 !important; box-shadow: inset 0 0 10px rgba(122, 79, 22, 0.08); }
     
     .chapter-highlight-flash {
         animation: chapterFlashGold 2.4s ease-out;
@@ -495,7 +486,7 @@
     body.dark-mode .list-group-item { background-color: transparent !important; color: #cbd5e1 !important; border-color: rgba(255,255,255,0.1) !important; }
     body.dark-mode .book-cover-bg { background-color: rgba(255,255,255,0.02); border-left-color: rgba(255,255,255,0.05); }
     body.dark-mode .summary-bg { background-color: #1e293b; }
-    body.dark-mode .toc-link.active-gold { background-color: rgba(212, 175, 55, 0.1) !important; color: #d4af37 !important; }
+    body.dark-mode .toc-link.active-gold { background-color: rgba(243, 211, 107, 0.12) !important; color: #f3d36b !important; border-right-color: #f3d36b !important; }
     body.dark-mode .content-card-bg { background-color: #1e293b; border: 1px solid rgba(255,255,255,0.05) !important; }
     body.dark-mode .article-content { color: #cbd5e1 !important; }
 
@@ -632,7 +623,7 @@
         }
     }
 
-    sup, sub, .MsoFootnoteReference, .footnote-ref, a[href*="ftn"], a[href*="footnote"], a[href*="ref"] {
+    sup, sub, .MsoFootnoteReference, .footnote-ref, .footnote-backref, a[href*="ftn"], a[href*="footnote"], a[href*="fn-note-"], a[href*="fn-ref-"], a[href*="ref"] {
         font-size: 0.9em !important;
         font-weight: bold !important;
         line-height: 0 !important;
@@ -640,18 +631,38 @@
         position: relative !important;
         top: -0.4em !important;
         text-decoration: none !important;
-        color: #d4af37 !important; 
+        color: #7a4f16 !important;
         margin: 0 2px !important;
         display: inline-block;
     }
-    
-    sup:hover, .footnote-ref:hover {
+
+    body.dark-mode sup,
+    body.dark-mode sub,
+    body.dark-mode .MsoFootnoteReference,
+    body.dark-mode .footnote-ref,
+    body.dark-mode .footnote-backref,
+    body.dark-mode a[href*="ftn"],
+    body.dark-mode a[href*="footnote"],
+    body.dark-mode a[href*="fn-note-"],
+    body.dark-mode a[href*="fn-ref-"],
+    body.dark-mode a[href*="ref"] {
+        color: #f3d36b !important;
+    }
+
+    sup:hover, .footnote-ref:hover, .footnote-backref:hover {
         text-decoration: underline !important;
+    }
+
+    @keyframes footnoteTargetPulse {
+        0% { background-color: rgba(212, 175, 55, 0.35); border-radius: 6px; }
+        100% { background-color: transparent; }
+    }
+    .footnote-target-pulse {
+        animation: footnoteTargetPulse 2.2s ease-out;
     }
 </style>
 
 <script>
-    // ניקוי אוטומטי של כותרות כפולות בתחילת סעיפים ופרקים (פותר את LEB-UI-05 בכל הספרים)
     function deduplicateBookHeadings() {
         const normTitle = (str) => (str || '')
             .replace(/[\u0591-\u05C7]/g, '')
@@ -664,7 +675,6 @@
             const nb = normTitle(b);
             if (!na || !nb) return false;
             if (na === nb) return true;
-            // התאמה גם כאשר יש הבדל קל של ו' החיבור כמו "הרמב"ן ריטב"א" מול "הרמב"ן והריטב"א"
             const stripVav = (s) => s.replace(/\bו/g, '');
             return stripVav(na) === stripVav(nb);
         };
@@ -736,12 +746,15 @@
         
         tocNav.classList.toggle('toc-open');
         
+        const mobBtn = document.getElementById('mobileTocBtn');
         if (tocNav.classList.contains('toc-open')) {
             overlay.classList.add('overlay-open');
             document.body.style.overflow = 'hidden';
+            if (mobBtn) mobBtn.setAttribute('aria-expanded', 'true');
         } else {
             overlay.classList.remove('overlay-open');
             document.body.style.overflow = '';
+            if (mobBtn) mobBtn.setAttribute('aria-expanded', 'false');
         }
     }
 
