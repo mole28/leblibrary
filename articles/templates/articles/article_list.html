@@ -14,9 +14,10 @@
   "inLanguage": "he-IL",
   "isAccessibleForFree": true,
   "author": {
-    "@type": "Person",
-    "name": "הרב משה לייבוביץ",
-    "url": "https://leblibrary.co.il/about/"
+    "@id": "https://leblibrary.co.il/#person"
+  },
+  "isPartOf": {
+    "@id": "https://leblibrary.co.il/#website"
   },
   "description": "מנוע חיפוש תורני מתקדם, ניתוח AI של הנתונים ומתרגם ארמי-עברי לתלמוד הבבלי, הירושלמי וספר הזוהר.",
   "potentialAction": {
@@ -40,7 +41,7 @@
                     <div style="position: relative; z-index: 1051;">
                         <form action="{% url 'articles:list' %}" method="get" class="input-group shadow-lg mb-3" style="border-radius: 50px; overflow: hidden; height: 55px; position: relative;">
                             <input type="text" name="q" id="live-search-input" class="form-control px-4 fs-5 border-0" data-i18n-placeholder="search_placeholder" placeholder="חיפוש חופשי במאמרים, שו״ת וספרים..." aria-label="Search" value="{{ request.GET.q|default_if_none:'' }}" style="box-shadow: none; outline: none;" autocomplete="off">
-                            <button class="btn btn-light bg-white border-0 px-4" type="submit">
+                            <button class="btn btn-light bg-white border-0 px-4" type="submit" aria-label="חיפוש">
                                 <svg viewBox="0 0 24 24" width="24" height="24" stroke="#d4af37" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
                                     <circle cx="11" cy="11" r="8"></circle>
                                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>

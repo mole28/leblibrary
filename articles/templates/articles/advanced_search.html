@@ -37,7 +37,6 @@
 {% endblock %}
 
 {% block content %}
-<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 <style>
     .corpus-luxury-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; direction: rtl; }
     .corpus-luxury-btn { display: flex; align-items: center; justify-content: space-between; padding: 9px 11px; background: #ffffff; border: 1.5px solid #e2d9c5; border-radius: 10px; font-weight: 600; font-size: 0.9rem; color: #3b352a; cursor: pointer; transition: all 0.18s ease; user-select: none; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
@@ -2650,6 +2649,44 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     let visNetworkInstance = null;
+    let visNetworkLoaderPromise = null;
+
+    function ensureVisNetworkLoaded() {
+        if (window.vis && window.vis.Network && window.vis.DataSet) {
+            return Promise.resolve();
+        }
+        if (visNetworkLoaderPromise) {
+            return visNetworkLoaderPromise;
+        }
+        const cdnUrls = [
+            'https://unpkg.com/vis-network/standalone/umd/vis-network.min.js',
+            'https://cdn.jsdelivr.net/npm/vis-network/standalone/umd/vis-network.min.js'
+        ];
+        visNetworkLoaderPromise = new Promise((resolve, reject) => {
+            function tryLoad(idx) {
+                if (idx >= cdnUrls.length) {
+                    visNetworkLoaderPromise = null;
+                    reject(new Error('vis-network load failed'));
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = cdnUrls[idx];
+                script.async = true;
+                script.onload = () => {
+                    if (window.vis && window.vis.Network && window.vis.DataSet) {
+                        resolve();
+                    } else {
+                        tryLoad(idx + 1);
+                    }
+                };
+                script.onerror = () => tryLoad(idx + 1);
+                document.head.appendChild(script);
+            }
+            tryLoad(0);
+        });
+        return visNetworkLoaderPromise;
+    }
+
     window.buildConceptMap = function() {
         const q = document.getElementById('conceptMapInput').value.trim() || searchQueryInput.value.trim();
         if (!q) return;
@@ -2664,9 +2701,11 @@ document.addEventListener('DOMContentLoaded', function() {
         wrapEl.style.display = 'none';
         detailsEl.style.display = 'none';
 
-        fetch(`/api/torah-ai-insights/?mode=concept_map&q=${encodeURIComponent(q)}`)
-            .then(r => r.json())
-            .then(data => {
+        Promise.all([
+            ensureVisNetworkLoaded(),
+            fetch(`/api/torah-ai-insights/?mode=concept_map&q=${encodeURIComponent(q)}`).then(r => r.json())
+        ])
+            .then(([, data]) => {
                 statusEl.style.display = 'none';
                 if (data.error || !data.nodes) return;
 
@@ -2739,6 +2778,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         renderNodeDetailBox(nodeObj);
                     }
                 });
+            })
+            .catch(() => {
+                statusEl.innerHTML = `<div class="alert alert-danger py-2 mb-0">שגיאה בטעינת מפת הקשרים. אנא נסה שוב.</div>`;
             });
     };
 

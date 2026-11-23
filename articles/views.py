@@ -1,3 +1,4 @@
+import hashlib
 import json
 import urllib.request
 import urllib.parse
@@ -100,6 +101,32 @@ _load_local_env()
 logger = logging.getLogger(__name__)
 _BOT_UA_RE = re.compile(r'(?:bot|crawler|spider|slurp|bingpreview|facebookexternalhit|headless|scrapy|curl|wget)', re.IGNORECASE)
 _EMAIL_SIMPLE_RE = re.compile(r'^[^\s@\r\n]+@[^\s@\r\n]+\.[^\s@\r\n]{2,}$')
+
+_CONTENT_CACHE_VER_KEY = 'leblibrary_content_cache_ver'
+_AUDIO_JOBS_LOCK = threading.Lock()
+_AUDIO_JOBS_IN_PROGRESS = set()
+
+def _get_content_cache_version():
+    ver = cache.get(_CONTENT_CACHE_VER_KEY)
+    if ver is None:
+        ver = 1
+        cache.set(_CONTENT_CACHE_VER_KEY, ver, None)
+    return ver
+
+def _bump_content_cache_version():
+    new_ver = int(time.time() * 1000)
+    cache.set(_CONTENT_CACHE_VER_KEY, new_ver, None)
+    return new_ver
+
+def _sample_queryset_random(qs, count):
+    if count <= 0:
+        return []
+    ids = list(qs.values_list('pk', flat=True))
+    if not ids:
+        return []
+    picked = random.sample(ids, min(count, len(ids)))
+    obj_map = {obj.pk: obj for obj in qs.filter(pk__in=picked)}
+    return [obj_map[pk] for pk in picked if pk in obj_map]
 
 def _sanitize_header_value(value, max_len=200):
     return re.sub(r'[\r\n]+', ' ', str(value or '')).strip()[:max_len]
@@ -337,7 +364,7 @@ def get_jewish_calendar_info():
 
         cache.set(cache_key, cal_data, 60 * 60 * 24)
     except Exception:
-        pass
+        logger.warning("Hebcal calendar fetch failed", exc_info=True)
 
     return cal_data
 
@@ -373,26 +400,29 @@ def article_list(request):
         })
 
     today_str = str(datetime.date.today())
-    cache_key = f'home_dynamic_content_{today_str}'
+    content_ver = _get_content_cache_version()
+    cache_key = f'home_dynamic_content_v{content_ver}_{today_str}'
 
     dynamic_content = cache.get(cache_key)
 
     if not dynamic_content:
-        parasha_article = Article.objects.filter(is_published=True).exclude(
+        parasha_qs = Article.objects.filter(is_published=True).exclude(
             Q(parasha__isnull=True) |
             Q(parasha__exact='') |
             Q(parasha__exact=',') |
             Q(parasha__exact=',,') |
             Q(parasha__icontains='general')
-        ).order_by('?').first()
+        )
+        parasha_picks = _sample_queryset_random(parasha_qs, 1)
+        parasha_article = parasha_picks[0] if parasha_picks else None
 
         recent_15 = list(Article.objects.filter(is_published=True).order_by('-created_at')[:15])
         if parasha_article and parasha_article in recent_15:
             recent_15.remove(parasha_article)
         latest_articles = random.sample(recent_15, min(2, len(recent_15)))
 
-        reading_books = list(Book.objects.filter(is_for_sale=False).order_by('?')[:3])
-        sale_books = list(Book.objects.filter(is_for_sale=True).order_by('?')[:3])
+        reading_books = _sample_queryset_random(Book.objects.filter(is_for_sale=False), 3)
+        sale_books = _sample_queryset_random(Book.objects.filter(is_for_sale=True), 3)
 
         dynamic_content = {
             'parasha_article': parasha_article,
@@ -912,180 +942,19 @@ def book_detail(request, pk):
 def books(request):
     q = (request.GET.get('q') or '').strip()
     books_ordered = Book.objects.all().order_by('order', 'title')
-    response = render(request, 'articles/books_list.html', {
+    return render(request, 'articles/books_list.html', {
         'books': books_ordered,
         'query': q,
         'q': q,
         'current_page': 'books',
     })
 
-    books_search_script = """
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const mainArea = document.querySelector('main') || document.body;
-    const allInputs = Array.from(mainArea.querySelectorAll('input[type="text"], input[type="search"], input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"])'));
-    const searchInput = allInputs.find(el => {
-        const ph = (el.getAttribute('placeholder') || '');
-        return ph.includes('ספר') || ph.includes('חיפוש');
-    });
-    if (!searchInput) return;
-
-    searchInput.setAttribute('name', 'q');
-    const searchForm = searchInput.closest('form');
-    if (searchForm) {
-        searchForm.setAttribute('action', window.location.pathname);
-        searchForm.setAttribute('method', 'get');
-    }
-
-    const allCards = Array.from(mainArea.querySelectorAll('.card')).filter(card => {
-        if (card.contains(searchInput)) return false;
-        const txt = (card.innerText || '');
-        const hasBookLink = Boolean(card.querySelector('a[href*="/book/"], a[href*="/cart/"]'));
-        return hasBookLink || txt.includes('היכנס לספר') || txt.includes('פתח ספר') || txt.includes('הוסף לעגלה') || txt.includes('מאת:');
-    });
-
-    const bookItems = allCards.map(card => {
-        let wrapper = card.closest('[class*="col-"]');
-        if (!wrapper || wrapper.contains(searchInput)) {
-            wrapper = card;
-        }
-        const normText = (card.innerText || '')
-            .replace(/[\\u0591-\\u05C7"״'׳]/g, '')
-            .replace(/\\s+/g, ' ')
-            .toLowerCase();
-        return { card: card, wrapper: wrapper, normText: normText };
-    });
-
-    let statusBanner = document.getElementById('booksSearchStatusBanner');
-    if (!statusBanner && bookItems.length > 0) {
-        statusBanner = document.createElement('div');
-        statusBanner.id = 'booksSearchStatusBanner';
-        statusBanner.style.display = 'none';
-        statusBanner.className = 'mb-4';
-        const firstRow = bookItems[0].wrapper.closest('.row') || bookItems[0].wrapper.parentElement;
-        if (firstRow && firstRow.parentElement) {
-            firstRow.parentElement.insertBefore(statusBanner, firstRow);
-        }
-    }
-
-    function applyBooksFilter(rawQuery, updateUrl) {
-        const cleanQ = (rawQuery || '').trim();
-        const normQ = cleanQ.replace(/[\\u0591-\\u05C7"״'׳]/g, '').toLowerCase();
-        const words = normQ.split(/\\s+/).filter(Boolean);
-
-        let matchCount = 0;
-        bookItems.forEach(item => {
-            const isMatch = words.length === 0 || words.every(w => item.normText.includes(w));
-            item.wrapper.style.display = isMatch ? '' : 'none';
-            if (isMatch) matchCount++;
-        });
-
-        const rows = new Set(bookItems.map(i => i.wrapper.closest('.row')).filter(Boolean));
-        rows.forEach(row => {
-            const hasVisible = Array.from(row.children).some(ch => ch.style.display !== 'none');
-            row.style.display = (words.length === 0 || hasVisible) ? '' : 'none';
-            const prev = row.previousElementSibling;
-            if (prev && prev.id !== 'booksSearchStatusBanner' && /^H[1-6]$/.test(prev.tagName)) {
-                prev.style.display = (words.length === 0 || hasVisible) ? '' : 'none';
-            }
-        });
-
-        if (updateUrl && window.history && window.history.replaceState) {
-            const newUrl = cleanQ
-                ? (window.location.pathname + '?q=' + encodeURIComponent(cleanQ))
-                : window.location.pathname;
-            window.history.replaceState(null, '', newUrl);
-        }
-
-        if (!statusBanner) return;
-
-        if (!cleanQ) {
-            statusBanner.style.display = 'none';
-            statusBanner.innerHTML = '';
-            return;
-        }
-
-        const safeQ = cleanQ.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-        statusBanner.style.display = 'block';
-        if (matchCount > 0) {
-            statusBanner.innerHTML = `
-                <div class="alert d-flex justify-content-between align-items-center flex-wrap gap-2 shadow-sm rounded-3" style="background-color: #fcfaf5; border: 1px solid #d4af37; color: #1e293b;">
-                    <div>
-                        <i class="bi bi-search ms-2" style="color: #b8860b;"></i>
-                        נמצאו <strong>${matchCount}</strong> ספרים התואמים לחיפוש <strong>"${safeQ}"</strong>
-                    </div>
-                    <button type="button" id="clearBooksSearchBtn" class="btn btn-sm btn-outline-dark rounded-pill px-3 fw-bold">
-                        נקה חיפוש והצג הכל
-                    </button>
-                </div>
-            `;
-        } else {
-            statusBanner.innerHTML = `
-                <div class="text-center p-5 rounded-4 shadow-sm my-3" style="background-color: #fcfaf5; border: 1.5px dashed #d4af37; color: #1e293b;">
-                    <i class="bi bi-journal-x fs-1 d-block mb-2" style="color: #b8860b;"></i>
-                    <h4 class="fw-bold mb-2">לא נמצאו ספרים התואמים לחיפוש "${safeQ}"</h4>
-                    <p class="text-muted mb-3">נסה לחפש מילה אחרת משם הספר או הנושא.</p>
-                    <button type="button" id="clearBooksSearchBtn" class="btn rounded-pill px-4 py-2 fw-bold shadow-sm" style="background: #d4af37; color: #1e202c;">
-                        הצג את כל הספרים בספרייה
-                    </button>
-                </div>
-            `;
-        }
-
-        const clearBtn = document.getElementById('clearBooksSearchBtn');
-        if (clearBtn) {
-            clearBtn.addEventListener('click', function() {
-                searchInput.value = '';
-                applyBooksFilter('', true);
-                searchInput.focus();
-            });
-        }
-    }
-
-    if (searchForm) {
-        searchForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            applyBooksFilter(searchInput.value, true);
-        });
-    }
-
-    const searchBtn = searchForm ? searchForm.querySelector('button, [type="submit"], .btn') : null;
-    if (searchBtn) {
-        searchBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            applyBooksFilter(searchInput.value, true);
-        });
-    }
-
-    searchInput.addEventListener('input', function() {
-        applyBooksFilter(searchInput.value, true);
-    });
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const initialQ = (urlParams.get('q') || '').trim();
-    if (initialQ) {
-        searchInput.value = initialQ;
-        applyBooksFilter(initialQ, false);
-    } else if ((searchInput.value || '').trim()) {
-        applyBooksFilter(searchInput.value, true);
-    }
-});
-</script>
-"""
-    try:
-        html_str = response.content.decode('utf-8')
-        if '</body>' in html_str:
-            html_str = html_str.replace('</body>', books_search_script + '\n</body>', 1)
-            response.content = html_str.encode('utf-8')
-    except Exception:
-        pass
-    return response
-
 def live_search(request):
     q = request.GET.get('q', '').strip()
     if len(q) < 2:
         return JsonResponse({'results': []})
-    cache_key = f'live_search_{q}'
+    content_ver = _get_content_cache_version()
+    cache_key = 'live_search_v' + str(content_ver) + '_' + hashlib.md5(q.encode('utf-8')).hexdigest()
     cached_results = cache.get(cache_key)
     if cached_results:
         return JsonResponse({'results': cached_results})
@@ -1277,12 +1146,13 @@ def ping_indexnow(article_url):
     try:
         _IPV4_OPENER.open(url, timeout=5)
     except Exception:
-        pass
+        logger.warning("IndexNow ping failed for %s", article_url)
 
 @receiver([post_save, post_delete], sender=Article)
 @receiver([post_save, post_delete], sender=Book)
+@receiver([post_save, post_delete], sender=QA)
 def clear_cache_on_db_change(sender, instance, **kwargs):
-    cache.clear()
+    _bump_content_cache_version()
     ClusterEngine.clear_memory_cache()
 
 def load_tts_dictionary():
@@ -1443,14 +1313,95 @@ def apply_tts_dictionary(text):
     return text.strip()
 
 def generate_audio_sync(text, file_path):
+    tmp_path = f"{file_path}.{os.getpid()}.{threading.get_ident()}.tmp"
+
     async def _generate():
         communicate = edge_tts.Communicate(text, "he-IL-AvriNeural")
-        await communicate.save(file_path)
+        await communicate.save(tmp_path)
 
     try:
         asyncio.run(_generate())
+        if os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 0:
+            os.replace(tmp_path, file_path)
+        else:
+            raise OSError("Generated audio file was empty")
     except Exception as e:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
         raise Exception(f"Edge-TTS Error: {str(e)}")
+
+def _collect_article_audio_text(article):
+    raw_text = f"{article.title}. {article.content or ''}"
+    try:
+        if hasattr(article, 'chapter') and article.chapter:
+            sections = Section.objects.filter(chapter=article.chapter).order_by('order')
+            for sec in sections:
+                if sec.title:
+                    raw_text += f" {sec.title}. "
+                if sec.content:
+                    raw_text += f"{sec.content} "
+        elif hasattr(article, 'book') and article.book:
+            chapters = Chapter.objects.filter(book=article.book).order_by('order')
+            for ch in chapters:
+                if ch.title:
+                    raw_text += f" {ch.title}. "
+                sections = Section.objects.filter(chapter=ch).order_by('order')
+                for sec in sections:
+                    if sec.title:
+                        raw_text += f" {sec.title}. "
+                    if sec.content:
+                        raw_text += f"{sec.content} "
+    except Exception:
+        logger.warning("Failed collecting linked sections for article audio %s", article.pk)
+    return apply_tts_dictionary(raw_text)
+
+def _collect_book_audio_text(book):
+    raw_text = f"{book.title}. "
+    if book.summary:
+        raw_text += book.summary + " "
+    try:
+        chapters = Chapter.objects.filter(book=book).order_by('order')
+        for ch in chapters:
+            if ch.title:
+                raw_text += f" {ch.title}. "
+            sections = Section.objects.filter(chapter=ch).order_by('order')
+            for sec in sections:
+                if sec.title:
+                    raw_text += f" {sec.title}. "
+                if sec.content:
+                    raw_text += f"{sec.content} "
+    except Exception:
+        logger.warning("Failed collecting chapters for book audio %s", book.pk)
+    return apply_tts_dictionary(raw_text)
+
+def _spawn_audio_generation_job(job_key, file_path, text_builder):
+    lock_cache_key = f"audio_gen_lock_{job_key}"
+    with _AUDIO_JOBS_LOCK:
+        if job_key in _AUDIO_JOBS_IN_PROGRESS:
+            return False
+        if not cache.add(lock_cache_key, 1, 240):
+            return False
+        _AUDIO_JOBS_IN_PROGRESS.add(job_key)
+
+    def _worker():
+        try:
+            if not os.path.exists(file_path):
+                final_text = text_builder()
+                if final_text:
+                    generate_audio_sync(final_text, file_path)
+        except Exception:
+            logger.exception("Background audio generation failed for %s", job_key)
+        finally:
+            cache.delete(lock_cache_key)
+            with _AUDIO_JOBS_LOCK:
+                _AUDIO_JOBS_IN_PROGRESS.discard(job_key)
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+    return True
 
 def generate_article_audio_background(article_id):
     try:
@@ -1460,37 +1411,15 @@ def generate_article_audio_background(article_id):
         base_media = getattr(settings, 'MEDIA_ROOT', os.path.join(settings.BASE_DIR, 'media'))
         audio_dir = os.path.join(base_media, 'audio')
         os.makedirs(audio_dir, exist_ok=True)
-
-        file_name = f"article_{article.id}.mp3"
-        file_path = os.path.join(audio_dir, file_name)
-
+        file_path = os.path.join(audio_dir, f"article_{article.id}.mp3")
         if not os.path.exists(file_path):
-            raw_text = f"{article.title}. {article.content or ''}"
-            try:
-                if hasattr(article, 'chapter') and article.chapter:
-                    sections = Section.objects.filter(chapter=article.chapter).order_by('order')
-                    for sec in sections:
-                        if sec.title:
-                            raw_text += f" {sec.title}. "
-                        if sec.content:
-                            raw_text += f"{sec.content} "
-                elif hasattr(article, 'book') and article.book:
-                    chapters = Chapter.objects.filter(book=article.book).order_by('order')
-                    for ch in chapters:
-                        if ch.title:
-                            raw_text += f" {ch.title}. "
-                        sections = Section.objects.filter(chapter=ch).order_by('order')
-                        for sec in sections:
-                            if sec.title:
-                                raw_text += f" {sec.title}. "
-                            if sec.content:
-                                raw_text += f"{sec.content} "
-            except Exception:
-                pass
-            final_text = apply_tts_dictionary(raw_text)
-            generate_audio_sync(final_text, file_path)
+            _spawn_audio_generation_job(
+                f"article_{article.id}",
+                file_path,
+                lambda: _collect_article_audio_text(Article.objects.get(id=article_id)),
+            )
     except Exception:
-        pass
+        logger.warning("Failed scheduling background article audio for %s", article_id)
 
 @receiver(post_save, sender=Article)
 def trigger_article_audio_pregeneration(sender, instance, created, **kwargs):
@@ -1503,7 +1432,7 @@ def trigger_article_audio_pregeneration(sender, instance, created, **kwargs):
             except Exception:
                 pass
 
-        transaction.on_commit(lambda: threading.Thread(target=generate_article_audio_background, args=(instance.id,)).start())
+        transaction.on_commit(lambda: generate_article_audio_background(instance.id))
 
 def get_article_audio(request, identifier):
     try:
@@ -1523,38 +1452,16 @@ def get_article_audio(request, identifier):
     media_url = getattr(settings, 'MEDIA_URL', '/media/')
 
     if not os.path.exists(file_path):
-        raw_text = f"{article.title}. {article.content or ''}"
-        try:
-            if hasattr(article, 'chapter') and article.chapter:
-                sections = Section.objects.filter(chapter=article.chapter).order_by('order')
-                for sec in sections:
-                    if sec.title:
-                        raw_text += f" {sec.title}. "
-                    if sec.content:
-                        raw_text += f"{sec.content} "
-            elif hasattr(article, 'book') and article.book:
-                chapters = Chapter.objects.filter(book=article.book).order_by('order')
-                for ch in chapters:
-                    if ch.title:
-                        raw_text += f" {ch.title}. "
-                    sections = Section.objects.filter(chapter=ch).order_by('order')
-                    for sec in sections:
-                        if sec.title:
-                            raw_text += f" {sec.title}. "
-                        if sec.content:
-                            raw_text += f"{sec.content} "
-        except Exception:
-            pass
-        final_text = apply_tts_dictionary(raw_text)
-        try:
-            generate_audio_sync(final_text, file_path)
-        except Exception:
-            logger.exception("Failed generating audio file")
-            return JsonResponse({'error': 'אירעה שגיאה ביצירת קובץ השמע.'}, status=500)
+        art_id = article.id
+        _spawn_audio_generation_job(
+            f"article_{art_id}",
+            file_path,
+            lambda: _collect_article_audio_text(Article.objects.get(id=art_id)),
+        )
+        return JsonResponse({'status': 'generating', 'retry_after': 3}, status=202)
 
     file_version = int(os.path.getmtime(file_path)) if os.path.exists(file_path) else 1
     audio_url = f"{media_url}audio/{file_name}?v={file_version}"
-
     return JsonResponse({'audio_url': audio_url})
 
 def get_book_audio(request, book_id):
@@ -1572,34 +1479,16 @@ def get_book_audio(request, book_id):
     media_url = getattr(settings, 'MEDIA_URL', '/media/')
 
     if not os.path.exists(file_path):
-        raw_text = f"{book.title}. "
-        if book.summary:
-            raw_text += book.summary + " "
-
-        try:
-            chapters = Chapter.objects.filter(book=book).order_by('order')
-            for ch in chapters:
-                if ch.title:
-                    raw_text += f" {ch.title}. "
-                sections = Section.objects.filter(chapter=ch).order_by('order')
-                for sec in sections:
-                    if sec.title:
-                        raw_text += f" {sec.title}. "
-                    if sec.content:
-                        raw_text += f"{sec.content} "
-        except Exception:
-            pass
-
-        final_text = apply_tts_dictionary(raw_text)
-        try:
-            generate_audio_sync(final_text, file_path)
-        except Exception:
-            logger.exception("Failed generating audio file")
-            return JsonResponse({'error': 'אירעה שגיאה ביצירת קובץ השמע.'}, status=500)
+        b_id = book.id
+        _spawn_audio_generation_job(
+            f"book_{b_id}",
+            file_path,
+            lambda: _collect_book_audio_text(Book.objects.get(id=b_id)),
+        )
+        return JsonResponse({'status': 'generating', 'retry_after': 3}, status=202)
 
     file_version = int(os.path.getmtime(file_path)) if os.path.exists(file_path) else 1
     audio_url = f"{media_url}audio/{file_name}?v={file_version}"
-
     return JsonResponse({'audio_url': audio_url})
 
 def search_acronyms_api(request):

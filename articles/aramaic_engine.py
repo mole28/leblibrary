@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 import os
 import re
 import urllib.parse
@@ -9,6 +10,9 @@ from django.core.cache import cache
 from django.db.models import Q
 from django.utils.html import strip_tags
 from .models import TorahText, Acronym
+from .torah_engine import _IPV4_OPENER
+
+logger = logging.getLogger(__name__)
 
 def format_divine_name(text):
     if not text:
@@ -833,7 +837,7 @@ def _query_sefaria_lexicon(word_to_query, full_lex, depth=0):
     try:
         sef_url = f"https://www.sefaria.org/api/words/{urllib.parse.quote(word_to_query)}"
         req = urllib.request.Request(sef_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=4) as resp:
+        with _IPV4_OPENER.open(req, timeout=4) as resp:
             sef_data = json.loads(resp.read().decode('utf-8'))
             if not isinstance(sef_data, list) or not sef_data:
                 return None
@@ -882,11 +886,11 @@ def _query_sefaria_lexicon(word_to_query, full_lex, depth=0):
                 try:
                     gt_url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=iw&dt=t&q={urllib.parse.quote(clean_eng[:320])}"
                     gt_req = urllib.request.Request(gt_url, headers={'User-Agent': 'Mozilla/5.0'})
-                    with urllib.request.urlopen(gt_req, timeout=3) as gt_resp:
+                    with _IPV4_OPENER.open(gt_req, timeout=3) as gt_resp:
                         gt_json = json.loads(gt_resp.read().decode('utf-8'))
                         he_trans = "".join([part[0] for part in gt_json[0] if part[0]]).strip()
                 except Exception:
-                    pass
+                    logger.warning("Aramaic Google Translate fallback failed for %s", word_to_query)
 
                 lex_label = ", ".join(lex_names[:2]) or "מילון הערוך וגסטרוב"
                 return {
@@ -898,7 +902,7 @@ def _query_sefaria_lexicon(word_to_query, full_lex, depth=0):
                     'matched_aramaic_term': word_to_query,
                 }
     except Exception:
-        pass
+        logger.warning("Sefaria lexicon lookup failed for %s", word_to_query)
     return None
 
 def _find_he_to_ar_matches(clean_q, full_lex, dialect='bavli'):

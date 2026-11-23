@@ -1,21 +1,55 @@
 {% extends 'articles/base.html' %}
 
 {% block title %}אינדקס מאמרים | ספריית לייבוביץ{% endblock %}
+{% block meta_description %}אינדקס המאמרים המלא של ספריית לייבוביץ מסודר לפי סדר א״ב — מאמרים תורניים, בירורי הלכה ועיונים מאת הרב משה לייבוביץ.{% endblock %}
+{% block og_title %}אינדקס מאמרים | ספריית לייבוביץ{% endblock %}
+{% block og_description %}כל מאמרי ההלכה והעיון של ספריית לייבוביץ מסודרים לפי סדר א״ב.{% endblock %}
+{% block og_url %}https://leblibrary.co.il/index/{% endblock %}
+{% block canonical_url %}https://leblibrary.co.il/index/{% endblock %}
 
 {% block extra_head %}
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "WebPage",
-  "name": "אינדקס מאמרים | ספריית לייבוביץ",
-  "author": {
-    "@type": "Person",
-    "name": "משה לייבוביץ"
-  },
-  "publisher": {
-    "@type": "Organization",
-    "name": "ספריית לייבוביץ"
-  }
+  "@graph": [
+    {
+      "@type": "CollectionPage",
+      "@id": "https://leblibrary.co.il/index/#webpage",
+      "url": "https://leblibrary.co.il/index/",
+      "name": "אינדקס מאמרים | ספריית לייבוביץ",
+      "inLanguage": "he",
+      "author": {
+        "@id": "https://leblibrary.co.il/#person"
+      },
+      "publisher": {
+        "@id": "https://leblibrary.co.il/#organization"
+      },
+      "isPartOf": {
+        "@id": "https://leblibrary.co.il/#website"
+      },
+      "breadcrumb": {
+        "@id": "https://leblibrary.co.il/index/#breadcrumb"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://leblibrary.co.il/index/#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "ספריית לייבוביץ",
+          "item": "https://leblibrary.co.il/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "אינדקס מאמרים",
+          "item": "https://leblibrary.co.il/index/"
+        }
+      ]
+    }
+  ]
 }
 </script>
 {% endblock %}
@@ -27,7 +61,6 @@
         <h1 class="text-white mb-0 fw-bold display-4" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.8);">אינדקס מאמרים</h1>
         <p class="text-white mt-2 fs-4" style="text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">כל מאמרי האתר מסודרים לפי א"ב</p>
         
-        <!-- מונה מאמרים יוקרתי -->
         <div class="mt-3">
             <div class="d-inline-flex align-items-center gap-2 px-4 py-1.5 rounded-pill text-sm shadow-lg backdrop-blur-md" style="background-color: rgba(15, 23, 42, 0.75); border: 1px solid rgba(212, 175, 55, 0.5); color: #f3e8ff;">
                 <i class="bi bi-journal-richtext" style="color: #d4af37 !important;"></i>
@@ -55,7 +88,6 @@
 {% block content %}
 <div class="container mb-5 pb-5">
     
-    <!-- חלק 1: אינדקס המאמרים -->
     <div class="card p-4 p-md-5 shadow-sm" style="background-color: #fdfdf9; border: 1px solid #eaeaea; border-radius: 16px;">
         <div class="row">
             
@@ -68,7 +100,7 @@
                     <ul style="list-style-type: disc; padding-right: 25px; margin: 0;">
                         {% for article in articles %}
                         <li class="mb-3" style="color: #2c3e50;">
-                            <a href="{% url 'articles:detail' article.pk %}" class="text-decoration-none article-link" style="color: #4e8cff; font-size: 1.15rem; transition: all 0.2s;">
+                            <a href="{% url 'articles:detail' article.slug|default:article.pk %}" class="text-decoration-none article-link" style="color: #4e8cff; font-size: 1.15rem; transition: all 0.2s;">
                                 {{ article.title }}
                             </a>
                             {% if article.is_new %}
@@ -91,7 +123,6 @@
     </div>
 
     {% if user.is_superuser %}
-    <!-- חלק 2: קוביית ההפניה למנוע החיפוש המתקדם (התוספת החדשה) -->
     <div class="row justify-content-center mt-5 pt-4">
         <div class="col-lg-10">
             <div class="card p-5 text-center" style="background: linear-gradient(145deg, #1e202c 0%, #0f172a 100%); border: 1px solid #d4af37; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
@@ -117,13 +148,11 @@
 </div>
 
 <style>
-    /* Hover effect */
     .article-link:hover {
         color: #2575fc !important;
         text-decoration: underline !important;
     }
     
-    /* Bullet styling */
     ul {
         color: #2c3e50;
     }
@@ -132,7 +161,6 @@
         font-size: 1.2rem;
     }
 
-    /* Pulse animation for the NEW badge */
     @keyframes pulse {
         0% { transform: scale(1); opacity: 1; }
         50% { transform: scale(1.05); opacity: 0.7; }

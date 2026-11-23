@@ -10,7 +10,9 @@ import logging
 from functools import wraps
 from django.http import HttpResponse, JsonResponse
 from django.core.cache import cache
+from django.db import connection
 from django.db.models import Q
+from django.db.models.expressions import RawSQL
 from django.utils.html import strip_tags
 from .models import TorahText
 
@@ -940,6 +942,7 @@ def _fetch_sefaria_json_cached(sefaria_ref, extra_params="context=0&commentary=0
                     cache.set(c_key, data, 3600 * 24)
                     return data
         except Exception:
+            logger.debug("Sefaria fetch attempt failed for %s", sefaria_ref)
             continue
     return None
 
@@ -1245,6 +1248,114 @@ def _build_fuzzy_sql_filter_for_word(word: str, include_morph: bool = False, mor
 
     return exact_q | _build_sql_bigram_q_for_stem(common_stem, clean_w=clean_w, allow_final_swap=False)
 
+_FTS5_STATE = {'checked': False, 'table': None}
+_SPECIAL_HTML_IDS_CACHE = None
+
+def _get_special_html_row_ids():
+    global _SPECIAL_HTML_IDS_CACHE
+    if _SPECIAL_HTML_IDS_CACHE is not None:
+        return _SPECIAL_HTML_IDS_CACHE
+    try:
+        ids = list(
+            TorahText.objects.filter(
+                Q(clean_text__contains='<') |
+                Q(book='בראשית', chapter__in=('1', 'א', 'פרק א'), verse__in=('1', 'א'))
+            ).values_list('id', flat=True)[:250]
+        )
+        _SPECIAL_HTML_IDS_CACHE = ids
+    except Exception:
+        logger.warning("Failed loading special HTML TorahText IDs", exc_info=True)
+        _SPECIAL_HTML_IDS_CACHE = []
+    return _SPECIAL_HTML_IDS_CACHE
+
+def _get_verified_fts_table(force_recheck=False):
+    if _FTS5_STATE['checked'] and not force_recheck:
+        return _FTS5_STATE['table']
+    _FTS5_STATE['checked'] = True
+    _FTS5_STATE['table'] = None
+    if connection.vendor != 'sqlite':
+        return None
+    try:
+        db_total = TorahText.objects.count()
+        if db_total <= 0:
+            return None
+        with connection.cursor() as cur:
+            for tbl in ('articles_torahtext_clean_fts', 'articles_torahtext_fts'):
+                cur.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name=%s",
+                    [tbl],
+                )
+                if not cur.fetchone():
+                    continue
+                cur.execute(f"SELECT COUNT(*) FROM {tbl}")
+                fts_total = cur.fetchone()[0]
+                if fts_total != db_total:
+                    continue
+                cur.execute(
+                    f"SELECT rowid FROM {tbl} WHERE {tbl} MATCH %s LIMIT 1",
+                    ['"שמע"'],
+                )
+                probe_row = cur.fetchone()
+                if not probe_row:
+                    continue
+                matched_obj = TorahText.objects.filter(pk=probe_row[0]).values('clean_text', 'text_with_nikkud').first()
+                if not matched_obj:
+                    continue
+                probe_words = _fast_extract_clean_words(matched_obj.get('text_with_nikkud') or matched_obj.get('clean_text') or '')
+                if 'שמע' in probe_words:
+                    _FTS5_STATE['table'] = tbl
+                    return tbl
+    except Exception:
+        logger.warning("FTS5 availability probe failed; falling back to LIKE queries", exc_info=True)
+    return None
+
+def ensure_clean_fts5_index():
+    if connection.vendor != 'sqlite':
+        return {'ok': False, 'reason': 'non-sqlite'}
+    tbl = 'articles_torahtext_clean_fts'
+    with connection.cursor() as cur:
+        cur.execute(
+            f"CREATE VIRTUAL TABLE IF NOT EXISTS {tbl} USING fts5("
+            "clean_text, content='articles_torahtext', content_rowid='id', tokenize='unicode61 remove_diacritics 2'"
+            ")"
+        )
+        cur.execute(
+            f"CREATE TRIGGER IF NOT EXISTS articles_torahtext_clean_fts_ai AFTER INSERT ON articles_torahtext BEGIN "
+            f"INSERT INTO {tbl}(rowid, clean_text) VALUES (new.id, new.clean_text); END;"
+        )
+        cur.execute(
+            f"CREATE TRIGGER IF NOT EXISTS articles_torahtext_clean_fts_ad AFTER DELETE ON articles_torahtext BEGIN "
+            f"INSERT INTO {tbl}({tbl}, rowid, clean_text) VALUES('delete', old.id, old.clean_text); END;"
+        )
+        cur.execute(
+            f"CREATE TRIGGER IF NOT EXISTS articles_torahtext_clean_fts_au AFTER UPDATE ON articles_torahtext BEGIN "
+            f"INSERT INTO {tbl}({tbl}, rowid, clean_text) VALUES('delete', old.id, old.clean_text); "
+            f"INSERT INTO {tbl}(rowid, clean_text) VALUES (new.id, new.clean_text); END;"
+        )
+        cur.execute(f"INSERT INTO {tbl}({tbl}) VALUES('rebuild')")
+    verified = _get_verified_fts_table(force_recheck=True)
+    return {'ok': bool(verified), 'table': verified}
+
+def _apply_exact_fts5_prefilter(qs, q_words, fallback_q):
+    fts_tbl = _get_verified_fts_table()
+    if not fts_tbl or not q_words:
+        return qs.filter(fallback_q)
+    safe_tokens = [re.sub(r'[^א-ת]', '', w) for w in q_words]
+    safe_tokens = [w for w in safe_tokens if w]
+    if not safe_tokens:
+        return qs.filter(fallback_q)
+    match_expr = " ".join(f'"{tok}"' for tok in safe_tokens)
+    try:
+        fts_subquery = RawSQL(f"SELECT rowid FROM {fts_tbl} WHERE {fts_tbl} MATCH %s", [match_expr])
+        special_ids = _get_special_html_row_ids()
+        fts_q = Q(id__in=fts_subquery)
+        if special_ids:
+            fts_q |= Q(id__in=special_ids)
+        return qs.filter(fts_q)
+    except Exception:
+        logger.warning("FTS5 query failed; using standard SQL filter", exc_info=True)
+        return qs.filter(fallback_q)
+
 @ratelimit(rate=45, timeout=60)
 def tanakh_advanced_search_api(request):
     _auto_heal_misordered_chapters_in_db()
@@ -1454,7 +1565,8 @@ def tanakh_advanced_search_api(request):
                     text_query &= w_q
 
                 match_label = 'חיפוש מדויק' if is_exact else 'חיפוש חופשי (רחב)'
-                for m in qs.filter(text_query).values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text').iterator(chunk_size=2500):
+                filtered_qs = _apply_exact_fts5_prefilter(qs, q_words, text_query) if is_exact else qs.filter(text_query)
+                for m in filtered_qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text').iterator(chunk_size=2500):
                     raw_text = m.get('text_with_nikkud') or m.get('clean_text') or ""
                     if not raw_text:
                         continue

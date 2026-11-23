@@ -604,6 +604,16 @@
 <script>
     let currentAudio = null;
     let isPlaying = false;
+    let speechPollTimer = null;
+    let isLoadingAudio = false;
+
+    function cancelSpeechPolling() {
+        if (speechPollTimer) {
+            clearTimeout(speechPollTimer);
+            speechPollTimer = null;
+        }
+        isLoadingAudio = false;
+    }
 
     function restartSpeech() {
         const speechText = document.getElementById('speechText');
@@ -618,10 +628,68 @@
         }
     }
 
+    async function fetchAudioWithPolling(endpointUrl, attempt) {
+        const speechText = document.getElementById('speechText');
+        const speechIcon = document.getElementById('speechIcon');
+        const restartBtn = document.getElementById('speechRestartBtn');
+        try {
+            const response = await fetch(endpointUrl);
+            const data = await response.json();
+
+            if (response.status === 202 || data.status === 'generating') {
+                if (attempt >= 25) {
+                    cancelSpeechPolling();
+                    speechText.innerText = 'האזנה לקריאה';
+                    speechIcon.className = 'bi bi-volume-up-fill';
+                    alert('הכנת קובץ השמע נמשכת זמן רב מהרגיל. אנא נסה שוב בעוד רגע.');
+                    return;
+                }
+                const delayMs = Math.max(2000, (data.retry_after || 3) * 1000);
+                speechPollTimer = setTimeout(() => {
+                    if (isLoadingAudio) fetchAudioWithPolling(endpointUrl, attempt + 1);
+                }, delayMs);
+                return;
+            }
+
+            cancelSpeechPolling();
+            if (data.audio_url) {
+                currentAudio = new Audio(data.audio_url);
+                currentAudio.play();
+                isPlaying = true;
+                speechText.innerText = 'עצור הקראה';
+                speechIcon.className = 'bi bi-pause-fill';
+                if (restartBtn) restartBtn.style.display = 'inline-block';
+
+                currentAudio.onended = function() {
+                    isPlaying = false;
+                    currentAudio = null;
+                    speechText.innerText = 'האזנה לקריאה';
+                    speechIcon.className = 'bi bi-volume-up-fill';
+                    if (restartBtn) restartBtn.style.display = 'none';
+                };
+            } else if (data.error) {
+                alert("שגיאה ביצירת שמע: " + data.error);
+                speechText.innerText = 'שגיאה';
+                speechIcon.className = 'bi bi-exclamation-triangle';
+            }
+        } catch (error) {
+            cancelSpeechPolling();
+            speechText.innerText = 'שגיאה בהשמעה';
+            speechIcon.className = 'bi bi-exclamation-triangle';
+        }
+    }
+
     async function toggleSpeech() {
         const speechText = document.getElementById('speechText');
         const speechIcon = document.getElementById('speechIcon');
         const restartBtn = document.getElementById('speechRestartBtn');
+
+        if (isLoadingAudio) {
+            cancelSpeechPolling();
+            speechText.innerText = 'האזנה לקריאה';
+            speechIcon.className = 'bi bi-volume-up-fill';
+            return;
+        }
 
         if (isPlaying && currentAudio) {
             currentAudio.pause();
@@ -641,39 +709,10 @@
             return;
         }
 
+        isLoadingAudio = true;
         speechText.innerText = 'מכין אודיו...';
         speechIcon.className = 'bi bi-hourglass-split';
-
-        try {
-            const response = await fetch("{% url 'articles:get_article_audio' article.id %}");
-            const data = await response.json();
-
-            if (data.audio_url) {
-                currentAudio = new Audio(data.audio_url);
-                currentAudio.play();
-                isPlaying = true;
-                
-                speechText.innerText = 'עצור הקראה';
-                speechIcon.className = 'bi bi-pause-fill';
-                if (restartBtn) restartBtn.style.display = 'inline-block';
-
-                currentAudio.onended = function() {
-                    isPlaying = false;
-                    currentAudio = null;
-                    speechText.innerText = 'האזנה לקריאה';
-                    speechIcon.className = 'bi bi-volume-up-fill';
-                    if (restartBtn) restartBtn.style.display = 'none';
-                };
-            } else if (data.error) {
-                alert("שגיאה ביצירת שמע: " + data.error);
-                speechText.innerText = 'שגיאה';
-                speechIcon.className = 'bi bi-exclamation-triangle';
-            }
-        } catch (error) {
-            console.error("שגיאה בהבאת קובץ השמע:", error);
-            speechText.innerText = 'שגיאה בהשמעה';
-            speechIcon.className = 'bi bi-exclamation-triangle';
-        }
+        await fetchAudioWithPolling("{% url 'articles:get_article_audio' article.id %}", 0);
     }
 
     function openShareModal() {

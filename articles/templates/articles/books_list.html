@@ -1,6 +1,52 @@
 {% extends 'articles/base.html' %}
 
-{% block title %}ספרים | הספרייה{% endblock %}
+{% block title %}ספריית הספרים ורכישה | ספריית לייבוביץ{% endblock %}
+{% block meta_description %}כל ספרי ההלכה, העיון והאגדה מאת הרב משה לייבוביץ לקריאה דיגיטלית חופשית או לרכישה עד הבית בספריית לייבוביץ.{% endblock %}
+{% block og_title %}ספריית הספרים | ספריית לייבוביץ{% endblock %}
+{% block og_description %}עיון דיגיטלי חופשי בספרי הלכה ועיון ורכישת ספרים מודפסים מאת הרב משה לייבוביץ.{% endblock %}
+{% block og_url %}https://leblibrary.co.il/books/{% endblock %}
+{% block canonical_url %}https://leblibrary.co.il/books/{% endblock %}
+
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "CollectionPage",
+      "@id": "https://leblibrary.co.il/books/#webpage",
+      "url": "https://leblibrary.co.il/books/",
+      "name": "ספריית הספרים | ספריית לייבוביץ",
+      "inLanguage": "he",
+      "isPartOf": {
+        "@id": "https://leblibrary.co.il/#website"
+      },
+      "breadcrumb": {
+        "@id": "https://leblibrary.co.il/books/#breadcrumb"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://leblibrary.co.il/books/#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "ספריית לייבוביץ",
+          "item": "https://leblibrary.co.il/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "ספרים",
+          "item": "https://leblibrary.co.il/books/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+{% endblock %}
 
 {% block hero %}
 <div class="hero-section" style="height: 280px;">
@@ -26,10 +72,8 @@
 {% block content %}
 <div class="row mt-4 mb-5">
     
-    <!-- אזור הספרים המרכזי -->
     <div class="col-lg-9 order-lg-2">
         
-        <!-- סקשן 1: ספרים לקריאה חופשית -->
         <div class="mb-5">
             <h3 class="fw-bold border-bottom pb-2 mb-4" style="color: #2c3e50;">ספרים לקריאה חופשית</h3>
             <div class="row g-4">
@@ -57,7 +101,6 @@
             </div>
         </div>
 
-        <!-- סקשן 2: חנות הספרים למכירה -->
         <div class="mt-5 mb-5 pt-3">
             <h3 class="fw-bold border-bottom pb-2 mb-4" style="color: #b58500;">חנות הספרים (לרכישה)</h3>
             <div class="row g-4">
@@ -66,15 +109,13 @@
                     <div class="col-md-4">
                         <div class="card h-100 shadow-sm store-card-hover content-card-bg text-center pb-4" style="border: 1px solid #eaeaea; border-radius: 4px; overflow: hidden;">
                             
-                            <!-- תמונת כריכה מוצגת למעלה -->
                             <div style="background-color: #f8f9fa; padding: 15px; display: flex; align-items: center; justify-content: center; height: 260px; border-bottom: 1px solid #f0f0f0; position: relative;">
                                 {% if book.is_new %}
                                     <span class="badge" style="position: absolute; top: 15px; right: 15px; background-color: #dc3545; font-size: 0.8rem; padding: 6px 10px; z-index: 10; animation: pulse 1.5s infinite; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">חדש במלאי!</span>
                                 {% endif %}
                                 {% if book.cover_image %}
                                     <a href="{% url 'articles:book_detail' book.pk %}" class="d-block w-100 h-100 d-flex justify-content-center align-items-center">
-                                        <!-- פקודת loading="lazy" נוספה כאן -->
-                                        <img src="{{ book.cover_image.url }}" alt="{{ book.title }}" loading="lazy" style="max-height: 100%; max-width: 100%; object-fit: contain; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">
+                                        <img src="{{ book.cover_image.url }}" alt="{{ book.title|striptags }}" loading="lazy" style="max-height: 100%; max-width: 100%; object-fit: contain; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">
                                     </a>
                                 {% else %}
                                     <div class="text-muted opacity-50">
@@ -83,17 +124,13 @@
                                 {% endif %}
                             </div>
                             
-                            <!-- פרטי הספר -->
                             <div class="card-body px-3 pt-4 pb-0 d-flex flex-column align-items-center">
                                 <h5 class="fw-bold m-0" style="color: #002347; font-size: 1.3rem;">{{ book.title|safe }}</h5>
                                 
-                                <!-- פס הפרדה קטן מוזהב -->
                                 <div style="width: 40px; height: 2px; background-color: #a88132; margin: 15px 0;"></div>
                                 
-                                <!-- המחיר -->
                                 <h4 class="fw-bold mb-4" style="color: #a88132;">{{ book.price }} ש"ח</h4>
                                 
-                                <!-- כפתורי פעולה -->
                                 <div class="w-100 px-2 mt-auto d-flex flex-column gap-2">
                                     {% if book.stock > 0 %}
                                         <a href="{% url 'articles:add_to_cart' book.id %}" class="btn rounded-0 fw-bold w-100 btn-store-buy">
@@ -115,15 +152,13 @@
 
     </div>
 
-    <!-- סרגל צד מעוצב -->
     <div class="col-lg-3 order-lg-1">
         <div class="card p-4 shadow-sm border-0 mb-4 content-card-bg" style="border-radius: 12px;">
-            <form action="#" method="get" class="d-flex mb-4">
-                <input type="text" class="form-control me-2 rounded-pill bg-light border-0 px-3" placeholder="חיפוש בספרים...">
-                <button type="submit" class="btn btn-dark rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; min-width: 40px;"><i class="bi bi-search"></i></button>
+            <form action="{% url 'articles:books' %}" method="get" class="d-flex mb-4">
+                <input type="text" name="q" value="{{ q|default:'' }}" class="form-control me-2 rounded-pill bg-light border-0 px-3" placeholder="חיפוש בספרים..." aria-label="חיפוש בספרים">
+                <button type="submit" class="btn btn-dark rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; min-width: 40px;" aria-label="חפש"><i class="bi bi-search"></i></button>
             </form>
             
-            <!-- רשימה 1: ספרים לקריאה -->
             <h5 class="fw-bold border-bottom pb-2 mb-3" style="color: #2c3e50;">ספרים לקריאה</h5>
             <ul class="list-unstyled mb-4">
                 {% for book in books %}
@@ -145,7 +180,6 @@
                 {% endfor %}
             </ul>
 
-            <!-- רשימה 2: חנות הספרים -->
             <h5 class="fw-bold border-bottom pb-2 mb-3 mt-2" style="color: #b58500;">חנות הספרים</h5>
             <ul class="list-unstyled mb-0">
                 {% for book in books %}
@@ -173,36 +207,182 @@
 </div>
 
 <style>
-    /* Pulse animation for NEW tags */
     @keyframes pulse {
         0% { transform: scale(1); opacity: 1; }
         50% { transform: scale(1.05); opacity: 0.7; }
         100% { transform: scale(1); opacity: 1; }
     }
 
-    /* אנימציות לקריאה חופשית */
     .book-card-hover { transition: all 0.3s ease; }
     .book-card-hover:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.08) !important; }
     
-    /* עיצוב ואנימציה לחנות הספרים */
     .store-card-hover { transition: all 0.3s ease; }
     .store-card-hover:hover { transform: scale(1.02); box-shadow: 0 10px 25px rgba(0,0,0,0.12) !important; }
     
-    /* כפתור קנייה ייחודי */
     .btn-store-buy { background-color: transparent; color: #a88132; border: 1px solid #a88132; transition: all 0.3s ease; }
     .btn-store-buy:hover { background-color: #a88132; color: #ffffff; }
 
-    /* סרגל צד */
     .sidebar-book-link { border-radius: 8px; padding: 10px 10px 10px 15px; transition: all 0.25s ease; background-color: transparent; border-right: 3px solid transparent; }
     .sidebar-book-link:hover { background-color: #f8f9fa; color: #2c3e50 !important; border-right-color: #2c3e50; transform: translateX(-4px); }
     .sidebar-book-icon { color: #adb5bd; transition: color 0.25s ease; }
     .sidebar-book-link:hover .sidebar-book-icon { color: #2c3e50; }
     
-    /* תמיכה במצב לילה */
     body.dark-mode .sidebar-book-link:hover { background-color: #0f172a; border-right-color: #d4af37; }
     body.dark-mode .sidebar-book-link .text-dark { color: #e2e8f0 !important; }
     body.dark-mode .book-card-hover .text-dark, body.dark-mode .store-card-hover h5 { color: #f8fafc !important; }
     body.dark-mode .store-card-hover .btn-store-buy { color: #d4af37; border-color: #d4af37; }
     body.dark-mode .store-card-hover .btn-store-buy:hover { background-color: #d4af37; color: #0f172a; }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const mainArea = document.querySelector('main') || document.body;
+    const allInputs = Array.from(mainArea.querySelectorAll('input[type="text"], input[type="search"], input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"])'));
+    const searchInput = allInputs.find(el => {
+        const ph = (el.getAttribute('placeholder') || '');
+        return ph.includes('ספר') || ph.includes('חיפוש');
+    });
+    if (!searchInput) return;
+
+    searchInput.setAttribute('name', 'q');
+    const searchForm = searchInput.closest('form');
+    if (searchForm) {
+        searchForm.setAttribute('action', window.location.pathname);
+        searchForm.setAttribute('method', 'get');
+    }
+
+    const allCards = Array.from(mainArea.querySelectorAll('.card')).filter(card => {
+        if (card.contains(searchInput)) return false;
+        const txt = (card.innerText || '');
+        const hasBookLink = Boolean(card.querySelector('a[href*="/book/"], a[href*="/cart/"]'));
+        return hasBookLink || txt.includes('היכנס לספר') || txt.includes('פתח ספר') || txt.includes('הוסף לעגלה') || txt.includes('מאת:');
+    });
+
+    const bookItems = allCards.map(card => {
+        let wrapper = card.closest('[class*="col-"]');
+        if (!wrapper || wrapper.contains(searchInput)) {
+            wrapper = card;
+        }
+        const normText = (card.innerText || '')
+            .replace(/[֑-ׇ"״'׳]/g, '')
+            .replace(/\s+/g, ' ')
+            .toLowerCase();
+        return { card: card, wrapper: wrapper, normText: normText };
+    });
+
+    let statusBanner = document.getElementById('booksSearchStatusBanner');
+    if (!statusBanner && bookItems.length > 0) {
+        statusBanner = document.createElement('div');
+        statusBanner.id = 'booksSearchStatusBanner';
+        statusBanner.style.display = 'none';
+        statusBanner.className = 'mb-4';
+        const firstRow = bookItems[0].wrapper.closest('.row') || bookItems[0].wrapper.parentElement;
+        if (firstRow && firstRow.parentElement) {
+            firstRow.parentElement.insertBefore(statusBanner, firstRow);
+        }
+    }
+
+    function applyBooksFilter(rawQuery, updateUrl) {
+        const cleanQ = (rawQuery || '').trim();
+        const normQ = cleanQ.replace(/[֑-ׇ"״'׳]/g, '').toLowerCase();
+        const words = normQ.split(/\s+/).filter(Boolean);
+
+        let matchCount = 0;
+        bookItems.forEach(item => {
+            const isMatch = words.length === 0 || words.every(w => item.normText.includes(w));
+            item.wrapper.style.display = isMatch ? '' : 'none';
+            if (isMatch) matchCount++;
+        });
+
+        const rows = new Set(bookItems.map(i => i.wrapper.closest('.row')).filter(Boolean));
+        rows.forEach(row => {
+            const hasVisible = Array.from(row.children).some(ch => ch.style.display !== 'none');
+            row.style.display = (words.length === 0 || hasVisible) ? '' : 'none';
+            const prev = row.previousElementSibling;
+            if (prev && prev.id !== 'booksSearchStatusBanner' && /^H[1-6]$/.test(prev.tagName)) {
+                prev.style.display = (words.length === 0 || hasVisible) ? '' : 'none';
+            }
+        });
+
+        if (updateUrl && window.history && window.history.replaceState) {
+            const newUrl = cleanQ
+                ? (window.location.pathname + '?q=' + encodeURIComponent(cleanQ))
+                : window.location.pathname;
+            window.history.replaceState(null, '', newUrl);
+        }
+
+        if (!statusBanner) return;
+
+        if (!cleanQ) {
+            statusBanner.style.display = 'none';
+            statusBanner.innerHTML = '';
+            return;
+        }
+
+        const safeQ = cleanQ.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        statusBanner.style.display = 'block';
+        if (matchCount > 0) {
+            statusBanner.innerHTML = `
+                <div class="alert d-flex justify-content-between align-items-center flex-wrap gap-2 shadow-sm rounded-3" style="background-color: #fcfaf5; border: 1px solid #d4af37; color: #1e293b;">
+                    <div>
+                        <i class="bi bi-search ms-2" style="color: #b8860b;"></i>
+                        נמצאו <strong>${matchCount}</strong> ספרים התואמים לחיפוש <strong>"${safeQ}"</strong>
+                    </div>
+                    <button type="button" id="clearBooksSearchBtn" class="btn btn-sm btn-outline-dark rounded-pill px-3 fw-bold">
+                        נקה חיפוש והצג הכל
+                    </button>
+                </div>
+            `;
+        } else {
+            statusBanner.innerHTML = `
+                <div class="text-center p-5 rounded-4 shadow-sm my-3" style="background-color: #fcfaf5; border: 1.5px dashed #d4af37; color: #1e293b;">
+                    <i class="bi bi-journal-x fs-1 d-block mb-2" style="color: #b8860b;"></i>
+                    <h4 class="fw-bold mb-2">לא נמצאו ספרים התואמים לחיפוש "${safeQ}"</h4>
+                    <p class="text-muted mb-3">נסה לחפש מילה אחרת משם הספר או הנושא.</p>
+                    <button type="button" id="clearBooksSearchBtn" class="btn rounded-pill px-4 py-2 fw-bold shadow-sm" style="background: #d4af37; color: #1e202c;">
+                        הצג את כל הספרים בספרייה
+                    </button>
+                </div>
+            `;
+        }
+
+        const clearBtn = document.getElementById('clearBooksSearchBtn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                searchInput.value = '';
+                applyBooksFilter('', true);
+                searchInput.focus();
+            });
+        }
+    }
+
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            applyBooksFilter(searchInput.value, true);
+        });
+    }
+
+    const searchBtn = searchForm ? searchForm.querySelector('button, [type="submit"], .btn') : null;
+    if (searchBtn) {
+        searchBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            applyBooksFilter(searchInput.value, true);
+        });
+    }
+
+    searchInput.addEventListener('input', function() {
+        applyBooksFilter(searchInput.value, true);
+    });
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialQ = (urlParams.get('q') || '').trim();
+    if (initialQ) {
+        searchInput.value = initialQ;
+        applyBooksFilter(initialQ, false);
+    } else if ((searchInput.value || '').trim()) {
+        applyBooksFilter(searchInput.value, true);
+    }
+});
+</script>
 {% endblock %}

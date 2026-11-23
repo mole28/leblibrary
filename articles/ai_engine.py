@@ -547,6 +547,7 @@ def torah_ai_insights_api(request):
                     if ans and len(ans.strip()) > 20:
                         return format_divine_name(re.sub(r'[*#]+', '', ans).strip())
             except Exception:
+                logger.warning("Gemini fast call failed for model %s", m_name)
                 continue
         return ""
 
@@ -808,7 +809,17 @@ def torah_ai_insights_api(request):
 
         verified_articles = []
         try:
-            for art in Article.objects.filter(is_published=True):
+            art_q = Q()
+            for w in q_words:
+                if w:
+                    art_q |= Q(title__icontains=w) | Q(content__icontains=w)
+            art_qs = (
+                Article.objects.filter(is_published=True)
+                .filter(art_q)
+                .only('id', 'title', 'slug', 'content')
+                .iterator(chunk_size=50)
+            ) if art_q else ()
+            for art in art_qs:
                 if not getattr(art, 'slug', None):
                     continue
                 t_str, c_str = art.title or '', re.sub(r'<[^>]+>', ' ', art.content or '')
