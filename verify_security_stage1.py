@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+import argparse
+import http.client
 import json
 import os
 import re
@@ -315,6 +318,36 @@ def run_checks(offline=False):
 
     ok, det = chk_sec_07_cart_csrf_and_noopener()
     record("SEC-07", "Cross-site GET cart CSRF blocked, all target=_blank have rel=noopener, and home stock checked", ok, det)
+
+    def chk_sec_08_settings_and_admin():
+        bootstrap_django()
+        from django.conf import settings as dj_settings
+        st_src = read_rel("core/settings.py")
+        ad_src = read_rel("articles/admin.py")
+        sk_ok = (
+            bool(dj_settings.SECRET_KEY)
+            and len(dj_settings.SECRET_KEY) >= 50
+            and not dj_settings.SECRET_KEY.startswith("django-insecure-")
+            and "django-insecure-" not in st_src
+        )
+        cache_shared = "FileBasedCache" in st_src
+        headers_ok = (
+            getattr(dj_settings, "X_FRAME_OPTIONS", "") == "DENY"
+            and getattr(dj_settings, "SESSION_COOKIE_HTTPONLY", False) is True
+            and getattr(dj_settings, "SESSION_COOKIE_SAMESITE", "") == "Lax"
+            and getattr(dj_settings, "DATA_UPLOAD_MAX_MEMORY_SIZE", 0) <= 20 * 1024 * 1024
+            and "send_default_pii=False" in st_src
+        )
+        admin_ok = (
+            "_BLOCKED_IMPORT_TAGS" in ad_src
+            and "def clean_word_import(" in ad_src
+            and ".docx" in ad_src
+        )
+        ok = sk_ok and cache_shared and headers_ok and admin_ok
+        return ok, f"secret_key_ok={sk_ok}, shared_cache={cache_shared}, headers_ok={headers_ok}, admin_ok={admin_ok}"
+
+    ok, det = chk_sec_08_settings_and_admin()
+    record("SEC-08", "core/settings.py strong SECRET_KEY, shared FileBasedCache, hardened headers/limits, safe admin DOCX import", ok, det)
 
     if not offline:
         def chk_live_sec_01():

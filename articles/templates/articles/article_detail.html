@@ -186,10 +186,10 @@
                 
                 <p class="text-muted fs-5 mt-3">
                     <span class="d-inline-block">
-                        {% if article.display_full_date %}
+                        {% if article.display_hebrew_date %}
                         <i class="bi bi-calendar3" aria-hidden="true"></i>
                         <span>פורסם:</span>
-                        <time {% if article.created_at %}datetime="{{ article.created_at|date:'Y-m-d' }}"{% endif %}>{{ article.display_hebrew_date }}{% if article.display_gregorian_date %} (<span dir="ltr">{{ article.display_gregorian_date }}</span>){% endif %}</time>
+                        <time {% if article.created_at %}datetime="{{ article.created_at|date:'Y-m-d' }}"{% endif %}>{{ article.display_hebrew_date }}</time>
                         <span class="mx-2 opacity-50" aria-hidden="true">|</span>
                         {% endif %}
                         <i class="bi bi-clock" aria-hidden="true"></i>

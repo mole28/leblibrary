@@ -266,7 +266,7 @@
             <div class="col-md-6 col-lg-4">
                 <div class="premium-card p-4">
                     <div class="text-muted small mb-2 d-flex justify-content-between">
-                        {% if article.display_full_date %}<span><i class="bi bi-calendar3 ms-1" aria-hidden="true"></i>פורסם: <time {% if article.created_at %}datetime="{{ article.created_at|date:'Y-m-d' }}"{% endif %}>{{ article.display_hebrew_date }}{% if article.display_gregorian_date %} (<span dir="ltr">{{ article.display_gregorian_date }}</span>){% endif %}</time></span>{% endif %}
+                        {% if article.display_hebrew_date %}<span><i class="bi bi-calendar3 ms-1" aria-hidden="true"></i>פורסם: <time {% if article.created_at %}datetime="{{ article.created_at|date:'Y-m-d' }}"{% endif %}>{{ article.display_hebrew_date }}</time></span>{% endif %}
                     </div>
                     <h4 class="fw-bold mb-3" style="color: #1a252f;">
                         <a href="{% url 'articles:detail' article.slug %}" class="text-decoration-none text-dark">
@@ -317,7 +317,7 @@
                         <div class="col-md-6">
                             <div class="premium-card p-4">
                                 <div class="text-muted small mb-2 d-flex justify-content-between">
-                                    {% if article.display_full_date %}<span><i class="bi bi-calendar3 ms-1" aria-hidden="true"></i>פורסם: <time {% if article.created_at %}datetime="{{ article.created_at|date:'Y-m-d' }}"{% endif %}>{{ article.display_hebrew_date }}{% if article.display_gregorian_date %} (<span dir="ltr">{{ article.display_gregorian_date }}</span>){% endif %}</time></span>{% endif %}
+                                    {% if article.display_hebrew_date %}<span><i class="bi bi-calendar3 ms-1" aria-hidden="true"></i>פורסם: <time {% if article.created_at %}datetime="{{ article.created_at|date:'Y-m-d' }}"{% endif %}>{{ article.display_hebrew_date }}</time></span>{% endif %}
                                 </div>
                                 <h4 class="fw-bold mb-3" style="color: #1a252f;">
                                     <a href="{% url 'articles:detail' article.slug %}" class="text-decoration-none text-dark">
