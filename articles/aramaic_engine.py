@@ -836,7 +836,7 @@ def _query_sefaria_lexicon(word_to_query, full_lex, depth=0):
     if depth > 1 or not word_to_query or not _VALID_HEBREW_TERM_RE.match(word_to_query):
         return None
     try:
-        sef_url = f"https://www.sefaria.org/api/words/{urllib.parse.quote(word_to_query)}"
+        sef_url = f"https://www.sefaria.org/api/words/{urllib.parse.quote(word_to_query, safe='')}"
         req = urllib.request.Request(sef_url, headers={'User-Agent': 'Mozilla/5.0'})
         with _IPV4_OPENER.open(req, timeout=4) as resp:
             sef_data = json.loads(resp.read().decode('utf-8'))
@@ -889,7 +889,7 @@ def _query_sefaria_lexicon(word_to_query, full_lex, depth=0):
                     gt_req = urllib.request.Request(gt_url, headers={'User-Agent': 'Mozilla/5.0'})
                     with _IPV4_OPENER.open(gt_req, timeout=3) as gt_resp:
                         gt_json = json.loads(gt_resp.read().decode('utf-8'))
-                        he_trans = "".join([part[0] for part in gt_json[0] if part[0]]).strip()
+                        he_trans = strip_tags("".join([part[0] for part in gt_json[0] if part[0]])).strip()
                 except Exception:
                     logger.warning("Aramaic Google Translate fallback failed for %s", word_to_query)
 
@@ -1013,7 +1013,7 @@ def _lookup_term_smart(clean_q, full_lex, direction='auto', dialect='bavli'):
     return _query_sefaria_lexicon(clean_q, full_lex)
 
 def execute_aramaic_translation(request):
-    q = request.GET.get('q', '').strip()
+    q = strip_tags(request.GET.get('q', '')).strip()[:200]
     direction = request.GET.get('dir', 'auto').strip()
     if direction not in ('auto', 'ar_to_he', 'he_to_ar'):
         direction = 'auto'

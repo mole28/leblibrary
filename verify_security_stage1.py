@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-import argparse
-import http.client
 import json
 import os
 import re
@@ -8,6 +5,7 @@ import socket
 import ssl
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -40,16 +38,23 @@ class _HTTPSHandlerIPv4(urllib.request.HTTPSHandler):
         return self.do_open(_HTTPSConnectionIPv4, req, context=ssl.create_default_context())
 
 
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 _IPV4_OPENER = urllib.request.build_opener(_HTTPSHandlerIPv4())
+_IPV4_NO_REDIRECT_OPENER = urllib.request.build_opener(_HTTPSHandlerIPv4(), _NoRedirectHandler())
 
 
-def fetch_live(path, method="GET", data=None, headers=None, timeout=12):
-    req_headers = {"User-Agent": "LebLibrary-SecVerifier/1.0"}
+def fetch_live(path, method="GET", data=None, headers=None, follow_redirects=True, timeout=12):
+    req_headers = {"User-Agent": "LebLibrary-SecVerifier/2.0"}
     if headers:
         req_headers.update(headers)
     req = urllib.request.Request(LIVE_ORIGIN + path, data=data, headers=req_headers, method=method)
+    opener = _IPV4_OPENER if follow_redirects else _IPV4_NO_REDIRECT_OPENER
     try:
-        with _IPV4_OPENER.open(req, timeout=timeout) as resp:
+        with opener.open(req, timeout=timeout) as resp:
             return resp.status, resp.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as exc:
         body = ""
@@ -108,18 +113,24 @@ def run_checks(offline=False):
     def chk_sec_02_chat_xss_and_origin():
         bootstrap_django()
         from django.test import RequestFactory
-        from articles.ai_engine import ai_chat_endpoint, _sanitize_ai_chunk
+        from articles.ai_engine import ai_chat_endpoint, _sanitize_ai_chunk, _is_same_origin_request
         sk = read_rel("articles/templates/articles/includes/scripts.html")
         dom_safe = (
             "appendSafeUserBubble" in sk
             and "div.textContent = text;" in sk
             and 'nav-chat-user">${userText}' not in sk
             and 'qa-chat-user">${userText}' not in sk
+            and "badgeTicks >= 50" in sk
         )
-        xss_out = _sanitize_ai_chunk('<img src=x onerror=alert(1)> [click](javascript:alert(1)) [ok](/books/)', "#d4af37", "_blank")
+        xss_out = _sanitize_ai_chunk(
+            '<img src=x onerror=alert(1)> [click](javascript:alert(1)) [phish](//evil.example/a) [ok](/books/)',
+            "#d4af37",
+            "_blank",
+        )
         link_safe = (
             "<img" not in xss_out
             and "javascript:" not in xss_out
+            and "//evil.example" not in xss_out
             and 'href="/books/"' in xss_out
             and 'rel="noopener noreferrer"' in xss_out
         )
@@ -131,12 +142,29 @@ def run_checks(offline=False):
             HTTP_HOST="leblibrary.co.il",
             HTTP_ORIGIN="https://evil-attacker.example",
         )
-        evil_resp = ai_chat_endpoint(evil_req)
-        origin_blocked = evil_resp.status_code == 403
-        return (dom_safe and link_safe and origin_blocked), f"dom_safe={dom_safe}, link_safe={link_safe}, evil_origin={evil_resp.status_code}"
+        cross_site_req = rf.post(
+            "/api/ai-chat/",
+            data=json.dumps({"question": "test", "mode": "nav"}),
+            content_type="application/json",
+            HTTP_HOST="leblibrary.co.il",
+            HTTP_SEC_FETCH_SITE="cross-site",
+        )
+        null_origin_req = rf.post(
+            "/api/ai-chat/",
+            data=json.dumps({"question": "test", "mode": "nav"}),
+            content_type="application/json",
+            HTTP_HOST="leblibrary.co.il",
+            HTTP_ORIGIN="null",
+        )
+        origin_blocked = (
+            ai_chat_endpoint(evil_req).status_code == 403
+            and not _is_same_origin_request(cross_site_req)
+            and not _is_same_origin_request(null_origin_req)
+        )
+        return (dom_safe and link_safe and origin_blocked), f"dom_safe={dom_safe}, link_safe={link_safe}, origin_blocked={origin_blocked}"
 
     ok, det = chk_sec_02_chat_xss_and_origin()
-    record("SEC-02", "AI chat blocks DOM XSS, javascript: links, and cross-origin POSTs", ok, det)
+    record("SEC-02", "AI chat blocks DOM XSS, javascript:/protocol-relative links, cross-site & null Origin", ok, det)
 
     def chk_sec_03_ratelimit_ip():
         bootstrap_django()
@@ -154,15 +182,23 @@ def run_checks(offline=False):
 
     def chk_sec_04_contact_and_checkout():
         bootstrap_django()
-        from articles.views import _sanitize_header_value
+        from articles.views import _sanitize_header_value, _is_safe_editorial_url
         v_src = read_rel("articles/views.py")
         hdr_clean = _sanitize_header_value("Hello\r\nBcc: evil@example.com")
         no_crlf = "\r" not in hdr_clean and "\n" not in hdr_clean
+        url_guard = (
+            _is_safe_editorial_url("/advanced-search/?q=test")
+            and _is_safe_editorial_url("https://leblibrary.co.il/books/")
+            and not _is_safe_editorial_url("javascript:alert(1)")
+            and not _is_safe_editorial_url("//evil.example/x")
+        )
         checks = [
             no_crlf,
+            url_guard,
             "@ratelimit(rate=5, timeout=300, methods=('POST',))" in v_src,
             "@ratelimit(rate=10, timeout=300, methods=('POST',))" in v_src,
             "Book.objects.select_for_update()" in v_src,
+            "item.quantity <= 0" in v_src,
             "locked_book.stock -= qty" in v_src,
             'value="{escape(q)}"' in v_src,
             "CONTACT_RECIPIENT_EMAIL" in v_src,
@@ -170,7 +206,115 @@ def run_checks(offline=False):
         return all(checks), f"checks={checks}"
 
     ok, det = chk_sec_04_contact_and_checkout()
-    record("SEC-04", "Contact header sanitization, POST rate-limiting, atomic stock checkout, and qa_list escaping", ok, det)
+    record("SEC-04", "Contact header sanitization, POST rate-limiting, atomic stock checkout, and safe editorial URLs", ok, det)
+
+    def chk_sec_05_draft_idor_and_audio_dos():
+        bootstrap_django()
+        from django.contrib.auth.models import AnonymousUser
+        from django.test import RequestFactory
+        from articles.models import Article
+        from articles.views import get_article_audio
+        from articles.urls import legacy_article_id_redirect
+        v_src = read_rel("articles/views.py")
+        u_src = read_rel("articles/urls.py")
+        draft = Article.objects.filter(is_published=False).first()
+        draft_blocked = True
+        if draft:
+            rf = RequestFactory()
+            req_a = rf.get(f"/api/audio/article/{draft.id}/")
+            req_a.user = AnonymousUser()
+            resp_a = get_article_audio(req_a, str(draft.id))
+            req_r = rf.get(f"/article/{draft.id}/")
+            req_r.user = AnonymousUser()
+            resp_r = legacy_article_id_redirect(req_r, draft.id)
+            draft_blocked = (resp_a.status_code == 404 and resp_r.status_code == 302 and draft.slug not in resp_r.get("Location", ""))
+        src_checks = [
+            "if not article.is_published and not request.user.is_superuser:" in v_src,
+            "_MAX_CONCURRENT_AUDIO_JOBS = 2" in v_src,
+            "@ratelimit(rate=20, timeout=300)\ndef get_article_audio(" in v_src,
+            "@ratelimit(rate=20, timeout=300)\ndef get_book_audio(" in v_src,
+            "@ratelimit(rate=60, timeout=60)\ndef live_search(" in v_src,
+            "@ratelimit(rate=60, timeout=60)\ndef search_acronyms_api(" in v_src,
+            "if article.is_published:" in u_src,
+        ]
+        ok = draft_blocked and all(src_checks)
+        return ok, f"draft_blocked={draft_blocked}, src_checks={src_checks}"
+
+    ok, det = chk_sec_05_draft_idor_and_audio_dos()
+    record("SEC-05", "Draft article IDOR blocked on audio/redirects and TTS/search endpoints rate-limited", ok, det)
+
+    def chk_sec_06_reflected_xss_and_ssrf():
+        bootstrap_django()
+        from django.test import RequestFactory
+        from articles.torah_engine import tanakh_advanced_search_api, _fetch_sefaria_json_cached
+        from articles.ai_engine import torah_ai_insights_api
+        rf = RequestFactory()
+        xss_payload = "<img src=x onerror=alert(1)>"
+        r_qo = tanakh_advanced_search_api(rf.get("/api/tanakh-search/", {"type": "quick_open", "target_book": xss_payload}))
+        d_qo = json.loads(r_qo.content.decode("utf-8"))
+        qo_safe = "<img" not in d_qo.get("error", "")
+
+        r_serm = torah_ai_insights_api(rf.get("/api/torah-ai-insights/", {"mode": "sermon_generator", "q": f"שבת {xss_payload}"}))
+        d_serm = json.loads(r_serm.content.decode("utf-8"))
+        serm_safe = "<img" not in d_serm.get("topic", "") and "<img" not in d_serm.get("sermon_html", "")
+
+        ssrf_blocked = (
+            _fetch_sefaria_json_cached("../../etc/passwd") is None
+            and _fetch_sefaria_json_cached("Genesis.1.1?evil=1") is None
+            and _fetch_sefaria_json_cached("Genesis.1.1\r\nX-Test: 1") is None
+        )
+        adv = read_rel("articles/templates/articles/advanced_search.html")
+        al = read_rel("articles/templates/articles/article_list.html")
+        ar = read_rel("articles/templates/articles/aramaic_translator.html")
+        tpl_safe = (
+            "function escapeHtml(" in adv
+            and "function sanitizeRichHtml(" in adv
+            and "${escapeHtml(data.error)}" in adv
+            and "${escapeHtml(data.topic)}" in adv
+            and "function escapeHtml(" in al
+            and "function sanitizeMarkHtml(" in ar
+            and "data-quick-term=" in ar
+        )
+        ok = qo_safe and serm_safe and ssrf_blocked and tpl_safe
+        return ok, f"qo_safe={qo_safe}, serm_safe={serm_safe}, ssrf_blocked={ssrf_blocked}, tpl_safe={tpl_safe}"
+
+    ok, det = chk_sec_06_reflected_xss_and_ssrf()
+    record("SEC-06", "Reflected/DOM XSS sanitized on backend + templates and Sefaria path-traversal blocked", ok, det)
+
+    def chk_sec_07_cart_csrf_and_noopener():
+        bootstrap_django()
+        from django.test import RequestFactory
+        from articles.views import _is_safe_cart_action_request
+        rf = RequestFactory()
+        ok_nav = _is_safe_cart_action_request(
+            rf.get("/cart/add/1/", HTTP_HOST="leblibrary.co.il", HTTP_SEC_FETCH_SITE="same-origin", HTTP_SEC_FETCH_DEST="document")
+        )
+        blk_cross = not _is_safe_cart_action_request(
+            rf.get("/cart/add/1/", HTTP_HOST="leblibrary.co.il", HTTP_SEC_FETCH_SITE="cross-site", HTTP_SEC_FETCH_DEST="image")
+        )
+        blk_img = not _is_safe_cart_action_request(
+            rf.get("/cart/add/1/", HTTP_HOST="leblibrary.co.il", HTTP_SEC_FETCH_DEST="image")
+        )
+        blk_prefetch = not _is_safe_cart_action_request(
+            rf.get("/cart/add/1/", HTTP_HOST="leblibrary.co.il", HTTP_SEC_PURPOSE="prefetch")
+        )
+        missing_noopener = []
+        for tpl in (
+            "articles/templates/articles/article_detail.html",
+            "articles/templates/articles/book_detail.html",
+            "articles/templates/articles/advanced_search.html",
+        ):
+            txt = read_rel(tpl)
+            for m in re.finditer(r'<a\b[^>]*target=["\']_blank["\'][^>]*>', txt, re.I):
+                if "noopener" not in m.group(0).lower():
+                    missing_noopener.append(tpl)
+        al = read_rel("articles/templates/articles/article_list.html")
+        sale_stock_ok = "{% if book.stock > 0 %}" in al
+        ok = ok_nav and blk_cross and blk_img and blk_prefetch and not missing_noopener and sale_stock_ok
+        return ok, f"cart_guards=({ok_nav},{blk_cross},{blk_img},{blk_prefetch}), missing_noopener={len(missing_noopener)}, sale_stock={sale_stock_ok}"
+
+    ok, det = chk_sec_07_cart_csrf_and_noopener()
+    record("SEC-07", "Cross-site GET cart CSRF blocked, all target=_blank have rel=noopener, and home stock checked", ok, det)
 
     if not offline:
         def chk_live_sec_01():
@@ -180,26 +324,38 @@ def run_checks(offline=False):
                 data=json.dumps({"question": "books", "mode": "nav"}).encode("utf-8"),
                 headers={"Content-Type": "application/json", "Origin": "https://evil-attacker.example"},
             )
+            c_cross, _ = fetch_live(
+                "/api/ai-chat/",
+                method="POST",
+                data=json.dumps({"question": "books", "mode": "nav"}).encode("utf-8"),
+                headers={"Content-Type": "application/json", "Sec-Fetch-Site": "cross-site"},
+            )
             c_ok, body_ok = fetch_live(
                 "/api/ai-chat/",
                 method="POST",
                 data=json.dumps({"question": "\u05e1\u05e4\u05e8\u05d9\u05dd", "mode": "nav"}).encode("utf-8"),
                 headers={"Content-Type": "application/json", "Origin": "https://leblibrary.co.il"},
             )
-            return (c_evil == 403 and c_ok == 200 and len(body_ok) > 10), f"cross_origin={c_evil}, same_origin={c_ok}"
+            return (c_evil == 403 and c_cross == 403 and c_ok == 200 and len(body_ok) > 10), f"cross_origin={c_evil}, cross_site={c_cross}, same_origin={c_ok}"
 
         ok, det = chk_live_sec_01()
-        record("LIVE-SEC-01", "Live /api/ai-chat/ rejects cross-origin POST (403) and serves same-origin POST (200)", ok, det)
+        record("LIVE-SEC-01", "Live /api/ai-chat/ rejects cross-origin & cross-site POST (403) and serves same-origin (200)", ok, det)
 
         def chk_live_sec_02():
             code, body = fetch_live("/")
             if code != 200:
                 return False, f"HTTP {code}"
-            ok = ("appendSafeUserBubble" in body and "buildAiRequestHeaders" in body and 'nav-chat-user">${userText}' not in body)
+            ok = (
+                "appendSafeUserBubble" in body
+                and "buildAiRequestHeaders" in body
+                and 'nav-chat-user">${userText}' not in body
+                and "function escapeHtml(" in body
+                and "badgeTicks >= 50" in body
+            )
             return ok, ""
 
         ok, det = chk_live_sec_02()
-        record("LIVE-SEC-02", "Live home page serves XSS-safe AI chat bubble renderer", ok, det)
+        record("LIVE-SEC-02", "Live home page serves XSS-safe AI chat, escaped widgets, and bounded badge timer", ok, det)
 
         def chk_live_sec_03():
             code, body = fetch_live("/contact/")
@@ -208,10 +364,46 @@ def run_checks(offline=False):
         ok, det = chk_live_sec_03()
         record("LIVE-SEC-03", "Live GET /contact/ remains unaffected by POST-only rate limit", ok, det)
 
+        def chk_live_sec_04():
+            q = urllib.parse.urlencode({"type": "quick_open", "target_book": "<img src=x onerror=alert(1)>"})
+            c1, b1 = fetch_live(f"/api/tanakh-search/?{q}")
+            c2, b2 = fetch_live("/advanced-search/")
+            d1 = json.loads(b1) if c1 == 200 else {}
+            ok = (
+                c1 == 200
+                and "<img" not in d1.get("error", "")
+                and c2 == 200
+                and "function sanitizeRichHtml(" in b2
+                and "${escapeHtml(data.error)}" in b2
+            )
+            return ok, f"api={c1}, error_safe={'<img' not in d1.get('error', '')}, page={c2}"
+
+        ok, det = chk_live_sec_04()
+        record("LIVE-SEC-04", "Live /advanced-search/ and quick_open API neutralize reflected XSS payloads", ok, det)
+
+        def chk_live_sec_05():
+            code, body = fetch_live("/aramaic-translator/")
+            ok = (code == 200 and "function sanitizeMarkHtml(" in body and "data-quick-term=" in body)
+            return ok, f"HTTP {code}"
+
+        ok, det = chk_live_sec_05()
+        record("LIVE-SEC-05", "Live /aramaic-translator/ serves HTML-escaped dictionary and sanitized snippets", ok, det)
+
+        def chk_live_sec_06():
+            c1, b1 = fetch_live("/article/63/")
+            c2, b2 = fetch_live("/book/84/")
+            bad1 = [m.group(0) for m in re.finditer(r'<a\b[^>]*target=["\']_blank["\'][^>]*>', b1, re.I) if "noopener" not in m.group(0).lower()]
+            bad2 = [m.group(0) for m in re.finditer(r'<a\b[^>]*target=["\']_blank["\'][^>]*>', b2, re.I) if "noopener" not in m.group(0).lower()]
+            ok = (c1 == 200 and c2 == 200 and not bad1 and not bad2)
+            return ok, f"article={c1} (missing_rel={len(bad1)}), book84={c2} (missing_rel={len(bad2)})"
+
+        ok, det = chk_live_sec_06()
+        record("LIVE-SEC-06", "Live /article/63/ and /book/84/ enforce rel=noopener noreferrer on all _blank links", ok, det)
+
     passed = sum(1 for _, _, ok, _ in results if ok)
     failed = len(results) - passed
     print("\n" + "=" * 84)
-    print(f"  LEBLIBRARY SECURITY STAGE-1 VERIFICATION ({passed}/{len(results)} PASSED)")
+    print(f"  LEBLIBRARY SECURITY HARDENING VERIFICATION ({passed}/{len(results)} PASSED)")
     print("=" * 84)
     for code, label, ok, det in results:
         tag = "PASS" if ok else "FAIL"

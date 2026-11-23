@@ -77,6 +77,7 @@ from .ai_engine import (
     get_smart_content,
     ai_chat_endpoint,
     torah_ai_insights_api,
+    _is_same_origin_request,
 )
 from .aramaic_engine import aramaic_translator_view as _get_aramaic_context, execute_aramaic_translation
 
@@ -105,6 +106,8 @@ _EMAIL_SIMPLE_RE = re.compile(r'^[^\s@\r\n]+@[^\s@\r\n]+\.[^\s@\r\n]{2,}$')
 _CONTENT_CACHE_VER_KEY = 'leblibrary_content_cache_ver'
 _AUDIO_JOBS_LOCK = threading.Lock()
 _AUDIO_JOBS_IN_PROGRESS = set()
+_MAX_CONCURRENT_AUDIO_JOBS = 2
+_BLOCKED_CART_FETCH_DESTS = {'image', 'script', 'style', 'iframe', 'object', 'embed', 'font', 'audio', 'video'}
 
 def _get_content_cache_version():
     ver = cache.get(_CONTENT_CACHE_VER_KEY)
@@ -134,6 +137,26 @@ def _sanitize_header_value(value, max_len=200):
 def _is_automated_crawler(request):
     ua = (request.META.get('HTTP_USER_AGENT') or '').strip()
     return bool(ua and _BOT_UA_RE.search(ua))
+
+def _is_safe_cart_action_request(request):
+    if _is_automated_crawler(request):
+        return False
+    sec_fetch_dest = (request.META.get('HTTP_SEC_FETCH_DEST') or '').strip().lower()
+    if sec_fetch_dest in _BLOCKED_CART_FETCH_DESTS:
+        return False
+    purpose = ((request.META.get('HTTP_PURPOSE') or '') + ' ' + (request.META.get('HTTP_SEC_PURPOSE') or '')).lower()
+    if 'prefetch' in purpose or 'prerender' in purpose:
+        return False
+    return _is_same_origin_request(request)
+
+def _is_safe_editorial_url(url_value):
+    u = str(url_value or '').strip()
+    if not u:
+        return False
+    if u.startswith('/') and not u.startswith('//'):
+        return True
+    parsed = urllib.parse.urlparse(u)
+    return parsed.scheme in ('http', 'https') and bool(parsed.netloc)
 
 PARASHA_CANONICAL_NAMES = (
     'בראשית', 'נח', 'לך לך', 'וירא', 'חיי שרה', 'תולדות', 'ויצא', 'וישלח', 'וישב', 'מקץ', 'ויגש', 'ויחי',
@@ -391,7 +414,7 @@ def article_list(request):
     query = request.GET.get('q')
 
     if query:
-        query = query.strip()
+        query = query.strip()[:120]
         published_articles = Article.objects.filter(is_published=True).order_by('-created_at')
         articles = smart_hebrew_search(published_articles, query, ['title', 'content'])
         return render(request, 'articles/article_list.html', {
@@ -472,7 +495,11 @@ def article_detail(request, slug):
     if legacy_id is not None:
         article = Article.objects.only('id', 'slug', 'is_published').filter(pk=legacy_id).first()
         if article and article.slug:
-            return redirect('articles:detail', slug=article.slug, permanent=True)
+            if article.is_published:
+                return redirect('articles:detail', slug=article.slug, permanent=True)
+            if request.user.is_superuser:
+                return redirect('articles:detail', slug=article.slug, permanent=False)
+            return redirect('articles:articles_index')
         return redirect('articles:articles_index', permanent=True)
 
     if article:
@@ -528,6 +555,10 @@ def connections_audit_view(request):
                     return JsonResponse({'ok': True})
 
                 if art_pk > 0 and ed_action:
+                    if target_type == 'tools' and isinstance(target_id, str) and target_id.startswith('custom_json:'):
+                        tool_cfg = json.loads(target_id[len('custom_json:'):])
+                        if not _is_safe_editorial_url(tool_cfg.get('url', '')):
+                            return JsonResponse({'ok': False, 'error': 'כתובת קישור לא חוקית.'}, status=400)
                     ClusterEngine.update_editorial_decision(
                         article_pk=art_pk,
                         action=ed_action,
@@ -744,7 +775,7 @@ def books_list(request):
 
 def qa_list(request, pk=None):
     selected_qa = None
-    q = (request.GET.get('q') or '').strip()
+    q = (request.GET.get('q') or '').strip()[:120]
     category = (request.GET.get('category') or '').strip()
 
     try:
@@ -814,7 +845,7 @@ def qa_list(request, pk=None):
         return resp
 
 def acronyms_view(request):
-    query = request.GET.get('q', '').strip()
+    query = request.GET.get('q', '').strip()[:120]
     search_type = request.GET.get('type', 'short')
 
     acronyms = None
@@ -940,7 +971,7 @@ def book_detail(request, pk):
     })
 
 def books(request):
-    q = (request.GET.get('q') or '').strip()
+    q = (request.GET.get('q') or '').strip()[:120]
     books_ordered = Book.objects.all().order_by('order', 'title')
     return render(request, 'articles/books_list.html', {
         'books': books_ordered,
@@ -949,8 +980,9 @@ def books(request):
         'current_page': 'books',
     })
 
+@ratelimit(rate=60, timeout=60)
 def live_search(request):
-    q = request.GET.get('q', '').strip()
+    q = request.GET.get('q', '').strip()[:120]
     if len(q) < 2:
         return JsonResponse({'results': []})
     content_ver = _get_content_cache_version()
@@ -975,7 +1007,7 @@ def live_search(request):
 
 @ratelimit(rate=30, timeout=60)
 def ai_open_search(request):
-    q = request.GET.get('q', '').strip()
+    q = request.GET.get('q', '').strip()[:120]
     results = []
 
     if len(q) < 2:
@@ -1044,7 +1076,7 @@ def _get_or_create_cart(request):
 
 @ratelimit(rate=30, timeout=60)
 def add_to_cart(request, book_id):
-    if _is_automated_crawler(request):
+    if not _is_safe_cart_action_request(request):
         return redirect('articles:books')
     book = Book.objects.filter(id=book_id, is_for_sale=True).first()
     if not book:
@@ -1066,7 +1098,7 @@ def add_to_cart(request, book_id):
 
 @ratelimit(rate=30, timeout=60)
 def remove_from_cart(request, item_id):
-    if _is_automated_crawler(request):
+    if not _is_safe_cart_action_request(request):
         return redirect('articles:books')
     cart = _get_or_create_cart(request)
     item = CartItem.objects.filter(id=item_id, cart=cart).first()
@@ -1110,7 +1142,7 @@ def checkout(request):
             verified_total = 0
             for item in items:
                 locked_book = Book.objects.select_for_update().filter(pk=item.book_id, is_for_sale=True).first()
-                if not locked_book or locked_book.stock < item.quantity:
+                if item.quantity <= 0 or not locked_book or locked_book.stock < item.quantity:
                     insufficient_book = item.book.title if item.book else 'אחד הספרים'
                     break
                 locked_items.append((locked_book, item.quantity))
@@ -1382,6 +1414,8 @@ def _spawn_audio_generation_job(job_key, file_path, text_builder):
     with _AUDIO_JOBS_LOCK:
         if job_key in _AUDIO_JOBS_IN_PROGRESS:
             return False
+        if len(_AUDIO_JOBS_IN_PROGRESS) >= _MAX_CONCURRENT_AUDIO_JOBS:
+            return False
         if not cache.add(lock_cache_key, 1, 240):
             return False
         _AUDIO_JOBS_IN_PROGRESS.add(job_key)
@@ -1434,6 +1468,7 @@ def trigger_article_audio_pregeneration(sender, instance, created, **kwargs):
 
         transaction.on_commit(lambda: generate_article_audio_background(instance.id))
 
+@ratelimit(rate=20, timeout=300)
 def get_article_audio(request, identifier):
     try:
         if str(identifier).isdigit():
@@ -1441,6 +1476,9 @@ def get_article_audio(request, identifier):
         else:
             article = Article.objects.get(slug=identifier)
     except Article.DoesNotExist:
+        return JsonResponse({'error': 'Article not found'}, status=404)
+
+    if not article.is_published and not request.user.is_superuser:
         return JsonResponse({'error': 'Article not found'}, status=404)
 
     base_media = getattr(settings, 'MEDIA_ROOT', os.path.join(settings.BASE_DIR, 'media'))
@@ -1464,6 +1502,7 @@ def get_article_audio(request, identifier):
     audio_url = f"{media_url}audio/{file_name}?v={file_version}"
     return JsonResponse({'audio_url': audio_url})
 
+@ratelimit(rate=20, timeout=300)
 def get_book_audio(request, book_id):
     try:
         book = Book.objects.get(id=book_id)
@@ -1491,8 +1530,9 @@ def get_book_audio(request, book_id):
     audio_url = f"{media_url}audio/{file_name}?v={file_version}"
     return JsonResponse({'audio_url': audio_url})
 
+@ratelimit(rate=60, timeout=60)
 def search_acronyms_api(request):
-    query = request.GET.get('q', '').strip()
+    query = request.GET.get('q', '').strip()[:120]
     search_type = request.GET.get('type', 'short')
 
     results = []

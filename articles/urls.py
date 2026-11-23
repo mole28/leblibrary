@@ -8,9 +8,13 @@ from .models import Article, Book
 app_name = 'articles'
 
 def legacy_article_id_redirect(request, pk):
-    article = Article.objects.filter(pk=pk).first()
+    article = Article.objects.only('id', 'slug', 'is_published').filter(pk=pk).first()
     if article and getattr(article, 'slug', None):
-        return redirect('articles:detail', slug=article.slug, permanent=True)
+        if article.is_published:
+            return redirect('articles:detail', slug=article.slug, permanent=True)
+        if request.user.is_superuser:
+            return redirect('articles:detail', slug=article.slug, permanent=False)
+        return redirect('articles:articles_index')
     return redirect('articles:list', permanent=True)
 
 def safe_book_detail(request, pk):

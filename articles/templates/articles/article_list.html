@@ -401,9 +401,13 @@
                                     <h4 class="fw-bold my-2" style="color: #a67c52;">₪{{ book.price }}</h4>
                                     <div class="d-grid gap-2 mt-auto">
                                         <a href="{% url 'articles:book_detail' book.pk %}" class="btn btn-light border rounded-pill fw-bold text-secondary text-sm">לפרטים</a>
+                                        {% if book.stock > 0 %}
                                         <a href="{% url 'articles:add_to_cart' book.id %}" class="btn rounded-pill fw-bold" style="background: linear-gradient(135deg, #d4af37 0%, #b5952f 100%); color: #1e202c;">
                                             הוסף <i class="bi bi-cart-plus"></i>
                                         </a>
+                                        {% else %}
+                                        <button type="button" class="btn btn-secondary rounded-pill fw-bold" disabled>אזל מהמלאי</button>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -617,6 +621,21 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+        function isSafeUrl(url) {
+            const u = String(url || '').trim();
+            if (!u) return false;
+            if (u.startsWith('/') && !u.startsWith('//')) return true;
+            return /^https?:\/\//i.test(u);
+        }
+
         const searchInput = document.getElementById('live-search-input');
         const searchResults = document.getElementById('live-search-results');
         let debounceTimer;
@@ -642,12 +661,14 @@
                         }
                         let html = '';
                         data.results.forEach(item => {
+                            const safeHref = isSafeUrl(item.url) ? escapeHtml(item.url) : '#';
+                            const safeIcon = /^bi-[a-z0-9-]+$/i.test(String(item.icon || '')) ? item.icon : 'bi-file-earmark-text';
                             html += `
-                                <a href="${item.url}" class="d-flex align-items-center p-3 text-decoration-none border-bottom text-dark hover-bg-light">
-                                    <i class="bi ${item.icon} fs-4 text-warning ms-3"></i>
+                                <a href="${safeHref}" class="d-flex align-items-center p-3 text-decoration-none border-bottom text-dark hover-bg-light">
+                                    <i class="bi ${safeIcon} fs-4 text-warning ms-3"></i>
                                     <div>
-                                        <div class="fw-bold">${item.title}</div>
-                                        <div class="small text-muted">${item.type}</div>
+                                        <div class="fw-bold">${escapeHtml(item.title)}</div>
+                                        <div class="small text-muted">${escapeHtml(item.type)}</div>
                                     </div>
                                 </a>
                             `;
@@ -689,7 +710,7 @@
                         }
                         let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
                         data.results.forEach(item => {
-                            html += `<li style="padding: 6px 8px; border-bottom: 1px solid #e6dec9;"><strong style="color: #a67c52;">${item.short}</strong>: <span style="color: #2c3e50;">${item.meaning}</span></li>`;
+                            html += `<li style="padding: 6px 8px; border-bottom: 1px solid #e6dec9;"><strong style="color: #a67c52;">${escapeHtml(item.short)}</strong>: <span style="color: #2c3e50;">${escapeHtml(item.meaning)}</span></li>`;
                         });
                         html += '</ul>';
                         acronymContainer.innerHTML = html;
@@ -717,10 +738,10 @@
                 .then(r => r.json())
                 .then(data => {
                     if (data.error) {
-                        resBox.innerHTML = `<div class="text-danger small">${data.error}</div>`;
+                        resBox.innerHTML = `<div class="text-danger small">${escapeHtml(data.error)}</div>`;
                         return;
                     }
-                    resBox.innerHTML = `<div><strong style="color: #a67c52;">${data.query}:</strong> <span class="fw-bold text-dark">${data.main_translation}</span></div><div class="text-muted" style="font-size: 0.78rem;">${data.grammar_breakdown || ''}</div>`;
+                    resBox.innerHTML = `<div><strong style="color: #a67c52;">${escapeHtml(data.query)}:</strong> <span class="fw-bold text-dark">${escapeHtml(data.main_translation)}</span></div><div class="text-muted" style="font-size: 0.78rem;">${escapeHtml(data.grammar_breakdown || '')}</div>`;
                 })
                 .catch(() => {
                     resBox.innerHTML = '<div class="text-danger small">שגיאה בתרגום.</div>';

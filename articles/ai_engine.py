@@ -12,6 +12,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Q, Case, When, Value, IntegerField
 from django.urls import reverse
+from django.utils.html import strip_tags
 from dotenv import load_dotenv
 from .models import Article, Chapter, Section, TorahText, QA, Acronym
 from .vector_store import search_similar_articles
@@ -215,6 +216,9 @@ def _local_nav_fallback(question: str) -> str:
 _TRUSTED_HOSTS = {'leblibrary.co.il', 'www.leblibrary.co.il', 'localhost', '127.0.0.1', 'testserver'}
 
 def _is_same_origin_request(request):
+    sec_fetch_site = (request.META.get('HTTP_SEC_FETCH_SITE') or '').strip().lower()
+    if sec_fetch_site == 'cross-site':
+        return False
     req_host = (request.get_host() or '').split(':')[0].lower()
     allowed = set(_TRUSTED_HOSTS)
     if req_host:
@@ -226,12 +230,12 @@ def _is_same_origin_request(request):
     origin = (request.META.get('HTTP_ORIGIN') or '').strip()
     if origin:
         parsed_o = urllib.parse.urlparse(origin)
-        if (parsed_o.hostname or '').lower() not in allowed:
+        if parsed_o.scheme not in ('http', 'https') or (parsed_o.hostname or '').lower() not in allowed:
             return False
     referer = (request.META.get('HTTP_REFERER') or '').strip()
     if referer and not origin:
         parsed_r = urllib.parse.urlparse(referer)
-        if (parsed_r.hostname or '').lower() not in allowed:
+        if parsed_r.scheme not in ('http', 'https') or (parsed_r.hostname or '').lower() not in allowed:
             return False
     return True
 
@@ -242,7 +246,7 @@ def _sanitize_ai_chunk(raw_chunk, link_color, target_attr):
     def _replace_md_link(match):
         label = match.group(1)
         href = match.group(2).strip()
-        if href.startswith('/') or href.startswith('https://') or href.startswith('http://'):
+        if (href.startswith('/') and not href.startswith('//')) or href.startswith('https://') or href.startswith('http://'):
             return f'<a href="{href}" target="{target_attr}"{rel_attr} style="color: {link_color}; font-weight: bold; text-decoration: underline;">{label}</a>'
         return label
 
@@ -504,11 +508,11 @@ def ai_chat_endpoint(request):
 
 @ratelimit(rate=30, timeout=60)
 def torah_ai_insights_api(request):
-    mode = request.GET.get('mode', 'code_finder').strip()
-    query = request.GET.get('q', '').strip()
-    book = _resolve_torah_book_in_db(request.GET.get('book', '').strip())
-    chapter = request.GET.get('chapter', '').strip()
-    verse = request.GET.get('verse', '').strip()
+    mode = request.GET.get('mode', 'code_finder').strip()[:40]
+    query = strip_tags(request.GET.get('q', '')).strip()[:120]
+    book = _resolve_torah_book_in_db(strip_tags(request.GET.get('book', '')).strip()[:100])
+    chapter = strip_tags(request.GET.get('chapter', '')).strip()[:80]
+    verse = strip_tags(request.GET.get('verse', '')).strip()[:80]
 
     _auto_heal_parasha_gematria_in_db()
     _raw_ai_cache_key = f"v11|{mode}|{book}|{chapter}|{verse}|{query}"

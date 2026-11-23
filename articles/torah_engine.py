@@ -924,11 +924,15 @@ def _match_comments_by_dibbur_hamatchil(all_comments_list, source_clean_text):
     return matched
 
 def _fetch_sefaria_json_cached(sefaria_ref, extra_params="context=0&commentary=0"):
-    c_key = f"sefaria_ipv4_v45_{ urllib.parse.quote(sefaria_ref) }_{extra_params}"
+    ref_str = str(sefaria_ref or '').strip()
+    if not ref_str or len(ref_str) > 180 or '..' in ref_str or any(ch in ref_str for ch in ('\r', '\n', '?', '#')):
+        return None
+    safe_ref = urllib.parse.quote(ref_str, safe='')
+    c_key = "sefaria_ipv4_v45_" + hashlib.md5(f"{safe_ref}|{extra_params}".encode("utf-8")).hexdigest()
     cached = cache.get(c_key)
     if cached is not None:
         return cached
-    url = f"https://www.sefaria.org/api/texts/{urllib.parse.quote(sefaria_ref)}?{extra_params}"
+    url = f"https://www.sefaria.org/api/texts/{safe_ref}?{extra_params}"
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': 'application/json',
@@ -1360,15 +1364,15 @@ def _apply_exact_fts5_prefilter(qs, q_words, fallback_q):
 def tanakh_advanced_search_api(request):
     _auto_heal_misordered_chapters_in_db()
 
-    query_type = request.GET.get('type', 'text').strip()
-    query_val = request.GET.get('q', '').strip()
-    book_filter = request.GET.get('book', 'torah').strip()
+    query_type = request.GET.get('type', 'text').strip()[:40]
+    query_val = strip_tags(request.GET.get('q', '')).strip()[:120]
+    book_filter = request.GET.get('book', 'torah').strip()[:160]
     is_exact = request.GET.get('exact', 'false').lower() == 'true'
     include_plural = request.GET.get('include_plural', 'false').lower() == 'true'
-    exclude_books_param = request.GET.get('exclude_books', '').strip()
-    skip_param = request.GET.get('skip', '').strip()
+    exclude_books_param = request.GET.get('exclude_books', '').strip()[:1500]
+    skip_param = request.GET.get('skip', '').strip()[:10]
     try:
-        page = max(1, int(request.GET.get('page', 1)))
+        page = min(10000, max(1, int(request.GET.get('page', 1))))
     except (ValueError, TypeError):
         page = 1
 
@@ -1458,7 +1462,7 @@ def tanakh_advanced_search_api(request):
                 raw_chapters.append(fixed_ch)
         raw_chapters.sort(key=safe_int)
         if not raw_chapters:
-            return JsonResponse({'error': f'לא נמצאו פרקים עבור "{matched_book}".'})
+            return JsonResponse({'error': f'לא נמצאו פרקים עבור "{strip_tags(matched_book)[:80]}".'})
 
         chosen_chapter = _resolve_chapter_in_list(explicit_chapter, raw_chapters)
         c_variants = _chapter_db_variants(chosen_chapter)
@@ -1550,7 +1554,7 @@ def tanakh_advanced_search_api(request):
                 is_exact = True
             elif effective_query_type == 'text_broad':
                 is_exact = False
-            q_words = re.sub(r'[^א-ת\s]', '', query_val.replace('י-ה-ו-ה', 'יהוה')).strip().split()
+            q_words = re.sub(r'[^א-ת\s]', '', query_val.replace('י-ה-ו-ה', 'יהוה')).strip().split()[:8]
             if q_words:
                 num_q_words = len(q_words)
                 text_query = Q()
@@ -1594,7 +1598,7 @@ def tanakh_advanced_search_api(request):
 
         elif effective_query_type in ['text_fuzzy', 'text_fuzzy_morph'] and query_val:
             use_morph = (effective_query_type == 'text_fuzzy_morph')
-            q_words = re.sub(r'[^א-ת\s]', '', query_val.replace('י-ה-ו-ה', 'יהוה')).strip().split()
+            q_words = re.sub(r'[^א-ת\s]', '', query_val.replace('י-ה-ו-ה', 'יהוה')).strip().split()[:8]
             if q_words:
                 word_patterns = [
                     build_hebrew_fuzzy_morph_patterns(w) if use_morph else build_hebrew_fuzzy_patterns(w)
@@ -1691,7 +1695,7 @@ def tanakh_advanced_search_api(request):
         elif effective_query_type in ['acronym', 'rashei_tevot', 'sofei_tevot', 'suffix'] and query_val:
             is_sofei = effective_query_type in ['sofei_tevot', 'suffix']
             target_acr = norm_heb(re.sub(r'[^א-ת]', '', query_val))
-            if target_acr:
+            if 1 <= len(target_acr) <= 20:
                 acr_len = len(target_acr)
                 char_q = Q()
                 for ch in set(target_acr):
@@ -1725,7 +1729,7 @@ def tanakh_advanced_search_api(request):
                         })
 
         elif effective_query_type in ['reverse', 'palindrome'] and query_val:
-            q_words_raw = re.findall(r'[א-ת]+', query_val)
+            q_words_raw = re.findall(r'[א-ת]+', query_val)[:8]
             if q_words_raw:
                 rev_words = []
                 for w in q_words_raw:
@@ -1768,7 +1772,7 @@ def tanakh_advanced_search_api(request):
         elif effective_query_type in ['els', 'skip', 'dilugim'] and query_val:
             target_els = norm_heb(re.sub(r'[^א-ת]', '', query_val))
             k = len(target_els)
-            if k >= 2:
+            if 2 <= k <= 20:
                 char_q = Q()
                 for ch in set(target_els):
                     fin_ch = REGULAR_TO_FINAL.get(ch)
@@ -1868,7 +1872,7 @@ def tanakh_advanced_search_api(request):
         elif effective_query_type == 'els_verse' and query_val:
             target_els = norm_heb(re.sub(r'[^א-ת]', '', query_val))
             k = len(target_els)
-            if k >= 2:
+            if 2 <= k <= 20:
                 char_q = Q()
                 for ch in set(target_els):
                     fin_ch = REGULAR_TO_FINAL.get(ch)

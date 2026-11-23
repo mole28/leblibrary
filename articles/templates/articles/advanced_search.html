@@ -596,7 +596,7 @@
             <div class="modal-body p-4 text-center">
                 <p class="mb-3 text-light small">בחר כיצד לשתף את התוצאה עם חברים:</p>
                 <div class="d-flex justify-content-center gap-3 mb-4">
-                    <a id="shareWhatsappLink" href="#" target="_blank" class="btn fw-bold px-4 py-2 d-flex align-items-center gap-2" style="background-color: #25D366; color: #fff; border-radius: 50px;">
+                    <a id="shareWhatsappLink" href="#" target="_blank" rel="noopener noreferrer" class="btn fw-bold px-4 py-2 d-flex align-items-center gap-2" style="background-color: #25D366; color: #fff; border-radius: 50px;">
                         <i class="bi bi-whatsapp fs-5"></i> ווטסאפ
                     </a>
                     <a id="shareEmailLink" href="#" class="btn fw-bold px-4 py-2 d-flex align-items-center gap-2" style="background-color: #3b82f6; color: #fff; border-radius: 50px;">
@@ -765,10 +765,48 @@ document.addEventListener('DOMContentLoaded', function() {
         ]
     };
 
+    function escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function isSafeUrl(url) {
+        const u = String(url || '').trim();
+        if (!u) return false;
+        if (u.startsWith('/') && !u.startsWith('//')) return true;
+        return /^https?:\/\//i.test(u);
+    }
+
+    function sanitizeRichHtml(rawHtml) {
+        const tpl = document.createElement('template');
+        tpl.innerHTML = String(rawHtml || '');
+        const blockedTags = 'script,iframe,object,embed,style,svg,math,form,input,button,textarea,select,link,meta,base';
+        tpl.content.querySelectorAll(blockedTags).forEach(el => el.remove());
+        tpl.content.querySelectorAll('*').forEach(el => {
+            Array.from(el.attributes).forEach(attr => {
+                const name = attr.name.toLowerCase();
+                const val = (attr.value || '').trim();
+                if (name.startsWith('on') || name === 'srcdoc') {
+                    el.removeAttribute(attr.name);
+                } else if ((name === 'href' || name === 'src' || name === 'xlink:href') && !isSafeUrl(val) && !val.startsWith('#')) {
+                    el.removeAttribute(attr.name);
+                }
+            });
+        });
+        return tpl.innerHTML;
+    }
+
     function escapeJsAndHtml(str) {
         return String(str || '')
             .replace(/\\/g, "\\\\")
             .replace(/'/g, "\\'")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;");
     }
 
@@ -1861,11 +1899,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function buildCommentsDrawerHtml(commName, commentsArr, drawerId) {
         let html = `<div class="d-flex justify-content-between align-items-center mb-2 pb-1" style="border-bottom: 1px solid #e2d9c5;">
-            <strong style="color: #8c6239; font-size: 0.95rem;"><i class="bi bi-chat-right-quote-fill ms-1" style="color: #d4af37;"></i>פירוש ${commName}:</strong>
-            <button type="button" class="btn-close" style="font-size: 0.65rem;" onclick="document.getElementById('${drawerId}').style.display='none'"></button>
+            <strong style="color: #8c6239; font-size: 0.95rem;"><i class="bi bi-chat-right-quote-fill ms-1" style="color: #d4af37;"></i>פירוש ${escapeHtml(commName)}:</strong>
+            <button type="button" class="btn-close" style="font-size: 0.65rem;" onclick="document.getElementById('${escapeJsAndHtml(drawerId)}').style.display='none'"></button>
         </div>`;
         commentsArr.forEach(cText => {
-            html += `<div class="mb-2" style="font-family: 'Frank Ruhl Libre', serif;">${cText}</div>`;
+            html += `<div class="mb-2" style="font-family: 'Frank Ruhl Libre', serif;">${sanitizeRichHtml(cText)}</div>`;
         });
         return html;
     }
@@ -1984,7 +2022,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.error) {
                     exportToolbar.style.display = 'none';
-                    resultsArea.innerHTML = `<div class="alert alert-danger shadow-sm rounded-3"><i class="bi bi-x-circle-fill ms-2"></i>שגיאה: ${data.error}</div>`;
+                    resultsArea.innerHTML = `<div class="alert alert-danger shadow-sm rounded-3"><i class="bi bi-x-circle-fill ms-2"></i>שגיאה: ${escapeHtml(data.error)}</div>`;
                     return;
                 }
 
@@ -2127,7 +2165,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.error || !data.verses || !data.verses.length) {
                     exportToolbar.style.display = 'flex';
-                    resultsArea.innerHTML = `<div class="alert alert-warning shadow-sm rounded-3 fs-6"><i class="bi bi-exclamation-triangle-fill ms-2"></i>${data.error || 'לא נמצא הפרק המבוקש.'}</div>`;
+                    resultsArea.innerHTML = `<div class="alert alert-warning shadow-sm rounded-3 fs-6"><i class="bi bi-exclamation-triangle-fill ms-2"></i>${escapeHtml(data.error || 'לא נמצא הפרק המבוקש.')}</div>`;
                     return;
                 }
 
@@ -2152,7 +2190,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 syncBrowserUrlFromState();
-                panelTitle.innerHTML = `<i class="bi bi-book-half ms-2" style="color: #d4af37;"></i>עיון במקור: ${bName} — ${chDisplay}`;
+                panelTitle.innerHTML = `<i class="bi bi-book-half ms-2" style="color: #d4af37;"></i>עיון במקור: ${escapeHtml(bName)} — ${escapeHtml(chDisplay)}`;
 
                 lastFetchedResults = data.verses.map(v => ({
                     book: bName,
@@ -2483,7 +2521,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const bodyEl = document.getElementById('chapterModalBody');
         const chDisplay = formatChapterTitle(chapterName, bookName);
 
-        titleEl.innerHTML = `<i class="bi bi-book-fill ms-2"></i>${bookName} — ${chDisplay}`;
+        titleEl.innerHTML = `<i class="bi bi-book-fill ms-2"></i>${escapeHtml(bookName)} — ${escapeHtml(chDisplay)}`;
         bodyEl.innerHTML = `
             <div class="text-center py-5">
                 <div class="spinner-border text-warning" role="status"></div>
@@ -2568,7 +2606,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const titleEl = document.getElementById('codeFinderModalTitle');
         const hebVerse = toHebrewLetters(verseNum);
 
-        titleEl.innerHTML = `<i class="bi bi-stars ms-2"></i>ניתוח AI של הנתונים: ${bookName} (${formatChapterTitle(chapterName, bookName)}, ${hebVerse})`;
+        titleEl.innerHTML = `<i class="bi bi-stars ms-2"></i>ניתוח AI של הנתונים: ${escapeHtml(bookName)} (${escapeHtml(formatChapterTitle(chapterName, bookName))}, ${escapeHtml(hebVerse)})`;
         bodyEl.innerHTML = `
             <div class="text-center py-5">
                 <div class="spinner-border text-warning" role="status"></div>
@@ -2583,7 +2621,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(r => r.json())
             .then(data => {
                 if (data.error) {
-                    bodyEl.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                    bodyEl.innerHTML = `<div class="alert alert-danger">${escapeHtml(data.error)}</div>`;
                     return;
                 }
 
@@ -2759,10 +2797,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 function renderNodeDetailBox(nodeObj) {
                     if (!nodeObj) return;
-                    let linkBtn = nodeObj.url ? `<a href="${nodeObj.url}" target="_blank" class="btn btn-sm btn-warning fw-bold mt-2">פתח מאמר מלא באתר</a>` : '';
+                    let linkBtn = (nodeObj.url && isSafeUrl(nodeObj.url)) ? `<a href="${escapeHtml(nodeObj.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-warning fw-bold mt-2">פתח מאמר מלא באתר</a>` : '';
                     detailsEl.innerHTML = `
-                        <div class="fw-bold mb-1" style="color: #f7e199; font-size: 1.05rem;">${nodeObj.label.replace('\n', ' — ')}</div>
-                        <div class="mt-1 text-light" style="font-family: 'Frank Ruhl Libre', serif; font-size: 1.2rem; line-height: 1.75;">${nodeObj.snippet}</div>
+                        <div class="fw-bold mb-1" style="color: #f7e199; font-size: 1.05rem;">${escapeHtml(String(nodeObj.label || '').replace('\n', ' — '))}</div>
+                        <div class="mt-1 text-light" style="font-family: 'Frank Ruhl Libre', serif; font-size: 1.2rem; line-height: 1.75;">${sanitizeRichHtml(nodeObj.snippet)}</div>
                         ${linkBtn}
                     `;
                     detailsEl.style.display = 'block';
@@ -2804,7 +2842,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(data => {
                 if (data.error) {
-                    outEl.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                    outEl.innerHTML = `<div class="alert alert-danger">${escapeHtml(data.error)}</div>`;
                     return;
                 }
 
@@ -2821,17 +2859,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 `;
 
-                let articleHtml = data.article_link
-                    ? `<div class="mt-3 pt-3 border-top"><a href="${data.article_link}" target="_blank" class="fw-bold text-decoration-none" style="color: #8c6239;"><i class="bi bi-box-arrow-up-left ms-1"></i>קרא עוד במאמר המקיף באתר ספריית לייבוביץ: "${data.article_title}"</a></div>`
+                let articleHtml = (data.article_link && isSafeUrl(data.article_link))
+                    ? `<div class="mt-3 pt-3 border-top"><a href="${escapeHtml(data.article_link)}" target="_blank" rel="noopener noreferrer" class="fw-bold text-decoration-none" style="color: #8c6239;"><i class="bi bi-box-arrow-up-left ms-1"></i>קרא עוד במאמר המקיף באתר ספריית לייבוביץ: "${escapeHtml(data.article_title)}"</a></div>`
                     : '';
 
                 const safeTopic = escapeJsAndHtml(data.topic || '');
-                const bodyContent = data.sermon_html || data.sermon || '';
+                const bodyContent = sanitizeRichHtml(data.sermon_html || data.sermon || '');
 
                 outEl.innerHTML = `
                     <div class="p-4 rounded-4 text-dark" style="background: #fdfcf8; border: 2px solid #d4af37;">
                         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-2 border-bottom">
-                            <h5 class="fw-bold mb-0" style="color: #1e293b;">מערך נתונים מסכם: ${data.topic} (גימטריה: ${data.gematria})</h5>
+                            <h5 class="fw-bold mb-0" style="color: #1e293b;">מערך נתונים מסכם: ${escapeHtml(data.topic)} (גימטריה: ${escapeHtml(data.gematria)})</h5>
                             <div class="d-flex gap-2">
                                 <button type="button" class="btn btn-sm btn-dark fw-bold px-3" onclick="navigator.clipboard.writeText(document.getElementById('sermonBodyText').innerText); showToast('מערך הנתונים הועתק ללוח!');">
                                     <i class="bi bi-clipboard-check ms-1"></i>העתק הכל
@@ -2887,7 +2925,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
                     data.results.forEach(item => {
-                        html += `<li style="padding: 5px 6px; border-bottom: 1px solid #e6dec9; margin-bottom: 3px;"><strong style="color: #a67c52;">${item.short}</strong>: <span>${item.meaning}</span></li>`;
+                        html += `<li style="padding: 5px 6px; border-bottom: 1px solid #e6dec9; margin-bottom: 3px;"><strong style="color: #a67c52;">${escapeHtml(item.short)}</strong>: <span>${escapeHtml(item.meaning)}</span></li>`;
                     });
                     html += '</ul>';
                     acrResults.innerHTML = html;
@@ -3000,10 +3038,10 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(r => r.json())
             .then(data => {
                 if (data.error) {
-                    resBox.innerHTML = `<div class="text-danger small">${data.error}</div>`;
+                    resBox.innerHTML = `<div class="text-danger small">${escapeHtml(data.error)}</div>`;
                     return;
                 }
-                resBox.innerHTML = `<div><strong style="color: #8c6239;">${data.query}:</strong> <span class="fw-bold text-dark">${data.main_translation}</span></div><div class="text-muted" style="font-size: 0.76rem;">${data.grammar_breakdown || ''}</div>`;
+                resBox.innerHTML = `<div><strong style="color: #8c6239;">${escapeHtml(data.query)}:</strong> <span class="fw-bold text-dark">${escapeHtml(data.main_translation)}</span></div><div class="text-muted" style="font-size: 0.76rem;">${escapeHtml(data.grammar_breakdown || '')}</div>`;
             })
             .catch(() => {
                 resBox.innerHTML = '<div class="text-danger small">שגיאה בתרגום.</div>';

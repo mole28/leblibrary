@@ -101,7 +101,7 @@
             </div>
         </div>
 
-        <div class="mt-5 mb-5 pt-3">
+        <div id="bookstore-section" class="mt-5 mb-5 pt-3">
             <h3 class="fw-bold border-bottom pb-2 mb-4" style="color: #b58500;">חנות הספרים (לרכישה)</h3>
             <div class="row g-4">
                 {% for book in books %}
@@ -382,6 +382,13 @@ document.addEventListener('DOMContentLoaded', function() {
         applyBooksFilter(initialQ, false);
     } else if ((searchInput.value || '').trim()) {
         applyBooksFilter(searchInput.value, true);
+    }
+
+    if (urlParams.get('sale') === '1') {
+        const storeSec = document.getElementById('bookstore-section');
+        if (storeSec) {
+            setTimeout(() => storeSec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+        }
     }
 });
 </script>

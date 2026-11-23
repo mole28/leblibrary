@@ -201,7 +201,7 @@
 
             <div class="d-flex justify-content-end gap-3 mb-1 hide-in-zen flex-wrap align-items-center">
                 {% if book.pdf_file %}
-                    <a href="{{ book.pdf_file.url }}" target="_blank" download class="btn-print btn btn-outline-danger border shadow-sm" title="הורד ספר ב-PDF" style="color: #dc3545; border-color: #dc3545;">
+                    <a href="{{ book.pdf_file.url }}" target="_blank" rel="noopener noreferrer" download class="btn-print btn btn-outline-danger border shadow-sm" title="הורד ספר ב-PDF" style="color: #dc3545; border-color: #dc3545;">
                         <i class="bi bi-file-earmark-pdf-fill"></i> הורד PDF
                     </a>
                 {% endif %}
@@ -377,16 +377,16 @@
                 <p class="text-muted mb-4" style="font-size: 1rem;">בחרו את הדרך המועדפת עליכם להפצת התוכן:</p>
                 
                 <div class="d-flex justify-content-center gap-3 mb-4 flex-wrap">
-                    <a id="shareWhatsapp" href="#" target="_blank" class="lux-share-icon-btn" style="background-color: #25d366;" title="שליחה בוואטסאפ">
+                    <a id="shareWhatsapp" href="#" target="_blank" rel="noopener noreferrer" class="lux-share-icon-btn" style="background-color: #25d366;" title="שליחה בוואטסאפ">
                         <i class="bi bi-whatsapp"></i>
                     </a>
                     <a id="shareEmail" href="#" class="lux-share-icon-btn" style="background-color: #ea4335;" title="שליחה במייל">
                         <i class="bi bi-envelope-fill"></i>
                     </a>
-                    <a id="shareFacebook" href="#" target="_blank" class="lux-share-icon-btn" style="background-color: #1877f2;" title="שיתוף בפייסבוק">
+                    <a id="shareFacebook" href="#" target="_blank" rel="noopener noreferrer" class="lux-share-icon-btn" style="background-color: #1877f2;" title="שיתוף בפייסבוק">
                         <i class="bi bi-facebook"></i>
                     </a>
-                    <a id="shareTwitter" href="#" target="_blank" class="lux-share-icon-btn" style="background-color: #1da1f2;" title="שיתוף ב-X">
+                    <a id="shareTwitter" href="#" target="_blank" rel="noopener noreferrer" class="lux-share-icon-btn" style="background-color: #1da1f2;" title="שיתוף ב-X">
                         <i class="bi bi-twitter-x"></i>
                     </a>
                 </div>
