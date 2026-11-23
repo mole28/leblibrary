@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import urllib.error
 import urllib.parse
 import urllib.request
 from django.conf import settings
@@ -901,6 +902,9 @@ def _query_sefaria_lexicon(word_to_query, full_lex, depth=0):
                     'usage_example': f"התיבה \"{word_to_query}\" מתבארת במילוני הארמית במשמעות: {he_trans}",
                     'matched_aramaic_term': word_to_query,
                 }
+    except urllib.error.HTTPError as exc:
+        if exc.code != 404:
+            logger.warning("Sefaria lexicon HTTP %s for %s", exc.code, word_to_query)
     except Exception:
         logger.warning("Sefaria lexicon lookup failed for %s", word_to_query)
     return None

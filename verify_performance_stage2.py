@@ -81,8 +81,9 @@ def run_checks(offline=False):
 
     def chk_perf_01_fts5():
         bootstrap_django()
+        from django.core.cache import cache
         from django.test import RequestFactory
-        from articles.torah_engine import _get_verified_fts_table, tanakh_advanced_search_api
+        from articles.torah_engine import _FTS5_STATE, _get_verified_fts_table, tanakh_advanced_search_api
         fts_tbl = _get_verified_fts_table(force_recheck=True)
         rf = RequestFactory()
         t0 = time.monotonic()
@@ -91,8 +92,20 @@ def run_checks(offline=False):
         elapsed_ms = int((time.monotonic() - t0) * 1000)
         d1 = json.loads(r1.content.decode("utf-8"))
         d2 = json.loads(r2.content.decode("utf-8"))
-        ok = (r1.status_code == 200 and r2.status_code == 200 and d1.get("total", 0) >= 1 and d2.get("total", 0) >= 50)
-        return ok, f"fts_table={fts_tbl}, bereshit={d1.get('total')}, shema_mishnah={d2.get('total')}, {elapsed_ms}ms"
+
+        saved_state = dict(_FTS5_STATE)
+        try:
+            _FTS5_STATE["checked"] = True
+            _FTS5_STATE["table"] = None
+            cache.clear()
+            r2_fallback = tanakh_advanced_search_api(rf.get("/api/tanakh-search/?type=text&exact=true&q=\u05e9\u05de\u05e2&book=mishnah"))
+            d2_fb = json.loads(r2_fallback.content.decode("utf-8"))
+        finally:
+            _FTS5_STATE.update(saved_state)
+
+        parity_ok = (d2.get("total", 0) == d2_fb.get("total", -1) and d2.get("total", 0) >= 25)
+        ok = (bool(fts_tbl) and r1.status_code == 200 and r2.status_code == 200 and d1.get("total", 0) >= 1 and parity_ok)
+        return ok, f"fts_table={fts_tbl}, bereshit={d1.get('total')}, shema_mishnah={d2.get('total')} (sql_parity={d2_fb.get('total')}), {elapsed_ms}ms"
 
     ok, det = chk_perf_01_fts5()
     record("PERF-01", "FTS5 prefilter active/safe and exact Torah/Mishnah queries return complete results", ok, det)
