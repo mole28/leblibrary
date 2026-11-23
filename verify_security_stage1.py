@@ -443,6 +443,29 @@ def run_checks(offline=False):
     ok, det = chk_sec_10_middleware_vector_emails_urls_models()
     record("SEC-10", "Hardened middleware IP/bot filter, lazy ChromaDB, safe emails, cached core/urls & sanitized models", ok, det)
 
+    def chk_sec_11_migration_graph_integrity():
+        bootstrap_django()
+        from django.db import connection
+        from django.db.migrations.executor import MigrationExecutor
+        from django.db.migrations.loader import MigrationLoader
+        from articles.models import ContactMessage
+        try:
+            loader = MigrationLoader(connection, ignore_no_migrations=True)
+            leaves = loader.graph.leaf_nodes("articles")
+            single_leaf = len(leaves) == 1
+            executor = MigrationExecutor(connection)
+            plan = executor.migration_plan(executor.loader.graph.leaf_nodes())
+            unapplied_articles = [f"{m.app_label}.{m.name}" for m, backward in plan if m.app_label == "articles" and not backward]
+            all_applied = len(unapplied_articles) == 0
+            table_ok = ContactMessage.objects.count() >= 0
+            ok = single_leaf and all_applied and table_ok
+            return ok, f"leaves={leaves}, unapplied_articles={unapplied_articles}, contact_table_ok={table_ok}"
+        except Exception as exc:
+            return False, f"migration_graph_error={type(exc).__name__}: {exc}"
+
+    ok, det = chk_sec_11_migration_graph_integrity()
+    record("SEC-11", "Django migration graph has valid dependencies, single leaf node, and all articles migrations applied", ok, det)
+
     if not offline:
         def chk_live_sec_01():
             c_evil, _ = fetch_live(
