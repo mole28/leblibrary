@@ -1,8 +1,11 @@
 import json
+import urllib.parse
 import urllib.request
 import re
 import os
 import hashlib
+import logging
+from html import escape as html_escape
 from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
@@ -13,6 +16,8 @@ from dotenv import load_dotenv
 from .models import Article, Chapter, Section, TorahText, QA, Acronym
 from .vector_store import search_similar_articles
 from .clusters_engine import ClusterEngine
+logger = logging.getLogger(__name__)
+
 from .torah_engine import (
     TANAKH_NAMES, TORAH_NAMES, TORAH_CORE_CONCEPTS,
     calculate_gematria, strip_editorial_markers, _auto_heal_parasha_gematria_in_db, format_divine_name, ratelimit,
@@ -207,11 +212,54 @@ def _local_nav_fallback(question: str) -> str:
         '<a href="/calculator/" style="color: #2575fc; font-weight: bold; text-decoration: underline;">מחשבוני מידות</a>'
     )
 
+_TRUSTED_HOSTS = {'leblibrary.co.il', 'www.leblibrary.co.il', 'localhost', '127.0.0.1', 'testserver'}
+
+def _is_same_origin_request(request):
+    req_host = (request.get_host() or '').split(':')[0].lower()
+    allowed = set(_TRUSTED_HOSTS)
+    if req_host:
+        allowed.add(req_host)
+    for host in getattr(settings, 'ALLOWED_HOSTS', []):
+        clean_h = str(host).strip().lstrip('.').lower()
+        if clean_h and clean_h != '*':
+            allowed.add(clean_h)
+    origin = (request.META.get('HTTP_ORIGIN') or '').strip()
+    if origin:
+        parsed_o = urllib.parse.urlparse(origin)
+        if (parsed_o.hostname or '').lower() not in allowed:
+            return False
+    referer = (request.META.get('HTTP_REFERER') or '').strip()
+    if referer and not origin:
+        parsed_r = urllib.parse.urlparse(referer)
+        if (parsed_r.hostname or '').lower() not in allowed:
+            return False
+    return True
+
+def _sanitize_ai_chunk(raw_chunk, link_color, target_attr):
+    escaped = html_escape(raw_chunk, quote=True)
+    rel_attr = ' rel="noopener noreferrer"' if target_attr == '_blank' else ''
+
+    def _replace_md_link(match):
+        label = match.group(1)
+        href = match.group(2).strip()
+        if href.startswith('/') or href.startswith('https://') or href.startswith('http://'):
+            return f'<a href="{href}" target="{target_attr}"{rel_attr} style="color: {link_color}; font-weight: bold; text-decoration: underline;">{label}</a>'
+        return label
+
+    rendered = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', _replace_md_link, escaped)
+    return rendered.replace('*', '')
+
 @csrf_exempt
 @ratelimit(rate=20, timeout=86400)
 def ai_chat_endpoint(request):
     if request.method != 'POST':
         return HttpResponse('שיטת בקשה לא חוקית.', status=400, content_type='text/plain; charset=utf-8')
+
+    if not _is_same_origin_request(request):
+        return HttpResponse('מקור הבקשה אינו מורשה.', status=403, content_type='text/plain; charset=utf-8')
+
+    if len(request.body or b'') > 8192:
+        return HttpResponse('גודל הבקשה חורג מהמותר.', status=400, content_type='text/plain; charset=utf-8')
 
     try:
         load_dotenv()
@@ -222,8 +270,12 @@ def ai_chat_endpoint(request):
         )
 
         data = json.loads(request.body)
-        user_question = data.get('question', '').strip()
-        mode = data.get('mode', 'content')
+        if not isinstance(data, dict):
+            return HttpResponse('פורמט בקשה לא תקין.', status=400, content_type='text/plain; charset=utf-8')
+        raw_q = data.get('question', '')
+        user_question = raw_q.strip() if isinstance(raw_q, str) else ''
+        raw_mode = data.get('mode', 'content')
+        mode = raw_mode if raw_mode in ('nav', 'qa', 'content') else 'content'
 
         if not user_question:
             return HttpResponse('אנא הזן שאלה כדי שאוכל לסייע לך.', content_type='text/plain; charset=utf-8')
@@ -418,12 +470,7 @@ def ai_chat_endpoint(request):
                                 full_generated_text += text_chunk
                                 link_color = "#2575fc" if mode == 'nav' else "#d4af37"
                                 target_attr = "_self" if mode == 'nav' else "_blank"
-                                text_chunk = re.sub(
-                                    r'\[([^\]]+)\]\(([^)]+)\)',
-                                    rf'<a href="\2" target="{target_attr}" style="color: {link_color}; font-weight: bold; text-decoration: underline;">\1</a>',
-                                    text_chunk
-                                ).replace('*', '')
-                                yield text_chunk
+                                yield _sanitize_ai_chunk(text_chunk, link_color, target_attr)
                         except json.JSONDecodeError:
                             continue
 
@@ -436,15 +483,18 @@ def ai_chat_endpoint(request):
                             title_part = title.split('-')[-1].strip()
                             if is_curated or title in full_generated_text or (len(title_part) >= 4 and title_part in full_generated_text):
                                 badge_str = " <span style='font-size:0.8em; color:#8c6239;'>(המלצת המחבר)</span>" if is_curated else ""
-                                sources_list_html += f"<li style='margin-bottom: 5px;'><a href='{url}' target='_blank' style='color: #d4af37; font-weight: bold; text-decoration: underline;'>{title}</a>{badge_str}</li>"
+                                safe_u = html_escape(url, quote=True)
+                                safe_t = html_escape(title, quote=True)
+                                sources_list_html += f"<li style='margin-bottom: 5px;'><a href='{safe_u}' target='_blank' rel='noopener noreferrer' style='color: #d4af37; font-weight: bold; text-decoration: underline;'>{safe_t}</a>{badge_str}</li>"
                     if sources_list_html:
                         yield (
                             "<br><br><div style='margin-top: 15px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 0.95em;'>"
                             "<strong>📚 מקורות וקישורים להרחבה בספרייה (לחיץ):</strong>"
                             f"<ul style='margin-top: 8px; padding-right: 20px; list-style-type: square;'>{sources_list_html}</ul></div>"
                         )
-            except Exception as e:
-                yield f"\n\n[החיבור נקטע: {str(e)}]"
+            except Exception:
+                logger.exception("Error while streaming AI chat response")
+                yield "\n\n[החיבור נקטע זמנית. אנא נסה שוב.]"
             finally:
                 response.close()
 
@@ -1022,5 +1072,6 @@ def torah_ai_insights_api(request):
             return JsonResponse(resp_payload, json_dumps_params={'ensure_ascii': False})
 
         return JsonResponse({'error': 'מצב פעולה לא חוקי.'}, status=400)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=400)
+    except Exception:
+        logger.exception("Error in torah_ai_insights_api")
+        return JsonResponse({'error': 'אירעה שגיאה בעיבוד הניתוח. אנא נסה שוב.'}, status=400)

@@ -6,12 +6,15 @@ import socket
 import re
 import time
 import hashlib
+import logging
 from functools import wraps
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.core.cache import cache
 from django.db.models import Q
 from django.utils.html import strip_tags
 from .models import TorahText
+
+logger = logging.getLogger(__name__)
 
 class _HTTPSConnectionIPv4(http.client.HTTPSConnection):
     def connect(self):
@@ -218,7 +221,6 @@ def _resolve_chapter_in_list(explicit_chapter: str, raw_chapters: list) -> str:
 
     return raw_chapters[0]
 
-
 def _chapter_db_variants(chapter_str: str) -> list:
     c = str(chapter_str or '').strip()
     if not c:
@@ -309,21 +311,46 @@ def format_divine_name(text):
     )
     return pattern.sub(r'\1-\2-\3-\4', text)
 
-def ratelimit(rate=30, timeout=60):
+def _get_client_ip(request):
+    real_ip = (request.META.get('HTTP_X_REAL_IP') or '').strip()
+    if real_ip:
+        return real_ip
+    xff = (request.META.get('HTTP_X_FORWARDED_FOR') or '').strip()
+    if xff:
+        parts = [p.strip() for p in xff.split(',') if p.strip()]
+        if parts:
+            return parts[-1]
+    return (request.META.get('REMOTE_ADDR') or 'unknown').strip()
+
+def ratelimit(rate=30, timeout=60, methods=None):
+    allowed_methods = {m.upper() for m in methods} if methods else None
+
     def decorator(view_func):
         @wraps(view_func)
         def _wrapped_view(request, *args, **kwargs):
-            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-            ip = x_forwarded_for.split(',')[0].strip() if x_forwarded_for else request.META.get('REMOTE_ADDR', 'unknown')
-            cache_key = f"api_ratelimit_{ip}"
+            if allowed_methods is not None and request.method.upper() not in allowed_methods:
+                return view_func(request, *args, **kwargs)
+            ip = _get_client_ip(request)
+            raw_key = f"{view_func.__name__}|{ip}"
+            cache_key = "rl_" + hashlib.md5(raw_key.encode("utf-8")).hexdigest()
             history = cache.get(cache_key, [])
             now = time.time()
             history = [t for t in history if now - t < timeout]
             if len(history) >= rate:
-                return JsonResponse({
-                    'meta': {'error': 'Rate limit exceeded.', 'retry_after_seconds': timeout},
-                    'results': []
-                }, status=429)
+                path = getattr(request, 'path', '') or ''
+                if path.startswith('/api/'):
+                    resp = JsonResponse({
+                        'meta': {'error': 'Rate limit exceeded.', 'retry_after_seconds': timeout},
+                        'results': []
+                    }, status=429)
+                else:
+                    resp = HttpResponse(
+                        'בוצעו יותר מדי בקשות בזמן קצר. אנא המתן מספר רגעים ונסה שוב.',
+                        status=429,
+                        content_type='text/plain; charset=utf-8'
+                    )
+                resp['Retry-After'] = str(timeout)
+                return resp
             history.append(now)
             cache.set(cache_key, history, timeout)
             return view_func(request, *args, **kwargs)
@@ -1812,8 +1839,9 @@ def tanakh_advanced_search_api(request):
         paginated_results = results[(page - 1) * per_page : page * per_page]
         for item in paginated_results:
             item['text'] = format_divine_name(item.get('text', ''))
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=400)
+    except Exception:
+        logger.exception("Error in tanakh_advanced_search_api")
+        return JsonResponse({'error': 'אירעה שגיאה בעיבוד החיפוש. אנא נסה שוב.'}, status=400)
 
     response_payload = {
         'results': paginated_results, 'total': total_results, 'page': page,

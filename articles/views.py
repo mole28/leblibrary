@@ -13,11 +13,12 @@ import tempfile
 import sys
 import threading
 import edge_tts
+import logging
 import socket
 import smtplib
 from html import unescape
 from functools import wraps
-from django.http import JsonResponse, HttpResponse, StreamingHttpResponse, Http404
+from django.http import JsonResponse, HttpResponse, HttpResponseForbidden, StreamingHttpResponse, Http404
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
@@ -30,7 +31,7 @@ from django.views.decorators.cache import cache_page
 from django.db.models import Q, Case, When, Value, IntegerField
 from django.urls import reverse
 from django.db import models, transaction
-from django.utils.html import strip_tags
+from django.utils.html import escape, strip_tags
 from .forms import ArticleForm
 from .models import Article, Book, Chapter, Section, Cart, CartItem, Order, OrderItem, TorahText, QA, Acronym, normalize_article_footnotes_html
 from .emails import send_order_confirmation
@@ -95,6 +96,17 @@ def _load_local_env():
                 pass
 
 _load_local_env()
+
+logger = logging.getLogger(__name__)
+_BOT_UA_RE = re.compile(r'(?:bot|crawler|spider|slurp|bingpreview|facebookexternalhit|headless|scrapy|curl|wget)', re.IGNORECASE)
+_EMAIL_SIMPLE_RE = re.compile(r'^[^\s@\r\n]+@[^\s@\r\n]+\.[^\s@\r\n]{2,}$')
+
+def _sanitize_header_value(value, max_len=200):
+    return re.sub(r'[\r\n]+', ' ', str(value or '')).strip()[:max_len]
+
+def _is_automated_crawler(request):
+    ua = (request.META.get('HTTP_USER_AGENT') or '').strip()
+    return bool(ua and _BOT_UA_RE.search(ua))
 
 def get_base_schema_json():
     return json.dumps({
@@ -392,8 +404,9 @@ def connections_audit_view(request):
                         bidirectional=bidirectional,
                     )
                     return JsonResponse({'ok': True})
-            except Exception as e:
-                return JsonResponse({'ok': False, 'error': str(e)}, status=400)
+            except Exception:
+                logger.exception("Error in connections_audit_view AJAX action")
+                return JsonResponse({'ok': False, 'error': 'אירעה שגיאה בעיבוד הפעולה.'}, status=400)
 
         cfg = ClusterEngine.get_runtime_config()
         new_score = request.POST.get('min_connection_score', cfg['min_connection_score'])
@@ -421,6 +434,8 @@ def connections_audit_view(request):
 
 @login_required
 def article_create(request):
+    if not request.user.is_superuser:
+        return HttpResponseForbidden('אין הרשאה לבצע פעולה זו.')
     if request.method == 'POST':
         form = ArticleForm(request.POST)
         if form.is_valid():
@@ -431,6 +446,8 @@ def article_create(request):
 
 @login_required
 def article_edit(request, slug):
+    if not request.user.is_superuser:
+        return HttpResponseForbidden('אין הרשאה לבצע פעולה זו.')
     if str(slug).isdigit():
         article = get_object_or_404(Article, pk=int(slug))
         return redirect('articles:edit', slug=article.slug, permanent=True)
@@ -446,6 +463,8 @@ def article_edit(request, slug):
 
 @login_required
 def article_delete(request, slug):
+    if not request.user.is_superuser:
+        return HttpResponseForbidden('אין הרשאה לבצע פעולה זו.')
     if str(slug).isdigit():
         article = get_object_or_404(Article, pk=int(slug))
         return redirect('articles:delete', slug=article.slug, permanent=True)
@@ -513,6 +532,7 @@ def _send_gmail_ipv4(subject, body, recipient_list, reply_to_email=None):
     server.quit()
     return True
 
+@ratelimit(rate=5, timeout=300, methods=('POST',))
 def contact(request):
     if request.method == 'POST':
         try:
@@ -521,11 +541,11 @@ def contact(request):
                 messages.success(request, 'תודה רבה! הודעתך נשלחה בהצלחה.')
                 return redirect('articles:contact')
 
-            name = request.POST.get('name', '').strip() or 'ללא שם'
-            phone = request.POST.get('phone', '').strip() or 'לא צוין'
-            email = request.POST.get('email', '').strip() or 'לא צוין'
-            subject = request.POST.get('subject', '').strip() or 'פנייה כללית מהאתר'
-            message = request.POST.get('message', '').strip() or '[הגולש לא כתב תוכן]'
+            name = _sanitize_header_value(request.POST.get('name', ''), 120) or 'ללא שם'
+            phone = _sanitize_header_value(request.POST.get('phone', ''), 40) or 'לא צוין'
+            email = _sanitize_header_value(request.POST.get('email', ''), 254) or 'לא צוין'
+            subject = _sanitize_header_value(request.POST.get('subject', ''), 200) or 'פנייה כללית מהאתר'
+            message = (request.POST.get('message', '') or '').strip()[:5000] or '[הגולש לא כתב תוכן]'
 
             full_message = (
                 f"התקבלה פנייה חדשה מאתר ספריית לייבוביץ:\n\n"
@@ -545,17 +565,24 @@ def contact(request):
                         'subject': subject, 'message': message
                     }, ensure_ascii=False) + "\n")
             except Exception:
-                pass
+                logger.exception("Failed writing contact backup log")
 
+            recipient = (
+                os.environ.get('CONTACT_RECIPIENT_EMAIL', '').strip()
+                or os.environ.get('EMAIL_HOST_USER', '').strip()
+                or 'moshe111moshe111@gmail.com'
+            )
+            valid_reply_to = email if _EMAIL_SIMPLE_RE.match(email) else None
             _send_gmail_ipv4(
                 subject=f"פנייה מהאתר: {subject} ({name})",
                 body=full_message,
-                recipient_list=['moshe111moshe111@gmail.com'],
-                reply_to_email=email if '@' in email else None
+                recipient_list=[recipient],
+                reply_to_email=valid_reply_to
             )
             messages.success(request, 'תודה רבה! הודעתך נשלחה בהצלחה ונחזור אליך בהקדם.')
-        except Exception as e:
-            messages.error(request, f'הפנייה נשמרה במערכת, אך שרת המייל החזיר הערה: {e}')
+        except Exception:
+            logger.exception("Failed sending contact email notification")
+            messages.error(request, 'הפנייה נשמרה במערכת, אך אירעה תקלה זמנית בשליחת ההתראה במייל. נחזור אליך בהקדם.')
         return redirect('articles:contact')
 
     return render(request, 'articles/contact.html', {'current_page': 'contact'})
@@ -648,7 +675,7 @@ def qa_list(request, pk=None):
         if q:
             try:
                 html_str = resp.content.decode('utf-8')
-                html_str = html_str.replace('name="q"', f'name="q" value="{unescape(q)}"', 1)
+                html_str = html_str.replace('name="q"', f'name="q" value="{escape(q)}"', 1)
                 resp.content = html_str.encode('utf-8')
             except Exception:
                 pass
@@ -855,13 +882,14 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        const safeQ = cleanQ.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         statusBanner.style.display = 'block';
         if (matchCount > 0) {
             statusBanner.innerHTML = `
                 <div class="alert d-flex justify-content-between align-items-center flex-wrap gap-2 shadow-sm rounded-3" style="background-color: #fcfaf5; border: 1px solid #d4af37; color: #1e293b;">
                     <div>
                         <i class="bi bi-search ms-2" style="color: #b8860b;"></i>
-                        נמצאו <strong>${matchCount}</strong> ספרים התואמים לחיפוש <strong>"${cleanQ.replace(/</g, '&lt;')}"</strong>
+                        נמצאו <strong>${matchCount}</strong> ספרים התואמים לחיפוש <strong>"${safeQ}"</strong>
                     </div>
                     <button type="button" id="clearBooksSearchBtn" class="btn btn-sm btn-outline-dark rounded-pill px-3 fw-bold">
                         נקה חיפוש והצג הכל
@@ -872,7 +900,7 @@ document.addEventListener('DOMContentLoaded', function() {
             statusBanner.innerHTML = `
                 <div class="text-center p-5 rounded-4 shadow-sm my-3" style="background-color: #fcfaf5; border: 1.5px dashed #d4af37; color: #1e293b;">
                     <i class="bi bi-journal-x fs-1 d-block mb-2" style="color: #b8860b;"></i>
-                    <h4 class="fw-bold mb-2">לא נמצאו ספרים התואמים לחיפוש "${cleanQ.replace(/</g, '&lt;')}"</h4>
+                    <h4 class="fw-bold mb-2">לא נמצאו ספרים התואמים לחיפוש "${safeQ}"</h4>
                     <p class="text-muted mb-3">נסה לחפש מילה אחרת משם הספר או הנושא.</p>
                     <button type="button" id="clearBooksSearchBtn" class="btn rounded-pill px-4 py-2 fw-bold shadow-sm" style="background: #d4af37; color: #1e202c;">
                         הצג את כל הספרים בספרייה
@@ -1022,19 +1050,32 @@ def _get_or_create_cart(request):
         cart, _ = Cart.objects.get_or_create(session_id=request.session.session_key)
         return cart
 
+@ratelimit(rate=30, timeout=60)
 def add_to_cart(request, book_id):
+    if _is_automated_crawler(request):
+        return redirect('articles:books')
     book = Book.objects.filter(id=book_id, is_for_sale=True).first()
     if not book:
         return redirect('articles:books', permanent=True)
+    if book.stock <= 0:
+        messages.error(request, f'הספר "{book.title}" אזל זמנית מהמלאי.')
+        return redirect('articles:book_detail', pk=book.pk)
     cart = _get_or_create_cart(request)
     cart_item, created = CartItem.objects.get_or_create(cart=cart, book=book)
+    max_qty = min(int(book.stock), 99)
     if not created:
+        if cart_item.quantity >= max_qty:
+            messages.warning(request, f'לא ניתן להוסיף מעבר למלאי הזמין ({max_qty}) עבור "{book.title}".')
+            return redirect('articles:cart_detail')
         cart_item.quantity += 1
-        cart_item.save()
+        cart_item.save(update_fields=['quantity'])
     messages.success(request, f'הספר "{book.title}" נוסף לעגלת הקניות בהצלחה.')
     return redirect('articles:cart_detail')
 
+@ratelimit(rate=30, timeout=60)
 def remove_from_cart(request, item_id):
+    if _is_automated_crawler(request):
+        return redirect('articles:books')
     cart = _get_or_create_cart(request)
     item = CartItem.objects.filter(id=item_id, cart=cart).first()
     if item:
@@ -1048,43 +1089,67 @@ def cart_detail(request):
     total_price = sum(item.get_total_price() for item in items)
     return render(request, 'articles/cart_detail.html', {'cart': cart, 'items': items, 'total_price': total_price, 'current_page': 'cart'})
 
+@ratelimit(rate=10, timeout=300, methods=('POST',))
 def checkout(request):
     cart = _get_or_create_cart(request)
-    items = cart.items.select_related('book').all()
+    items = list(cart.items.select_related('book').all())
     if not items:
         messages.error(request, 'העגלה שלך ריקה. אנא הוסף ספרים לפני המעבר לקופה.')
         return redirect('articles:books')
     total_price = sum(item.get_total_price() for item in items)
     if request.method == 'POST':
-        first_name = request.POST.get('first_name')
-        last_name = request.POST.get('last_name')
-        email = request.POST.get('email')
-        phone = request.POST.get('phone')
-        address = request.POST.get('address')
-        city = request.POST.get('city')
-        zip_code = request.POST.get('zip_code', '')
-        notes = request.POST.get('notes', '')
+        first_name = _sanitize_header_value(request.POST.get('first_name', ''), 50)
+        last_name = _sanitize_header_value(request.POST.get('last_name', ''), 50)
+        email = _sanitize_header_value(request.POST.get('email', ''), 254)
+        phone = _sanitize_header_value(request.POST.get('phone', ''), 20)
+        address = _sanitize_header_value(request.POST.get('address', ''), 250)
+        city = _sanitize_header_value(request.POST.get('city', ''), 100)
+        zip_code = _sanitize_header_value(request.POST.get('zip_code', ''), 20)
+        notes = (request.POST.get('notes', '') or '').strip()[:2000]
 
+        if not all([first_name, last_name, phone, address, city]) or not _EMAIL_SIMPLE_RE.match(email):
+            messages.error(request, 'נא למלא את כל שדות החובה בצורה תקינה (כולל כתובת אימייל חוקית).')
+            return render(request, 'articles/checkout.html', {'items': items, 'total_price': total_price, 'current_page': 'cart'})
+
+        insufficient_book = None
+        order = None
         with transaction.atomic():
-            order = Order.objects.create(
-                first_name=first_name, last_name=last_name, email=email, phone=phone,
-                address=address, city=city, zip_code=zip_code, notes=notes,
-                total_paid=total_price, status='pending'
-            )
+            locked_items = []
+            verified_total = 0
             for item in items:
-                OrderItem.objects.create(order=order, book=item.book, price=item.book.price, quantity=item.quantity)
-            cart.items.all().delete()
+                locked_book = Book.objects.select_for_update().filter(pk=item.book_id, is_for_sale=True).first()
+                if not locked_book or locked_book.stock < item.quantity:
+                    insufficient_book = item.book.title if item.book else 'אחד הספרים'
+                    break
+                locked_items.append((locked_book, item.quantity))
+                verified_total += locked_book.price * item.quantity
+
+            if not insufficient_book:
+                order = Order.objects.create(
+                    first_name=first_name, last_name=last_name, email=email, phone=phone,
+                    address=address, city=city, zip_code=zip_code, notes=notes,
+                    total_paid=verified_total, status='pending'
+                )
+                for locked_book, qty in locked_items:
+                    OrderItem.objects.create(order=order, book=locked_book, price=locked_book.price, quantity=qty)
+                    locked_book.stock -= qty
+                    locked_book.save(update_fields=['stock'])
+                cart.items.all().delete()
+
+        if insufficient_book:
+            messages.error(request, f'המלאי הזמין עבור "{insufficient_book}" אינו מספיק להשלמת ההזמנה.')
+            return redirect('articles:cart_detail')
 
         try:
             send_order_confirmation(order)
         except Exception:
-            pass
+            logger.exception("Failed sending order confirmation email for order %s", order.pk)
         return render(request, 'articles/order_success.html', {'order': order})
     return render(request, 'articles/checkout.html', {'items': items, 'total_price': total_price, 'current_page': 'cart'})
 
 def ping_indexnow(article_url):
     host = "leblibrary.co.il"
-    key = "mosheleibowitzkey123"
+    key = os.environ.get('INDEXNOW_KEY', '').strip() or getattr(settings, 'INDEXNOW_KEY', '').strip() or 'mosheleibowitzkey123'
     url = f"https://api.indexnow.org/indexnow?url={urllib.parse.quote(article_url)}&key={key}&keyLocation=https://{host}/{key}.txt"
     try:
         _IPV4_OPENER.open(url, timeout=5)
@@ -1360,8 +1425,9 @@ def get_article_audio(request, identifier):
         final_text = apply_tts_dictionary(raw_text)
         try:
             generate_audio_sync(final_text, file_path)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+        except Exception:
+            logger.exception("Failed generating audio file")
+            return JsonResponse({'error': 'אירעה שגיאה ביצירת קובץ השמע.'}, status=500)
 
     file_version = int(os.path.getmtime(file_path)) if os.path.exists(file_path) else 1
     audio_url = f"{media_url}audio/{file_name}?v={file_version}"
@@ -1404,8 +1470,9 @@ def get_book_audio(request, book_id):
         final_text = apply_tts_dictionary(raw_text)
         try:
             generate_audio_sync(final_text, file_path)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+        except Exception:
+            logger.exception("Failed generating audio file")
+            return JsonResponse({'error': 'אירעה שגיאה ביצירת קובץ השמע.'}, status=500)
 
     file_version = int(os.path.getmtime(file_path)) if os.path.exists(file_path) else 1
     audio_url = f"{media_url}audio/{file_name}?v={file_version}"

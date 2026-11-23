@@ -1,3 +1,4 @@
+import os
 import re
 from django.contrib import admin
 from django.urls import path, include
@@ -194,7 +195,7 @@ urlpatterns = [
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
     path('robots.txt', robots_txt, name='robots_file'),
 
-    path('mosheleibowitzkey123.txt', lambda request: HttpResponse('mosheleibowitzkey123', content_type='text/plain')),
+    path(f"{os.environ.get('INDEXNOW_KEY', '').strip() or getattr(settings, 'INDEXNOW_KEY', '').strip() or 'mosheleibowitzkey123'}.txt", lambda request: HttpResponse(os.environ.get('INDEXNOW_KEY', '').strip() or getattr(settings, 'INDEXNOW_KEY', '').strip() or 'mosheleibowitzkey123', content_type='text/plain')),
 
     path('openapi.json', openapi_schema, name='openapi_schema'),
     path('llms-full.txt', llms_full_txt, name='llms_full_txt'),
