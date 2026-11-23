@@ -61,7 +61,7 @@
 
 {% block content %}
 <style>
-    .qa-card { background-color: #fafafa; border-radius: 10px; transition: all 0.3s ease; border: 1px solid #f0f0f0; margin-bottom: 1rem; }
+    .qa-card { background-color: #fafafa; border-radius: 10px; transition: all 0.3s ease; border: 1px solid #f0f0f0; margin-bottom: 1rem; scroll-margin-top: 24px; }
     .qa-card-alt { background-color: #fcfdfd; }
     .qa-card:hover { box-shadow: 0 6px 15px rgba(0,0,0,0.06); border-color: #e8e1d7; }
     
@@ -100,7 +100,7 @@
                 {% for qa in questions %}
                 <div id="qa-{{ qa.id }}" class="qa-card p-4 {% if forloop.counter|divisibleby:2 %}qa-card-alt{% endif %} {% if selected_qa and selected_qa.id == qa.id %}qa-highlighted{% endif %}">
                     
-                    <div id="header-qa-{{ qa.id }}" class="qa-header d-flex justify-content-between align-items-center {% if selected_qa and selected_qa.id == qa.id %}is-open{% endif %}" onclick="toggleQaAnswer('{{ qa.id }}', this)">
+                    <div id="header-qa-{{ qa.id }}" class="qa-header d-flex justify-content-between align-items-center {% if selected_qa and selected_qa.id == qa.id %}is-open{% endif %}" role="button" tabindex="0" aria-expanded="{% if selected_qa and selected_qa.id == qa.id %}true{% else %}false{% endif %}" aria-controls="answer-qa-{{ qa.id }}" onclick="toggleQaAnswer('{{ qa.id }}', this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleQaAnswer('{{ qa.id }}', this);}">
                         <div class="w-100 pe-3">
                             <h4 class="fw-bold mb-1 qa-title">
                                 <a href="{% url 'articles:qa_detail' pk=qa.id %}" class="text-decoration-none" style="color: inherit;" onclick="event.preventDefault();">
@@ -180,16 +180,26 @@
         if (answerDiv.classList.contains('is-open')) {
             answerDiv.classList.remove('is-open');
             headerEl.classList.remove('is-open');
+            headerEl.setAttribute('aria-expanded', 'false');
             if (window.history && window.history.replaceState) {
                 window.history.replaceState(null, '', '/qa/');
             }
         } else {
             answerDiv.classList.add('is-open');
             headerEl.classList.add('is-open');
+            headerEl.setAttribute('aria-expanded', 'true');
             if (window.history && window.history.replaceState) {
                 window.history.replaceState(null, '', '/qa/' + qaId + '/');
             }
         }
+    }
+
+    function scrollToQaStart(cardEl, headerEl) {
+        var target = cardEl || headerEl;
+        if (!target) return;
+        var rect = target.getBoundingClientRect();
+        var topOffset = Math.max(0, window.pageYOffset + rect.top - 24);
+        window.scrollTo({ top: topOffset, behavior: 'smooth' });
     }
 
     function copyQaDirectUrl(qaId, btnEl) {
@@ -217,10 +227,13 @@
             if (cardEl && answerEl && headerEl) {
                 answerEl.classList.add('is-open');
                 headerEl.classList.add('is-open');
+                headerEl.setAttribute('aria-expanded', 'true');
                 cardEl.classList.add('qa-highlighted');
-                setTimeout(function() {
-                    cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 150);
+                window.requestAnimationFrame(function() {
+                    setTimeout(function() {
+                        scrollToQaStart(cardEl, headerEl);
+                    }, 120);
+                });
             }
         }
     });

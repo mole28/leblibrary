@@ -1179,7 +1179,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 selectedCorpora.add(key);
             }
-            currentSkipFilter = '';
+            currentSkipFilter = elsPreselectSkip.value;
             syncCorpusButtonsUI();
             if (searchQueryInput.value.trim()) performSearch(1);
         });
@@ -1191,7 +1191,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             selectedCorpora = new Set(ALL_CORPORA_KEYS);
         }
-        currentSkipFilter = '';
+        currentSkipFilter = elsPreselectSkip.value;
         syncCorpusButtonsUI();
         if (searchQueryInput.value.trim()) performSearch(1);
     });
@@ -1199,9 +1199,13 @@ document.addEventListener('DOMContentLoaded', function() {
     actionCards.forEach(card => {
         card.addEventListener('click', () => {
             const act = card.getAttribute('data-action');
+            const isElsAct = (act === 'els' || act === 'els_verse');
             setActiveActionCard(act);
-            currentSkipFilter = '';
-            elsPreselectSkip.value = '';
+            if (isElsAct) {
+                currentSkipFilter = elsPreselectSkip.value;
+            } else {
+                currentSkipFilter = '';
+            }
             updateHelperBox();
             if (searchQueryInput.value.trim()) performSearch(1);
         });
@@ -1318,8 +1322,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     searchQueryInput.addEventListener('input', () => {
-        currentSkipFilter = '';
-        elsPreselectSkip.value = '';
+        currentSkipFilter = elsPreselectSkip.value;
         updateHelperBox();
     });
 
@@ -1937,6 +1940,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const mode = searchActionInput.value;
         const query = searchQueryInput.value.trim();
         if (!query) return;
+        if (mode === 'els' || mode === 'els_verse') {
+            currentSkipFilter = elsPreselectSkip.value;
+        }
 
         syncBrowserUrlFromState();
         panelTitle.innerHTML = `<i class="bi bi-journal-richtext ms-2" style="color: #d4af37;"></i>תוצאות הסריקה במאגר`;

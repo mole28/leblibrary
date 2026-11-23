@@ -4,8 +4,8 @@
         <div class="mobile-nav-header">
             <a class="nav-logo" href="{% url 'articles:list' %}" data-i18n="site_title">דף הבית</a>
             
-            <button class="custom-hamburger" type="button" onclick="document.getElementById('navbarCollapseContent').classList.toggle('show')">
-                <i class="bi bi-list"></i>
+            <button id="mainNavToggleBtn" class="custom-hamburger" type="button" aria-label="תפריט ראשי" aria-controls="navbarCollapseContent" aria-expanded="false" onclick="toggleMainNavMenu(this)">
+                <i class="bi bi-list" aria-hidden="true"></i>
             </button>
         </div>
         
@@ -38,16 +38,16 @@
 
             <div class="nav-left-absolute">
                 
-                <button class="header-share-btn" onclick="openShareModal()" title="שיתוף העמוד">
-                    <i class="bi bi-share-fill"></i>
+                <button class="header-share-btn" type="button" onclick="openShareModal()" title="שיתוף העמוד" aria-label="שיתוף העמוד">
+                    <i class="bi bi-share-fill" aria-hidden="true"></i>
                 </button>
 
-                <a href="{% url 'articles:cart_detail' %}" class="cart-icon-btn" title="עגלת קניות">
-                    <i class="bi bi-cart3"></i>
+                <a href="{% url 'articles:cart_detail' %}" class="cart-icon-btn" title="עגלת קניות" aria-label="עגלת קניות">
+                    <i class="bi bi-cart3" aria-hidden="true"></i>
                 </a>
 
-                <button id="darkModeToggleBtn" class="dark-mode-toggle-btn" onclick="toggleDarkMode()" title="החלף עיצוב (מצב לילה/יום)">
-                    <i class="bi bi-circle-half" id="darkModeIcon"></i>
+                <button id="darkModeToggleBtn" class="dark-mode-toggle-btn" type="button" onclick="toggleDarkMode()" title="החלף עיצוב (מצב לילה/יום)" aria-label="החלף מצב תצוגה">
+                    <i class="bi bi-circle-half" id="darkModeIcon" aria-hidden="true"></i>
                 </button>
                 
                 <div class="rights-text" data-i18n="footer_rights">כל הזכויות שמורות<br>למשה לייבוביץ</div>
@@ -61,3 +61,24 @@
 
     </div>
 </header>
+<script>
+    function toggleMainNavMenu(btnEl) {
+        var menuEl = document.getElementById('navbarCollapseContent');
+        var trigger = btnEl || document.getElementById('mainNavToggleBtn');
+        if (!menuEl || !trigger) return;
+        var isOpen = menuEl.classList.toggle('show');
+        trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            var menuEl = document.getElementById('navbarCollapseContent');
+            var trigger = document.getElementById('mainNavToggleBtn');
+            if (menuEl && trigger && menuEl.classList.contains('show')) {
+                menuEl.classList.remove('show');
+                trigger.setAttribute('aria-expanded', 'false');
+                trigger.focus();
+            }
+        }
+    });
+</script>
