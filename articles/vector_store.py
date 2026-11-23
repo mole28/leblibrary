@@ -1,53 +1,74 @@
-import os
+import logging
+import threading
 import chromadb
 from chromadb.utils import embedding_functions
 from django.conf import settings
-from django.utils.html import strip_tags
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
+from django.utils.html import strip_tags
 from .models import Article
 
-chroma_client = chromadb.PersistentClient(path=str(settings.BASE_DIR / 'chroma_db'))
+logger = logging.getLogger(__name__)
 
-# שימוש במנגנון הטמעה מקומי של ChromaDB - ללא צורך במפתחות API חיצוניים
-default_ef = embedding_functions.DefaultEmbeddingFunction()
+_CHROMA_LOCK = threading.Lock()
+_COLLECTION = None
 
-collection = chroma_client.get_or_create_collection(
-    name="leblibrary_articles", 
-    embedding_function=default_ef
-)
+
+def _get_collection():
+    global _COLLECTION
+    if _COLLECTION is not None:
+        return _COLLECTION
+    with _CHROMA_LOCK:
+        if _COLLECTION is None:
+            client = chromadb.PersistentClient(path=str(settings.BASE_DIR / 'chroma_db'))
+            ef = embedding_functions.DefaultEmbeddingFunction()
+            _COLLECTION = client.get_or_create_collection(
+                name='leblibrary_articles',
+                embedding_function=ef,
+            )
+    return _COLLECTION
+
 
 def index_article(article: Article):
     if not article.is_published:
         return
-    clean_content = strip_tags(article.content).replace('\n', ' ').strip()
+    clean_content = strip_tags(article.content or '').replace('\n', ' ').strip()
     if not clean_content:
         return
-    
-    collection.upsert(
-        documents=[clean_content],
-        metadatas=[{"title": article.title, "url": f"/article/{article.pk}/"}],
-        ids=[str(article.pk)]
-    )
+    article_url = f"/article/{article.slug}/" if article.slug else f"/article/{article.pk}/"
+    try:
+        col = _get_collection()
+        col.upsert(
+            documents=[clean_content],
+            metadatas=[{'title': article.title, 'url': article_url}],
+            ids=[str(article.pk)],
+        )
+    except Exception:
+        logger.warning('Failed indexing article %s in ChromaDB', article.pk, exc_info=True)
+
 
 def search_similar_articles(query: str, top_k: int = 3):
     try:
-        results = collection.query(
+        col = _get_collection()
+        results = col.query(
             query_texts=[query],
-            n_results=top_k
+            n_results=top_k,
         )
         structured_results = []
-        if results['documents'] and results['documents'][0]:
-            for i in range(len(results['documents'][0])):
+        docs = results.get('documents') or []
+        if docs and docs[0]:
+            for i in range(len(docs[0])):
                 structured_results.append({
                     'id': results['ids'][0][i],
                     'title': results['metadatas'][0][i]['title'],
                     'url': results['metadatas'][0][i]['url'],
-                    'content_snippet': results['documents'][0][i][:250] + '...'
+                    'content_snippet': docs[0][i][:250] + '...',
                 })
         return structured_results
     except Exception:
+        logger.warning('Semantic search failed in ChromaDB', exc_info=True)
         return []
+
 
 @receiver(post_save, sender=Article)
 def auto_index_article(sender, instance, **kwargs):
@@ -55,13 +76,14 @@ def auto_index_article(sender, instance, **kwargs):
         index_article(instance)
     else:
         try:
-            collection.delete(ids=[str(instance.pk)])
-        except:
-            pass
+            _get_collection().delete(ids=[str(instance.pk)])
+        except Exception:
+            logger.debug('Failed deleting unpublished article %s from ChromaDB', instance.pk, exc_info=True)
+
 
 @receiver(post_delete, sender=Article)
 def auto_delete_article(sender, instance, **kwargs):
     try:
-        collection.delete(ids=[str(instance.pk)])
-    except:
-        pass
+        _get_collection().delete(ids=[str(instance.pk)])
+    except Exception:
+        logger.debug('Failed deleting article %s from ChromaDB', instance.pk, exc_info=True)

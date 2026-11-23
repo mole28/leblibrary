@@ -402,6 +402,47 @@ def run_checks(offline=False):
     ok, det = chk_sec_09_pro_hardening_and_hygiene()
     record("SEC-09", "Gemini x-goog-api-key header, ContactMessage DB, 0 silent excepts, no dup share modal & clean imports", ok, det)
 
+    def chk_sec_10_middleware_vector_emails_urls_models():
+        bootstrap_django()
+        from django.test import RequestFactory
+        from articles.middleware import _extract_valid_client_ip
+        from articles.emails import _clean_header
+        mw_src = read_rel("articles/middleware.py")
+        vs_src = read_rel("articles/vector_store.py")
+        em_src = read_rel("articles/emails.py")
+        cu_src = read_rel("core/urls.py")
+        md_src = read_rel("articles/models.py")
+
+        rf = RequestFactory()
+        ip_ok = (
+            _extract_valid_client_ip(rf.get("/", HTTP_X_FORWARDED_FOR="1.2.3.4, 203.0.113.9", REMOTE_ADDR="127.0.0.1")) == "203.0.113.9"
+            and _extract_valid_client_ip(rf.get("/", HTTP_X_REAL_IP="not-an-ip", REMOTE_ADDR="127.0.0.1")) == "127.0.0.1"
+            and "_BOT_UA_RE" in mw_src
+            and "'/api/'" in mw_src
+        )
+        vs_ok = (
+            "def _get_collection():" in vs_src
+            and "article.slug" in vs_src
+            and not re.search(r"except\s*:\s*\n", vs_src)
+        )
+        em_ok = (
+            "\r" not in _clean_header("a@b.com\r\nBcc: evil@example.com")
+            and "fail_silently=False" in em_src
+        )
+        cu_ok = (
+            "mosheleibowitzkey123" not in cu_src
+            and cu_src.count("@cache_page(60 * 60)") >= 4
+        )
+        md_ok = (
+            "_sanitize_imported_soup" in md_src
+            and "print(" not in md_src
+        )
+        ok = ip_ok and vs_ok and em_ok and cu_ok and md_ok
+        return ok, f"middleware={ip_ok}, vector_store={vs_ok}, emails={em_ok}, core_urls={cu_ok}, models={md_ok}"
+
+    ok, det = chk_sec_10_middleware_vector_emails_urls_models()
+    record("SEC-10", "Hardened middleware IP/bot filter, lazy ChromaDB, safe emails, cached core/urls & sanitized models", ok, det)
+
     if not offline:
         def chk_live_sec_01():
             c_evil, _ = fetch_live(
@@ -497,6 +538,17 @@ def run_checks(offline=False):
 
         ok, det = chk_live_sec_07()
         record("LIVE-SEC-07", "Live /article/63/ and /book/84/ render single unique #luxShareModal and clean JS", ok, det)
+
+        def chk_live_sec_08():
+            c_llms, _ = fetch_live("/llms-full.txt")
+            c_rob, _ = fetch_live("/robots.txt")
+            c_man, _ = fetch_live("/manifest.json")
+            c_oa, _ = fetch_live("/openapi.json")
+            ok = (c_llms == 200 and c_rob == 200 and c_man == 200 and c_oa == 200)
+            return ok, f"llms_full={c_llms}, robots={c_rob}, manifest={c_man}, openapi={c_oa}"
+
+        ok, det = chk_live_sec_08()
+        record("LIVE-SEC-08", "Live cached core endpoints (/llms-full.txt, /robots.txt, /manifest.json, /openapi.json) return HTTP 200", ok, det)
 
     passed = sum(1 for _, _, ok, _ in results if ok)
     failed = len(results) - passed

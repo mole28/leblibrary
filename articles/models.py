@@ -1,27 +1,45 @@
-from django.db import models
-from django.utils import timezone
-from django.utils.text import slugify
-from django.urls import reverse
-
+import logging
 import re
+from datetime import timedelta
 from html import unescape
 from bs4 import BeautifulSoup
-from django.utils.html import strip_tags
-from django_ckeditor_5.fields import CKEditor5Field
-
-from pyluach import dates
 from django.contrib.auth.models import User
-from datetime import timedelta
+from django.db import models
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.html import strip_tags
+from django.utils.text import slugify
+from django_ckeditor_5.fields import CKEditor5Field
+from pyluach import dates
 
 try:
     import mammoth
 except ImportError:
     mammoth = None
 
+logger = logging.getLogger(__name__)
+
+_BLOCKED_WORD_TAGS = ('script', 'iframe', 'object', 'embed', 'form', 'input', 'textarea', 'select', 'meta', 'base')
 _EXCERPT_BLOCK_TAG_RE = re.compile(
     r'</?(?:p|div|br|h[1-6]|li|ul|ol|tr|td|th|blockquote|section|article|header|footer|hr)[^>]*>',
     re.IGNORECASE,
 )
+
+
+def _sanitize_imported_soup(soup):
+    for bad_tag in soup.find_all(_BLOCKED_WORD_TAGS):
+        bad_tag.decompose()
+    for el in soup.find_all(True):
+        for attr in list(el.attrs.keys()):
+            if attr.lower().startswith('on'):
+                del el.attrs[attr]
+            elif attr.lower() in ('href', 'src'):
+                val = str(el.attrs.get(attr) or '').strip().lower()
+                if val.startswith(('javascript:', 'vbscript:', 'data:text/html')):
+                    del el.attrs[attr]
+
 
 def build_clean_excerpt(html_content, max_words=25):
     if not html_content:
@@ -39,6 +57,7 @@ def build_clean_excerpt(html_content, max_words=25):
     if len(words) <= max_words:
         return text
     return ' '.join(words[:max_words]) + '…'
+
 
 def normalize_article_footnotes_html(html_content):
     if not html_content:
@@ -207,9 +226,12 @@ def normalize_article_footnotes_html(html_content):
 
     return str(soup)
 
+
 def process_mammoth_html(raw_html):
-    if not raw_html: return ""
+    if not raw_html:
+        return ""
     soup = BeautifulSoup(raw_html, 'html.parser')
+    _sanitize_imported_soup(soup)
 
     for ref in soup.find_all('a', id=re.compile(r'^footnote-ref-')):
         clean_num = ref.get_text(strip=True).replace('[', '').replace(']', '')
@@ -226,13 +248,13 @@ def process_mammoth_html(raw_html):
             back_link.decompose()
             if parent and parent.name == 'sup' and not parent.get_text(strip=True):
                 parent.decompose()
-        
+
         for p in li.find_all('p'):
             p.unwrap()
-            
+
         footnotes_dict[fn_id] = li
         li.extract()
-        
+
     for ol in soup.find_all('ol'):
         if not ol.get_text(strip=True):
             ol.extract()
@@ -247,14 +269,14 @@ def process_mammoth_html(raw_html):
             num = fn_id.replace('footnote-', '')
             div = soup.new_tag('div', style='margin-bottom: 15px; display: flex; align-items: flex-start;')
             div['id'] = fn_id
-            
+
             num_span = soup.new_tag('span', style='font-weight:bold; color:#d4af37; min-width: 35px; flex-shrink: 0;')
             num_span.string = f"{num}."
-            
+
             content_span = soup.new_tag('span', style='flex-grow: 1;')
             for child in list(li_tag.contents):
                 content_span.append(child)
-            
+
             div.append(num_span)
             div.append(content_span)
             container.append(div)
@@ -269,15 +291,19 @@ def process_mammoth_html(raw_html):
 
     return str(soup)
 
+
 def clean_word_html(html_content):
-    if not html_content: return html_content
+    if not html_content:
+        return html_content
     html_content = html_content.replace('^', '').replace('↑', '').replace('ˆ', '')
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    for el in soup.find_all('div', class_='custom-footnotes-container'): el.decompose()
+    for el in soup.find_all('div', class_='custom-footnotes-container'):
+        el.decompose()
     for el in soup.find_all('h2', string="הערות שוליים"):
         prev_hr = el.find_previous_sibling('hr')
-        if prev_hr: prev_hr.decompose()
+        if prev_hr:
+            prev_hr.decompose()
         el.decompose()
 
     paragraphs = soup.find_all(['p', 'div'])
@@ -286,7 +312,7 @@ def clean_word_html(html_content):
         text = p.get_text(strip=True)
         if re.match(r'^[\.\[\]\(\)]*\s*1\s*[\.\[\]\(\)]*$', text):
             found_2 = False
-            for j in range(i+1, min(i+6, len(paragraphs))):
+            for j in range(i + 1, min(i + 6, len(paragraphs))):
                 if re.match(r'^[\.\[\]\(\)]*\s*2\s*[\.\[\]\(\)]*$', paragraphs[j].get_text(strip=True)):
                     found_2 = True
                     break
@@ -302,7 +328,7 @@ def clean_word_html(html_content):
             if not text:
                 p.decompose()
                 continue
-            
+
             match_standalone = re.match(r'^[\.\[\]\(\)]*\s*(\d+)\s*[\.\[\]\(\)]*$', text)
             if match_standalone:
                 num = match_standalone.group(1)
@@ -310,7 +336,7 @@ def clean_word_html(html_content):
                 built_footnotes.append(current_fn)
                 p.decompose()
                 continue
-                
+
             match_inline = re.match(r'^[\.\[\]\(\)]*\s*(\d+)[\.\[\]\(\)\-\:]*\s+(.*)$', text)
             if match_inline:
                 num = match_inline.group(1)
@@ -325,7 +351,7 @@ def clean_word_html(html_content):
                             break
                     current_fn['elements'].append(p.extract())
                     continue
-                    
+
             if current_fn:
                 current_fn['elements'].append(p.extract())
 
@@ -345,7 +371,7 @@ def clean_word_html(html_content):
                 a['class'] = list(dict.fromkeys((a.get('class') or []) + ['footnote-ref']))
                 if a.parent and a.parent.name != 'sup':
                     a.wrap(soup.new_tag('sup'))
-                    
+
     for sup in soup.find_all('sup'):
         if not sup.find('a'):
             text = sup.get_text(strip=True)
@@ -359,10 +385,11 @@ def clean_word_html(html_content):
     if built_footnotes:
         max_fn = len(built_footnotes)
         for text_node in soup.find_all(string=re.compile(r'\[\d+\]')):
-            if text_node.find_parent(['sup', 'a']): continue
+            if text_node.find_parent(['sup', 'a']):
+                continue
             new_html = re.sub(
-                r'\[(\d+)\]', 
-                lambda m: f'<sup><a href="#footnote-{m.group(1)}" class="footnote-ref">[{m.group(1)}]</a></sup>' if int(m.group(1)) <= max_fn else m.group(0), 
+                r'\[(\d+)\]',
+                lambda m: f'<sup><a href="#footnote-{m.group(1)}" class="footnote-ref">[{m.group(1)}]</a></sup>' if int(m.group(1)) <= max_fn else m.group(0),
                 text_node
             )
             if new_html != text_node:
@@ -382,9 +409,10 @@ def clean_word_html(html_content):
             num_span.string = f"{fn['num']}."
             content_span = soup.new_tag('span', style='flex-grow: 1;')
             for el in fn['elements']:
-                if el.name == 'p': el.unwrap()
+                if el.name == 'p':
+                    el.unwrap()
                 content_span.append(el)
-                content_span.append(soup.new_string(" ")) 
+                content_span.append(soup.new_string(" "))
             div.append(num_span)
             div.append(content_span)
             container.append(div)
@@ -394,9 +422,11 @@ def clean_word_html(html_content):
         soup.append(container)
 
     for p in soup.find_all('p'):
-        if not p.get_text(strip=True) and not p.find(['img', 'iframe']): p.decompose()
+        if not p.get_text(strip=True) and not p.find(['img', 'iframe']):
+            p.decompose()
 
     return normalize_article_footnotes_html(str(soup))
+
 
 PARASHA_CHOICES = [
     ('general', 'מאמר כללי (לא קשור לפרשה)'),
@@ -427,12 +457,13 @@ PARASHA_CHOICES = [
     )),
 ]
 
+
 class Article(models.Model):
     title = models.CharField(max_length=200, verbose_name="כותרת המאמר")
     slug = models.SlugField(max_length=255, unique=True, allow_unicode=True, verbose_name="קישור (Slug)", blank=True, null=True)
     parasha = models.CharField(max_length=500, default=',general,', verbose_name="שיוך לפרשות שבוע", blank=True)
     word_file = models.FileField(upload_to='word_imports/', blank=True, null=True, verbose_name="ייבוא אוטומטי מוורד (מומלץ למאמרים עם הערות!)")
-    content = CKEditor5Field(config_name='extends', verbose_name="תוכן המאמר", blank=True, null=True) 
+    content = CKEditor5Field(config_name='extends', verbose_name="תוכן המאמר", blank=True, null=True)
     hebrew_date = models.CharField(max_length=100, verbose_name="תאריך עברי", blank=True)
     created_at = models.DateTimeField(default=timezone.now, verbose_name="תאריך יצירה")
     is_published = models.BooleanField(default=True, verbose_name="מפורסם")
@@ -487,10 +518,12 @@ class Article(models.Model):
 
     @property
     def is_new(self):
-        if not self.created_at: return False
+        if not self.created_at:
+            return False
         return self.created_at >= timezone.now() - timedelta(days=7)
 
-    def __str__(self): return self.title
+    def __str__(self):
+        return self.title
 
     def get_absolute_url(self):
         return reverse('articles:detail', kwargs={'slug': self.slug})
@@ -500,7 +533,7 @@ class Article(models.Model):
             self.slug = slugify(self.title, allow_unicode=True)
             if not self.slug:
                 self.slug = f"article-{timezone.now().strftime('%Y%m%d%H%M%S')}"
-            
+
             original_slug = self.slug
             counter = 1
             while Article.objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
@@ -513,9 +546,9 @@ class Article(models.Model):
                 result = mammoth.convert_to_html(self.word_file.file)
                 self.content = process_mammoth_html(result.value)
                 self.word_file.close()
-                self.word_file = None 
-            except Exception as e:
-                print(f"Error parsing word: {e}")
+                self.word_file = None
+            except Exception:
+                logger.exception("Error parsing word file for Article %s", self.pk)
         else:
             self.content = clean_word_html(self.content)
 
@@ -523,6 +556,7 @@ class Article(models.Model):
             self.hebrew_date = self.hebrew_date_auto
 
         super().save(*args, **kwargs)
+
 
 class Book(models.Model):
     title = models.CharField(max_length=200, verbose_name="שם הספר")
@@ -535,23 +569,28 @@ class Book(models.Model):
     stock = models.PositiveIntegerField(default=0, verbose_name="מלאי זמין")
     created_at = models.DateTimeField(default=timezone.now, verbose_name="תאריך הוספה")
     order = models.PositiveIntegerField(default=0, verbose_name="סדר תצוגה (1 יופיע ראשון)")
-    
+
     @property
     def is_new(self):
-        if not self.created_at: return False
+        if not self.created_at:
+            return False
         return self.created_at >= timezone.now() - timedelta(days=7)
-    
+
     class Meta:
         ordering = ['order', 'title']
 
-    def __str__(self): return self.title
+    def __str__(self):
+        return self.title
+
 
 class Chapter(models.Model):
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='chapters', verbose_name="ספר")
     title = models.CharField(max_length=200, verbose_name="כותרת (למשל: סימן א)")
     order = models.PositiveIntegerField(verbose_name="סדר")
 
-    def __str__(self): return f"{self.book.title} | {self.title}"
+    def __str__(self):
+        return f"{self.book.title} | {self.title}"
+
 
 class Section(models.Model):
     chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE, related_name='sections', verbose_name="פרק")
@@ -560,7 +599,8 @@ class Section(models.Model):
     content = CKEditor5Field(config_name='extends', verbose_name="תוכן", blank=True, null=True)
     order = models.PositiveIntegerField(verbose_name="סדר")
 
-    def __str__(self): return f"{self.chapter.title} | {self.title}"
+    def __str__(self):
+        return f"{self.chapter.title} | {self.title}"
 
     def save(self, *args, **kwargs):
         if self.word_file and mammoth:
@@ -570,12 +610,13 @@ class Section(models.Model):
                 self.content = process_mammoth_html(result.value)
                 self.word_file.close()
                 self.word_file = None
-            except Exception as e:
-                print(f"Error parsing word: {e}")
+            except Exception:
+                logger.exception("Error parsing word file for Section %s", self.pk)
         else:
             self.content = clean_word_html(self.content)
-                
+
         super().save(*args, **kwargs)
+
 
 class Acronym(models.Model):
     short = models.CharField(max_length=100, db_index=True, verbose_name="ראשי תיבות")
@@ -586,20 +627,30 @@ class Acronym(models.Model):
         verbose_name_plural = "מילון ראשי תיבות"
         ordering = ['short']
 
-    def __str__(self): return f"{self.short} | {self.meaning[:40]}..."
+    def __str__(self):
+        return f"{self.short} | {self.meaning[:40]}..."
+
 
 class Cart(models.Model):
     session_id = models.CharField(max_length=255, blank=True, null=True, verbose_name="מזהה סשן")
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, verbose_name="משתמש (אם מחובר)")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="נוצר בתאריך")
-    def __str__(self): return f"עגלה {self.id}"
+
+    def __str__(self):
+        return f"עגלה {self.id}"
+
 
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, related_name='items', on_delete=models.CASCADE)
     book = models.ForeignKey(Book, on_delete=models.CASCADE, verbose_name="ספר")
     quantity = models.PositiveIntegerField(default=1, verbose_name="כמות")
-    def __str__(self): return f"{self.quantity} x {self.book.title}"
-    def get_total_price(self): return self.quantity * self.book.price
+
+    def __str__(self):
+        return f"{self.quantity} x {self.book.title}"
+
+    def get_total_price(self):
+        return self.quantity * self.book.price
+
 
 class Order(models.Model):
     STATUS_CHOICES = (
@@ -621,38 +672,46 @@ class Order(models.Model):
     total_paid = models.DecimalField(max_digits=8, decimal_places=2, verbose_name="סך הכל לתשלום")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="סטטוס הזמנה")
     notes = models.TextField(blank=True, verbose_name="הערות להזמנה")
-    def __str__(self): return f"הזמנה #{self.id} | {self.first_name} {self.last_name}"
+
+    def __str__(self):
+        return f"הזמנה #{self.id} | {self.first_name} {self.last_name}"
+
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
     book = models.ForeignKey(Book, on_delete=models.SET_NULL, null=True, verbose_name="ספר")
     price = models.DecimalField(max_digits=6, decimal_places=2, verbose_name="מחיר בעת הרכישה")
     quantity = models.PositiveIntegerField(default=1, verbose_name="כמות")
-    def __str__(self): return f"{self.quantity} x {self.book.title if self.book else 'ספר שנמחק'}"
-    def get_cost(self): return self.price * self.quantity
 
-from django.db.models.signals import pre_save
-from django.dispatch import receiver
+    def __str__(self):
+        return f"{self.quantity} x {self.book.title if self.book else 'ספר שנמחק'}"
+
+    def get_cost(self):
+        return self.price * self.quantity
+
 
 @receiver(pre_save, sender=Order)
 def check_order_status_change(sender, instance, **kwargs):
     if instance.id:
-        try:
-            old_order = Order.objects.get(id=instance.id)
-            if old_order.status != 'shipped' and instance.status == 'shipped':
-                from .emails import send_shipping_update
-                send_shipping_update(instance)
-        except Order.DoesNotExist: pass
+        old_status = Order.objects.filter(id=instance.id).values_list('status', flat=True).first()
+        if old_status and old_status != 'shipped' and instance.status == 'shipped':
+            from .emails import send_shipping_update
+            send_shipping_update(instance)
+
 
 class QA(models.Model):
     question = models.CharField(max_length=255, verbose_name="שאלה")
     answer = models.TextField(verbose_name="תשובה")
     category = models.CharField(max_length=100, verbose_name="קטגוריה", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="תאריך הוספה")
+
     class Meta:
         verbose_name = "שאלה ותשובה"
         verbose_name_plural = "שאלות ותשובות"
-    def __str__(self): return self.question
+
+    def __str__(self):
+        return self.question
+
 
 class VisitorLog(models.Model):
     ip_address = models.GenericIPAddressField(null=True, blank=True, verbose_name="כתובת IP")
@@ -660,11 +719,15 @@ class VisitorLog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True, verbose_name="זמן ביקור")
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="משתמש")
     user_agent = models.TextField(blank=True, verbose_name="דפדפן / מכשיר")
+
     class Meta:
         verbose_name = "לוג ביקור"
         verbose_name_plural = "לוגים של מבקרים"
         ordering = ['-timestamp']
-    def __str__(self): return f"{self.ip_address} | {self.path} ({self.timestamp})"
+
+    def __str__(self):
+        return f"{self.ip_address} | {self.path} ({self.timestamp})"
+
 
 class TorahText(models.Model):
     book = models.CharField(max_length=100, db_index=True, verbose_name="ספר")
@@ -672,7 +735,7 @@ class TorahText(models.Model):
     verse = models.CharField(max_length=10, verbose_name="פסוק")
     text_with_nikkud = models.TextField(verbose_name="טקסט מנוקד")
     clean_text = models.TextField(verbose_name="טקסט נקי (ללא ניקוד ורווחים)", blank=True)
-    
+
     verse_gematria = models.IntegerField(default=0, db_index=True)
     words_gematria = models.TextField(blank=True, null=True)
 
@@ -683,16 +746,21 @@ class TorahText(models.Model):
             models.Index(fields=['clean_text']),
             models.Index(fields=['book', 'chapter']),
         ]
-    def __str__(self): return f"{self.book} {self.chapter} {self.verse}"
+
+    def __str__(self):
+        return f"{self.book} {self.chapter} {self.verse}"
+
 
 class TorahTextFTS(models.Model):
     book = models.TextField(verbose_name="ספר")
     chapter = models.TextField(verbose_name="פרק")
     verse = models.TextField(verbose_name="פסוק")
     text_with_nikkud = models.TextField(verbose_name="טקסט מנוקד")
+
     class Meta:
-        managed = False 
+        managed = False
         db_table = 'articles_torahtext_fts'
+
 
 class ContactMessage(models.Model):
     name = models.CharField(max_length=120, verbose_name='שם')
