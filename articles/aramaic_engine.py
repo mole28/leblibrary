@@ -1015,8 +1015,8 @@ def execute_aramaic_translation(request):
         return {'error': 'נא להזין מילה, ביטוי או משפט לתרגום.'}, 400
 
     clean_q = re.sub(r'[^\w\sא-ת"״\'׳\-]', '', q).strip()
-    raw_cache_key = f"v13|{direction}|{dialect}|{clean_q}"
-    cache_key = "aramaic_trans_v13_" + hashlib.md5(raw_cache_key.encode("utf-8")).hexdigest()
+    raw_cache_key = f"v14|{direction}|{dialect}|{clean_q}"
+    cache_key = "aramaic_trans_v14_" + hashlib.md5(raw_cache_key.encode("utf-8")).hexdigest()
     cached_res = cache.get(cache_key)
     if cached_res:
         return cached_res, 200
@@ -1119,15 +1119,18 @@ def execute_aramaic_translation(request):
                 }
 
     if not resolved_data and not has_non_heb_chars and direction != 'he_to_ar':
-        acr_hit = Acronym.objects.filter(Q(short=clean_q) | Q(short__icontains=clean_q)).first()
-        if acr_hit:
-            resolved_data = {
-                'detected_direction': 'ארמית ⬅ עברית (ראשי תיבות)' if direction == 'ar_to_he' else 'ראשי תיבות ומונחים ⬅ עברית',
-                'main_translation': acr_hit.meaning,
-                'dialects_list': ['בבלי', 'ירושלמי'],
-                'grammar_breakdown': 'נמצא במילון ראשי התיבות והמונחים של הספרייה',
-                'usage_example': f"{acr_hit.short}: {acr_hit.meaning}",
-            }
+        has_quote_mark = any(ch in clean_q for ch in ('"', "'", '״', '׳'))
+        can_try_acronym = has_quote_mark or (direction == 'auto') or not _lookup_he_to_ar(clean_q, full_lex, dialect=dialect)
+        if can_try_acronym:
+            acr_hit = Acronym.objects.filter(short=clean_q).first()
+            if acr_hit:
+                resolved_data = {
+                    'detected_direction': 'ארמית ⬅ עברית (ראשי תיבות)' if direction == 'ar_to_he' else 'ראשי תיבות ומונחים ⬅ עברית',
+                    'main_translation': acr_hit.meaning,
+                    'dialects_list': ['בבלי', 'ירושלמי'],
+                    'grammar_breakdown': 'נמצא במילון ראשי התיבות והמונחים של הספרייה',
+                    'usage_example': f"{acr_hit.short}: {acr_hit.meaning}",
+                }
 
     direction_mismatch = False
     suggested_direction = ''

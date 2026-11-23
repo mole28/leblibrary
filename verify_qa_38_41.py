@@ -186,7 +186,11 @@ def run_checks(offline=False):
             code, body = fetch_live("/qa/1/")
             if code != 200:
                 return False, f"HTTP {code}"
-            ok = ("scrollToQaStart(cardEl, headerEl)" in body and "block: 'center'" not in body)
+            ok = (
+                "scrollToQaStart(cardEl, headerEl)" in body
+                and "cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' })" not in body
+                and "scroll-margin-top: 24px" in body
+            )
             return ok, ""
 
         ok, det = chk_live_40()
