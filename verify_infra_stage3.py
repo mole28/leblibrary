@@ -123,6 +123,27 @@ def check_backup_restore_readiness():
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
+def check_firewall_and_fail2ban():
+    ufw = subprocess.run(["ufw", "status", "verbose"], capture_output=True, text=True, check=False)
+    ufw_out = ufw.stdout or ""
+    ufw_active = "status: active" in ufw_out.lower()
+    ufw_deny_in = "deny (incoming)" in ufw_out.lower()
+
+    f2b = subprocess.run(["fail2ban-client", "status", "sshd"], capture_output=True, text=True, check=False)
+    f2b_out = f2b.stdout or ""
+    f2b_ok = f2b.returncode == 0 and "status for the jail: sshd" in f2b_out.lower()
+
+    banned_cur = "?"
+    for line in f2b_out.splitlines():
+        if "currently banned:" in line.lower():
+            banned_cur = line.split(":", 1)[1].strip()
+            break
+
+    ok = ufw_active and ufw_deny_in and f2b_ok
+    detail = f"ufw_active={ufw_active}, deny_in={ufw_deny_in}, fail2ban_sshd={f2b_ok}, currently_banned={banned_cur}"
+    return ok, detail
+
+
 def run_checks():
     results = []
 
@@ -172,6 +193,9 @@ def run_checks():
 
     ok_bk, det_bk = check_backup_restore_readiness()
     record("INFRA-07", "Latest backup passes SHA-256, SQLite integrity, ChromaDB collections & restore check", ok_bk, det_bk)
+
+    ok_fw, det_fw = check_firewall_and_fail2ban()
+    record("INFRA-08", "Server firewall (UFW) is active with default deny and Fail2Ban protects sshd", ok_fw, det_fw)
 
     passed = sum(1 for _, _, ok, _ in results if ok)
     print("\n" + "=" * 84)
