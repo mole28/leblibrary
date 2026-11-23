@@ -3,7 +3,7 @@ from django.contrib.sitemaps import Sitemap
 from django.db.models import Q
 from django.urls import NoReverseMatch, reverse
 from articles.models import Article, Book, QA
-from articles.views import PARASHA_CANONICAL_NAMES, _parasha_to_slug
+from articles.views import PARASHA_CANONICAL_NAMES, _parasha_to_slug, _resolve_parasha_name
 
 
 class BaseSitemap(Sitemap):
@@ -126,7 +126,7 @@ class ParashaSitemap(BaseSitemap):
         latest_by_parasha = {}
         for raw_parasha, created_at in published:
             for token in str(raw_parasha or '').split(','):
-                name = re.sub(r'\s+', ' ', token).strip()
+                name = _resolve_parasha_name(token)
                 if name in PARASHA_CANONICAL_NAMES:
                     prev = latest_by_parasha.get(name)
                     if created_at and (prev is None or created_at > prev):

@@ -115,20 +115,86 @@ PARASHA_CANONICAL_NAMES = (
     'במדבר', 'נשא', 'בהעלותך', 'שלח לך', 'קרח', 'חקת', 'בלק', 'פינחס', 'מטות', 'מסעי',
     'דברים', 'ואתחנן', 'עקב', 'ראה', 'שופטים', 'כי תצא', 'כי תבוא', 'ניצבים', 'וילך', 'האזינו', 'וזאת הברכה',
 )
+_PARASHA_ALIASES = {
+    'חוקת': 'חקת',
+    'בחוקותי': 'בחוקתי',
+    'בחקתי': 'בחוקתי',
+    'בחקותי': 'בחוקתי',
+    'פנחס': 'פינחס',
+    'נצבים': 'ניצבים',
+    'תצווה': 'תצוה',
+    'בהעלתך': 'בהעלותך',
+    'כי תבא': 'כי תבוא',
+    'ויתחנן': 'ואתחנן',
+    'תולדת': 'תולדות',
+    'שלח': 'שלח לך',
+    'אחרי': 'אחרי מות',
+    'זאת הברכה': 'וזאת הברכה',
+}
 _PARASHA_SLUG_TO_NAME = {name.replace(' ', '-'): name for name in PARASHA_CANONICAL_NAMES}
 _PARASHA_SLUG_TO_NAME.update({name: name for name in PARASHA_CANONICAL_NAMES})
+for _alias, _canon in _PARASHA_ALIASES.items():
+    _PARASHA_SLUG_TO_NAME[_alias] = _canon
+    _PARASHA_SLUG_TO_NAME[_alias.replace(' ', '-')] = _canon
+
+_SECTION_FN_ID_RE = re.compile(r'\bid=(["\'])((?:fn-(?:note|ref)-|footnote-(?:ref-)?)[^"\']+)\1')
+_SECTION_FN_HREF_RE = re.compile(r'\bhref=(["\'])#((?:fn-(?:note|ref)-|footnote-(?:ref-)?)[^"\']+)\1')
 
 def _parasha_to_slug(name):
     return re.sub(r'\s+', '-', str(name or '').strip())
 
 def _resolve_parasha_name(raw_value):
     cleaned = re.sub(r'\s+', ' ', str(raw_value or '').replace('-', ' ')).strip()
+    cleaned = re.sub(r'^פרשת\s+', '', cleaned).strip()
     if not cleaned:
         return ''
     if cleaned in _PARASHA_SLUG_TO_NAME:
         return _PARASHA_SLUG_TO_NAME[cleaned]
     slug_key = _parasha_to_slug(cleaned)
     return _PARASHA_SLUG_TO_NAME.get(slug_key, cleaned)
+
+def _scope_section_footnotes(html_content, section_pk):
+    if not html_content or not section_pk:
+        return html_content
+    local_ids = {m.group(2) for m in _SECTION_FN_ID_RE.finditer(html_content)}
+    if not local_ids:
+        return html_content
+    local_hrefs = {m.group(2) for m in _SECTION_FN_HREF_RE.finditer(html_content)}
+    paired_ids = local_ids & local_hrefs
+    if not paired_ids:
+        return html_content
+
+    ids_to_scope = set(paired_ids)
+    for lid in local_ids:
+        m_fn_ref = re.match(r'^fn-ref-(\d+-\d+)(?:-\d+)?$', lid)
+        if m_fn_ref and f"fn-note-{m_fn_ref.group(1)}" in paired_ids:
+            ids_to_scope.add(lid)
+        m_ft_ref = re.match(r'^footnote-ref-(\d+)(?:-\d+)?$', lid)
+        if m_ft_ref and f"footnote-{m_ft_ref.group(1)}" in paired_ids:
+            ids_to_scope.add(lid)
+
+    prefix_tag = f"s{section_pk}-"
+
+    def _scope_token(tok):
+        for pfx in ('fn-note-', 'fn-ref-', 'footnote-ref-', 'footnote-'):
+            if tok.startswith(pfx):
+                return f"{pfx}{prefix_tag}{tok[len(pfx):]}"
+        return tok
+
+    def _repl_id(match):
+        q_ch, tok = match.group(1), match.group(2)
+        if tok in ids_to_scope:
+            return f'id={q_ch}{_scope_token(tok)}{q_ch}'
+        return match.group(0)
+
+    def _repl_href(match):
+        q_ch, tok = match.group(1), match.group(2)
+        if tok in ids_to_scope:
+            return f'href={q_ch}#{_scope_token(tok)}{q_ch}'
+        return match.group(0)
+
+    scoped = _SECTION_FN_ID_RE.sub(_repl_id, html_content)
+    return _SECTION_FN_HREF_RE.sub(_repl_href, scoped)
 
 def _extract_article_parashot(raw_parasha):
     if not raw_parasha:
@@ -788,8 +854,9 @@ def parasha_list(request, parasha_name=None):
     if query_p and not parasha_name:
         resolved_q = _resolve_parasha_name(query_p)
         target_slug = _parasha_to_slug(resolved_q)
-        if target_slug:
+        if resolved_q in PARASHA_CANONICAL_NAMES and target_slug:
             return redirect('articles:parasha_detail', parasha_name=target_slug, permanent=True)
+        raise Http404(f"הפרשה '{query_p}' לא נמצאה.")
 
     selected_parasha = None
     selected_parasha_slug = ''
@@ -803,6 +870,8 @@ def parasha_list(request, parasha_name=None):
         is_known_parasha = selected_parasha in PARASHA_CANONICAL_NAMES
         parasha_q = Q(parasha__icontains=f",{selected_parasha},") | Q(parasha=selected_parasha)
         articles = Article.objects.filter(parasha_q, is_published=True).order_by('-created_at')
+        if not is_known_parasha and not articles.exists():
+            raise Http404(f"הפרשה '{parasha_name}' לא נמצאה.")
 
     return render(request, 'articles/parasha_list.html', {
         'current_page': 'parasha',
@@ -824,9 +893,7 @@ def book_detail(request, pk):
             raw_sec_html = getattr(sec, 'content', '') or ''
             if raw_sec_html:
                 norm_html = normalize_article_footnotes_html(raw_sec_html)
-                sec_prefix = f"s{sec.pk}-"
-                norm_html = norm_html.replace('fn-note-', f'fn-note-{sec_prefix}').replace('fn-ref-', f'fn-ref-{sec_prefix}')
-                sec.rendered_content = norm_html
+                sec.rendered_content = _scope_section_footnotes(norm_html, sec.pk)
             else:
                 sec.rendered_content = ''
         chapter.rendered_sections = chapter_sections

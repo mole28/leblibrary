@@ -1,12 +1,14 @@
 {% extends 'articles/base.html' %}
 
-{% block title %}{% if selected_qa %}{{ selected_qa.question }} | שו"ת ספריית לייבוביץ{% else %}שאלות ותשובות | הספרייה{% endif %}{% endblock %}
+{% block title %}{% if selected_qa %}{{ selected_qa.question|striptags }} | שו"ת ספריית לייבוביץ{% else %}שאלות ותשובות הלכתיות | ספריית לייבוביץ{% endif %}{% endblock %}
+{% block meta_description %}{% if selected_qa %}{{ selected_qa.answer|striptags|truncatewords:30|escape }} | שאלות ותשובות מאת הרב משה לייבוביץ בספריית לייבוביץ.{% else %}מאגר שאלות ותשובות (שו״ת), בירורי הלכה ומענה תורני מאת הרב משה לייבוביץ בספריית לייבוביץ.{% endif %}{% endblock %}
+{% block og_title %}{% if selected_qa %}{{ selected_qa.question|striptags|escape }} | שו&quot;ת ספריית לייבוביץ{% else %}שאלות ותשובות הלכתיות | ספריית לייבוביץ{% endif %}{% endblock %}
+{% block og_description %}{% if selected_qa %}{{ selected_qa.answer|striptags|truncatewords:30|escape }}{% else %}מאגר שו&quot;ת, בירורי הלכה ומענה תורני ישיר מאת הרב משה לייבוביץ.{% endif %}{% endblock %}
+{% block og_type %}website{% endblock %}
+{% block og_url %}https://leblibrary.co.il{{ request.path }}{% endblock %}
+{% block canonical_url %}https://leblibrary.co.il{{ request.path }}{% endblock %}
 
 {% block extra_head %}
-<meta property="og:title" content="{% if selected_qa %}{{ selected_qa.question|escape }} | שו&quot;ת ספריית לייבוביץ{% else %}שאלות ותשובות הלכתיות | ספריית לייבוביץ{% endif %}">
-<meta property="og:description" content="{% if selected_qa %}{{ selected_qa.answer|striptags|truncatewords:30|escape }}{% else %}מאגר שו&quot;ת, בירורי הלכה, ומענה תורני ישיר מאת משה לייבוביץ.{% endif %}">
-<meta property="og:type" content="website">
-<meta property="og:url" content="{{ request.build_absolute_uri }}">
 
 {% if questions %}
 <script type="application/ld+json">
