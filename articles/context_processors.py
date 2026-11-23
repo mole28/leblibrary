@@ -1,4 +1,7 @@
 import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 _CACHED_YEAR_BY_DATE = (None, '')
 
@@ -66,8 +69,10 @@ def _gregorian_to_hebrew_year_num(g_date: datetime.date) -> int:
         from pyluach import dates as pyluach_dates
         h_date = pyluach_dates.GregorianDate(g_date.year, g_date.month, g_date.day).to_heb()
         return int(h_date.year)
+    except ImportError:
+        logger.debug('pyluach unavailable; using built-in Hebrew calendar calculation')
     except Exception:
-        pass
+        logger.warning('pyluach conversion failed; using built-in fallback', exc_info=True)
     ord_day = g_date.toordinal()
     approx = g_date.year + 3760
     while _hebrew_year_start_ordinal(approx + 1) <= ord_day:

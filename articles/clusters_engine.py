@@ -240,8 +240,8 @@ def _atomic_write_json(path: str, payload):
         if os.path.exists(tmp_path):
             try:
                 os.remove(tmp_path)
-            except Exception:
-                pass
+            except OSError:
+                logger.debug('Failed removing temp file %s', tmp_path, exc_info=True)
 
 
 def _sanitize_tool_url(url_value: str) -> str:

@@ -1,103 +1,93 @@
+import asyncio
+import datetime
 import hashlib
 import json
-import urllib.request
-import urllib.parse
-import re
-import random
-import datetime
-import concurrent.futures
-import os
-import time
-import asyncio
-import subprocess
-import tempfile
-import sys
-import threading
-import edge_tts
 import logging
-import socket
+import os
+import random
+import re
 import smtplib
+import socket
+import threading
+import time
+import urllib.parse
+import urllib.request
+from email.header import Header
+from email.mime.text import MIMEText
+from email.utils import formataddr
 from html import unescape
-from functools import wraps
-from django.http import JsonResponse, HttpResponse, HttpResponseForbidden, StreamingHttpResponse, Http404
-from django.views.decorators.csrf import csrf_exempt
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
-from django.core.mail import send_mail
-from django.contrib import messages
+import edge_tts
 from django.conf import settings
-from django.core.exceptions import FieldError
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
-from django.views.decorators.cache import cache_page
-from django.db.models import Q, Case, When, Value, IntegerField
-from django.urls import reverse
-from django.db import models, transaction
-from django.utils.html import escape, strip_tags
-from .forms import ArticleForm
-from .models import Article, Book, Chapter, Section, Cart, CartItem, Order, OrderItem, TorahText, QA, Acronym, normalize_article_footnotes_html
-from .emails import send_order_confirmation
-from django.db.models.signals import post_save, post_delete
+from django.db import transaction
+from django.db.models import Q
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
-from .vector_store import search_similar_articles
-from .clusters_engine import ClusterEngine, GRAVITY_CLUSTERS
-from .torah_engine import (
-    HEBREW_GEMATRIA,
-    TANAKH_NAMES,
-    TORAH_NAMES,
-    MISHNAH_BOOKS,
-    BAVLI_TRACTATES_EN,
-    YERUSHALMI_TRACTATES_EN,
-    SHULCHAN_ARUCH_EN,
-    TORAH_CORE_CONCEPTS,
-    calculate_gematria,
-    format_divine_name,
-    ratelimit,
-    int_to_hebrew,
-    format_verse_hebrew,
-    parse_hebrew_number,
-    generate_word_variations,
-    get_book_order,
-    safe_int,
-    _resolve_torah_book_in_db,
-    _resolve_torah_verse_obj,
-    _generate_spelling_variants,
-    _extract_sefaria_he_list,
-    _match_comments_by_dibbur_hamatchil,
-    _fetch_sefaria_json_cached,
-    _fetch_commentary_for_source,
-    tanakh_advanced_search_api,
-    _IPV4_OPENER,
-)
+from django.http import Http404, HttpResponseForbidden, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils.html import escape, strip_tags
+from django.views.decorators.cache import cache_page
 from .ai_engine import (
-    smart_hebrew_search,
-    get_text_fields,
-    get_item_title,
-    get_item_text,
-    ai_document_search,
-    get_smart_content,
-    ai_chat_endpoint,
-    torah_ai_insights_api,
     _is_same_origin_request,
+    ai_chat_endpoint as ai_chat_endpoint,
+    ai_document_search as ai_document_search,
+    get_item_text,
+    get_item_title,
+    get_smart_content,
+    get_text_fields as get_text_fields,
+    smart_hebrew_search,
+    torah_ai_insights_api as torah_ai_insights_api,
 )
 from .aramaic_engine import aramaic_translator_view as _get_aramaic_context, execute_aramaic_translation
-
-def _load_local_env():
-    for env_path in [
-        os.path.join(settings.BASE_DIR, '.env'),
-        os.path.join(settings.BASE_DIR, 'articles', '.env')
-    ]:
-        if os.path.exists(env_path):
-            try:
-                with open(env_path, 'r', encoding='utf-8') as f:
-                    for line in f:
-                        line = line.strip()
-                        if line and not line.startswith('#') and '=' in line:
-                            k, v = line.split('=', 1)
-                            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
-            except Exception:
-                pass
-
-_load_local_env()
+from .clusters_engine import ClusterEngine, GRAVITY_CLUSTERS as GRAVITY_CLUSTERS
+from .emails import send_order_confirmation
+from .forms import ArticleForm
+from .models import (
+    Acronym,
+    Article,
+    Book,
+    Cart,
+    CartItem,
+    Chapter,
+    ContactMessage,
+    Order,
+    OrderItem,
+    QA,
+    Section,
+    normalize_article_footnotes_html,
+)
+from .torah_engine import (
+    BAVLI_TRACTATES_EN as BAVLI_TRACTATES_EN,
+    HEBREW_GEMATRIA as HEBREW_GEMATRIA,
+    MISHNAH_BOOKS as MISHNAH_BOOKS,
+    SHULCHAN_ARUCH_EN as SHULCHAN_ARUCH_EN,
+    TANAKH_NAMES as TANAKH_NAMES,
+    TORAH_CORE_CONCEPTS as TORAH_CORE_CONCEPTS,
+    TORAH_NAMES as TORAH_NAMES,
+    YERUSHALMI_TRACTATES_EN as YERUSHALMI_TRACTATES_EN,
+    _IPV4_OPENER,
+    _extract_sefaria_he_list as _extract_sefaria_he_list,
+    _fetch_commentary_for_source as _fetch_commentary_for_source,
+    _fetch_sefaria_json_cached as _fetch_sefaria_json_cached,
+    _generate_spelling_variants as _generate_spelling_variants,
+    _match_comments_by_dibbur_hamatchil as _match_comments_by_dibbur_hamatchil,
+    _resolve_torah_book_in_db as _resolve_torah_book_in_db,
+    _resolve_torah_verse_obj as _resolve_torah_verse_obj,
+    calculate_gematria as calculate_gematria,
+    format_divine_name as format_divine_name,
+    format_verse_hebrew as format_verse_hebrew,
+    generate_word_variations,
+    get_book_order as get_book_order,
+    int_to_hebrew,
+    parse_hebrew_number as parse_hebrew_number,
+    ratelimit,
+    safe_int as safe_int,
+    tanakh_advanced_search_api as tanakh_advanced_search_api,
+)
+from .vector_store import search_similar_articles
 
 logger = logging.getLogger(__name__)
 _BOT_UA_RE = re.compile(r'(?:bot|crawler|spider|slurp|bingpreview|facebookexternalhit|headless|scrapy|curl|wget)', re.IGNORECASE)
@@ -261,57 +251,6 @@ def _extract_article_parashot(raw_parasha):
             out.append((canonical, _parasha_to_slug(canonical)))
     return out
 
-def get_base_schema_json():
-    return json.dumps({
-        "@context": "https://schema.org",
-        "@graph": [
-            {
-                "@type": "WebSite",
-                "@id": "https://leblibrary.co.il/#website",
-                "url": "https://leblibrary.co.il",
-                "name": "LebLibrary - ספריית לייבוביץ",
-                "alternateName": ["ספריית ליבוביץ", "הספרייה של משה לייבוביץ", "ספרית לייבוביץ"],
-                "publisher": {"@id": "https://leblibrary.co.il/#person"},
-                "potentialAction": [
-                    {
-                        "@type": "SearchAction",
-                        "target": "https://leblibrary.co.il/?q={search_term_string}",
-                        "query-input": "required name=search_term_string"
-                    },
-                    {
-                        "@type": "SearchAction",
-                        "name": "מנוע חיפוש תורני מתקדם",
-                        "target": "https://leblibrary.co.il/advanced-search/?q={search_term_string}",
-                        "query-input": "required name=search_term_string"
-                    }
-                ]
-            },
-            {
-                "@type": "Person",
-                "@id": "https://leblibrary.co.il/#person",
-                "name": "הרב משה לייבוביץ",
-                "alternateName": ["משה ליבוביץ", "Moshe Leibowitz", "משה בן יעקב לייבוביץ"],
-                "url": "https://leblibrary.co.il",
-                "homeLocation": {
-                    "@type": "Place",
-                    "name": "טירת כרמל, ישראל"
-                },
-                "sameAs": [
-                    "https://leblibrary.co.il/about/",
-                    "https://merhav.nli.org.il/primo-explore/search?query=any,contains,משה%20לייבוביץ&vid=NLI",
-                    "https://hebrewbooks.org/"
-                ],
-                "jobTitle": "תלמיד חכם, אברך ומחבר ספרים תורניים",
-                "worksFor": {
-                    "@type": "Organization",
-                    "name": "ספריית לייבוביץ - LebLibrary"
-                },
-                "description": "הרב משה לייבוביץ (משה ליבוביץ) הוא תלמיד חכם ואברך בישיבה מטירת כרמל, מחבר מאמרים תורניים ועשרה ספרי הלכה ומייסד אתר ספריית לייבוביץ.",
-                "disambiguatingDescription": "אתר זה הוקם ומנוהל על ידי הרב משה לייבוביץ, תלמיד חכם ואברך מטירת כרמל. אין לו שום קשר למשה ליבוביץ ממקימי ביתר עילית (וראש המועצה הראשון שלה), אין לו שום קשר לפרופ' ישעיהו לייבוביץ, ואין לו שום קשר למשה ליבוביץ הטוען הרבני או לאתרים din.co.il ו-www.mleibowitz.co.il."
-            }
-        ]
-    }, ensure_ascii=False)
-
 def translate_haftarah(text):
     if not text:
         return ""
@@ -466,7 +405,7 @@ def article_list(request):
         if qa_pool:
             latest_qa = random.choice(qa_pool)
     except Exception:
-        pass
+        logger.warning('Failed loading latest QA preview for home page', exc_info=True)
 
     jewish_cal = get_jewish_calendar_info()
 
@@ -604,7 +543,8 @@ def article_create(request):
         if form.is_valid():
             article = form.save()
             ping_indexnow(request.build_absolute_uri(reverse('articles:detail', args=[article.slug])))
-        return redirect('articles:list')
+            return redirect('articles:list')
+        return render(request, 'articles/article_form.html', {'form': form, 'current_page': 'articles'})
     return render(request, 'articles/article_form.html', {'form': ArticleForm(), 'current_page': 'articles'})
 
 @login_required
@@ -621,7 +561,8 @@ def article_edit(request, slug):
         if form.is_valid():
             article = form.save()
             ping_indexnow(request.build_absolute_uri(reverse('articles:detail', args=[article.slug])))
-        return redirect('articles:detail', slug=article.slug)
+            return redirect('articles:detail', slug=article.slug)
+        return render(request, 'articles/article_form.html', {'form': form, 'current_page': 'articles'})
     return render(request, 'articles/article_form.html', {'form': ArticleForm(instance=article), 'current_page': 'articles'})
 
 @login_required
@@ -653,31 +594,12 @@ class _SMTP_IPv4(smtplib.SMTP):
         raise last_err or OSError("Could not connect via IPv4")
 
 def _send_gmail_ipv4(subject, body, recipient_list, reply_to_email=None):
-    from email.mime.text import MIMEText
-    from email.header import Header
-    from email.utils import formataddr
-
-    for env_path in [
-        os.path.join(settings.BASE_DIR, '.env'),
-        os.path.join(settings.BASE_DIR, 'articles', '.env')
-    ]:
-        if os.path.exists(env_path):
-            try:
-                with open(env_path, 'r', encoding='utf-8') as f:
-                    for line in f:
-                        line = line.strip()
-                        if line and not line.startswith('#') and '=' in line:
-                            k, v = line.split('=', 1)
-                            os.environ[k.strip()] = v.strip().strip('"').strip("'")
-            except Exception:
-                pass
-
-    smtp_user = os.environ.get('EMAIL_HOST_USER', '').strip() or 'moshe111moshe111@gmail.com'
-    raw_pass = os.environ.get('EMAIL_HOST_PASSWORD', '').strip()
+    smtp_user = (os.environ.get('EMAIL_HOST_USER') or getattr(settings, 'EMAIL_HOST_USER', '') or '').strip()
+    raw_pass = (os.environ.get('EMAIL_HOST_PASSWORD') or getattr(settings, 'EMAIL_HOST_PASSWORD', '') or '').strip()
     smtp_pass = re.sub(r'\s+', '', raw_pass)
 
-    if not smtp_pass or smtp_pass == 'YOUR_16_LETTER_PASSWORD':
-        raise Exception("טרם הוגדרה סיסמת אפליקציה (EMAIL_HOST_PASSWORD) בקובץ ה-.env שבשרת האובונטו.")
+    if not smtp_user or not smtp_pass or smtp_pass == 'YOUR_16_LETTER_PASSWORD':
+        raise RuntimeError("SMTP credentials are not configured in environment variables.")
 
     msg = MIMEText(body, 'plain', 'utf-8')
     msg['Subject'] = Header(subject, 'utf-8')
@@ -719,22 +641,25 @@ def contact(request):
                 f"תוכן ההודעה:\n{message}"
             )
 
+            contact_record = None
             try:
-                log_path = os.path.join(settings.BASE_DIR, 'contact_messages_backup.jsonl')
-                with open(log_path, 'a', encoding='utf-8') as lf:
-                    lf.write(json.dumps({
-                        'date': str(datetime.datetime.now()),
-                        'name': name, 'phone': phone, 'email': email,
-                        'subject': subject, 'message': message
-                    }, ensure_ascii=False) + "\n")
+                contact_record = ContactMessage.objects.create(
+                    name=name,
+                    phone=phone,
+                    email=email,
+                    subject=subject,
+                    message=message,
+                )
             except Exception:
-                logger.exception("Failed writing contact backup log")
+                logger.exception("Failed saving ContactMessage to database")
 
             recipient = (
                 os.environ.get('CONTACT_RECIPIENT_EMAIL', '').strip()
                 or os.environ.get('EMAIL_HOST_USER', '').strip()
-                or 'moshe111moshe111@gmail.com'
+                or getattr(settings, 'EMAIL_HOST_USER', '').strip()
             )
+            if not recipient:
+                raise RuntimeError("CONTACT_RECIPIENT_EMAIL / EMAIL_HOST_USER is not configured.")
             valid_reply_to = email if _EMAIL_SIMPLE_RE.match(email) else None
             _send_gmail_ipv4(
                 subject=f"פנייה מהאתר: {subject} ({name})",
@@ -742,6 +667,9 @@ def contact(request):
                 recipient_list=[recipient],
                 reply_to_email=valid_reply_to
             )
+            if contact_record is not None:
+                contact_record.email_sent = True
+                contact_record.save(update_fields=['email_sent'])
             messages.success(request, 'תודה רבה! הודעתך נשלחה בהצלחה ונחזור אליך בהקדם.')
         except Exception:
             logger.exception("Failed sending contact email notification")
@@ -841,7 +769,7 @@ def qa_list(request, pk=None):
                 html_str = html_str.replace('name="q"', f'name="q" value="{escape(q)}"', 1)
                 resp.content = html_str.encode('utf-8')
             except Exception:
-                pass
+                logger.warning('Failed preserving QA search query value on fallback render', exc_info=True)
         return resp
 
 def acronyms_view(request):
@@ -1173,7 +1101,9 @@ def checkout(request):
 
 def ping_indexnow(article_url):
     host = "leblibrary.co.il"
-    key = os.environ.get('INDEXNOW_KEY', '').strip() or getattr(settings, 'INDEXNOW_KEY', '').strip() or 'mosheleibowitzkey123'
+    key = os.environ.get('INDEXNOW_KEY', '').strip() or getattr(settings, 'INDEXNOW_KEY', '').strip()
+    if not key:
+        return
     url = f"https://api.indexnow.org/indexnow?url={urllib.parse.quote(article_url)}&key={key}&keyLocation=https://{host}/{key}.txt"
     try:
         _IPV4_OPENER.open(url, timeout=5)
@@ -1200,7 +1130,7 @@ def load_tts_dictionary():
                 data["ואו'"] = "ואומר"
                 return data
         except Exception:
-            pass
+            logger.warning('Failed loading TTS dictionary %s', dict_path, exc_info=True)
 
     return {
         "או'": 'אומר', "ואו'": 'ואומר',
@@ -1349,7 +1279,7 @@ def generate_audio_sync(text, file_path):
 
     async def _generate():
         communicate = edge_tts.Communicate(text, "he-IL-AvriNeural")
-        await communicate.save(tmp_path)
+        await asyncio.wait_for(communicate.save(tmp_path), timeout=90)
 
     try:
         asyncio.run(_generate())
@@ -1361,9 +1291,9 @@ def generate_audio_sync(text, file_path):
         if os.path.exists(tmp_path):
             try:
                 os.remove(tmp_path)
-            except Exception:
-                pass
-        raise Exception(f"Edge-TTS Error: {str(e)}")
+            except OSError:
+                logger.debug('Failed removing temp audio file %s', tmp_path, exc_info=True)
+        raise RuntimeError(f"Edge-TTS Error: {str(e)}") from e
 
 def _collect_article_audio_text(article):
     raw_text = f"{article.title}. {article.content or ''}"
@@ -1463,8 +1393,8 @@ def trigger_article_audio_pregeneration(sender, instance, created, **kwargs):
         if os.path.exists(file_path):
             try:
                 os.remove(file_path)
-            except Exception:
-                pass
+            except OSError:
+                logger.warning('Failed removing stale audio file %s', file_path, exc_info=True)
 
         transaction.on_commit(lambda: generate_article_audio_background(instance.id))
 

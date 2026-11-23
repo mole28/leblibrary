@@ -13,7 +13,6 @@ from django.core.cache import cache
 from django.db.models import Q, Case, When, Value, IntegerField
 from django.urls import reverse
 from django.utils.html import strip_tags
-from dotenv import load_dotenv
 from .models import Article, Chapter, Section, TorahText, QA, Acronym
 from .vector_store import search_similar_articles
 from .clusters_engine import ClusterEngine
@@ -82,7 +81,7 @@ def get_text_fields(model_class):
                 if f.get_internal_type() in ['CharField', 'TextField', 'RichTextField', 'RichTextUploadingField', 'HTMLField']:
                     valid_fields.append(f.name)
     except Exception:
-        pass
+        logger.debug('Failed introspecting text fields for %s', model_class, exc_info=True)
     return valid_fields
 
 def get_item_title(item):
@@ -105,7 +104,7 @@ def get_item_text(item):
                 if val and isinstance(val, str) and len(val) > 10:
                     text += val + "\n"
     except Exception:
-        pass
+        logger.debug('Failed reading fields on item %s', item, exc_info=True)
 
     try:
         if item.__class__.__name__ == 'Chapter':
@@ -118,7 +117,7 @@ def get_item_text(item):
                             if val and isinstance(val, str) and len(val) > 10:
                                 text += val + "\n"
     except Exception:
-        pass
+        logger.debug('Failed reading chapter sections on item %s', item, exc_info=True)
 
     text = re.sub(r'<[^>]+>', ' ', text)
     return re.sub(r'\s+', ' ', text).strip()
@@ -266,7 +265,6 @@ def ai_chat_endpoint(request):
         return HttpResponse('גודל הבקשה חורג מהמותר.', status=400, content_type='text/plain; charset=utf-8')
 
     try:
-        load_dotenv()
         API_KEY = (
             os.environ.get('GEMINI_API_KEY', '').strip()
             or os.environ.get('GOOGLE_API_KEY', '').strip()
@@ -332,7 +330,7 @@ def ai_chat_endpoint(request):
             try:
                 semantic_results = search_similar_articles(user_question, top_k=2)
             except Exception:
-                pass
+                logger.warning('Semantic vector search failed in ai_chat_endpoint', exc_info=True)
 
             db_articles = ai_document_search(Article.objects.filter(is_published=True), clean_question, get_text_fields(Article), words, limit=2)
             db_chapters = ai_document_search(Chapter.objects.all(), clean_question, get_text_fields(Chapter), words, limit=3)
@@ -343,7 +341,7 @@ def ai_chat_endpoint(request):
             try:
                 acronym_matches = list(Acronym.objects.filter(Q(short__icontains=user_question) | Q(meaning__icontains=user_question))[:5])
             except Exception:
-                pass
+                logger.warning('Acronym lookup failed in ai_chat_endpoint', exc_info=True)
 
             context_text = ""
             seen_urls = set()
@@ -391,7 +389,7 @@ def ai_chat_endpoint(request):
                                 rel_url = request.build_absolute_uri(reverse('articles:detail', args=[rel_slug]))
                                 add_to_context(rel_title, rel_url, f"מאמר המשך קשור בסוגיה זו שהוגדר על ידי המחבר: {rel_title}", is_curated=True)
                 except Exception:
-                    pass
+                    logger.warning('Learning context enrichment failed in ai_chat_endpoint', exc_info=True)
 
             for c in db_chapters:
                 try:
@@ -401,7 +399,7 @@ def ai_chat_endpoint(request):
                         title = f"{get_item_title(c.book) if hasattr(c, 'book') else 'ספר'} - {get_item_title(c)}"
                         add_to_context(title, url, get_smart_content(get_item_text(c), words, max_chars=8000))
                 except Exception:
-                    pass
+                    logger.warning('Chapter context build failed in ai_chat_endpoint', exc_info=True)
 
             for s in db_sections:
                 try:
@@ -413,14 +411,14 @@ def ai_chat_endpoint(request):
                             title = f"{get_item_title(chapter.book) if hasattr(chapter, 'book') else 'ספר'} - {get_item_title(chapter)}"
                             add_to_context(title, url, get_smart_content(get_item_text(s), words, max_chars=8000))
                 except Exception:
-                    pass
+                    logger.warning('Section context build failed in ai_chat_endpoint', exc_info=True)
 
             for qa_item in db_qas:
                 try:
                     qa_direct_url = request.build_absolute_uri(f"/qa/{qa_item.pk}/")
                     add_to_context(f"שו\"ת - {get_item_title(qa_item)}", qa_direct_url, get_smart_content(get_item_text(qa_item), words, max_chars=8000))
                 except Exception:
-                    pass
+                    logger.warning('QA context build failed in ai_chat_endpoint', exc_info=True)
 
             if not unique_relevant_items:
                 return HttpResponse(
@@ -447,8 +445,8 @@ def ai_chat_endpoint(request):
             last_error = ""
 
             for model in KNOWN_GOOD_MODELS:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse&key={API_KEY}"
-                req = urllib.request.Request(url, data=data_bytes, headers={'Content-Type': 'application/json'})
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse"
+                req = urllib.request.Request(url, data=data_bytes, headers={'Content-Type': 'application/json', 'x-goog-api-key': API_KEY})
                 try:
                     response = _IPV4_OPENER.open(req, timeout=25)
                     break
@@ -536,14 +534,13 @@ def torah_ai_insights_api(request):
         return norm_heb(rev[:-1]) + REGULAR_TO_FINAL.get(norm_heb(rev[-1]), norm_heb(rev[-1]))
 
     def call_gemini_fast(prompt_text):
-        load_dotenv()
-        api_key = os.environ.get('GEMINI_API_KEY', '').strip() or getattr(settings, 'GEMINI_API_KEY', '').strip()
+        api_key = os.environ.get('GEMINI_API_KEY', '').strip() or os.environ.get('GOOGLE_API_KEY', '').strip() or getattr(settings, 'GEMINI_API_KEY', '').strip()
         if not api_key:
             return ""
         data_bytes = json.dumps({"contents": [{"parts": [{"text": prompt_text}]}]}, ensure_ascii=False).encode('utf-8')
         for m_name in ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-latest']:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{m_name}:generateContent?key={api_key}"
-            req = urllib.request.Request(url, data=data_bytes, headers={'Content-Type': 'application/json'})
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{m_name}:generateContent"
+            req = urllib.request.Request(url, data=data_bytes, headers={'Content-Type': 'application/json', 'x-goog-api-key': api_key})
             try:
                 with _IPV4_OPENER.open(req, timeout=4.5) as resp:
                     resp_data = json.loads(resp.read().decode('utf-8'))
@@ -1072,7 +1069,7 @@ def torah_ai_insights_api(request):
             html_sections.append(
                 f"<div class='p-3 rounded-3' style='background-color: #fff8dc; border-right: 4px solid #d4af37;'>"
                 f"<h6 class='fw-bold mb-2' style='color: #1e293b;'><i class='bi bi-layers-half ms-1' style='color: #b8860b;'></i>ד. חיבור הנתונים לרעיון משותף</h6>"
-                f"<div style='line-height: 1.8;'>{ai_synthesis}</div></div>"
+                f"<div style='line-height: 1.8;'>{html_escape(ai_synthesis)}</div></div>"
             )
 
             top_art = analysis['verified_articles'][0] if analysis['verified_articles'] else None

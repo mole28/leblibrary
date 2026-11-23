@@ -8,7 +8,6 @@ import urllib.parse
 import urllib.request
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import Q
 from django.utils.html import strip_tags
 from .models import TorahText, Acronym
 from .torah_engine import _IPV4_OPENER
@@ -745,7 +744,7 @@ def get_full_compiled_lexicon():
                                 'note': 'מונח וראשי תיבות בספרות הש"ס והפוסקים'
                             }
             except Exception:
-                pass
+                logger.warning('Failed loading tts dictionary %s', dict_path, exc_info=True)
 
     learned_path = os.path.join(settings.BASE_DIR, 'aramaic_learned_cache.json')
     if os.path.exists(learned_path):
@@ -768,7 +767,7 @@ def get_full_compiled_lexicon():
                             'note': lv.get('grammar_breakdown', '')
                         }
         except Exception:
-            pass
+            logger.warning('Failed loading learned aramaic cache %s', learned_path, exc_info=True)
 
     _COMPILED_LEXICON_CACHE = full_lex
     return full_lex

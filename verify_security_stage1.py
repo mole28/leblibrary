@@ -63,8 +63,8 @@ def fetch_live(path, method="GET", data=None, headers=None, follow_redirects=Tru
         body = ""
         try:
             body = exc.read().decode("utf-8", errors="replace")
-        except Exception:
-            pass
+        except OSError:
+            body = ''
         return exc.code, body
 
 
@@ -349,6 +349,59 @@ def run_checks(offline=False):
     ok, det = chk_sec_08_settings_and_admin()
     record("SEC-08", "core/settings.py strong SECRET_KEY, shared FileBasedCache, hardened headers/limits, safe admin DOCX import", ok, det)
 
+    def chk_sec_09_pro_hardening_and_hygiene():
+        bootstrap_django()
+        from articles.models import ContactMessage
+        ai_src = read_rel("articles/ai_engine.py")
+        v_src = read_rel("articles/views.py")
+        ad_html = read_rel("articles/templates/articles/article_detail.html")
+        bd_html = read_rel("articles/templates/articles/book_detail.html")
+        sk_html = read_rel("articles/templates/articles/includes/scripts.html")
+
+        key_in_header = (
+            "'x-goog-api-key': API_KEY" in ai_src
+            and "'x-goog-api-key': api_key" in ai_src
+            and "key={" not in ai_src
+            and "load_dotenv(" not in ai_src
+        )
+        contact_db = (
+            hasattr(ContactMessage, "objects")
+            and "ContactMessage.objects.create(" in v_src
+            and "contact_messages_backup.jsonl" not in v_src
+            and "moshe111moshe111@gmail.com" not in v_src
+            and "mosheleibowitzkey123" not in v_src
+        )
+        silent_except_files = []
+        for rel_py in (
+            "articles/views.py",
+            "articles/ai_engine.py",
+            "articles/torah_engine.py",
+            "articles/aramaic_engine.py",
+            "articles/clusters_engine.py",
+            "articles/context_processors.py",
+        ):
+            txt = read_rel(rel_py)
+            if re.search(r"except\s+Exception(?:\s+as\s+\w+)?\s*:\s*\n\s*pass\b", txt):
+                silent_except_files.append(rel_py)
+
+        no_dup_modal = (
+            'id="luxShareModal"' not in ad_html
+            and 'id="luxShareModal"' not in bd_html
+            and "function openShareModal(" not in ad_html
+            and "function openShareModal(" not in bd_html
+        )
+        clean_code = (
+            "import subprocess" not in v_src
+            and "get_base_schema_json" not in v_src
+            and "asyncio.wait_for(" in v_src
+            and "console.log(" not in sk_html
+        )
+        ok = key_in_header and contact_db and not silent_except_files and no_dup_modal and clean_code
+        return ok, f"header_key={key_in_header}, contact_db={contact_db}, silent_excepts={silent_except_files}, no_dup_modal={no_dup_modal}, clean={clean_code}"
+
+    ok, det = chk_sec_09_pro_hardening_and_hygiene()
+    record("SEC-09", "Gemini x-goog-api-key header, ContactMessage DB, 0 silent excepts, no dup share modal & clean imports", ok, det)
+
     if not offline:
         def chk_live_sec_01():
             c_evil, _ = fetch_live(
@@ -432,6 +485,18 @@ def run_checks(offline=False):
 
         ok, det = chk_live_sec_06()
         record("LIVE-SEC-06", "Live /article/63/ and /book/84/ enforce rel=noopener noreferrer on all _blank links", ok, det)
+
+        def chk_live_sec_07():
+            c1, b1 = fetch_live("/article/63/")
+            c2, b2 = fetch_live("/book/84/")
+            cnt1 = b1.count('id="luxShareModal"')
+            cnt2 = b2.count('id="luxShareModal"')
+            no_clog = "console.log(" not in b1
+            ok = (c1 == 200 and c2 == 200 and cnt1 == 1 and cnt2 == 1 and no_clog)
+            return ok, f"article_share_modals={cnt1}, book84_share_modals={cnt2}, no_console_log={no_clog}"
+
+        ok, det = chk_live_sec_07()
+        record("LIVE-SEC-07", "Live /article/63/ and /book/84/ render single unique #luxShareModal and clean JS", ok, det)
 
     passed = sum(1 for _, _, ok, _ in results if ok)
     failed = len(results) - passed

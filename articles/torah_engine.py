@@ -254,7 +254,7 @@ def _auto_heal_misordered_chapters_in_db():
             if fixed_ch and fixed_ch != bad_ch:
                 TorahText.objects.filter(chapter=bad_ch).update(chapter=fixed_ch)
     except Exception:
-        pass
+        logger.warning('Failed auto-healing misordered chapters', exc_info=True)
 
 def strip_editorial_markers(text):
     if not text:
@@ -296,7 +296,7 @@ def _auto_heal_parasha_gematria_in_db():
         if to_update:
             TorahText.objects.bulk_update(to_update, ['verse_gematria', 'words_gematria'], batch_size=500)
     except Exception:
-        pass
+        logger.warning('Failed auto-healing parasha gematria', exc_info=True)
 
 def format_divine_name(text):
     if not text:
@@ -718,7 +718,8 @@ def _fetch_commentary_for_source(book_name, chapter_name, verse_num, requested_c
     chap_int = max(1, parse_hebrew_number(c_str))
     verse_int = max(1, parse_hebrew_number(v_str))
 
-    cache_key = f"torah_comm_v56_{b_str}_{chap_int}_{verse_int}_{req_comm}"
+    _raw_comm_key = f"v56|{b_str}|{chap_int}|{verse_int}|{req_comm}"
+    cache_key = "torah_comm_v56_" + hashlib.md5(_raw_comm_key.encode("utf-8")).hexdigest()
     cached = cache.get(cache_key)
     if cached and cached.get('comments'):
         return cached

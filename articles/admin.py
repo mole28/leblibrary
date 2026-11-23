@@ -3,7 +3,7 @@ import mammoth
 from bs4 import BeautifulSoup
 from django import forms
 from django.contrib import admin
-from .models import Article, Book, Chapter, Section, Cart, CartItem, Order, OrderItem, QA, VisitorLog
+from .models import Article, Book, Chapter, Section, Cart, CartItem, Order, OrderItem, QA, VisitorLog, ContactMessage
 
 _MAX_DOCX_BYTES = 25 * 1024 * 1024
 _BLOCKED_IMPORT_TAGS = ('script', 'iframe', 'object', 'embed', 'form', 'input', 'textarea', 'select', 'meta', 'base')
@@ -201,6 +201,16 @@ class VisitorLogAdmin(admin.ModelAdmin):
     list_filter = ('timestamp', 'user')
     search_fields = ('ip_address', 'path', 'user__username', 'user_agent')
     readonly_fields = ('ip_address', 'path', 'user', 'user_agent', 'timestamp')
+
+    def has_add_permission(self, request):
+        return False
+
+@admin.register(ContactMessage)
+class ContactMessageAdmin(admin.ModelAdmin):
+    list_display = ('name', 'subject', 'email', 'email_sent', 'created_at')
+    list_filter = ('email_sent', 'created_at')
+    search_fields = ('name', 'email', 'phone', 'subject', 'message')
+    readonly_fields = ('name', 'phone', 'email', 'subject', 'message', 'email_sent', 'created_at')
 
     def has_add_permission(self, request):
         return False
