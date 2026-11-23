@@ -186,6 +186,30 @@ def run_checks(offline=False):
     ok, det = chk_seo_05_sitemap_local()
     record("SEO-05", "Local /sitemap.xml is valid XML and includes non-empty Parasha and QA URLs", ok, det)
 
+    def chk_seo_06_edge_cases_local():
+        bootstrap_django()
+        from django.test import Client
+        from articles.views import _scope_section_footnotes, _resolve_parasha_name
+        s_self = '<a class="footnote-ref" id="footnote-ref-1" href="#footnote-1">[1]</a><div id="footnote-1">N <a class="footnote-backref" href="#footnote-ref-1">↩</a></div>'
+        s_scoped = _scope_section_footnotes(s_self, 77)
+        self_ok = ('id="footnote-s77-1"' in s_scoped and 'href="#footnote-s77-1"' in s_scoped and 'id="footnote-ref-s77-1"' in s_scoped)
+        s_cross = '<p>Text <a class="footnote-ref" href="#footnote-1">[1]</a></p>'
+        cross_ok = (_scope_section_footnotes(s_cross, 77) == s_cross)
+        alias_ok = (_resolve_parasha_name("\u05d7\u05d5\u05e7\u05ea") == "\u05d7\u05e7\u05ea" and _resolve_parasha_name("\u05e4\u05e0\u05d7\u05e1") == "\u05e4\u05d9\u05e0\u05d7\u05e1")
+        client = Client(HTTP_HOST="leblibrary.co.il")
+        r_alias = client.get("/parasha/\u05d7\u05d5\u05e7\u05ea/", secure=True)
+        r_bad = client.get("/parasha/not-a-real-parasha-xyz/", secure=True)
+        r_qa = client.get("/qa/1/", secure=True)
+        qa_body = r_qa.content.decode("utf-8", errors="replace")
+        og_title_cnt = len(re.findall(r'property="og:title"', qa_body))
+        bd_html = read_rel("articles/templates/articles/book_detail.html")
+        b84_safe = "secBlock && targetEl && secBlock.contains(targetEl)" in bd_html
+        ok = (self_ok and cross_ok and alias_ok and r_alias.status_code == 301 and r_bad.status_code == 404 and og_title_cnt == 1 and b84_safe)
+        return ok, f"self={self_ok}, cross={cross_ok}, alias301={r_alias.status_code}, bad404={r_bad.status_code}, qa_og_title_cnt={og_title_cnt}, b84_safe={b84_safe}"
+
+    ok, det = chk_seo_06_edge_cases_local()
+    record("SEO-06", "Edge cases: safe book footnote scoping, book 84 guard, single QA og:tags, parasha aliases & 404", ok, det)
+
     if not offline:
         def chk_live_seo_home():
             code, _, body = fetch_live("/")
@@ -268,6 +292,20 @@ def run_checks(offline=False):
 
         ok, det = chk_live_seo_sitemap()
         record("LIVE-SEO-05", "Live /sitemap.xml is valid XML with active Parasha and QA detail URLs", ok, det)
+
+        def chk_live_seo_edges():
+            p_alias = urllib.parse.quote("\u05d7\u05d5\u05e7\u05ea")
+            c_alias, _, _ = fetch_live(f"/parasha/{p_alias}/", follow_redirects=False)
+            c_bad, _, _ = fetch_live("/parasha/not-a-real-parasha-xyz/", follow_redirects=False)
+            c_qa, _, qa_body = fetch_live("/qa/1/")
+            c_b84, _, b84_body = fetch_live("/book/84/")
+            og_cnt = len(re.findall(r'property="og:title"', qa_body))
+            b84_ok = (c_b84 == 200 and "secBlock && targetEl && secBlock.contains(targetEl)" in b84_body and "#chapter-625" in b84_body)
+            ok = (c_alias == 301 and c_bad == 404 and c_qa == 200 and og_cnt == 1 and b84_ok)
+            return ok, f"alias={c_alias}, bad={c_bad}, qa_og={og_cnt}, b84={b84_ok}"
+
+        ok, det = chk_live_seo_edges()
+        record("LIVE-SEO-06", "Live edge cases: parasha alias 301, invalid parasha 404, single QA og:title, book 84 safe", ok, det)
 
     passed = sum(1 for _, _, ok, _ in results if ok)
     failed = len(results) - passed
