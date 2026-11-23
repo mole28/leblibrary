@@ -155,10 +155,10 @@ def run_checks(offline=False):
     def chk_seo_04_parasha_routes():
         bootstrap_django()
         from django.test import Client
-        client = Client()
-        r_old = client.get("/parasha/?p=\u05d1\u05e8\u05d0\u05e9\u05d9\u05ea")
-        r_new = client.get("/parasha/\u05d1\u05e8\u05d0\u05e9\u05d9\u05ea/")
-        r_multi = client.get("/parasha/\u05dc\u05da-\u05dc\u05da/")
+        client = Client(HTTP_HOST="leblibrary.co.il")
+        r_old = client.get("/parasha/?p=\u05d1\u05e8\u05d0\u05e9\u05d9\u05ea", secure=True)
+        r_new = client.get("/parasha/\u05d1\u05e8\u05d0\u05e9\u05d9\u05ea/", secure=True)
+        r_multi = client.get("/parasha/\u05dc\u05da-\u05dc\u05da/", secure=True)
         body_new = r_new.content.decode("utf-8", errors="replace")
         has_canon = 'rel="canonical" href="https://leblibrary.co.il/parasha/\u05d1\u05e8\u05d0\u05e9\u05d9\u05ea/"' in body_new
         ok = (r_old.status_code == 301 and r_new.status_code == 200 and r_multi.status_code == 200 and has_canon)
