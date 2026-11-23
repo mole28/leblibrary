@@ -61,8 +61,8 @@ def fetch_live(path, follow_redirects=True, timeout=12):
         body = ""
         try:
             body = exc.read().decode("utf-8", errors="replace")
-        except Exception:
-            pass
+        except OSError:
+            body = ""
         return exc.code, dict(exc.headers), body
 
 
@@ -90,7 +90,7 @@ def extract_json_ld_blocks(html_body):
     for raw in raw_blocks:
         try:
             parsed.append(json.loads(raw.strip()))
-        except Exception as exc:
+        except json.JSONDecodeError as exc:
             errors.append(str(exc))
     return parsed, errors
 
@@ -248,7 +248,7 @@ def run_checks(offline=False):
 
         def chk_live_seo_parasha():
             q = urllib.parse.urlencode({"p": "\u05d1\u05e8\u05d0\u05e9\u05d9\u05ea"})
-            c_301, hdrs, _ = fetch_live(f"/parasha/?{q}", follow_redirects=False)
+            c_301, _, _ = fetch_live(f"/parasha/?{q}", follow_redirects=False)
             p_enc = urllib.parse.quote("\u05d1\u05e8\u05d0\u05e9\u05d9\u05ea")
             c_200, _, body = fetch_live(f"/parasha/{p_enc}/", follow_redirects=True)
             blocks, errs = extract_json_ld_blocks(body)
