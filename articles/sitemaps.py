@@ -1,13 +1,12 @@
+import re
 from django.contrib.sitemaps import Sitemap
-from django.urls import reverse, NoReverseMatch
+from django.db.models import Q
+from django.urls import NoReverseMatch, reverse
 from articles.models import Article, Book, QA
+from articles.views import PARASHA_CANONICAL_NAMES, _parasha_to_slug
 
 
 class BaseSitemap(Sitemap):
-    """
-    מחלקת בסיס שפותרת את בעיית ה-example.com של ג'אנגו
-    וכופה את הדומיין והפרוטוקול האמיתיים של האתר על כל המפות
-    """
     protocol = 'https'
 
     def get_urls(self, page=1, site=None, protocol=None):
@@ -17,16 +16,14 @@ class BaseSitemap(Sitemap):
         return super().get_urls(page, site=SiteMock(), protocol=self.protocol)
 
     def lastmod(self, obj):
-        """פונקציית lastmod בטוחה שבודקת קיום שדות לפני שליפה"""
         if hasattr(obj, 'updated_at') and obj.updated_at:
             return obj.updated_at
-        elif hasattr(obj, 'created_at') and obj.created_at:
+        if hasattr(obj, 'created_at') and obj.created_at:
             return obj.created_at
         return None
 
 
 class StaticViewSitemap(BaseSitemap):
-    """מפת אתר לכל העמודים הקבועים והכלים התורניים באתר"""
     priority = 0.9
     changefreq = 'weekly'
 
@@ -75,7 +72,6 @@ class StaticViewSitemap(BaseSitemap):
 
 
 class ArticleSitemap(BaseSitemap):
-    """מפת אתר דינמית ששולפת אוטומטית את כל המאמרים המפורסמים ממסד הנתונים"""
     priority = 0.9
     changefreq = 'daily'
 
@@ -90,7 +86,6 @@ class ArticleSitemap(BaseSitemap):
 
 
 class BookSitemap(BaseSitemap):
-    """מפת אתר דינמית ששולפת אוטומטית את כל הספרים ממסד הנתונים"""
     priority = 0.8
     changefreq = 'weekly'
 
@@ -105,7 +100,6 @@ class BookSitemap(BaseSitemap):
 
 
 class QASitemap(BaseSitemap):
-    """מפת אתר דינמית לכל תשובות השו"ת באתר"""
     priority = 0.8
     changefreq = 'weekly'
 
@@ -119,9 +113,46 @@ class QASitemap(BaseSitemap):
             return f'/qa/{item.pk}/'
 
 
+class ParashaSitemap(BaseSitemap):
+    priority = 0.8
+    changefreq = 'weekly'
+
+    def items(self):
+        published = list(
+            Article.objects.filter(is_published=True)
+            .exclude(Q(parasha__isnull=True) | Q(parasha__exact=''))
+            .values_list('parasha', 'created_at')
+        )
+        latest_by_parasha = {}
+        for raw_parasha, created_at in published:
+            for token in str(raw_parasha or '').split(','):
+                name = re.sub(r'\s+', ' ', token).strip()
+                if name in PARASHA_CANONICAL_NAMES:
+                    prev = latest_by_parasha.get(name)
+                    if created_at and (prev is None or created_at > prev):
+                        latest_by_parasha[name] = created_at
+                    elif name not in latest_by_parasha:
+                        latest_by_parasha[name] = None
+        return [
+            {'name': p, 'slug': _parasha_to_slug(p), 'lastmod': latest_by_parasha[p]}
+            for p in PARASHA_CANONICAL_NAMES
+            if p in latest_by_parasha
+        ]
+
+    def location(self, item):
+        try:
+            return reverse('articles:parasha_detail', kwargs={'parasha_name': item['slug']})
+        except NoReverseMatch:
+            return f"/parasha/{item['slug']}/"
+
+    def lastmod(self, item):
+        return item.get('lastmod')
+
+
 sitemaps = {
     'static': StaticViewSitemap,
     'articles': ArticleSitemap,
     'books': BookSitemap,
     'qas': QASitemap,
+    'parashot': ParashaSitemap,
 }

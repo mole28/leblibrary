@@ -10,6 +10,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LIVE_ORIGIN = "https://leblibrary.co.il"
@@ -167,6 +168,24 @@ def run_checks(offline=False):
     ok, det = chk_seo_04_parasha_routes()
     record("SEO-04", "Parasha semantic routes /parasha/<slug>/ return 200 with canonical and 301 from ?p=", ok, det)
 
+    def chk_seo_05_sitemap_local():
+        bootstrap_django()
+        from django.test import Client
+        client = Client(HTTP_HOST="leblibrary.co.il")
+        resp = client.get("/sitemap.xml", secure=True)
+        if resp.status_code != 200:
+            return False, f"HTTP {resp.status_code}"
+        xml_txt = resp.content.decode("utf-8", errors="replace")
+        root = ET.fromstring(xml_txt)
+        locs = [el.text for el in root.iter() if el.tag.endswith("loc") and el.text]
+        parasha_locs = [u for u in locs if "/parasha/" in u and not u.endswith("/parasha/")]
+        qa_locs = [u for u in locs if re.search(r"/qa/\d+/$", u)]
+        ok = (len(locs) > 20 and len(parasha_locs) > 0 and len(qa_locs) > 0)
+        return ok, f"total_urls={len(locs)}, parasha_urls={len(parasha_locs)}, qa_urls={len(qa_locs)}"
+
+    ok, det = chk_seo_05_sitemap_local()
+    record("SEO-05", "Local /sitemap.xml is valid XML and includes non-empty Parasha and QA URLs", ok, det)
+
     if not offline:
         def chk_live_seo_home():
             code, _, body = fetch_live("/")
@@ -235,6 +254,20 @@ def run_checks(offline=False):
 
         ok, det = chk_live_seo_book()
         record("LIVE-SEO-04", "Live /book/84/ has single Book JSON-LD (no fake FAQPage) and WCAG AA footnote CSS", ok, det)
+
+        def chk_live_seo_sitemap():
+            code, _, body = fetch_live("/sitemap.xml")
+            if code != 200:
+                return False, f"HTTP {code}"
+            root = ET.fromstring(body)
+            locs = [el.text for el in root.iter() if el.tag.endswith("loc") and el.text]
+            parasha_locs = [u for u in locs if "/parasha/" in u and not u.endswith("/parasha/")]
+            qa_locs = [u for u in locs if re.search(r"/qa/\d+/$", u)]
+            ok = (len(locs) > 20 and len(parasha_locs) > 0 and len(qa_locs) > 0)
+            return ok, f"total_urls={len(locs)}, parasha_urls={len(parasha_locs)}, qa_urls={len(qa_locs)}"
+
+        ok, det = chk_live_seo_sitemap()
+        record("LIVE-SEO-05", "Live /sitemap.xml is valid XML with active Parasha and QA detail URLs", ok, det)
 
     passed = sum(1 for _, _, ok, _ in results if ok)
     failed = len(results) - passed

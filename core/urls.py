@@ -8,13 +8,15 @@ from django.http import HttpResponse, JsonResponse
 from django.contrib.sitemaps.views import sitemap
 from django.views.generic import TemplateView
 from django.views.generic.base import RedirectView
-from articles.sitemaps import StaticViewSitemap, ArticleSitemap, BookSitemap
+from articles.sitemaps import StaticViewSitemap, ArticleSitemap, BookSitemap, QASitemap, ParashaSitemap
 from articles.models import Article, Book
 
 sitemaps = {
     'static': StaticViewSitemap,
     'articles': ArticleSitemap,
     'books': BookSitemap,
+    'qas': QASitemap,
+    'parashot': ParashaSitemap,
 }
 
 def robots_txt(request):
