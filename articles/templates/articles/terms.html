@@ -1,13 +1,59 @@
 {% extends 'articles/base.html' %}
 
 {% block title %}תנאי שימוש | ספריית לייבוביץ{% endblock %}
+{% block meta_description %}תנאי השימוש, זכויות היוצרים ומדיניות הפרטיות של אתר ספריית לייבוביץ מאת הרב משה לייבוביץ.{% endblock %}
+{% block og_title %}תנאי שימוש ופרטיות | ספריית לייבוביץ{% endblock %}
+{% block og_description %}תנאי השימוש, מדיניות הפרטיות וזכויות היוצרים בספריית לייבוביץ.{% endblock %}
+{% block og_url %}https://leblibrary.co.il/terms/{% endblock %}
+{% block canonical_url %}https://leblibrary.co.il/terms/{% endblock %}
+
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://leblibrary.co.il/terms/#webpage",
+      "url": "https://leblibrary.co.il/terms/",
+      "name": "תנאי שימוש ופרטיות | ספריית לייבוביץ",
+      "inLanguage": "he",
+      "isPartOf": {
+        "@id": "https://leblibrary.co.il/#website"
+      },
+      "breadcrumb": {
+        "@id": "https://leblibrary.co.il/terms/#breadcrumb"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://leblibrary.co.il/terms/#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "ספריית לייבוביץ",
+          "item": "https://leblibrary.co.il/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "תנאי שימוש",
+          "item": "https://leblibrary.co.il/terms/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="container py-5 mb-5">
     <div class="row justify-content-center">
         <div class="col-lg-10">
-            <div class="card shadow-sm p-4 p-lg-5 border-0" style="border-radius: 15px;">
-                <h2 class="fw-bold mb-4" style="color: #3f4050;">תנאי שימוש ופרטיות</h2>
+            <div class="card shadow-sm p-4 p-lg-5 border-0 content-card-bg" style="border-radius: 15px;">
+                <h1 class="fw-bold mb-4 fs-2" style="color: #3f4050;">תנאי שימוש ופרטיות</h1>
                 <hr class="mb-4" style="border-color: #d4af37; opacity: 1; border-width: 2px; width: 50px;">
                 
                 <div class="article-content" style="font-size: 1.1rem;">

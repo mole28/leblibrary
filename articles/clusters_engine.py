@@ -1,9 +1,15 @@
 import json
+import logging
 import os
 import re
+import threading
+import time
 import urllib.parse
 from django.conf import settings
+from django.core.cache import cache
 from .models import Article, Book, Chapter, QA
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_MIN_CONNECTION_SCORE = 26
 TITLE_WEIGHT = 10
@@ -13,9 +19,12 @@ ENGINE_VERSION = "v15_master_control"
 
 RUNTIME_CONFIG_PATH = os.path.join(settings.BASE_DIR, 'clusters_runtime_config.json')
 EDITORIAL_DB_PATH = os.path.join(settings.BASE_DIR, 'editorial_connections.json')
+_CLUSTER_CACHE_VER_KEY = 'leblibrary_clusters_ver'
 
 _MEM_CACHE = {}
+_MEM_CACHE_VER = None
 _WORD_RX_CACHE = {}
+_ICON_SAFE_RE = re.compile(r'^bi-[a-z0-9-]+$', re.IGNORECASE)
 
 UNCLASSIFIED_CLUSTER = {
     'id': 'general_iyun',
@@ -220,7 +229,50 @@ GENERIC_NOISE_WORDS = {
 }
 
 
+def _atomic_write_json(path: str, payload):
+    tmp_path = f"{path}.{os.getpid()}.{threading.get_ident()}.tmp"
+    try:
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, path)
+    except Exception:
+        logger.exception("Failed atomic JSON write to %s", path)
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+
+
+def _sanitize_tool_url(url_value: str) -> str:
+    u = str(url_value or '').strip()
+    if u.startswith('/') and not u.startswith('//'):
+        return u
+    parsed = urllib.parse.urlparse(u)
+    if parsed.scheme in ('http', 'https') and parsed.netloc:
+        return u
+    return '/advanced-search/'
+
+
+def _sanitize_tool_icon(icon_value: str) -> str:
+    ic = str(icon_value or '').strip()
+    if _ICON_SAFE_RE.match(ic):
+        return ic
+    return 'bi-search'
+
+
 class ClusterEngine:
+
+    @classmethod
+    def _sync_mem_cache(cls):
+        global _MEM_CACHE_VER
+        shared_ver = cache.get(_CLUSTER_CACHE_VER_KEY)
+        if shared_ver is None:
+            shared_ver = 1
+            cache.set(_CLUSTER_CACHE_VER_KEY, shared_ver, None)
+        if _MEM_CACHE_VER != shared_ver:
+            _MEM_CACHE.clear()
+            _MEM_CACHE_VER = shared_ver
 
     @classmethod
     def _count_whole_word(cls, text: str, term: str) -> int:
@@ -234,10 +286,15 @@ class ClusterEngine:
 
     @classmethod
     def clear_memory_cache(cls):
+        global _MEM_CACHE_VER
+        new_ver = int(time.time() * 1000)
+        cache.set(_CLUSTER_CACHE_VER_KEY, new_ver, None)
         _MEM_CACHE.clear()
+        _MEM_CACHE_VER = new_ver
 
     @classmethod
     def get_runtime_config(cls):
+        cls._sync_mem_cache()
         if 'runtime_cfg' in _MEM_CACHE:
             return _MEM_CACHE['runtime_cfg']
 
@@ -252,7 +309,7 @@ class ClusterEngine:
                     default_cfg['min_connection_score'] = int(saved.get('min_connection_score', DEFAULT_MIN_CONNECTION_SCORE))
                     default_cfg['public_enabled'] = bool(saved.get('public_enabled', False))
             except Exception:
-                pass
+                logger.warning("Failed reading runtime config %s", RUNTIME_CONFIG_PATH, exc_info=True)
         _MEM_CACHE['runtime_cfg'] = default_cfg
         return default_cfg
 
@@ -262,16 +319,13 @@ class ClusterEngine:
             'min_connection_score': max(8, min(80, int(min_connection_score))),
             'public_enabled': bool(public_enabled),
         }
-        try:
-            with open(RUNTIME_CONFIG_PATH, 'w', encoding='utf-8') as f:
-                json.dump(cfg, f, ensure_ascii=False, indent=2)
-        except Exception:
-            pass
-        _MEM_CACHE.clear()
+        _atomic_write_json(RUNTIME_CONFIG_PATH, cfg)
+        cls.clear_memory_cache()
         return cfg
 
     @classmethod
     def get_editorial_db(cls) -> dict:
+        cls._sync_mem_cache()
         if 'editorial_db' in _MEM_CACHE:
             return _MEM_CACHE['editorial_db']
 
@@ -283,18 +337,15 @@ class ClusterEngine:
                     if isinstance(loaded, dict):
                         data = loaded
             except Exception:
+                logger.warning("Failed reading editorial DB %s", EDITORIAL_DB_PATH, exc_info=True)
                 data = {}
         _MEM_CACHE['editorial_db'] = data
         return data
 
     @classmethod
     def save_editorial_db(cls, data: dict):
-        try:
-            with open(EDITORIAL_DB_PATH, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-        except Exception:
-            pass
-        _MEM_CACHE.clear()
+        _atomic_write_json(EDITORIAL_DB_PATH, data)
+        cls.clear_memory_cache()
 
     @classmethod
     def get_article_editorial_record(cls, article_pk: int) -> dict:
@@ -588,6 +639,7 @@ class ClusterEngine:
 
     @classmethod
     def _get_all_indexed_articles(cls):
+        cls._sync_mem_cache()
         if 'indexed_articles' in _MEM_CACHE:
             return _MEM_CACHE['indexed_articles']
 
@@ -697,6 +749,7 @@ class ClusterEngine:
 
     @classmethod
     def _get_indexed_book_units(cls):
+        cls._sync_mem_cache()
         if 'book_units' in _MEM_CACHE:
             return _MEM_CACHE['book_units']
 
@@ -710,7 +763,6 @@ class ClusterEngine:
 
         books_with_chapters = {ch.book_id for ch in chapters if ch.book_id in books}
 
-        # מיפוי שם ספר -> מזהה העותק הקריא שלו (למניעת הפניה לעמוד רכישה כשקיים עותק קריא)
         readable_book_id_by_title = {}
         for b_id, book in books.items():
             c_title = _clean_title(book.title)
@@ -787,6 +839,7 @@ class ClusterEngine:
 
     @classmethod
     def _get_indexed_qa_units(cls):
+        cls._sync_mem_cache()
         if 'qa_units' in _MEM_CACHE:
             return _MEM_CACHE['qa_units']
 
@@ -814,9 +867,8 @@ class ClusterEngine:
                 parsed = json.loads(raw_json)
                 title = parsed.get('title', 'כלי מחקר תורני').strip()
                 subtitle = parsed.get('subtitle', 'לחץ לפתיחת הכלי והמקורות').strip()
-                url = parsed.get('url', '/advanced-search/')
+                url = _sanitize_tool_url(parsed.get('url', '/advanced-search/'))
 
-                # ניקוי אוטומטי של כותרות חיפוש ארוכות וכפולות (גם לכפתורים שכבר נשמרו בעבר)
                 m_q = re.search(r'"([^"]+)"', title)
                 if m_q and ('חיפוש' in title or 'דילוגי' in title or 'היפוך' in title):
                     q_word = m_q.group(1)
@@ -858,7 +910,7 @@ class ClusterEngine:
                     'title': title,
                     'subtitle': subtitle,
                     'url': url,
-                    'icon': parsed.get('icon', 'bi-search'),
+                    'icon': _sanitize_tool_icon(parsed.get('icon', 'bi-search')),
                     'editorial_state': editorial_state,
                 }
             except Exception:
@@ -896,7 +948,6 @@ class ClusterEngine:
     def get_smart_tools_for_article(cls, title: str, snippet: str, sig, ed_tools_rec: dict):
         text_combined = f"{title} {snippet}".lower()
 
-        # Always select the #1 highest-scoring term from breakdown!
         search_term = ""
         if sig.get('breakdown'):
             search_term = sig['breakdown'][0][0]
@@ -953,6 +1004,7 @@ class ClusterEngine:
 
     @classmethod
     def get_learning_context(cls, article, all_articles=None, min_score_override=None):
+        cls._sync_mem_cache()
         runtime_cfg = cls.get_runtime_config()
         active_min_score = int(min_score_override) if min_score_override is not None else runtime_cfg['min_connection_score']
         public_enabled = runtime_cfg['public_enabled']
