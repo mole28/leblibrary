@@ -1468,9 +1468,11 @@ def search_acronyms_api(request):
     results = []
     if len(query) >= 1:
         query_clean = re.sub(r'["״”“\'׳`]', '', query)
+        query_with_gershayim = query_clean
         query_with_geresh = query_clean
-        if len(query_clean) > 1 and '"' not in query:
-            query_with_geresh = query_clean[:-1] + '"' + query_clean[-1]
+        if len(query_clean) > 1:
+            query_with_gershayim = query_clean[:-1] + '"' + query_clean[-1]
+            query_with_geresh = query_clean[:-1] + "'" + query_clean[-1]
 
         if search_type == 'meaning':
             matches = Acronym.objects.filter(meaning__icontains=query)[:20]
@@ -1478,6 +1480,7 @@ def search_acronyms_api(request):
             matches = Acronym.objects.filter(
                 Q(short__icontains=query) |
                 Q(short__icontains=query_clean) |
+                Q(short__icontains=query_with_gershayim) |
                 Q(short__icontains=query_with_geresh)
             ).distinct()[:20]
 
@@ -1486,7 +1489,6 @@ def search_acronyms_api(request):
                 'short': item.short,
                 'meaning': item.meaning
             })
-
     return JsonResponse({'results': results})
 
 def advanced_search_view(request):

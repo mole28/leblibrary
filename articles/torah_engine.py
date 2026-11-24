@@ -1036,11 +1036,7 @@ def _build_stem_fuzzy_body(stem: str) -> str:
             idx += 1
     return "".join(parts)
 
-def build_hebrew_fuzzy_patterns(word: str):
-    clean_w = re.sub(r'[^א-ת]', '', word)
-    if not clean_w:
-        return [], None
-
+def _build_hebrew_fuzzy_bodies(clean_w: str):
     stems = [clean_w]
     if clean_w.startswith('ו') and len(clean_w) >= 4:
         without_vav = clean_w[1:]
@@ -1048,28 +1044,31 @@ def build_hebrew_fuzzy_patterns(word: str):
         if len(consonants_after) >= 3:
             stems.append(without_vav)
 
-    regex_branches = [rf'{_VALID_HEB_PREFIX_RX}{re.escape(clean_w)}']
+    bodies = [re.escape(clean_w)]
     mandatory_sets = []
-
     for stem in stems:
         stem_mandatory = {stem[0], stem[-1]} | {c for c in stem if c not in ('ו', 'י')}
         mandatory_sets.append(stem_mandatory)
-        branch_body = _build_stem_fuzzy_body(stem)
-        regex_branches.append(rf'{_VALID_HEB_PREFIX_RX}{branch_body}')
+        bodies.append(_build_stem_fuzzy_body(stem))
 
-    unique_branches = list(dict.fromkeys(regex_branches))
+    unique_bodies = list(dict.fromkeys(bodies))
     common_mandatory = set.intersection(*mandatory_sets) if mandatory_sets else set(clean_w)
-    combined_pattern = rf'^(?:{"|".join(unique_branches)})$'
+    return list(common_mandatory), unique_bodies
 
-    return list(common_mandatory), re.compile(combined_pattern)
+def build_hebrew_fuzzy_patterns(word: str):
+    clean_w = re.sub(r'[^א-ת]', '', word)
+    if not clean_w:
+        return [], None
+    common_mandatory, unique_bodies = _build_hebrew_fuzzy_bodies(clean_w)
+    combined_pattern = rf'^{_VALID_HEB_PREFIX_RX}(?:{"|".join(unique_bodies)})$'
+    return common_mandatory, re.compile(combined_pattern)
 
 def build_hebrew_fuzzy_morph_patterns(word: str):
     clean_w = re.sub(r'[^א-ת]', '', word)
     if not clean_w:
         return [], None
 
-    _, basic_rx = build_hebrew_fuzzy_patterns(clean_w)
-    basic_inner = basic_rx.pattern[4:-2] if basic_rx else rf'{_VALID_HEB_PREFIX_RX}{re.escape(clean_w)}'
+    _, basic_bodies = _build_hebrew_fuzzy_bodies(clean_w)
 
     forms = [clean_w]
     if clean_w.startswith('ו') and len(clean_w) >= 4:
@@ -1077,7 +1076,7 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
         if len([c for c in without_vav if c not in ('ו', 'י')]) >= 3:
             forms.append(without_vav)
 
-    regex_branches = [basic_inner]
+    body_branches = list(basic_bodies)
     sql_stems = [clean_w]
 
     def add_stem_branches(base_reg: str, allow_bare: bool, suffix_alts: list):
@@ -1092,11 +1091,11 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
         body_before = full_body[:-len(esc_last)]
 
         if allow_bare:
-            regex_branches.append(rf'{_VALID_HEB_PREFIX_RX}{body_before}{re.escape(last_fin)}')
+            body_branches.append(rf'{body_before}{re.escape(last_fin)}')
 
         if suffix_alts:
             sfx_group = "|".join(suffix_alts)
-            regex_branches.append(rf'{_VALID_HEB_PREFIX_RX}{body_before}{esc_last}(?:{sfx_group})')
+            body_branches.append(rf'{body_before}{esc_last}(?:{sfx_group})')
 
     for form in forms:
         handled_special = False
@@ -1128,7 +1127,7 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
                         if core not in sql_stems:
                             sql_stems.append(core)
                         core_body = _build_stem_fuzzy_body(core)
-                        regex_branches.append(rf'{_VALID_HEB_PREFIX_RX}{core_body}ו{{1,2}}(?:ה|ת)')
+                        body_branches.append(rf'{core_body}ו{{1,2}}(?:ה|ת)')
                         handled_special = True
                 if not handled_special:
                     allow_bare = len(base_reg) >= 3 or base_reg in ('שמ', 'אב', 'אות')
@@ -1147,7 +1146,7 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
                         if core not in sql_stems:
                             sql_stems.append(core)
                         core_body = _build_stem_fuzzy_body(core)
-                        regex_branches.append(rf'{_VALID_HEB_PREFIX_RX}{core_body}ו{{1,2}}(?:ה|ת)')
+                        body_branches.append(rf'{core_body}ו{{1,2}}(?:ה|ת)')
                         handled_special = True
                 else:
                     add_stem_branches(base_reg, allow_bare=False, suffix_alts=['ה', 'ו?ת', 'ים', 'ין', 'י'])
@@ -1173,8 +1172,8 @@ def build_hebrew_fuzzy_morph_patterns(word: str):
             reg_self = form[:-1] + _FINAL_TO_REG_MAP.get(form[-1], form[-1])
             add_stem_branches(reg_self, allow_bare=True, suffix_alts=['ים', 'ין', 'י', 'ות'])
 
-    unique_branches = list(dict.fromkeys(regex_branches))
-    combined_pattern = rf'^(?:{"|".join(unique_branches)})$'
+    unique_bodies = list(dict.fromkeys(body_branches))
+    combined_pattern = rf'^{_VALID_HEB_PREFIX_RX}(?:{"|".join(unique_bodies)})$'
     return sql_stems, re.compile(combined_pattern)
 
 def _build_sql_bigram_q_for_stem(stem: str, clean_w: str = '', allow_final_swap: bool = False) -> Q:
@@ -1206,7 +1205,7 @@ def _build_sql_bigram_q_for_stem(stem: str, clean_w: str = '', allow_final_swap:
                     pair_q |= Q(clean_text__icontains=f"{c1}{g}{c2}")
             q_filter &= pair_q
 
-        if len(skeleton) >= 3:
+        if len(skeleton) >= 3 and _get_special_html_row_ids():
             last_reg = _FINAL_TO_REG_MAP.get(skeleton[-1], skeleton[-1])
             last_fin = _REG_TO_FINAL_MAP.get(last_reg, last_reg)
             last_q = Q(clean_text__icontains=last_reg) | Q(clean_text__icontains=last_fin)
@@ -1215,8 +1214,6 @@ def _build_sql_bigram_q_for_stem(stem: str, clean_w: str = '', allow_final_swap:
                 Q(clean_text__icontains=skeleton[1]) &
                 last_q
             )
-            if clean_w == 'בראשית':
-                q_filter |= (Q(book='בראשית') & Q(clean_text__icontains='ראשית'))
     else:
         for ch in skeleton:
             c_reg = _FINAL_TO_REG_MAP.get(ch, ch)
@@ -1230,8 +1227,9 @@ def _build_fuzzy_sql_filter_for_word(word: str, include_morph: bool = False, mor
     if not clean_w:
         return Q()
 
+    has_special_html = bool(_get_special_html_row_ids())
     exact_q = Q(clean_text__icontains=clean_w)
-    if len(clean_w) >= 3:
+    if len(clean_w) >= 3 and has_special_html:
         exact_q |= (Q(clean_text__icontains=clean_w[1:]) & Q(clean_text__icontains='<'))
         exact_q |= (Q(clean_text__icontains=clean_w[:-1]) & Q(clean_text__icontains='<'))
         exact_q |= Q(clean_text__icontains=f"{clean_w[0]} {clean_w[1:]}")
@@ -1240,8 +1238,17 @@ def _build_fuzzy_sql_filter_for_word(word: str, include_morph: bool = False, mor
         stems = morph_stems if morph_stems is not None else build_hebrew_fuzzy_morph_patterns(clean_w)[0]
         if not stems:
             return exact_q
-        combined_q = exact_q
+        seen_norm = set()
+        dedup_stems = []
         for st in stems:
+            if not st:
+                continue
+            norm_st = st[:-1] + _FINAL_TO_REG_MAP.get(st[-1], st[-1])
+            if norm_st not in seen_norm:
+                seen_norm.add(norm_st)
+                dedup_stems.append(st)
+        combined_q = exact_q
+        for st in dedup_stems:
             combined_q |= _build_sql_bigram_q_for_stem(st, clean_w=clean_w, allow_final_swap=True)
         return combined_q
 
@@ -1262,10 +1269,7 @@ def _get_special_html_row_ids():
         return _SPECIAL_HTML_IDS_CACHE
     try:
         ids = list(
-            TorahText.objects.filter(
-                Q(clean_text__contains='<') |
-                Q(book='בראשית', chapter__in=('1', 'א', 'פרק א'), verse__in=('1', 'א'))
-            ).values_list('id', flat=True)[:250]
+            TorahText.objects.filter(clean_text__contains='<').values_list('id', flat=True)[:250]
         )
         _SPECIAL_HTML_IDS_CACHE = ids
     except Exception:
@@ -1284,32 +1288,44 @@ def _get_verified_fts_table(force_recheck=False):
         db_total = TorahText.objects.count()
         if db_total <= 0:
             return None
+        tbl = 'articles_torahtext_clean_fts'
         with connection.cursor() as cur:
-            for tbl in ('articles_torahtext_clean_fts', 'articles_torahtext_fts'):
+            cur.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=%s",
+                [tbl],
+            )
+            if not cur.fetchone():
+                return None
+            cur.execute(f"SELECT COUNT(*) FROM {tbl}")
+            fts_total = cur.fetchone()[0]
+            if fts_total != db_total:
+                return None
+            # Probe 1: General corpus token
+            cur.execute(
+                f"SELECT rowid FROM {tbl} WHERE {tbl} MATCH %s LIMIT 1",
+                ['"שמע"'],
+            )
+            probe_row = cur.fetchone()
+            if not probe_row:
+                return None
+            matched_obj = TorahText.objects.filter(pk=probe_row[0]).values('clean_text', 'text_with_nikkud').first()
+            if not matched_obj:
+                return None
+            probe_words = _fast_extract_clean_words(matched_obj.get('text_with_nikkud') or matched_obj.get('clean_text') or '')
+            if 'שמע' not in probe_words:
+                return None
+            # Probe 2: Verify Tanakh (Genesis) is tokenized with spaces in FTS5
+            if TorahText.objects.filter(book='בראשית').exclude(chapter__startswith='דף').exists():
                 cur.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name=%s",
-                    [tbl],
+                    f"SELECT {tbl}.rowid FROM {tbl} "
+                    f"JOIN articles_torahtext t ON t.id = {tbl}.rowid "
+                    f"WHERE {tbl} MATCH %s AND t.book = %s AND t.chapter NOT LIKE %s LIMIT 1",
+                    ['"בראשית"', 'בראשית', 'דף%'],
                 )
                 if not cur.fetchone():
-                    continue
-                cur.execute(f"SELECT COUNT(*) FROM {tbl}")
-                fts_total = cur.fetchone()[0]
-                if fts_total != db_total:
-                    continue
-                cur.execute(
-                    f"SELECT rowid FROM {tbl} WHERE {tbl} MATCH %s LIMIT 1",
-                    ['"שמע"'],
-                )
-                probe_row = cur.fetchone()
-                if not probe_row:
-                    continue
-                matched_obj = TorahText.objects.filter(pk=probe_row[0]).values('clean_text', 'text_with_nikkud').first()
-                if not matched_obj:
-                    continue
-                probe_words = _fast_extract_clean_words(matched_obj.get('text_with_nikkud') or matched_obj.get('clean_text') or '')
-                if 'שמע' in probe_words:
-                    _FTS5_STATE['table'] = tbl
-                    return tbl
+                    return None
+            _FTS5_STATE['table'] = tbl
+            return tbl
     except Exception:
         logger.warning("FTS5 availability probe failed; falling back to LIKE queries", exc_info=True)
     return None
@@ -1349,7 +1365,7 @@ def _apply_exact_fts5_prefilter(qs, q_words, fallback_q):
     safe_tokens = [w for w in safe_tokens if w]
     if not safe_tokens:
         return qs.filter(fallback_q)
-    match_expr = " ".join(f'"{tok}"' for tok in safe_tokens)
+    match_expr = f'"{" ".join(safe_tokens)}"'
     try:
         fts_subquery = RawSQL(f"SELECT rowid FROM {fts_tbl} WHERE {fts_tbl} MATCH %s", [match_expr])
         special_ids = _get_special_html_row_ids()
@@ -1360,6 +1376,16 @@ def _apply_exact_fts5_prefilter(qs, q_words, fallback_q):
     except Exception:
         logger.warning("FTS5 query failed; using standard SQL filter", exc_info=True)
         return qs.filter(fallback_q)
+
+def _fetch_rows_by_ordered_ids(ordered_ids):
+    if not ordered_ids:
+        return []
+    rows_map = {}
+    for i in range(0, len(ordered_ids), 500):
+        chunk = ordered_ids[i:i + 500]
+        for row in TorahText.objects.filter(id__in=chunk).values('id', 'book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text'):
+            rows_map[row['id']] = row
+    return [rows_map[rid] for rid in ordered_ids if rid in rows_map]
 
 @ratelimit(rate=45, timeout=60)
 def tanakh_advanced_search_api(request):
@@ -1491,8 +1517,8 @@ def tanakh_advanced_search_api(request):
 
     effective_query_type = 'text_fuzzy_morph' if (query_type == 'text_fuzzy' and include_plural) else query_type
 
-    _raw_cache_key = f"v55|{effective_query_type}|{query_val}|{book_filter}|{is_exact}|{exclude_books_param}|{skip_param}|{page}|{per_page}"
-    search_cache_key = "tanakh_srch_v55_" + hashlib.md5(_raw_cache_key.encode("utf-8")).hexdigest()
+    _raw_cache_key = f"v56|{effective_query_type}|{query_val}|{book_filter}|{is_exact}|{exclude_books_param}|{skip_param}|{page}|{per_page}"
+    search_cache_key = "tanakh_srch_v56_" + hashlib.md5(_raw_cache_key.encode("utf-8")).hexdigest()
     cached_search_data = cache.get(search_cache_key)
     if cached_search_data:
         return JsonResponse(cached_search_data, json_dumps_params={'ensure_ascii': False})
@@ -1558,26 +1584,56 @@ def tanakh_advanced_search_api(request):
             q_words = re.sub(r'[^א-ת\s]', '', query_val.replace('י-ה-ו-ה', 'יהוה')).strip().split()[:8]
             if q_words:
                 num_q_words = len(q_words)
-                text_query = Q()
-                for target_w in q_words:
-                    w_q = Q(clean_text__icontains=target_w)
-                    if len(target_w) >= 3:
-                        w_q |= (Q(clean_text__icontains=target_w[1:]) & Q(clean_text__icontains='<'))
-                        w_q |= (Q(clean_text__icontains=target_w[:-1]) & Q(clean_text__icontains='<'))
-                        w_q |= Q(clean_text__icontains=f"{target_w[0]} {target_w[1:]}")
-                        if target_w == 'בראשית':
-                            w_q |= (Q(book='בראשית') & Q(clean_text__icontains='ראשית'))
-                    text_query &= w_q
-
                 match_label = 'חיפוש מדויק' if is_exact else 'חיפוש חופשי (רחב)'
-                filtered_qs = _apply_exact_fts5_prefilter(qs, q_words, text_query) if is_exact else qs.filter(text_query)
-                for m in filtered_qs.values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text').iterator(chunk_size=2500):
+                _raw_ids_key = f"v56_ids|{effective_query_type}|{' '.join(q_words)}|{book_filter}|{is_exact}|{exclude_books_param}"
+                ids_cache_key = "tanakh_ids_v56_" + hashlib.md5(_raw_ids_key.encode("utf-8")).hexdigest()
+                ordered_ids = cache.get(ids_cache_key)
+
+                if ordered_ids is None:
+                    has_special_html = bool(_get_special_html_row_ids())
+                    text_query = Q()
+                    for target_w in q_words:
+                        w_q = Q(clean_text__icontains=target_w)
+                        if len(target_w) >= 3 and has_special_html:
+                            w_q |= (Q(clean_text__icontains=target_w[1:]) & Q(clean_text__icontains='<'))
+                            w_q |= (Q(clean_text__icontains=target_w[:-1]) & Q(clean_text__icontains='<'))
+                            w_q |= Q(clean_text__icontains=f"{target_w[0]} {target_w[1:]}")
+                        text_query &= w_q
+
+                    filtered_qs = _apply_exact_fts5_prefilter(qs, q_words, text_query) if is_exact else qs.filter(text_query)
+                    exact_phrase_padded = f" {' '.join(q_words)} "
+                    target0 = q_words[0]
+                    matched_meta = []
+                    for rid, b_val, ch_val, v_val, clean_txt in filtered_qs.values_list('id', 'book', 'chapter', 'verse', 'clean_text').iterator(chunk_size=4000):
+                        if not clean_txt:
+                            continue
+                        is_hit = False
+                        if is_exact:
+                            is_hit = exact_phrase_padded in f" {clean_txt} "
+                        elif num_q_words == 1:
+                            is_hit = (target0 in clean_txt)
+                        else:
+                            c_words = clean_txt.split()
+                            if len(c_words) >= num_q_words:
+                                for i in range(len(c_words) - num_q_words + 1):
+                                    if all(q_words[j] in c_words[i + j] for j in range(num_q_words)):
+                                        is_hit = True
+                                        break
+                        if is_hit:
+                            fixed_ch = _fix_hebrew_numeral_order(ch_val)
+                            matched_meta.append((get_book_order(b_val, fixed_ch), safe_int(fixed_ch), safe_int(v_val), rid))
+                    matched_meta.sort()
+                    ordered_ids = [item[3] for item in matched_meta]
+                    cache.set(ids_cache_key, ordered_ids, 900)
+
+                total_results = len(ordered_ids)
+                total_pages = (total_results + per_page - 1) // per_page if total_results > 0 else 1
+                page_ids = ordered_ids[(page - 1) * per_page : page * per_page]
+                page_rows = _fetch_rows_by_ordered_ids(page_ids)
+                paginated_results = []
+                for m in page_rows:
                     raw_text = m.get('text_with_nikkud') or m.get('clean_text') or ""
-                    if not raw_text:
-                        continue
                     clean_words = _fast_extract_clean_words(raw_text)
-                    if len(clean_words) < num_q_words:
-                        continue
                     matched_indices = set()
                     if num_q_words == 1:
                         target = q_words[0]
@@ -1588,14 +1644,22 @@ def tanakh_advanced_search_api(request):
                         for i in range(len(clean_words) - num_q_words + 1):
                             if all((clean_words[i + j] == q_words[j]) if is_exact else (q_words[j] in clean_words[i + j]) for j in range(num_q_words)):
                                 matched_indices.update(range(i, i + num_q_words))
-                    if matched_indices:
-                        fixed_ch = _fix_hebrew_numeral_order(m['chapter'])
-                        results.append({
-                            'book': m['book'], 'chapter': fixed_ch, 'verse': format_verse_hebrew(m['verse']),
-                            'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], fixed_ch),
-                            'text': _highlight_matched_words(raw_text, matched_indices),
-                            'match_type': match_label
-                        })
+                    fixed_ch = _fix_hebrew_numeral_order(m['chapter'])
+                    highlighted = _highlight_matched_words(raw_text, matched_indices) if matched_indices else _sanitize_torah_verse_text(raw_text)
+                    paginated_results.append({
+                        'book': m['book'], 'chapter': fixed_ch, 'verse': format_verse_hebrew(m['verse']),
+                        'raw_verse': m['verse'], 'verse_label': get_verse_label(m['book'], fixed_ch),
+                        'text': format_divine_name(highlighted),
+                        'match_type': match_label
+                    })
+                response_payload = {
+                    'results': paginated_results, 'total': total_results, 'page': page,
+                    'total_pages': total_pages, 'per_page': per_page,
+                    'calculated_gematria': calculated_gematria_val, 'reversed_query': reversed_query_val,
+                    'available_skips': available_skips, 'active_skip': active_skip
+                }
+                cache.set(search_cache_key, response_payload, 900)
+                return JsonResponse(response_payload, json_dumps_params={'ensure_ascii': False})
 
         elif effective_query_type in ['text_fuzzy', 'text_fuzzy_morph'] and query_val:
             use_morph = (effective_query_type == 'text_fuzzy_morph')
@@ -1609,27 +1673,54 @@ def tanakh_advanced_search_api(request):
 
                 if valid_pairs:
                     num_q_words = len(valid_pairs)
-                    text_query = Q()
-                    for w_str, (stems_or_chars, _) in valid_pairs:
-                        text_query &= _build_fuzzy_sql_filter_for_word(
-                            w_str,
-                            include_morph=use_morph,
-                            morph_stems=stems_or_chars if use_morph else None
-                        )
-
                     compiled_rxs = [wp[1] for _, wp in valid_pairs]
                     rx0 = compiled_rxs[0]
                     fuzzy_match_label = 'כתיב מלא/חסר + יחיד/רבים' if use_morph else 'כתיב מלא / חסר ותחיליות'
+                    _raw_ids_key = f"v56_ids|{effective_query_type}|{' '.join(q_words)}|{book_filter}|{exclude_books_param}"
+                    ids_cache_key = "tanakh_ids_v56_" + hashlib.md5(_raw_ids_key.encode("utf-8")).hexdigest()
+                    ordered_ids = cache.get(ids_cache_key)
 
-                    for m in qs.filter(text_query).values('book', 'chapter', 'verse', 'text_with_nikkud', 'clean_text').iterator(chunk_size=2500):
+                    if ordered_ids is None:
+                        text_query = Q()
+                        for w_str, (stems_or_chars, _) in valid_pairs:
+                            text_query &= _build_fuzzy_sql_filter_for_word(
+                                w_str,
+                                include_morph=use_morph,
+                                morph_stems=stems_or_chars if use_morph else None
+                            )
+                        single_word_search_rx = (
+                            re.compile(r'(?:^| )(?:' + rx0.pattern[1:-1] + r')(?=$| )')
+                            if num_q_words == 1 else None
+                        )
+                        matched_meta = []
+                        for rid, b_val, ch_val, v_val, clean_txt in qs.filter(text_query).values_list('id', 'book', 'chapter', 'verse', 'clean_text').iterator(chunk_size=4000):
+                            if not clean_txt:
+                                continue
+                            is_hit = False
+                            if num_q_words == 1:
+                                is_hit = bool(single_word_search_rx.search(clean_txt))
+                            else:
+                                c_words = clean_txt.split()
+                                if len(c_words) >= num_q_words:
+                                    for i in range(len(c_words) - num_q_words + 1):
+                                        if rx0.match(c_words[i]) and all(compiled_rxs[j].match(c_words[i + j]) for j in range(1, num_q_words)):
+                                            is_hit = True
+                                            break
+                            if is_hit:
+                                fixed_ch = _fix_hebrew_numeral_order(ch_val)
+                                matched_meta.append((get_book_order(b_val, fixed_ch), safe_int(fixed_ch), safe_int(v_val), rid))
+                        matched_meta.sort()
+                        ordered_ids = [item[3] for item in matched_meta]
+                        cache.set(ids_cache_key, ordered_ids, 900)
+
+                    total_results = len(ordered_ids)
+                    total_pages = (total_results + per_page - 1) // per_page if total_results > 0 else 1
+                    page_ids = ordered_ids[(page - 1) * per_page : page * per_page]
+                    page_rows = _fetch_rows_by_ordered_ids(page_ids)
+                    paginated_results = []
+                    for m in page_rows:
                         raw_text = m.get('text_with_nikkud') or m.get('clean_text') or ""
-                        if not raw_text:
-                            continue
-
                         clean_words = _fast_extract_clean_words(raw_text)
-                        if len(clean_words) < num_q_words:
-                            continue
-
                         matched_indices = set()
                         if num_q_words == 1:
                             for idx, vw_clean in enumerate(clean_words):
@@ -1639,18 +1730,25 @@ def tanakh_advanced_search_api(request):
                             for i in range(len(clean_words) - num_q_words + 1):
                                 if rx0.match(clean_words[i]) and all(compiled_rxs[j].match(clean_words[i + j]) for j in range(1, num_q_words)):
                                     matched_indices.update(range(i, i + num_q_words))
-
-                        if matched_indices:
-                            fixed_ch = _fix_hebrew_numeral_order(m['chapter'])
-                            results.append({
-                                'book': m['book'],
-                                'chapter': fixed_ch,
-                                'verse': format_verse_hebrew(m['verse']),
-                                'raw_verse': m['verse'],
-                                'verse_label': get_verse_label(m['book'], fixed_ch),
-                                'text': _highlight_matched_words(raw_text, matched_indices),
-                                'match_type': fuzzy_match_label
-                            })
+                        fixed_ch = _fix_hebrew_numeral_order(m['chapter'])
+                        highlighted = _highlight_matched_words(raw_text, matched_indices) if matched_indices else _sanitize_torah_verse_text(raw_text)
+                        paginated_results.append({
+                            'book': m['book'],
+                            'chapter': fixed_ch,
+                            'verse': format_verse_hebrew(m['verse']),
+                            'raw_verse': m['verse'],
+                            'verse_label': get_verse_label(m['book'], fixed_ch),
+                            'text': format_divine_name(highlighted),
+                            'match_type': fuzzy_match_label
+                        })
+                    response_payload = {
+                        'results': paginated_results, 'total': total_results, 'page': page,
+                        'total_pages': total_pages, 'per_page': per_page,
+                        'calculated_gematria': calculated_gematria_val, 'reversed_query': reversed_query_val,
+                        'available_skips': available_skips, 'active_skip': active_skip
+                    }
+                    cache.set(search_cache_key, response_payload, 900)
+                    return JsonResponse(response_payload, json_dumps_params={'ensure_ascii': False})
 
         elif effective_query_type == 'gematria' and query_val:
             _auto_heal_parasha_gematria_in_db()

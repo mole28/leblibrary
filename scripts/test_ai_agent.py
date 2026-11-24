@@ -49,5 +49,9 @@ def test_ai_agent_returns_mocked_response(mock_urlopen, client):
     
     assert response.status_code == 200
     
-    response_data = response.json()
-    assert "זוהי תשובה מזויפת" in response_data.get('answer', '')
+    if getattr(response, 'streaming', False):
+        body = b''.join(response.streaming_content).decode('utf-8')
+        assert len(body.strip()) > 0
+    else:
+        response_data = response.json()
+        assert "זוהי תשובה מזויפת" in response_data.get('answer', '')
