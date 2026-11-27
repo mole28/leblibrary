@@ -7,7 +7,8 @@ from articles.models import Article
 
 @pytest.mark.django_db
 @patch('urllib.request.urlopen')  # מיירטים את שליחת ה-HTTP הישירה של הפונקציה
-def test_ai_agent_returns_mocked_response(mock_urlopen, client):
+def test_ai_agent_returns_mocked_response(mock_urlopen, client, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-ci-mock-key")
     # 1. יוצרים מאמר דמה במסד הנתונים כדי שמנגנון ה-RAG ימצא חומרים
     Article.objects.create(
         title="מאמר בדיקה על הלכה ותלמוד",
