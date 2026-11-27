@@ -246,7 +246,7 @@
                             {% if book.summary %}
                                 <h2 class="fw-bold mb-3 fs-4" style="color: #a88132;"><i class="bi bi-info-circle me-2"></i>על הספר</h2>
                                 <div class="mb-4 text-dark" style="font-size: 1.15rem; line-height: 1.6;">
-                                    {{ book.summary|safe }}
+                                    {{ rendered_book_summary|default:book.summary|safe }}
                                 </div>
                             {% endif %}
                         {% endif %}

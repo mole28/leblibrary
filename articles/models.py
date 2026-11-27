@@ -28,17 +28,98 @@ _EXCERPT_BLOCK_TAG_RE = re.compile(
 )
 
 
+_LOCAL_UNSAFE_HREF_RE = re.compile(
+    r'^(?:file:|ms-its:|mk:|view-source:|[a-zA-Z]:[\\/]|\\\\)|his_temp|program(?:%20|\s)+files',
+    re.IGNORECASE,
+)
+
+_TANAKH_LINK_ALIASES = {
+    'בראשית': 'בראשית', 'שמות': 'שמות', 'ויקרא': 'ויקרא', 'במדבר': 'במדבר', 'דברים': 'דברים',
+    'יהושע': 'יהושע', 'שופטים': 'שופטים', 'שמואל א': 'שמואל א', 'שמואל ב': 'שמואל ב',
+    'מלכים א': 'מלכים א', 'מלכים ב': 'מלכים ב', 'ישעיה': 'ישעיהו', 'ישעיהו': 'ישעיהו',
+    'ירמיה': 'ירמיהו', 'ירמיהו': 'ירמיהו', 'יחזקאל': 'יחזקאל', 'הושע': 'הושע', 'יואל': 'יואל',
+    'עמוס': 'עמוס', 'עובדיה': 'עובדיה', 'יונה': 'יונה', 'מיכה': 'מיכה', 'נחום': 'נחום',
+    'חבקוק': 'חבקוק', 'צפניה': 'צפניה', 'חגי': 'חגי', 'זכריה': 'זכריה', 'מלאכי': 'מלאכי',
+    'תהלים': 'תהילים', 'תהילים': 'תהילים', 'משלי': 'משלי', 'איוב': 'איוב',
+    'שיר השירים': 'שיר השירים', 'רות': 'רות', 'איכה': 'איכה', 'קהלת': 'קהלת',
+    'אסתר': 'אסתר', 'דניאל': 'דניאל', 'עזרא': 'עזרא', 'נחמיה': 'נחמיה',
+    'דברי הימים א': 'דברי הימים א', 'דברי הימים ב': 'דברי הימים ב',
+}
+
+_HEB_NUM_VALS = {
+    'א': 1, 'ב': 2, 'ג': 3, 'ד': 4, 'ה': 5, 'ו': 6, 'ז': 7, 'ח': 8, 'ט': 9,
+    'י': 10, 'כ': 20, 'ך': 20, 'ל': 30, 'מ': 40, 'ם': 40, 'נ': 50, 'ן': 50,
+    'ס': 60, 'ע': 70, 'פ': 80, 'ף': 80, 'צ': 90, 'ץ': 90,
+    'ק': 100, 'ר': 200, 'ש': 300, 'ת': 400,
+}
+
+_TANAKH_REF_RE = re.compile(
+    r'(' + '|'.join(sorted(_TANAKH_LINK_ALIASES.keys(), key=len, reverse=True)) + r')\s+פרק[\s\-]+([א-ת"״׳\'0-9]+)'
+)
+
+
+def _hebrew_chapter_to_int(token):
+    t = str(token or '').strip()
+    if t.isdigit():
+        return int(t)
+    clean = re.sub(r'[^א-ת]', '', t)
+    if not clean:
+        return 0
+    return sum(_HEB_NUM_VALS.get(ch, 0) for ch in clean)
+
+
+def _resolve_local_tanakh_url(raw_href, link_text):
+    from urllib.parse import quote, unquote
+    candidates = [str(link_text or ''), unquote(str(raw_href or ''))]
+    for cand in candidates:
+        m = _TANAKH_REF_RE.search(cand)
+        if m:
+            canonical_book = _TANAKH_LINK_ALIASES.get(m.group(1).strip())
+            ch_num = _hebrew_chapter_to_int(m.group(2))
+            if canonical_book and 1 <= ch_num <= 150:
+                return f"/advanced-search/?mode=browse&corpus=tanakh&target_book={quote(canonical_book)}&target_chapter={ch_num}"
+    return None
+
+
 def _sanitize_imported_soup(soup):
     for bad_tag in soup.find_all(_BLOCKED_WORD_TAGS):
         bad_tag.decompose()
-    for el in soup.find_all(True):
+    for el in list(soup.find_all(True)):
+        if getattr(el, 'attrs', None) is None:
+            continue
         for attr in list(el.attrs.keys()):
-            if attr.lower().startswith('on'):
+            attr_l = attr.lower()
+            if attr_l.startswith('on'):
                 del el.attrs[attr]
-            elif attr.lower() in ('href', 'src'):
-                val = str(el.attrs.get(attr) or '').strip().lower()
-                if val.startswith(('javascript:', 'vbscript:', 'data:text/html')):
+            elif attr_l in ('href', 'src'):
+                raw_val = str(el.attrs.get(attr) or '').strip()
+                val_l = raw_val.lower()
+                if val_l.startswith(('javascript:', 'vbscript:', 'data:text/html')):
                     del el.attrs[attr]
+                elif _LOCAL_UNSAFE_HREF_RE.search(raw_val):
+                    if el.name == 'a' and attr_l == 'href':
+                        resolved = _resolve_local_tanakh_url(raw_val, el.get_text(' ', strip=True))
+                        if resolved:
+                            el['href'] = resolved
+                            el['target'] = '_blank'
+                            el['rel'] = 'noopener noreferrer'
+                        else:
+                            el.unwrap()
+                            break
+                    else:
+                        del el.attrs[attr]
+
+
+def sanitize_unsafe_links_html(html_content):
+    if not html_content:
+        return html_content
+    raw = str(html_content)
+    lower = raw.lower()
+    if not any(tok in lower for tok in ('file:', 'his_temp', 'program files', 'program%20files', ':\\', ':/', 'javascript:', 'vbscript:', 'ms-its:')):
+        return raw
+    soup = BeautifulSoup(raw, 'html.parser')
+    _sanitize_imported_soup(soup)
+    return str(soup)
 
 
 def build_clean_excerpt(html_content, max_words=25):

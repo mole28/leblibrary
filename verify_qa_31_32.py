@@ -201,14 +201,14 @@ def run_checks(offline=False):
                 inner = re.sub(r"<[^>]+>", "", m.group(2)).strip()
                 has_heb = bool(re.search(r"[\u05d0-\u05ea]", inner))
                 has_greg = bool(re.search(r"\d{2}\.\d{2}\.\d{4}", inner))
-                if not (has_heb and has_greg):
-                    bad.append(f"#{pk}:incomplete({inner})")
+                if not has_heb or has_greg:
+                    bad.append(f"#{pk}:unexpected({inner})")
                 else:
                     samples.append(f"#{pk}:{inner}")
             return len(bad) == 0, "; ".join(bad or samples)
 
         ok, det = chk_live_32_articles()
-        record("LIVE-32A", "Live articles 63, 59, 52, 51 render visible Hebrew + Gregorian <time>", ok, det)
+        record("LIVE-32A", "Live articles 63, 59, 52, 51 render visible Hebrew-only <time>", ok, det)
 
         def chk_live_32_parasha():
             q = urllib.parse.urlencode({"p": "\u05d1\u05e8\u05d0\u05e9\u05d9\u05ea"})
@@ -217,11 +217,11 @@ def run_checks(offline=False):
                 return False, f"HTTP {code}"
             has_empty_label = "\u05e0\u05d5\u05e6\u05e8 \u05d1\u05ea\u05d0\u05e8\u05d9\u05da:" in body
             has_glued = "\u05d4\u05e7\u05d3\u05de\u05d4\u05d1\u05de\u05d0\u05de\u05e8" in body or "\u05e0\u05d9\u05e9\u05d5\u05d0\u05d9\u05df\u05d1\u05d1\u05e8\u05d9\u05d0\u05ea" in body
-            has_time = bool(re.search(r'<time[^>]*datetime="\d{4}-\d{2}-\d{2}"[^>]*>.*?\d{2}\.\d{2}\.\d{4}', body, re.S))
+            has_time = bool(re.search(r'<time[^>]*datetime="\d{4}-\d{2}-\d{2}"[^>]*>[^<]*[\u05d0-\u05ea][^<]*</time>', body, re.S))
             return (not has_empty_label and not has_glued and has_time), f"empty_label={has_empty_label}, glued={has_glued}, has_time={has_time}"
 
         ok, det = chk_live_32_parasha()
-        record("LIVE-32B", "Live /parasha/?p=Bereshit shows Hebrew + Gregorian date and clean excerpt", ok, det)
+        record("LIVE-32B", "Live /parasha/?p=Bereshit shows Hebrew-only date and clean excerpt", ok, det)
 
         def chk_live_32_lists():
             issues = []
@@ -230,12 +230,12 @@ def run_checks(offline=False):
                 if code != 200:
                     issues.append(f"{path}:HTTP {code}")
                     continue
-                if not re.search(r'<time[^>]*datetime="\d{4}-\d{2}-\d{2}"[^>]*>.*?\d{2}\.\d{2}\.\d{4}', body, re.S):
-                    issues.append(f"{path}:missing visible date")
+                if not re.search(r'<time[^>]*datetime="\d{4}-\d{2}-\d{2}"[^>]*>[^<]*[\u05d0-\u05ea][^<]*</time>', body, re.S):
+                    issues.append(f"{path}:missing visible Hebrew date")
             return len(issues) == 0, "; ".join(issues)
 
         ok, det = chk_live_32_lists()
-        record("LIVE-32C", "Live /recently-added/ and home page show visible Hebrew + Gregorian dates", ok, det)
+        record("LIVE-32C", "Live /recently-added/ and home page show visible Hebrew-only dates", ok, det)
 
     passed = sum(1 for _, _, ok, _ in results if ok)
     failed = len(results) - passed

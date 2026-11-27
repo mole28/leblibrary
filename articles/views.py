@@ -58,6 +58,7 @@ from .models import (
     QA,
     Section,
     normalize_article_footnotes_html,
+    sanitize_unsafe_links_html,
 )
 from .torah_engine import (
     BAVLI_TRACTATES_EN as BAVLI_TRACTATES_EN,
@@ -879,7 +880,7 @@ def book_detail(request, pk):
     for chapter in book_chapters:
         chapter_sections = list(chapter.sections.all())
         for sec in chapter_sections:
-            raw_sec_html = getattr(sec, 'content', '') or ''
+            raw_sec_html = sanitize_unsafe_links_html(getattr(sec, 'content', '') or '')
             if raw_sec_html:
                 norm_html = normalize_article_footnotes_html(raw_sec_html)
                 sec.rendered_content = _scope_section_footnotes(norm_html, sec.pk)
@@ -887,7 +888,8 @@ def book_detail(request, pk):
                 sec.rendered_content = ''
         chapter.rendered_sections = chapter_sections
 
-    rendered_book_summary = normalize_article_footnotes_html(book.summary or '') if (book.summary and not book_chapters) else (book.summary or '')
+    safe_book_summary = sanitize_unsafe_links_html(book.summary or '')
+    rendered_book_summary = normalize_article_footnotes_html(safe_book_summary) if (safe_book_summary and not book_chapters) else safe_book_summary
     book_excerpt = _build_clean_excerpt(book.summary or book.title or '', max_words=35)
 
     return render(request, 'articles/book_detail.html', {

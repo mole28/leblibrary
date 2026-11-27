@@ -212,7 +212,7 @@
 
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <label class="form-label fw-bold mb-0" style="color: #334155; font-size: 0.9rem;">החרג ספרים / מסכתות:</label>
+                            <label for="excludeBooks" class="form-label fw-bold mb-0" style="color: #334155; font-size: 0.9rem;">החרג ספרים / מסכתות:</label>
                             <button type="button" id="clearExcludesBtn" class="btn btn-link p-0 text-decoration-none" style="font-size: 0.8rem; color: #b8860b; display: none;">נקה החרגות</button>
                         </div>
                         <select multiple class="form-select" id="excludeBooks" style="border-radius: 10px; border-color: #cbd5e1; height: 115px; font-size: 0.88rem;"></select>
@@ -266,7 +266,7 @@
                         </div>
 
                         <div class="els-skip-selector-wrap" id="skipSelectWrap">
-                            <label class="fw-bold mb-1" style="font-size: 0.85rem; color: #5c4b23;">בחר מרווח דילוג קבוע מראש (אופציונלי):</label>
+                            <label for="elsPreselectSkip" class="fw-bold mb-1" style="font-size: 0.85rem; color: #5c4b23;">בחר מרווח דילוג קבוע מראש (אופציונלי):</label>
                             <select class="form-select form-select-sm" id="elsPreselectSkip" style="border-color: #d4af37; font-weight: 600;">
                                 <option value="">כל הדילוגים האפשריים (זיהוי אוטומטי)</option>
                                 <option value="0">דילוג 0 (אותיות סמוכות ברצף)</option>
@@ -295,7 +295,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold mb-1" style="color: #334155; font-size: 0.95rem;">3. הזן מילה, ערך מספרי או משפט:</label>
+                        <label for="searchQuery" class="form-label fw-bold mb-1" style="color: #334155; font-size: 0.95rem;">3. הזן מילה, ערך מספרי או משפט:</label>
                         <div class="search-input-luxury-wrap">
                             <input type="text" class="form-control form-control-lg" id="searchQuery" placeholder="הזן מילה או ביטוי מדויק (למשל: משה)..." required style="border-radius: 10px; border: 2px solid #d4af37; text-align: center; padding-left: 38px; font-weight: 600;">
                             <button type="button" class="clear-search-btn" id="clearSearchBtn" title="נקה תיבה">✕</button>
@@ -350,12 +350,12 @@
                 <div id="browseSelectorsRow" class="browse-white-select-row" style="display: none;">
                     <div class="row g-2 align-items-center">
                         <div class="col-md-6" id="browseBookSelectCol">
-                            <label id="browseBookSelectLabel" class="form-label fw-bold mb-1" style="color: #f7e199; font-size: 0.85rem;">ספר / מסכת שנבחרו:</label>
-                            <select id="browseBookSelect" class="form-select luxury-white-select" onchange="onBrowseBookDropdownChange(this.value)"></select>
+                            <label id="browseBookSelectLabel" for="browseBookSelect" class="form-label fw-bold mb-1" style="color: #f7e199; font-size: 0.85rem;">בחר ספר:</label>
+                            <select id="browseBookSelect" aria-label="בחר ספר" class="form-select luxury-white-select" onchange="onBrowseBookDropdownChange(this.value)"></select>
                         </div>
                         <div class="col-md-6" id="browseChapterSelectCol">
-                            <label id="browseChapterSelectLabel" class="form-label fw-bold mb-1" style="color: #f7e199; font-size: 0.85rem;">בחר פרק / דף / סימן לעיון:</label>
-                            <select id="browseChapterSelect" class="form-select luxury-white-select" onchange="onBrowseChapterDropdownChange(this.value)">
+                            <label id="browseChapterSelectLabel" for="browseChapterSelect" class="form-label fw-bold mb-1" style="color: #f7e199; font-size: 0.85rem;">בחר פרק:</label>
+                            <select id="browseChapterSelect" aria-label="בחר פרק" class="form-select luxury-white-select" onchange="onBrowseChapterDropdownChange(this.value)">
                                 <option value="">טוען פרקים...</option>
                             </select>
                         </div>
@@ -381,6 +381,7 @@
                         <button type="button" class="clear-screen-luxury-btn" onclick="clearResultsScreen()" title="נקה את התוצאות והחזר את המסך למצבו ההתחלתי">
                             <i class="bi bi-trash3-fill"></i> נקה מסך
                         </button>
+                        <span id="exportCapNotice" class="badge rounded-pill px-3 py-2" style="display: none; background: #fffbeb; color: #7a4f16; border: 1px solid #d4af37; font-size: 0.78rem; font-weight: 700;"></span>
                     </div>
                 </div>
 
@@ -623,6 +624,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let lastSearchApiUrl = '';
     let lastSearchIsQuickBrowse = false;
     let lastSearchMeta = { query: '', actionTitle: '', total: 0 };
+    const EXPORT_PAGE_SIZE = 2500;
+    const MAX_EXPORT_RESULTS = 10000;
+    let chapterModalRequestSeq = 0;
     let preparedSharePayload = { title: '', text: '', url: window.location.href };
     const commentaryMemoryCache = {};
     const SEFARIA_API_BASE = 'https://www.sefaria.org/api/texts/';
@@ -1031,6 +1035,11 @@ document.addEventListener('DOMContentLoaded', function() {
         resultsArea.innerHTML = '';
         resultsArea.style.display = 'none';
         exportToolbar.style.display = 'none';
+        const capNoticeEl = document.getElementById('exportCapNotice');
+        if (capNoticeEl) {
+            capNoticeEl.style.display = 'none';
+            capNoticeEl.textContent = '';
+        }
         elsSkipsBar.style.display = 'none';
         placeholder.style.display = 'block';
         panelTitle.innerHTML = `<i class="bi bi-journal-richtext ms-2" style="color: #d4af37;"></i>תוצאות הסריקה במאגר`;
@@ -1915,16 +1924,16 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>`;
     }
 
-    window.openAutomatedCodeFinderByIdx = function(idx) {
+    window.openAutomatedCodeFinderByIdx = function(idx, triggerEl) {
         const res = lastFetchedResults[idx];
         if (!res) return;
-        openAutomatedCodeFinder(res.book, res.chapter, res.raw_verse || res.verse);
+        openAutomatedCodeFinder(res.book, res.chapter, res.raw_verse || res.verse, triggerEl);
     };
 
-    window.openFullChapterModalByIdx = function(idx) {
+    window.openFullChapterModalByIdx = function(idx, triggerEl) {
         const res = lastFetchedResults[idx];
         if (!res) return;
-        openFullChapterModal(res.book, res.chapter, res.verse, res.verse_label || 'פסוק');
+        openFullChapterModal(res.book, res.chapter, res.verse, res.verse_label || 'פסוק', triggerEl);
     };
 
     function buildShareableCurrentUrl() {
@@ -2048,6 +2057,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 exportToolbar.style.display = 'flex';
+                updateExportToolbarState(data.total || results.length);
 
                 let pageOptions = '';
                 for (let i = 1; i <= data.total_pages; i++) {
@@ -2089,10 +2099,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div class="d-flex align-items-center flex-wrap gap-2">
                                     ${matchBadge}
                                     ${commBtnHtml}
-                                    <button type="button" class="result-ai-code-btn" onclick="openAutomatedCodeFinderByIdx(${idx})">
+                                    <button type="button" class="result-ai-code-btn" data-result-idx="${idx}" data-modal-trigger="code" onclick="openAutomatedCodeFinderByIdx(${idx}, this)">
                                         <i class="bi bi-stars"></i> ניתוח AI של הנתונים
                                     </button>
-                                    <button type="button" class="result-action-btn" onclick="openFullChapterModalByIdx(${idx})">
+                                    <button type="button" class="result-action-btn" data-result-idx="${idx}" data-modal-trigger="chapter" onclick="openFullChapterModalByIdx(${idx}, this)">
                                         <i class="bi bi-arrows-fullscreen"></i> הצג פרק מלא
                                     </button>
                                     <button type="button" class="result-action-btn" onclick="copySingleResult(${idx})">
@@ -2207,6 +2217,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     total: data.verses.length
                 };
                 exportToolbar.style.display = 'flex';
+                updateExportToolbarState(data.verses.length);
 
                 let chapterSelectHtml = '';
                 if (Array.isArray(data.all_chapters) && data.all_chapters.length > 1) {
@@ -2249,7 +2260,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <span class="verse-num-badge">${vLabel} ${hebVerse}</span>
                                 <div class="d-flex align-items-center gap-2">
                                     ${commBtnHtml}
-                                    <button type="button" class="result-ai-code-btn py-1 px-2" style="font-size: 0.78rem;" onclick="openAutomatedCodeFinderByIdx(${idx})">
+                                    <button type="button" class="result-ai-code-btn py-1 px-2" style="font-size: 0.78rem;" data-result-idx="${idx}" data-modal-trigger="code" onclick="openAutomatedCodeFinderByIdx(${idx}, this)">
                                         <i class="bi bi-stars"></i> ניתוח AI
                                     </button>
                                     <button type="button" class="result-action-btn py-1 px-2" style="font-size: 0.78rem;" onclick="copySingleResult(${idx})">
@@ -2303,16 +2314,69 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (opener) {
             modalEl.__returnFocusEl = opener;
+            const rIdx = opener.getAttribute && opener.getAttribute('data-result-idx');
+            const mTrig = opener.getAttribute && opener.getAttribute('data-modal-trigger');
+            if (rIdx !== null && mTrig) {
+                modalEl.__returnFocusSelector = `button[data-result-idx="${rIdx}"][data-modal-trigger="${mTrig}"]`;
+            } else if (opener.id) {
+                modalEl.__returnFocusSelector = `#${opener.id}`;
+            } else {
+                modalEl.__returnFocusSelector = null;
+            }
         }
         return modalEl.__returnFocusEl || null;
     }
 
+    function resolveModalReturnTarget(modalEl) {
+        if (!modalEl) return null;
+        if (modalEl.__returnFocusEl && modalEl.__returnFocusEl.isConnected) {
+            return modalEl.__returnFocusEl;
+        }
+        if (modalEl.__returnFocusSelector) {
+            const found = document.querySelector(modalEl.__returnFocusSelector);
+            if (found && found.isConnected) {
+                return found;
+            }
+        }
+        return null;
+    }
+
+    function restoreModalFocusTarget(modalEl, target, onlyIfLost) {
+        if (!target || !target.isConnected || typeof target.focus !== 'function') {
+            return false;
+        }
+        if (onlyIfLost) {
+            const active = document.activeElement;
+            if (active && active !== document.body && active !== document.documentElement && (!modalEl || !modalEl.contains(active))) {
+                return false;
+            }
+        }
+        try {
+            target.focus({ preventScroll: true });
+        } catch (err) {
+            target.focus();
+        }
+        return document.activeElement === target;
+    }
+
     function showAccessibleModal(modalEl, triggerEl) {
         if (!modalEl) return;
+        modalEl.__isClosing = false;
         const opener = captureModalReturnFocus(modalEl, triggerEl);
         const modalObj = bootstrap.Modal.getOrCreateInstance(modalEl);
         modalObj.show(opener || undefined);
     }
+
+    let activeClosingModalEl = null;
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Tab' || !activeClosingModalEl) return;
+        const modalEl = activeClosingModalEl;
+        const target = resolveModalReturnTarget(modalEl);
+        if (target) {
+            restoreModalFocusTarget(modalEl, target, true);
+        }
+    }, true);
 
     ['chapterContextModal', 'codeFinderModal', 'shareResultModal'].forEach(modalId => {
         const modalEl = document.getElementById(modalId);
@@ -2320,25 +2384,53 @@ document.addEventListener('DOMContentLoaded', function() {
         modalEl.__focusManagerBound = true;
 
         modalEl.addEventListener('show.bs.modal', function(e) {
+            modalEl.__isClosing = false;
+            if (activeClosingModalEl === modalEl) {
+                activeClosingModalEl = null;
+            }
             if (!modalEl.__returnFocusEl) {
                 captureModalReturnFocus(modalEl, e.relatedTarget || document.activeElement);
             }
         });
 
+        modalEl.addEventListener('shown.bs.modal', function() {
+            if (!modalEl.__isClosing && (!document.activeElement || !modalEl.contains(document.activeElement))) {
+                const focusTarget = modalEl.querySelector('.btn-close') || modalEl;
+                if (focusTarget && typeof focusTarget.focus === 'function') {
+                    focusTarget.focus({ preventScroll: true });
+                }
+            }
+        });
+
         modalEl.addEventListener('hide.bs.modal', function() {
-            if (document.activeElement && modalEl.contains(document.activeElement) && typeof document.activeElement.blur === 'function') {
+            modalEl.__isClosing = true;
+            activeClosingModalEl = modalEl;
+            if (modalEl.__scrollTimer) {
+                clearTimeout(modalEl.__scrollTimer);
+                modalEl.__scrollTimer = null;
+            }
+            const target = resolveModalReturnTarget(modalEl);
+            const moved = restoreModalFocusTarget(modalEl, target, false);
+            if (!moved && document.activeElement && modalEl.contains(document.activeElement) && typeof document.activeElement.blur === 'function') {
                 document.activeElement.blur();
             }
         });
 
         modalEl.addEventListener('hidden.bs.modal', function() {
-            const target = modalEl.__returnFocusEl;
+            const target = resolveModalReturnTarget(modalEl);
+            modalEl.__isClosing = false;
+            if (activeClosingModalEl === modalEl) {
+                activeClosingModalEl = null;
+            }
             modalEl.__returnFocusEl = null;
+            modalEl.__returnFocusSelector = null;
             if (target && target.isConnected && typeof target.focus === 'function') {
+                restoreModalFocusTarget(modalEl, target, true);
                 window.requestAnimationFrame(function() {
-                    if (target.isConnected) {
-                        target.focus();
-                    }
+                    restoreModalFocusTarget(modalEl, target, true);
+                    setTimeout(function() {
+                        restoreModalFocusTarget(modalEl, target, true);
+                    }, 50);
                 });
             }
         });
@@ -2399,33 +2491,100 @@ document.addEventListener('DOMContentLoaded', function() {
         );
     };
 
-    async function fetchAllResultsForExport() {
-        if (!lastFetchedResults.length) return [];
-        if (lastSearchIsQuickBrowse || lastSearchMeta.total <= lastFetchedResults.length || !lastSearchApiUrl) {
-            return lastFetchedResults;
+    function updateExportToolbarState(totalCount) {
+        const total = parseInt(totalCount || 0, 10) || 0;
+        const copyBtn = document.getElementById('copyAllResultsBtn');
+        const dlBtn = document.getElementById('downloadTxtResultsBtn');
+        const capNotice = document.getElementById('exportCapNotice');
+        const isCapped = !lastSearchIsQuickBrowse && total > MAX_EXPORT_RESULTS;
+        const capFmt = MAX_EXPORT_RESULTS.toLocaleString('he-IL');
+        const totalFmt = total.toLocaleString('he-IL');
+
+        if (copyBtn) {
+            copyBtn.innerHTML = isCapped
+                ? `<i class="bi bi-clipboard-check"></i> העתק ${capFmt} מתוך ${totalFmt}`
+                : `<i class="bi bi-clipboard-check"></i> העתק הכל`;
+            copyBtn.title = isCapped ? `יועתקו ${capFmt} מתוך ${totalFmt} התוצאות הראשונות` : 'העתק את כל התוצאות ללוח';
         }
-        try {
-            const u = new URL(lastSearchApiUrl, window.location.origin);
-            u.searchParams.set('page', '1');
-            u.searchParams.set('per_page', '2500');
-            const resp = await fetch(u.pathname + u.search);
-            const fullData = await resp.json();
-            if (fullData && Array.isArray(fullData.results) && fullData.results.length > 0) {
-                return fullData.results.map(r => ({
-                    ...r,
-                    raw_verse: r.raw_verse || r.verse,
-                    verse: toHebrewLetters(r.verse)
-                }));
+        if (dlBtn) {
+            dlBtn.innerHTML = isCapped
+                ? `<i class="bi bi-download"></i> הורד ${capFmt} מתוך ${totalFmt} (TXT)`
+                : `<i class="bi bi-download"></i> הורד כקובץ TXT`;
+            dlBtn.title = isCapped ? `יוצאו ${capFmt} מתוך ${totalFmt} התוצאות הראשונות לקובץ TXT` : 'הורד את כל התוצאות כקובץ TXT';
+        }
+        if (capNotice) {
+            if (isCapped) {
+                capNotice.textContent = `תקרת ייצוא: יועתקו ${capFmt} מתוך ${totalFmt}`;
+                capNotice.style.display = 'inline-flex';
+            } else {
+                capNotice.textContent = '';
+                capNotice.style.display = 'none';
             }
-        } catch (e) {}
-        return lastFetchedResults;
+        }
     }
 
-    function formatExportLines(resultsList) {
-        const total = lastSearchMeta.total || resultsList.length;
-        const scopeText = (resultsList.length === total)
-            ? `נמצאו והועתקו כל ${total} התוצאות`
-            : `נמצאו ${total} תוצאות (מיוצאות ${resultsList.length} תוצאות)`;
+    async function fetchAllResultsForExport(onProgress) {
+        if (!lastFetchedResults.length) {
+            return { results: [], total: 0, truncated: false };
+        }
+        const expectedTotal = lastSearchMeta.total || lastFetchedResults.length;
+        if (lastSearchIsQuickBrowse || expectedTotal <= lastFetchedResults.length || !lastSearchApiUrl) {
+            return { results: lastFetchedResults, total: expectedTotal, truncated: false };
+        }
+        const targetCount = Math.min(expectedTotal, MAX_EXPORT_RESULTS);
+        const pagesNeeded = Math.max(1, Math.ceil(targetCount / EXPORT_PAGE_SIZE));
+        const collected = [];
+        let reportedTotal = expectedTotal;
+
+        try {
+            for (let p = 1; p <= pagesNeeded; p++) {
+                if (typeof onProgress === 'function') {
+                    onProgress(p, pagesNeeded);
+                }
+                const u = new URL(lastSearchApiUrl, window.location.origin);
+                u.searchParams.set('page', String(p));
+                u.searchParams.set('per_page', String(EXPORT_PAGE_SIZE));
+                const resp = await fetch(u.pathname + u.search);
+                if (!resp.ok) break;
+                const chunkData = await resp.json();
+                if (chunkData && typeof chunkData.total === 'number' && chunkData.total > 0) {
+                    reportedTotal = chunkData.total;
+                }
+                const chunkRows = (chunkData && Array.isArray(chunkData.results)) ? chunkData.results : [];
+                if (!chunkRows.length) break;
+                chunkRows.forEach(r => {
+                    collected.push({
+                        ...r,
+                        raw_verse: r.raw_verse || r.verse,
+                        verse: toHebrewLetters(r.verse)
+                    });
+                });
+                if (collected.length >= reportedTotal || collected.length >= MAX_EXPORT_RESULTS) {
+                    break;
+                }
+            }
+        } catch (e) {}
+
+        if (collected.length > 0) {
+            const finalList = collected.slice(0, MAX_EXPORT_RESULTS);
+            return {
+                results: finalList,
+                total: reportedTotal,
+                truncated: finalList.length < reportedTotal
+            };
+        }
+        return {
+            results: lastFetchedResults,
+            total: reportedTotal,
+            truncated: lastFetchedResults.length < reportedTotal
+        };
+    }
+
+    function formatExportLines(resultsList, totalOverride) {
+        const total = totalOverride || lastSearchMeta.total || resultsList.length;
+        const scopeText = (resultsList.length >= total)
+            ? `נמצאו ויוצאו כל ${total} התוצאות`
+            : `נמצאו ${total} תוצאות (יוצאו ${resultsList.length} מתוך ${total} תוצאות)`;
         const lines = [];
         lines.push(`מתוך מאגר החיפוש התורני - ספריית לייבוביץ (https://leblibrary.co.il)`);
         lines.push(`חיפוש: "${lastSearchMeta.query}" (${lastSearchMeta.actionTitle}) | ${scopeText}:`);
@@ -2446,20 +2605,30 @@ document.addEventListener('DOMContentLoaded', function() {
     window.copyAllResultsToClipboard = async function() {
         if (!lastFetchedResults.length) return;
         const btn = document.getElementById('copyAllResultsBtn');
-        const origHtml = btn ? btn.innerHTML : '';
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm ms-1"></span>מכין הכל...';
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm ms-1"></span>מכין תוצאות...';
         }
         try {
-            const allRes = await fetchAllResultsForExport();
-            const textOut = formatExportLines(allRes);
+            const exported = await fetchAllResultsForExport((p, totalPages) => {
+                if (btn && totalPages > 1) {
+                    btn.innerHTML = `<span class="spinner-border spinner-border-sm ms-1"></span>אוסף (${p}/${totalPages})...`;
+                }
+            });
+            const allRes = exported.results;
+            const textOut = formatExportLines(allRes, exported.total);
             await navigator.clipboard.writeText(textOut);
-            showToast(`כל ${allRes.length} התוצאות הועתקו במסודר!`);
+            const countFmt = allRes.length.toLocaleString('he-IL');
+            const totalFmt = exported.total.toLocaleString('he-IL');
+            if (exported.truncated) {
+                showToast(`הועתקו ${countFmt} מתוך ${totalFmt} תוצאות.`);
+            } else {
+                showToast(`כל ${countFmt} התוצאות הועתקו במסודר!`);
+            }
         } finally {
             if (btn) {
                 btn.disabled = false;
-                btn.innerHTML = origHtml;
+                updateExportToolbarState(lastSearchMeta.total || lastFetchedResults.length);
             }
         }
     };
@@ -2489,14 +2658,18 @@ document.addEventListener('DOMContentLoaded', function() {
     window.downloadResultsAsText = async function() {
         if (!lastFetchedResults.length) return;
         const btn = document.getElementById('downloadTxtResultsBtn');
-        const origHtml = btn ? btn.innerHTML : '';
         if (btn) {
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm ms-1"></span>מכין קובץ...';
         }
         try {
-            const allRes = await fetchAllResultsForExport();
-            const textOut = formatExportLines(allRes);
+            const exported = await fetchAllResultsForExport((p, totalPages) => {
+                if (btn && totalPages > 1) {
+                    btn.innerHTML = `<span class="spinner-border spinner-border-sm ms-1"></span>אוסף (${p}/${totalPages})...`;
+                }
+            });
+            const allRes = exported.results;
+            const textOut = formatExportLines(allRes, exported.total);
             const blob = new Blob([textOut], { type: 'text/plain;charset=utf-8' });
             const dlUrl = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -2506,20 +2679,32 @@ document.addEventListener('DOMContentLoaded', function() {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(dlUrl);
-            showToast(`קובץ TXT עם כל ${allRes.length} התוצאות הורד!`);
+            const countFmt = allRes.length.toLocaleString('he-IL');
+            const totalFmt = exported.total.toLocaleString('he-IL');
+            if (exported.truncated) {
+                showToast(`הורד קובץ TXT עם ${countFmt} מתוך ${totalFmt} תוצאות.`);
+            } else {
+                showToast(`קובץ TXT עם כל ${countFmt} התוצאות הורד!`);
+            }
         } finally {
             if (btn) {
                 btn.disabled = false;
-                btn.innerHTML = origHtml;
+                updateExportToolbarState(lastSearchMeta.total || lastFetchedResults.length);
             }
         }
     };
 
-    window.openFullChapterModal = function(bookName, chapterName, targetVerse, verseLabel) {
+    window.openFullChapterModal = function(bookName, chapterName, targetVerse, verseLabel, triggerEl) {
         const modalEl = document.getElementById('chapterContextModal');
         const titleEl = document.getElementById('chapterModalTitle');
         const bodyEl = document.getElementById('chapterModalBody');
         const chDisplay = formatChapterTitle(chapterName, bookName);
+        const reqSeq = ++chapterModalRequestSeq;
+
+        if (modalEl && modalEl.__scrollTimer) {
+            clearTimeout(modalEl.__scrollTimer);
+            modalEl.__scrollTimer = null;
+        }
 
         titleEl.innerHTML = `<i class="bi bi-book-fill ms-2"></i>${escapeHtml(bookName)} — ${escapeHtml(chDisplay)}`;
         bodyEl.innerHTML = `
@@ -2529,12 +2714,13 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
 
-        showAccessibleModal(modalEl);
+        showAccessibleModal(modalEl, triggerEl);
 
         const url = `/api/tanakh-search/?type=chapter_context&target_book=${encodeURIComponent(bookName)}&target_chapter=${encodeURIComponent(chapterName)}`;
         fetch(url)
             .then(r => r.json())
             .then(data => {
+                if (reqSeq !== chapterModalRequestSeq || modalEl.__isClosing) return;
                 const verses = data.verses || [];
                 const vLbl = data.verse_label || verseLabel || 'פסוק';
                 if (!verses.length) {
@@ -2566,7 +2752,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 bodyEl.innerHTML = html;
 
-                setTimeout(() => {
+                modalEl.__scrollTimer = setTimeout(() => {
+                    modalEl.__scrollTimer = null;
+                    if (reqSeq !== chapterModalRequestSeq || modalEl.__isClosing || !modalEl.classList.contains('show')) return;
                     const targetRow = document.getElementById('modalTargetVerseRow');
                     if (targetRow) {
                         targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2600,7 +2788,7 @@ document.addEventListener('DOMContentLoaded', function() {
         triggerUniversalShare(title, bodyTxt, buildShareableCurrentUrl());
     };
 
-    window.openAutomatedCodeFinder = function(bookName, chapterName, verseNum) {
+    window.openAutomatedCodeFinder = function(bookName, chapterName, verseNum, triggerEl) {
         const modalEl = document.getElementById('codeFinderModal');
         const bodyEl = document.getElementById('codeFinderModalBody');
         const titleEl = document.getElementById('codeFinderModalTitle');
@@ -2614,7 +2802,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
 
-        showAccessibleModal(modalEl);
+        showAccessibleModal(modalEl, triggerEl);
 
         const url = `/api/torah-ai-insights/?mode=code_finder&book=${encodeURIComponent(bookName)}&chapter=${encodeURIComponent(chapterName)}&verse=${encodeURIComponent(verseNum)}`;
         fetch(url)
