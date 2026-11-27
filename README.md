@@ -1,6 +1,11 @@
 # LebLibrary
 ### ספריית לייבוביץ
 
+[![CI - Tests & Verification](https://github.com/mole28/leblibrary/actions/workflows/ci.yml/badge.svg)](https://github.com/mole28/leblibrary/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![Django](https://img.shields.io/badge/Django-4.2-092E20?logo=django&logoColor=white)
+![Accessibility](https://img.shields.io/badge/WCAG-2.2%20AA-16a34a)
+
 A digital library, research platform, and article management system built to provide accessible Torah scholarship, halachic literature, and computational text-analysis tools.
 
 **Live Site:** [https://leblibrary.co.il](https://leblibrary.co.il)
@@ -47,22 +52,49 @@ The platform integrates specialized AI modules and data-analysis workflows:
 
 ---
 
+## 🛡️ Quality Assurance & Automated Verification
+LebLibrary is verified by **159 automated checks** spanning unit & integration tests (`pytest`), security hardening, search engine parity, database integrity, and WCAG 2.2 AA accessibility — gated by GitHub Actions CI on every push to `main`.
+
+- **Security:** RBAC enforcement, DOM/Reflected XSS, Origin & CSRF guards, draft IDOR prevention, XFF rate-limit hardening, and unsafe-link sanitization.
+- **Search & Performance:** SQLite FTS5 prefilter parity, two-phase pagination, cache versioning, and non-blocking async TTS generation.
+- **Data & Accessibility:** Zero-drift migration checks, WCAG 2.2 AA contrast & keyboard focus management, and end-to-end QA regression suites.
+
+<details>
+<summary><strong>View verification breakdown & local test commands</strong></summary>
+
+- **CI Gate (`pytest` + Django Checks):** 15 automated unit & integration tests, `manage.py check`, migration drift check, and static manifest verification.
+- **Security & Production Infrastructure:** 27 checks covering application security hardening, reverse-proxy headers (CSP/HSTS), and encrypted backup integrity.
+- **Core, Search & Performance:** 39 checks covering SQLite FTS5 parity, Hebrew morphological engine, migrations graph, and PWA compliance.
+- **SEO, Accessibility & QA Regression:** 78 checks covering JSON-LD `@graph`, WCAG 2.2 AA contrast, footnotes, multi-page export, and deterministic modal focus restoration.
+
+```bash
+python -m pytest -v
+python verify_qa_open_findings.py --offline
+```
+</details>
+
+---
+
 ## 🚀 Getting Started (Local Development)
 To run this project locally for development or testing:
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/mole28/leblibrary.git](https://github.com/mole28/leblibrary.git)
+   git clone https://github.com/mole28/leblibrary.git
    cd leblibrary
-   
+   ```
+
 2. **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 3. **Run database migrations:**
-    ```bash
-    python manage.py migrate
+   ```bash
+   python manage.py migrate
+   ```
 
 4. **Start the development server:**
-    ```bash
-    python manage.py runserver
+   ```bash
+   python manage.py runserver
+   ```

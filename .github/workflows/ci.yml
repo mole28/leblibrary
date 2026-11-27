@@ -1,0 +1,44 @@
+name: CI - Tests & Verification
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    env:
+      PYTHONUNBUFFERED: "1"
+      DJANGO_SETTINGS_MODULE: "core.settings"
+      DJANGO_DEBUG: "False"
+      SECRET_KEY: "ci-ephemeral-secret-key-not-for-production-0123456789abcdef0123456789"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Django system & migration checks
+        run: |
+          python manage.py check
+          python manage.py makemigrations --check --dry-run
+
+      - name: Collect static files
+        run: python manage.py collectstatic --noinput
+
+      - name: Run pytest suite
+        run: pytest -v
+
+      - name: Run offline QA verification
+        run: python verify_qa_open_findings.py --offline

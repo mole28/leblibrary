@@ -1,4 +1,4 @@
-﻿Django==4.2.30
+Django==4.2.30
 gunicorn
 whitenoise
 psycopg2-binary
