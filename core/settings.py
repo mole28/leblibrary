@@ -1,3 +1,4 @@
+import sys
 import os
 import tempfile
 from pathlib import Path
@@ -196,9 +197,21 @@ LOGGING = {
 }
 
 SENTRY_DSN = os.environ.get('SENTRY_DSN', '').strip()
-if SENTRY_DSN:
+_SENTRY_IN_TESTS = (
+    'pytest' in sys.modules
+    or bool(os.environ.get('PYTEST_CURRENT_TEST'))
+    or (len(sys.argv) > 1 and sys.argv[1] == 'test')
+)
+_SENTRY_ALLOW_LOCAL = os.environ.get('SENTRY_ENABLE_LOCAL', '').strip().lower() in ('1', 'true', 'yes')
+SENTRY_ENVIRONMENT = (
+    os.environ.get('SENTRY_ENVIRONMENT', '').strip()
+    or ('development' if (DEBUG or os.name == 'nt') else 'production')
+)
+
+if SENTRY_DSN and not _SENTRY_IN_TESTS and (SENTRY_ENVIRONMENT == 'production' or _SENTRY_ALLOW_LOCAL):
     sentry_sdk.init(
         dsn=SENTRY_DSN,
+        environment=SENTRY_ENVIRONMENT,
         ignore_errors=[DisallowedHost],
         traces_sample_rate=0.2,
         send_default_pii=False,

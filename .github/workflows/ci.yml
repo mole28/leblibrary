@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -17,9 +20,9 @@ jobs:
       SECRET_KEY: "ci-ephemeral-secret-key-not-for-production-0123456789abcdef0123456789"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: "pip"
@@ -38,7 +41,7 @@ jobs:
         run: python manage.py collectstatic --noinput
 
       - name: Run pytest suite
-        run: pytest -v
+        run: pytest -v -W error::django.utils.deprecation.RemovedInDjango51Warning
 
       - name: Run offline QA verification
         run: python verify_qa_open_findings.py --offline
