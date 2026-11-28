@@ -344,7 +344,7 @@ def process_mammoth_html(raw_html):
         hr = soup.new_tag('hr', style='border: 0; border-top: 5px solid #2c3e50; margin: 60px 0 40px 0; opacity: 1;')
         h2 = soup.new_tag('h2', style='text-align: center; color: #d4af37; margin-bottom: 30px; font-weight: bold;')
         h2.string = "הערות שוליים"
-        container = soup.new_tag('div', class_='custom-footnotes-container', style='font-size: 1.1em; line-height: 1.8; margin-right: 10px;')
+        container = soup.new_tag('div', attrs={'class': 'custom-footnotes-container', 'style': 'font-size: 1.1em; line-height: 1.8; margin-right: 10px;'})
 
         for fn_id, li_tag in footnotes_dict.items():
             num = fn_id.replace('footnote-', '')
@@ -378,6 +378,47 @@ def clean_word_html(html_content):
         return html_content
     html_content = html_content.replace('^', '').replace('↑', '').replace('ˆ', '')
     soup = BeautifulSoup(html_content, 'html.parser')
+
+    # המרת תכונות legacy class_ ל-class תקני
+    for tag in soup.find_all(attrs={'class_': True}):
+        legacy_cls = tag.attrs.pop('class_')
+        existing_cls = tag.get('class') or []
+        if isinstance(existing_cls, str):
+            existing_cls = existing_cls.split()
+        for token in str(legacy_cls).split():
+            if token not in existing_cls:
+                existing_cls.append(token)
+        tag['class'] = existing_cls
+
+    # אם למאמר כבר יש הערות שוליים מעוצבות — שמור עליהן ושחזר קו/כותרת אם הוסרו בעריכה
+    existing_container = soup.find('div', class_='custom-footnotes-container')
+    first_fn_div = soup.find('div', id=re.compile(r'^footnote-\d+$'))
+    fn_anchor = existing_container if (existing_container and existing_container.get_text(strip=True)) else first_fn_div
+    if fn_anchor is not None:
+        def _prev_tag(el):
+            sib = el.previous_sibling
+            while sib is not None:
+                if getattr(sib, 'name', None):
+                    return sib
+                if str(sib).strip():
+                    return None
+                sib = sib.previous_sibling
+            return None
+
+        prev1 = _prev_tag(fn_anchor)
+        if prev1 is not None and prev1.name == 'h2' and 'הערות שוליים' in prev1.get_text(strip=True):
+            prev2 = _prev_tag(prev1)
+            if not (prev2 is not None and prev2.name == 'hr'):
+                hr_new = soup.new_tag('hr', style='border: 0; border-top: 5px solid #2c3e50; margin: 60px 0 40px 0; opacity: 1;')
+                prev1.insert_before(hr_new)
+        else:
+            if not (prev1 is not None and prev1.name == 'hr'):
+                hr_new = soup.new_tag('hr', style='border: 0; border-top: 5px solid #2c3e50; margin: 60px 0 40px 0; opacity: 1;')
+                fn_anchor.insert_before(hr_new)
+            h2_new = soup.new_tag('h2', style='text-align: center; color: #d4af37; margin-bottom: 30px; font-weight: bold;')
+            h2_new.string = "הערות שוליים"
+            fn_anchor.insert_before(h2_new)
+        return normalize_article_footnotes_html(str(soup))
 
     for el in soup.find_all('div', class_='custom-footnotes-container'):
         el.decompose()
@@ -458,7 +499,7 @@ def clean_word_html(html_content):
             text = sup.get_text(strip=True)
             clean_num = re.sub(r'\D', '', text)
             if clean_num and clean_num.isdigit():
-                a = soup.new_tag('a', href=f"#footnote-{clean_num}", class_="footnote-ref")
+                a = soup.new_tag('a', href=f"#footnote-{clean_num}", attrs={'class': 'footnote-ref'})
                 a.string = f"[{clean_num}]"
                 sup.string = ''
                 sup.append(a)
@@ -481,7 +522,7 @@ def clean_word_html(html_content):
         hr_new = soup.new_tag('hr', style='border: 0; border-top: 5px solid #2c3e50; margin: 60px 0 40px 0; opacity: 1;')
         h2 = soup.new_tag('h2', style='text-align: center; color: #d4af37; margin-bottom: 30px; font-weight: bold;')
         h2.string = "הערות שוליים"
-        container = soup.new_tag('div', class_='custom-footnotes-container', style='font-size: 1.1em; line-height: 1.8; margin-right: 10px;')
+        container = soup.new_tag('div', attrs={'class': 'custom-footnotes-container', 'style': 'font-size: 1.1em; line-height: 1.8; margin-right: 10px;'})
 
         for fn in built_footnotes:
             div = soup.new_tag('div', style='margin-bottom: 15px; display: flex; align-items: flex-start;')

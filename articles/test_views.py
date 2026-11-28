@@ -159,3 +159,39 @@ class VisitorMiddlewareFilterTest(TestCase):
 
         logged_ips = list(VisitorLog.objects.values_list('ip_address', flat=True))
         self.assertEqual(logged_ips, ['203.0.113.10'])
+
+
+class ArticleFootnotesPreservationTest(TestCase):
+    def test_clean_word_html_preserves_and_restores_footnotes_divider(self):
+        from articles.models import clean_word_html
+
+        # מקרה א: מאמר שנערך עם class_ ישן, <hr> וכותרת הערות שוליים
+        html_with_divider = (
+            '<p>טקסט עם <a href="/article/test/">קישור</a>'
+            '<a class="footnote-ref" href="#footnote-1" id="footnote-ref-1"><sup>[1]</sup></a></p>'
+            '<hr style="border-top:5px solid #2c3e50;">'
+            '<h2><strong>הערות שוליים</strong></h2>'
+            '<div class_="custom-footnotes-container">'
+            '<div id="footnote-1"><span>1.</span><span>תוכן הערה</span></div>'
+            '</div>'
+        )
+        res = clean_word_html(html_with_divider)
+        self.assertIn('<hr', res)
+        self.assertIn('הערות שוליים', res)
+        self.assertIn('class="custom-footnotes-container"', res)
+        self.assertNotIn('class_=', res)
+        self.assertIn('href="/article/test/"', res)
+
+        # מקרה ב: מאמר שבו <hr> ו-<h2> כבר נמחקו בעריכה קודמת — משחזר אותם אוטומטית
+        html_missing_divider = (
+            '<p>פסקה אחרונה</p>'
+            '<div class_="custom-footnotes-container">'
+            '<div id="footnote-1"><span>1.</span><span>הערה ראשונה</span></div>'
+            '</div>'
+        )
+        restored = clean_word_html(html_missing_divider)
+        self.assertIn('<hr', restored)
+        self.assertIn('הערות שוליים', restored)
+        self.assertIn('class="custom-footnotes-container"', restored)
+        self.assertLess(restored.index('<hr'), restored.index('הערות שוליים'))
+        self.assertLess(restored.index('הערות שוליים'), restored.index('id="footnote-1"'))
