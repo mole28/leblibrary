@@ -53,7 +53,7 @@ The platform integrates specialized AI modules and data-analysis workflows:
 ---
 
 ## 🛡️ Quality Assurance & Automated Verification
-LebLibrary is verified by **168 automated checks** spanning unit & integration tests (`pytest`), security hardening, search engine parity, database integrity, and WCAG 2.2 AA accessibility — gated by GitHub Actions CI on every push to `main`.
+LebLibrary is verified by **169 automated checks** spanning unit & integration tests (`pytest`), security hardening, search engine parity, database integrity, and WCAG 2.2 AA accessibility — gated by GitHub Actions CI on every push to `main`.
 
 - **Security:** RBAC enforcement, DOM/Reflected XSS, Origin & CSRF guards, draft IDOR prevention, XFF rate-limit hardening, and unsafe-link sanitization.
 - **Search & Performance:** SQLite FTS5 prefilter parity, two-phase pagination, cache versioning, and non-blocking async TTS generation.
@@ -62,7 +62,7 @@ LebLibrary is verified by **168 automated checks** spanning unit & integration t
 <details>
 <summary><strong>View verification breakdown & local test commands</strong></summary>
 
-- **CI Gate (`pytest` + Django Checks):** 24 automated unit & integration tests, `manage.py check`, migration drift check, and static manifest verification.
+- **CI Gate (`pytest` + Django Checks):** 25 automated unit & integration tests, `manage.py check`, migration drift check, and static manifest verification.
 - **Security & Production Infrastructure:** 27 checks covering application security hardening, reverse-proxy headers (CSP/HSTS), and encrypted backup integrity.
 - **Core, Search & Performance:** 39 checks covering SQLite FTS5 parity, Hebrew morphological engine, migrations graph, and PWA compliance.
 - **SEO, Accessibility & QA Regression:** 78 checks covering JSON-LD `@graph`, WCAG 2.2 AA contrast, footnotes, multi-page export, and deterministic modal focus restoration.

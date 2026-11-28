@@ -271,3 +271,38 @@ class ArticleFootnotesPreservationTest(TestCase):
         self.assertIn('שהעלנו שיש לברך', bodies[0].get_text())
         self.assertIn('flex-shrink: 0', direct_tags[0].get('style', ''))
         self.assertEqual(len(fn.find_all('a', class_='footnote-backref')), 1)
+
+    def test_article_detail_view_renders_merged_footnote_body_with_links(self):
+        from bs4 import BeautifulSoup
+        from django.urls import reverse
+        from articles.models import Article
+
+        split_html = (
+            '<p>טקסט פתיחה<a class="footnote-ref" href="#footnote-1" id="footnote-ref-1"><sup>[1]</sup></a>.</p>'
+            '<div class="custom-footnotes-container">'
+            '<div id="footnote-1" style="align-items:flex-start;display:flex;margin-bottom:15px;">'
+            '<span style="color:#d4af37;"><span style="flex-shrink:0;min-width:35px;"><strong>1.</strong></span></span>'
+            '<span style="flex-grow:1;"> וע"ע במאמר </span>'
+            '<a href="/article/house/"><span style="flex-grow:1;">שהחיינו על בית חדש</span></a>'
+            '<span style="flex-grow:1;"> שהעלנו שיש לברך.</span>'
+            '</div></div>'
+        )
+        art = Article.objects.create(
+            title="בדיקת תצוגת קישור בהערת שוליים",
+            content=split_html,
+            is_published=True,
+        )
+        url = reverse("articles:detail", kwargs={"slug": art.slug})
+        resp = self.client.get(url, secure=True)
+        self.assertEqual(resp.status_code, 200)
+
+        soup = BeautifulSoup(resp.content.decode("utf-8"), "html.parser")
+        fn = soup.find("div", id="footnote-1")
+        self.assertIsNotNone(fn)
+        direct_tags = [c for c in fn.contents if getattr(c, "name", None)]
+        self.assertEqual(len(direct_tags), 3)
+        body = fn.find("div", class_="footnote-body")
+        self.assertIsNotNone(body)
+        self.assertIsNotNone(body.find("a", href="/article/house/"))
+        self.assertIn("שהעלנו שיש לברך", body.get_text())
+        self.assertIsNotNone(fn.find("a", class_="footnote-backref"))
