@@ -306,3 +306,186 @@ class ArticleFootnotesPreservationTest(TestCase):
         self.assertIsNotNone(body.find("a", href="/article/house/"))
         self.assertIn("שהעלנו שיש לברך", body.get_text())
         self.assertIsNotNone(fn.find("a", class_="footnote-backref"))
+
+
+class QADailyReport20261128Test(TestCase):
+    def setUp(self):
+        from articles.models import Article, Book, QA
+        self.book_read = Book.objects.create(
+            title="מידה של תורה",
+            summary="ספר עיון מלא במידות ושיעורי תורה",
+            is_for_sale=False,
+        )
+        self.book_sale = Book.objects.create(
+            title="מידה של תורה",
+            summary="מהדורה מודפסת לרכישה",
+            is_for_sale=True,
+            price=20,
+        )
+        self.article = Article.objects.create(
+            title="מאמר על מידה של תורה",
+            content="<p>עיון במידות חז״ל ושיעורי תורה.</p>",
+            is_published=True,
+        )
+        self.qa1 = QA.objects.create(
+            question="מהו עניין הצומות ומידה של תורה?",
+            answer="תשובה מפורטת בנושא צומות ומידות.",
+            category="צומות",
+        )
+        self.qa2 = QA.objects.create(
+            question="שאלה בעניין ברכות ומידה של תורה",
+            answer="תשובה בעניין ברכות.",
+            category="ברכות",
+        )
+
+    def test_qa01_02_03_and_recheck03_calculators_accessibility_and_threshold(self):
+        from bs4 import BeautifulSoup
+        from django.urls import reverse
+
+        for url_name in ("articles:calculator", "articles:volume_calculator", "articles:weight_calculator"):
+            resp = self.client.get(reverse(url_name), secure=True)
+            self.assertEqual(resp.status_code, 200)
+            html = resp.content.decode("utf-8")
+            soup = BeautifulSoup(html, "html.parser")
+
+            # QA-01: explicit < 0.0001 threshold formatter + exact value in tooltip
+            self.assertIn("formatCalcDisplay", html)
+            self.assertIn("< 0.0001", html)
+            self.assertIn("formatCalcExact", html)
+
+            # QA-02: distinct accessible names for all 4 inputs/selects
+            labels = []
+            for fid in ("inputValue1", "unitSelect1", "inputValue2", "unitSelect2"):
+                el = soup.find(id=fid)
+                self.assertIsNotNone(el, f"{fid} missing in {url_name}")
+                lbl = (el.get("aria-label") or "").strip()
+                self.assertTrue(len(lbl) >= 8, f"{fid} missing aria-label in {url_name}")
+                labels.append(lbl)
+            self.assertEqual(len(set(labels)), 4, f"Duplicate aria-labels in {url_name}")
+
+            # QA-03: focusable tooltip buttons with aria-describedby & role="tooltip"
+            tt_btns = soup.find_all("button", class_="tooltip-trigger-btn")
+            self.assertGreaterEqual(len(tt_btns), 6)
+            for b in tt_btns:
+                self.assertTrue(b.get("aria-label"))
+                desc = b.get("aria-describedby")
+                self.assertTrue(desc)
+                tt_el = soup.find(id=desc)
+                self.assertIsNotNone(tt_el)
+                self.assertEqual(tt_el.get("role"), "tooltip")
+
+            # Item 03: main link points to reading edition, subtle secondary link points to sale edition
+            read_href = reverse("articles:book_detail", args=[self.book_read.pk])
+            sale_href = reverse("articles:book_detail", args=[self.book_sale.pk])
+            self.assertIn(f'href="{read_href}"', html)
+            self.assertIn(f'href="{sale_href}"', html)
+
+    def test_qa04_05_06_aramaic_translator_keyboard_and_nikud(self):
+        from bs4 import BeautifulSoup
+        from django.urls import reverse
+
+        resp = self.client.get(reverse("articles:aramaic_translator"), secure=True)
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode("utf-8")
+        soup = BeautifulSoup(html, "html.parser")
+
+        # QA-04: dialect tabs are focusable <button role="tab"> with aria-selected
+        tabs = soup.select("#dialectDivisionTabs button.corpus-division-card[role='tab']")
+        self.assertEqual(len(tabs), 3)
+        self.assertEqual(tabs[0].get("aria-selected"), "true")
+        self.assertEqual(tabs[1].get("aria-selected"), "false")
+        self.assertEqual(tabs[2].get("aria-selected"), "false")
+
+        # QA-05: keyboard button per lexicon row
+        self.assertIn('class="lexicon-term-btn"', html)
+        self.assertIn('aria-label="פתח פירוט עבור ', html)
+
+        # QA-06: nikud normalization in lexicon filtering
+        self.assertIn("function normalizeLexSearch", html)
+        self.assertIn(r"[\u0591-\u05C7]", html)
+
+    def test_qa07_and_recheck26_advanced_search_export_snapshot_and_focus_trap(self):
+        from django.urls import reverse
+
+        resp = self.client.get(reverse("articles:advanced_search"), secure=True)
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode("utf-8")
+
+        # QA-07: share/copy URL derived from lastExecutedSearchParams snapshot
+        self.assertIn("let lastExecutedSearchParams = null;", html)
+        self.assertIn("lastExecutedSearchParams = {", html)
+        self.assertIn("const snap = (useExecutedSnapshot !== false && lastExecutedSearchParams", html)
+
+        # Item 26: Escape immediately deactivates Bootstrap focus trap and handles Tab deterministically
+        self.assertIn("function deactivateModalFocusTrap", html)
+        self.assertIn("if (e.key === 'Escape')", html)
+        self.assertIn("deactivateModalFocusTrap(modalEl);", html)
+
+    def test_qa08_global_search_tabs_books_and_sorted_qa(self):
+        from bs4 import BeautifulSoup
+        from django.urls import reverse
+
+        base_url = reverse("articles:list")
+
+        # Articles tab
+        r_art = self.client.get(base_url, {"q": "מידה של תורה"}, secure=True)
+        self.assertEqual(r_art.status_code, 200)
+        html_art = r_art.content.decode("utf-8")
+        soup_art = BeautifulSoup(html_art, "html.parser")
+        self.assertNotIn("לחץ על הלשוניות השונות למעלה", html_art)
+        self.assertIsNotNone(soup_art.find(id="search-tab-articles"))
+        self.assertIsNotNone(soup_art.find(id="search-tab-books"))
+        self.assertIsNotNone(soup_art.find(id="search-tab-qa"))
+
+        # Books tab shows matching book
+        r_books = self.client.get(base_url, {"q": "מידה של תורה", "tab": "books"}, secure=True)
+        self.assertEqual(r_books.status_code, 200)
+        self.assertIn("מידה של תורה", r_books.content.decode("utf-8"))
+        self.assertIn('id="search-panel-books"', r_books.content.decode("utf-8"))
+
+        # Q&A tab shows sorted Q&As (ברכות before צומות alphabetically)
+        r_qa = self.client.get(base_url, {"q": "מידה של תורה", "tab": "qa"}, secure=True)
+        self.assertEqual(r_qa.status_code, 200)
+        html_qa = r_qa.content.decode("utf-8")
+        self.assertIn('id="search-panel-qa"', html_qa)
+        self.assertIn("ברכות", html_qa)
+        self.assertIn("צומות", html_qa)
+        self.assertLess(html_qa.index("שאלה בעניין ברכות"), html_qa.index("מהו עניין הצומות"))
+
+        # Live search API includes Q&A results
+        r_live = self.client.get(reverse("articles:live_search"), {"q": "מידה של תורה"}, secure=True)
+        self.assertEqual(r_live.status_code, 200)
+        types = {item["type"] for item in r_live.json().get("results", [])}
+        self.assertIn("שו״ת", types)
+
+    def test_qa09_qa_category_link_decoupled_from_toggle_header(self):
+        from bs4 import BeautifulSoup
+        from django.urls import reverse
+
+        resp = self.client.get(reverse("articles:qa"), secure=True)
+        self.assertEqual(resp.status_code, 200)
+        soup = BeautifulSoup(resp.content.decode("utf-8"), "html.parser")
+
+        header = soup.find(id=f"header-qa-{self.qa1.id}")
+        self.assertIsNotNone(header)
+        # Category link must NOT be nested inside role="button" header
+        self.assertIsNone(header.find("a", class_="qa-category-link"))
+        card = soup.find(id=f"qa-{self.qa1.id}")
+        cat_link = card.find("a", class_="qa-category-link")
+        self.assertIsNotNone(cat_link)
+        self.assertIn("category=", cat_link.get("href", ""))
+
+    def test_qa10_book_detail_zen_mode_button_exposes_aria_pressed(self):
+        from bs4 import BeautifulSoup
+        from django.urls import reverse
+
+        resp = self.client.get(reverse("articles:book_detail", args=[self.book_read.pk]), secure=True)
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode("utf-8")
+        soup = BeautifulSoup(html, "html.parser")
+        btn = soup.find(id="zenToggleBtn")
+        self.assertIsNotNone(btn)
+        self.assertEqual(btn.get("aria-pressed"), "false")
+        self.assertEqual(btn.get("aria-label"), "מצב קריאה נקי")
+        self.assertIn("btn.setAttribute('aria-pressed', 'true')", html)
+        self.assertIn("btn.setAttribute('aria-pressed', 'false')", html)

@@ -1027,6 +1027,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     window.clearResultsScreen = function() {
+        lastExecutedSearchParams = null;
         const placeholder = document.getElementById('resultsPlaceholder');
         const resultsArea = document.getElementById('resultsArea');
         const exportToolbar = document.getElementById('exportToolbar');
@@ -1937,7 +1938,9 @@ document.addEventListener('DOMContentLoaded', function() {
         openFullChapterModal(res.book, res.chapter, res.verse, res.verse_label || 'פסוק', triggerEl);
     };
 
-    function buildShareableCurrentUrl() {
+    let lastExecutedSearchParams = null;
+
+    function buildShareableCurrentUrl(useExecutedSnapshot) {
         if (lastSearchIsQuickBrowse && activeBrowseState && activeBrowseState.book) {
             const params = new URLSearchParams();
             params.set('mode', 'browse');
@@ -1947,23 +1950,31 @@ document.addEventListener('DOMContentLoaded', function() {
             return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
         }
 
-        const query = searchQueryInput.value.trim();
+        const snap = (useExecutedSnapshot !== false && lastExecutedSearchParams && lastExecutedSearchParams.query)
+            ? lastExecutedSearchParams
+            : null;
+        const query = snap ? snap.query : searchQueryInput.value.trim();
         if (!query) return window.location.href;
-        const mode = searchActionInput.value;
-        const isAll = selectedCorpora.size === ALL_CORPORA_KEYS.length;
-        const corpusParam = isAll ? 'all' : Array.from(selectedCorpora).join(',');
-        const selectedExcludes = Array.from(excludeSelect.selectedOptions).map(o => o.value).join(',');
+        const mode = snap ? snap.mode : searchActionInput.value;
+        const corpusParam = snap
+            ? snap.corpusParam
+            : (selectedCorpora.size === ALL_CORPORA_KEYS.length ? 'all' : Array.from(selectedCorpora).join(','));
+        const selectedExcludes = snap
+            ? snap.excludeBooks
+            : Array.from(excludeSelect.selectedOptions).map(o => o.value).join(',');
+        const skipVal = snap ? snap.skip : ((mode === 'els' || mode === 'els_verse') ? currentSkipFilter : '');
+        const pageVal = snap ? snap.page : currentPage;
 
         const params = new URLSearchParams();
         params.set('q', query);
         params.set('type', mode);
         params.set('book', corpusParam);
         if (selectedExcludes) params.set('exclude_books', selectedExcludes);
-        if ((mode === 'els' || mode === 'els_verse') && currentSkipFilter !== '') {
-            params.set('skip', currentSkipFilter);
+        if ((mode === 'els' || mode === 'els_verse') && skipVal !== '') {
+            params.set('skip', skipVal);
         }
-        if (currentPage > 1) {
-            params.set('page', String(currentPage));
+        if (pageVal > 1) {
+            params.set('page', String(pageVal));
         }
         return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
     }
@@ -1990,6 +2001,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (mode === 'els' || mode === 'els_verse') {
             currentSkipFilter = elsPreselectSkip.value;
         }
+
+        const snapIsAll = selectedCorpora.size === ALL_CORPORA_KEYS.length;
+        lastExecutedSearchParams = {
+            query: query,
+            mode: mode,
+            corpusParam: snapIsAll ? 'all' : Array.from(selectedCorpora).join(','),
+            excludeBooks: Array.from(excludeSelect.selectedOptions).map(o => o.value).join(','),
+            skip: (mode === 'els' || mode === 'els_verse') ? currentSkipFilter : '',
+            page: currentPage
+        };
 
         syncBrowserUrlFromState();
         panelTitle.innerHTML = `<i class="bi bi-journal-richtext ms-2" style="color: #d4af37;"></i>תוצאות הסריקה במאגר`;
@@ -2370,12 +2391,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let activeClosingModalEl = null;
 
+    function deactivateModalFocusTrap(modalEl) {
+        if (!modalEl || typeof bootstrap === 'undefined' || !bootstrap.Modal) return;
+        const inst = bootstrap.Modal.getInstance(modalEl);
+        if (inst && inst._focustrap && typeof inst._focustrap.deactivate === 'function') {
+            try { inst._focustrap.deactivate(); } catch (_) {}
+        }
+    }
+
     document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const openModal = document.querySelector('#chapterContextModal.show, #codeFinderModal.show, #shareResultModal.show');
+            if (openModal) {
+                openModal.__isClosing = true;
+                activeClosingModalEl = openModal;
+                deactivateModalFocusTrap(openModal);
+                const target = resolveModalReturnTarget(openModal);
+                if (target) {
+                    restoreModalFocusTarget(openModal, target, false);
+                }
+            }
+            return;
+        }
         if (e.key !== 'Tab' || !activeClosingModalEl) return;
         const modalEl = activeClosingModalEl;
-        const target = resolveModalReturnTarget(modalEl);
-        if (target) {
-            restoreModalFocusTarget(modalEl, target, true);
+        const active = document.activeElement;
+        const focusStuck = !active || active === document.body || active === document.documentElement || modalEl.contains(active);
+        if (focusStuck) {
+            deactivateModalFocusTrap(modalEl);
+            const target = resolveModalReturnTarget(modalEl);
+            if (target) {
+                restoreModalFocusTarget(modalEl, target, false);
+            }
         }
     }, true);
 
@@ -2406,6 +2453,7 @@ document.addEventListener('DOMContentLoaded', function() {
         modalEl.addEventListener('hide.bs.modal', function() {
             modalEl.__isClosing = true;
             activeClosingModalEl = modalEl;
+            deactivateModalFocusTrap(modalEl);
             if (modalEl.__scrollTimer) {
                 clearTimeout(modalEl.__scrollTimer);
                 modalEl.__scrollTimer = null;
@@ -2419,6 +2467,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         modalEl.addEventListener('hidden.bs.modal', function() {
             const target = resolveModalReturnTarget(modalEl);
+            deactivateModalFocusTrap(modalEl);
             modalEl.__isClosing = false;
             if (activeClosingModalEl === modalEl) {
                 activeClosingModalEl = null;
@@ -2429,9 +2478,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 restoreModalFocusTarget(modalEl, target, true);
                 window.requestAnimationFrame(function() {
                     restoreModalFocusTarget(modalEl, target, true);
-                    setTimeout(function() {
-                        restoreModalFocusTarget(modalEl, target, true);
-                    }, 50);
                 });
             }
         });

@@ -109,8 +109,8 @@
 {% endblock %}
 
 {% block content %}
-<button onclick="toggleZenMode()" id="zenToggleBtn" class="zen-toggle-btn" type="button" title="מצב קריאה נקי" aria-label="מצב קריאה נקי">
-    <i id="zenIcon" class="bi bi-arrows-fullscreen"></i>
+<button onclick="toggleZenMode()" id="zenToggleBtn" class="zen-toggle-btn" type="button" title="מצב קריאה נקי" aria-label="מצב קריאה נקי" aria-pressed="false">
+    <i id="zenIcon" class="bi bi-arrows-fullscreen" aria-hidden="true"></i>
 </button>
 
 <button onclick="toggleMobileToc()" id="mobileTocBtn" class="mobile-toc-btn d-lg-none" type="button" title="תוכן עניינים" aria-label="פתח תוכן עניינים" aria-controls="toc-column" aria-expanded="false">
@@ -798,10 +798,12 @@
             icon.classList.remove('bi-arrows-fullscreen');
             icon.classList.add('bi-fullscreen-exit');
             btn.title = "יציאה ממצב קריאה";
+            btn.setAttribute('aria-pressed', 'true');
         } else {
             icon.classList.remove('bi-fullscreen-exit');
             icon.classList.add('bi-arrows-fullscreen');
             btn.title = "מצב קריאה נקי";
+            btn.setAttribute('aria-pressed', 'false');
         }
         
         setTimeout(() => {

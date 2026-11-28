@@ -104,21 +104,23 @@
                     
                     <div id="header-qa-{{ qa.id }}" class="qa-header d-flex justify-content-between align-items-center {% if selected_qa and selected_qa.id == qa.id %}is-open{% endif %}" role="button" tabindex="0" aria-expanded="{% if selected_qa and selected_qa.id == qa.id %}true{% else %}false{% endif %}" aria-controls="answer-qa-{{ qa.id }}" onclick="toggleQaAnswer('{{ qa.id }}', this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleQaAnswer('{{ qa.id }}', this);}">
                         <div class="w-100 pe-3">
-                            <h4 class="fw-bold mb-1 qa-title">
-                                <a href="{% url 'articles:qa_detail' pk=qa.id %}" class="text-decoration-none" style="color: inherit;" onclick="event.preventDefault();">
+                            <h4 class="fw-bold mb-0 qa-title">
+                                <a href="{% url 'articles:qa_detail' pk=qa.id %}" tabindex="-1" class="text-decoration-none" style="color: inherit;" onclick="event.preventDefault();">
                                     {{ qa.question }}
                                 </a>
                             </h4>
-                            {% if qa.category %}
-                            <a href="{% url 'articles:qa' %}?category={{ qa.category|urlencode }}" class="text-decoration-none" onclick="event.stopPropagation();">
-                                <span class="text-muted small fw-bold" style="background-color: #f0ece6; padding: 2px 8px; border-radius: 4px; display: inline-block;">{{ qa.category }}</span>
-                            </a>
-                            {% endif %}
                         </div>
                         <div class="ms-2">
-                            <i class="bi bi-chevron-down qa-icon"></i>
+                            <i class="bi bi-chevron-down qa-icon" aria-hidden="true"></i>
                         </div>
                     </div>
+                    {% if qa.category %}
+                    <div class="qa-category-row mt-2">
+                        <a href="{% url 'articles:qa' %}?category={{ qa.category|urlencode }}" class="qa-category-link text-decoration-none">
+                            <span class="text-muted small fw-bold" style="background-color: #f0ece6; padding: 2px 8px; border-radius: 4px; display: inline-block;">{{ qa.category }}</span>
+                        </a>
+                    </div>
+                    {% endif %}
                     
                     <div id="answer-qa-{{ qa.id }}" class="qa-answer-container {% if selected_qa and selected_qa.id == qa.id %}is-open{% endif %}">
                         <div class="qa-answer border-top mt-3">

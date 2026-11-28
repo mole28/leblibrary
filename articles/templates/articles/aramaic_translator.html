@@ -57,9 +57,39 @@
         align-items: center;
         justify-content: center;
     }
+    .corpus-division-card {
+        width: 100%;
+        font: inherit;
+        appearance: none;
+    }
     .corpus-division-card:hover {
         border-color: #d4af37;
         transform: translateY(-2px);
+    }
+    .corpus-division-card:focus-visible {
+        outline: 3px solid #d4af37;
+        outline-offset: 2px;
+    }
+    .lexicon-term-btn {
+        background: transparent;
+        border: 0;
+        padding: 3px 6px;
+        margin: 0;
+        color: inherit;
+        font: inherit;
+        font-weight: inherit;
+        text-align: right;
+        cursor: pointer;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .lexicon-term-btn:hover,
+    .lexicon-term-btn:focus-visible {
+        background-color: rgba(212, 175, 55, 0.18);
+        outline: 2px solid #d4af37;
+        outline-offset: 2px;
     }
     .corpus-division-card.active {
         background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -201,16 +231,16 @@
 <div class="container mb-5 pb-4">
 
     <div class="mb-2 fw-bold text-secondary">בחר את חטיבת הארמית המבוקשת:</div>
-    <div class="corpus-division-tabs" id="dialectDivisionTabs">
-        <div class="corpus-division-card active" data-dialect="bavli" onclick="selectDivision('bavli', this)">
-            <div class="corpus-division-title">📜 1. ארמית של תלמוד בבלי</div>
-        </div>
-        <div class="corpus-division-card" data-dialect="yerushalmi" onclick="selectDivision('yerushalmi', this)">
-            <div class="corpus-division-title">🏛️ 2. ארמית של תלמוד ירושלמי</div>
-        </div>
-        <div class="corpus-division-card" data-dialect="zohar" onclick="selectDivision('zohar', this)">
-            <div class="corpus-division-title">📖 3. ארמית של ספר הזוהר</div>
-        </div>
+    <div class="corpus-division-tabs" id="dialectDivisionTabs" role="tablist" aria-label="בחירת חטיבת מילון ארמי">
+        <button type="button" class="corpus-division-card active" role="tab" id="tab-dialect-bavli" data-dialect="bavli" aria-selected="true" onclick="selectDivision('bavli', this)">
+            <span class="corpus-division-title">📜 1. ארמית של תלמוד בבלי</span>
+        </button>
+        <button type="button" class="corpus-division-card" role="tab" id="tab-dialect-yerushalmi" data-dialect="yerushalmi" aria-selected="false" onclick="selectDivision('yerushalmi', this)">
+            <span class="corpus-division-title">🏛️ 2. ארמית של תלמוד ירושלמי</span>
+        </button>
+        <button type="button" class="corpus-division-card" role="tab" id="tab-dialect-zohar" data-dialect="zohar" aria-selected="false" onclick="selectDivision('zohar', this)">
+            <span class="corpus-division-title">📖 3. ארמית של ספר הזוהר</span>
+        </button>
     </div>
 
     <div class="translator-shell mb-5 p-4 p-md-5">
@@ -250,7 +280,7 @@
                 <span id="visibleTermsCountBadge" class="badge rounded-pill px-3 py-2" style="background: #d4af37; color: #0f172a; font-weight: 800; font-size: 0.9rem;"></span>
             </div>
             <div class="d-flex flex-wrap align-items-center gap-2">
-                <select id="categoryFilterSelect" class="form-select form-select-sm fw-bold" style="width: auto; border-color: #d4af37; border-radius: 50px; padding-right: 14px;">
+                <select id="categoryFilterSelect" aria-label="סינון לפי סוג מונח במילון" class="form-select form-select-sm fw-bold" style="width: auto; border-color: #d4af37; border-radius: 50px; padding-right: 14px;">
                     <option value="">כל סוגי המונחים</option>
                     <option value="מונח שקלא וטריא">מונחי שקלא וטריא</option>
                     <option value="מונח הלכתי">מונחים הלכתיים</option>
@@ -261,7 +291,7 @@
                     <option value="מושג">מושגי הזוהר והקבלה</option>
                     <option value="ראשי תיבות">ראשי תיבות ומונחים</option>
                 </select>
-                <input type="text" id="filterLexiconInput" class="form-control form-control-sm fw-semibold" placeholder="חיפוש מהיר מבין אלפי המילים..." style="width: 260px; border-color: #d4af37; border-radius: 50px; padding: 6px 14px;">
+                <input type="text" id="filterLexiconInput" aria-label="חיפוש מהיר בטבלת המילון הארמי" class="form-control form-control-sm fw-semibold" placeholder="חיפוש מהיר מבין אלפי המילים..." style="width: 260px; border-color: #d4af37; border-radius: 50px; padding: 6px 14px;">
             </div>
         </div>
 
@@ -392,7 +422,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const list = (divisionMeta[dialectKey] || divisionMeta.bavli).chips;
         box.innerHTML = '<span class="small text-muted fw-bold">דוגמאות מהירות:</span>' +
             list.map(function(c) {
-                return '<span class="quick-word-chip" onclick="runQuickTerm(\'' + c + '\')">' + c + '</span>';
+                return '<button type="button" class="quick-word-chip" onclick="runQuickTerm(\'' + c + '\')">' + c + '</button>';
             }).join('');
     }
 
@@ -427,16 +457,29 @@ document.addEventListener('DOMContentLoaded', function() {
         renderLexiconTable();
     };
 
+    function normalizeLexSearch(str) {
+        return String(str || '')
+            .normalize('NFKD')
+            .replace(/[\u0591-\u05C7]/g, '')
+            .replace(/["'״׳`´]/g, '')
+            .trim()
+            .toLowerCase();
+    }
+
     function renderLexiconTable() {
         const activeList = DICTIONARIES[selectedDialect] || [];
         const textVal = document.getElementById('filterLexiconInput').value.trim();
+        const normTextVal = normalizeLexSearch(textVal);
         const catVal = document.getElementById('categoryFilterSelect').value.trim();
         const meta = divisionMeta[selectedDialect] || divisionMeta.bavli;
 
         const filtered = activeList.filter(function(item) {
-            const matchLetter = (textVal !== '') ? true : (!activeLetterFilter || item.first_letter === activeLetterFilter);
+            const matchLetter = (normTextVal !== '') ? true : (!activeLetterFilter || item.first_letter === activeLetterFilter);
             const matchCat = !catVal || (item.cat && item.cat.includes(catVal));
-            const matchText = !textVal || item.term.includes(textVal) || item.he.includes(textVal) || (item.note && item.note.includes(textVal));
+            const matchText = !normTextVal ||
+                normalizeLexSearch(item.term).includes(normTextVal) ||
+                normalizeLexSearch(item.he).includes(normTextVal) ||
+                (item.note && normalizeLexSearch(item.note).includes(normTextVal));
             return matchLetter && matchCat && matchText;
         });
 
@@ -452,9 +495,12 @@ document.addEventListener('DOMContentLoaded', function() {
             tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted fw-bold">לא נמצאו ערכים התואמים לסינון זה בטבלה — לחץ על "תרגם ונתח כעת" למעלה לפענוח כל מילה או הטיה!</td></tr>';
         } else {
             tbody.innerHTML = pageItems.map(function(item) {
-                return '<tr style="cursor: pointer;" data-quick-term="' + escapeHtml(item.term) + '" onclick="runQuickTerm(this.getAttribute(\'data-quick-term\'))">' +
+                const safeTerm = escapeHtml(item.term);
+                return '<tr style="cursor: pointer;" data-quick-term="' + safeTerm + '" onclick="runQuickTerm(this.getAttribute(\'data-quick-term\'))">' +
                     '<td class="ps-4 fw-bold fs-5" style="color: ' + meta.color + '; font-family: \'Frank Ruhl Libre\', serif;">' +
-                    '<span class="letter-group-badge">' + escapeHtml(item.first_letter) + '</span>' + escapeHtml(item.term) +
+                    '<button type="button" class="lexicon-term-btn" data-quick-term="' + safeTerm + '" aria-label="פתח פירוט עבור ' + safeTerm + '" onclick="event.stopPropagation(); runQuickTerm(this.getAttribute(\'data-quick-term\'))">' +
+                    '<span class="letter-group-badge" aria-hidden="true">' + escapeHtml(item.first_letter) + '</span><span>' + safeTerm + '</span>' +
+                    '</button>' +
                     '</td>' +
                     '<td class="fw-semibold text-dark">' + escapeHtml(item.he) + '</td>' +
                     '<td><span class="badge bg-light text-dark border">' + escapeHtml(item.cat) + '</span></td>' +
@@ -477,8 +523,12 @@ document.addEventListener('DOMContentLoaded', function() {
     window.selectDivision = function(dialectKey, cardEl) {
         selectedDialect = dialectKey;
         currentLexPage = 1;
-        document.querySelectorAll('#dialectDivisionTabs .corpus-division-card').forEach(function(c) { c.classList.remove('active'); });
+        document.querySelectorAll('#dialectDivisionTabs .corpus-division-card').forEach(function(c) {
+            c.classList.remove('active');
+            c.setAttribute('aria-selected', 'false');
+        });
         cardEl.classList.add('active');
+        cardEl.setAttribute('aria-selected', 'true');
 
         const meta = divisionMeta[dialectKey] || divisionMeta.bavli;
         document.getElementById('activeDivisionHeader').textContent = meta.header;

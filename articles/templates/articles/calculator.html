@@ -156,9 +156,28 @@
         border-style: solid;
         border-color: #2c3e50 transparent transparent transparent;
     }
-    .custom-tooltip:hover .tooltip-text {
+    .custom-tooltip:hover .tooltip-text,
+    .custom-tooltip:focus-within .tooltip-text,
+    .custom-tooltip.is-open .tooltip-text {
         visibility: visible;
         opacity: 1;
+    }
+    .tooltip-trigger-btn {
+        background: transparent;
+        border: 0;
+        padding: 2px;
+        margin: 0;
+        color: inherit;
+        cursor: help;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+    }
+    .tooltip-trigger-btn:focus-visible {
+        outline: 2px solid #a67c52;
+        outline-offset: 2px;
     }
     .tooltip-title {
         color: #d4af37;
@@ -201,15 +220,23 @@
         </p>
         
         <div class="text-center mb-5">
-            <div class="d-inline-block px-4 py-2 rounded-pill shadow-sm" style="background-color: #ffffff; border: 1px solid rgba(166, 124, 82, 0.3);">
-                <i class="bi bi-book me-2" style="color: #a67c52;"></i>
-                <span class="text-muted" style="font-size: 1.1rem;">לעיון בסוגיא ניתן ללמוד הספר </span>
-                {% if mida_book %}
-                <a href="{% url 'articles:book_detail' mida_book.pk %}" class="fw-bold text-decoration-none" style="color: #a67c52; border-bottom: 1px dashed #a67c52;">
-                    "מידה של תורה"
+            <div class="d-inline-flex flex-wrap align-items-center justify-content-center gap-2 px-4 py-2 rounded-pill shadow-sm" style="background-color: #ffffff; border: 1px solid rgba(166, 124, 82, 0.3);">
+                <span>
+                    <i class="bi bi-book me-1" style="color: #a67c52;" aria-hidden="true"></i>
+                    <span class="text-muted" style="font-size: 1.05rem;">לעיון בסוגיא ניתן ללמוד הספר </span>
+                    {% if mida_book %}
+                    <a href="{% url 'articles:book_detail' mida_book.pk %}" class="fw-bold text-decoration-none" style="color: #a67c52; border-bottom: 1px dashed #a67c52;">
+                        "מידה של תורה"
+                    </a>
+                    {% else %}
+                    <span class="fw-bold" style="color: #a67c52;">"מידה של תורה"</span>
+                    {% endif %}
+                </span>
+                {% if mida_sale_book %}
+                <span class="text-muted small" style="opacity: 0.4;" aria-hidden="true">|</span>
+                <a href="{% url 'articles:book_detail' mida_sale_book.pk %}" class="text-decoration-none" style="color: #7c6244; font-size: 0.84rem;" title="לרכישת המהדורה המודפסת של הספר מידה של תורה">
+                    <i class="bi bi-bag me-1" aria-hidden="true"></i>לרכישה
                 </a>
-                {% else %}
-                <span class="fw-bold" style="color: #a67c52;">"מידה של תורה"</span>
                 {% endif %}
             </div>
         </div>
@@ -222,8 +249,8 @@
                 <div class="row justify-content-center mb-4">
                     <div class="col-md-11">
                         <div class="input-group input-group-custom">
-                            <input type="number" id="inputValue1" class="form-control calc-input" placeholder="הזן מספר..." oninput="calculateRegular()">
-                            <select id="unitSelect1" class="form-select calc-select" onchange="calculateRegular()">
+                            <input type="number" id="inputValue1" aria-label="כמות להמרה ממידות אורך זמננו למידות חז״ל" class="form-control calc-input" placeholder="הזן מספר..." oninput="calculateRegular()">
+                            <select id="unitSelect1" aria-label="יחידת אורך מקורית להמרה מזמננו לחז״ל" class="form-select calc-select" onchange="calculateRegular()">
                                 <option value="cm">סנטימטר (ס"מ)</option>
                                 <option value="m">מטר (מ' בחירה)</option>
                                 <option value="km">קילומטר (ק"מ)</option>
@@ -236,10 +263,8 @@
                     <div class="col-6 col-md-4">
                         <div class="result-card">
                             <div class="result-value">
-                                <span id="res-etzba">0</span>
-                                <sup class="custom-tooltip"><i class="bi bi-info-circle-fill" style="font-size: 0.6em;"></i>
-                                    <span class="tooltip-text" id="tt-etzba"></span>
-                                </sup>
+                                <span id="res-etzba" dir="ltr">0</span>
+                                <sup class="custom-tooltip"><button type="button" class="tooltip-trigger-btn" aria-label="שיטות נוספות עבור אצבע" aria-describedby="tt-etzba" aria-expanded="false"><i class="bi bi-info-circle-fill" style="font-size: 0.6em;" aria-hidden="true"></i></button><span class="tooltip-text" id="tt-etzba" role="tooltip"></span></sup>
                             </div>
                             <div class="result-label">אצבע</div>
                         </div>
@@ -247,10 +272,8 @@
                     <div class="col-6 col-md-4">
                         <div class="result-card">
                             <div class="result-value">
-                                <span id="res-tefach">0</span>
-                                <sup class="custom-tooltip"><i class="bi bi-info-circle-fill" style="font-size: 0.6em;"></i>
-                                    <span class="tooltip-text" id="tt-tefach"></span>
-                                </sup>
+                                <span id="res-tefach" dir="ltr">0</span>
+                                <sup class="custom-tooltip"><button type="button" class="tooltip-trigger-btn" aria-label="שיטות נוספות עבור טפח" aria-describedby="tt-tefach" aria-expanded="false"><i class="bi bi-info-circle-fill" style="font-size: 0.6em;" aria-hidden="true"></i></button><span class="tooltip-text" id="tt-tefach" role="tooltip"></span></sup>
                             </div>
                             <div class="result-label">טפח</div>
                         </div>
@@ -258,10 +281,8 @@
                     <div class="col-6 col-md-4">
                         <div class="result-card">
                             <div class="result-value">
-                                <span id="res-zeret">0</span>
-                                <sup class="custom-tooltip"><i class="bi bi-info-circle-fill" style="font-size: 0.6em;"></i>
-                                    <span class="tooltip-text" id="tt-zeret"></span>
-                                </sup>
+                                <span id="res-zeret" dir="ltr">0</span>
+                                <sup class="custom-tooltip"><button type="button" class="tooltip-trigger-btn" aria-label="שיטות נוספות עבור זרת" aria-describedby="tt-zeret" aria-expanded="false"><i class="bi bi-info-circle-fill" style="font-size: 0.6em;" aria-hidden="true"></i></button><span class="tooltip-text" id="tt-zeret" role="tooltip"></span></sup>
                             </div>
                             <div class="result-label">זרת</div>
                         </div>
@@ -269,10 +290,8 @@
                     <div class="col-6 col-md-4">
                         <div class="result-card">
                             <div class="result-value">
-                                <span id="res-amah">0</span>
-                                <sup class="custom-tooltip"><i class="bi bi-info-circle-fill" style="font-size: 0.6em;"></i>
-                                    <span class="tooltip-text" id="tt-amah"></span>
-                                </sup>
+                                <span id="res-amah" dir="ltr">0</span>
+                                <sup class="custom-tooltip"><button type="button" class="tooltip-trigger-btn" aria-label="שיטות נוספות עבור אמה" aria-describedby="tt-amah" aria-expanded="false"><i class="bi bi-info-circle-fill" style="font-size: 0.6em;" aria-hidden="true"></i></button><span class="tooltip-text" id="tt-amah" role="tooltip"></span></sup>
                             </div>
                             <div class="result-label">אמה</div>
                         </div>
@@ -280,10 +299,8 @@
                     <div class="col-6 col-md-4">
                         <div class="result-card">
                             <div class="result-value">
-                                <span id="res-mil">0</span>
-                                <sup class="custom-tooltip"><i class="bi bi-info-circle-fill" style="font-size: 0.6em;"></i>
-                                    <span class="tooltip-text" id="tt-mil"></span>
-                                </sup>
+                                <span id="res-mil" dir="ltr">0</span>
+                                <sup class="custom-tooltip"><button type="button" class="tooltip-trigger-btn" aria-label="שיטות נוספות עבור מיל" aria-describedby="tt-mil" aria-expanded="false"><i class="bi bi-info-circle-fill" style="font-size: 0.6em;" aria-hidden="true"></i></button><span class="tooltip-text" id="tt-mil" role="tooltip"></span></sup>
                             </div>
                             <div class="result-label">מיל</div>
                         </div>
@@ -291,10 +308,8 @@
                     <div class="col-6 col-md-4">
                         <div class="result-card">
                             <div class="result-value">
-                                <span id="res-parsa">0</span>
-                                <sup class="custom-tooltip"><i class="bi bi-info-circle-fill" style="font-size: 0.6em;"></i>
-                                    <span class="tooltip-text" id="tt-parsa"></span>
-                                </sup>
+                                <span id="res-parsa" dir="ltr">0</span>
+                                <sup class="custom-tooltip"><button type="button" class="tooltip-trigger-btn" aria-label="שיטות נוספות עבור פרסה" aria-describedby="tt-parsa" aria-expanded="false"><i class="bi bi-info-circle-fill" style="font-size: 0.6em;" aria-hidden="true"></i></button><span class="tooltip-text" id="tt-parsa" role="tooltip"></span></sup>
                             </div>
                             <div class="result-label">פרסה</div>
                         </div>
@@ -308,8 +323,8 @@
                 <div class="row justify-content-center mb-4">
                     <div class="col-md-11">
                         <div class="input-group input-group-custom">
-                            <input type="number" id="inputValue2" class="form-control calc-input" placeholder="הזן מספר..." oninput="calculateReverse()">
-                            <select id="unitSelect2" class="form-select calc-select" onchange="calculateReverse()">
+                            <input type="number" id="inputValue2" aria-label="כמות להמרה ממידות אורך חז״ל לזמננו" class="form-control calc-input" placeholder="הזן מספר..." oninput="calculateReverse()">
+                            <select id="unitSelect2" aria-label="יחידת אורך חז״ל מקורית להמרה לזמננו" class="form-select calc-select" onchange="calculateReverse()">
                                 <option value="etzba">אצבע</option>
                                 <option value="tefach">טפח</option>
                                 <option value="zeret">זרת</option>
@@ -325,10 +340,8 @@
                     <div class="col-6 col-md-4">
                         <div class="result-card">
                             <div class="result-value">
-                                <span id="res-cm">0</span>
-                                <sup class="custom-tooltip"><i class="bi bi-info-circle-fill" style="font-size: 0.6em;"></i>
-                                    <span class="tooltip-text" id="tt-cm"></span>
-                                </sup>
+                                <span id="res-cm" dir="ltr">0</span>
+                                <sup class="custom-tooltip"><button type="button" class="tooltip-trigger-btn" aria-label="שיטות נוספות עבור ס"מ" aria-describedby="tt-cm" aria-expanded="false"><i class="bi bi-info-circle-fill" style="font-size: 0.6em;" aria-hidden="true"></i></button><span class="tooltip-text" id="tt-cm" role="tooltip"></span></sup>
                             </div>
                             <div class="result-label">ס"מ</div>
                         </div>
@@ -336,10 +349,8 @@
                     <div class="col-6 col-md-4">
                         <div class="result-card">
                             <div class="result-value">
-                                <span id="res-m">0</span>
-                                <sup class="custom-tooltip"><i class="bi bi-info-circle-fill" style="font-size: 0.6em;"></i>
-                                    <span class="tooltip-text" id="tt-m"></span>
-                                </sup>
+                                <span id="res-m" dir="ltr">0</span>
+                                <sup class="custom-tooltip"><button type="button" class="tooltip-trigger-btn" aria-label="שיטות נוספות עבור מטר" aria-describedby="tt-m" aria-expanded="false"><i class="bi bi-info-circle-fill" style="font-size: 0.6em;" aria-hidden="true"></i></button><span class="tooltip-text" id="tt-m" role="tooltip"></span></sup>
                             </div>
                             <div class="result-label">מטר</div>
                         </div>
@@ -347,10 +358,8 @@
                     <div class="col-6 col-md-4">
                         <div class="result-card">
                             <div class="result-value">
-                                <span id="res-km">0</span>
-                                <sup class="custom-tooltip"><i class="bi bi-info-circle-fill" style="font-size: 0.6em;"></i>
-                                    <span class="tooltip-text" id="tt-km"></span>
-                                </sup>
+                                <span id="res-km" dir="ltr">0</span>
+                                <sup class="custom-tooltip"><button type="button" class="tooltip-trigger-btn" aria-label="שיטות נוספות עבור ק"מ" aria-describedby="tt-km" aria-expanded="false"><i class="bi bi-info-circle-fill" style="font-size: 0.6em;" aria-hidden="true"></i></button><span class="tooltip-text" id="tt-km" role="tooltip"></span></sup>
                             </div>
                             <div class="result-label">ק"מ</div>
                         </div>
@@ -374,11 +383,70 @@
 </div>
 
 <script>
+    function formatCalcDisplay(val, digits) {
+        if (!isFinite(val) || val === 0) return '0';
+        const absVal = Math.abs(val);
+        const sign = val < 0 ? '-' : '';
+        if (absVal > 0 && absVal < 0.0001) {
+            return sign + '< 0.0001';
+        }
+        const effDigits = (absVal < Math.pow(10, -digits)) ? Math.max(digits, 4) : digits;
+        return val.toLocaleString('en-US', {maximumFractionDigits: effDigits});
+    }
+
+    function formatCalcExact(val, digits) {
+        if (!isFinite(val) || val === 0) return '0';
+        const absVal = Math.abs(val);
+        if (absVal > 0 && absVal < 0.0001) {
+            const dec = Math.min(10, Math.max(6, Math.ceil(-Math.log10(absVal)) + 2));
+            return val.toFixed(dec).replace(/\.?0+$/, '');
+        }
+        return formatCalcDisplay(val, digits);
+    }
+
+    function initAccessibleCalcTooltips() {
+        document.querySelectorAll('.tooltip-trigger-btn').forEach(function(btn) {
+            const wrap = btn.closest('.custom-tooltip');
+            if (!wrap || btn.__tooltipBound) return;
+            btn.__tooltipBound = true;
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const willOpen = !wrap.classList.contains('is-open');
+                document.querySelectorAll('.custom-tooltip.is-open').forEach(function(other) {
+                    if (other !== wrap) {
+                        other.classList.remove('is-open');
+                        const ob = other.querySelector('.tooltip-trigger-btn');
+                        if (ob) ob.setAttribute('aria-expanded', 'false');
+                    }
+                });
+                wrap.classList.toggle('is-open', willOpen);
+                btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+            });
+            btn.addEventListener('focus', function() {
+                btn.setAttribute('aria-expanded', 'true');
+            });
+            btn.addEventListener('blur', function() {
+                wrap.classList.remove('is-open');
+                btn.setAttribute('aria-expanded', 'false');
+            });
+            btn.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    wrap.classList.remove('is-open');
+                    btn.setAttribute('aria-expanded', 'false');
+                }
+            });
+        });
+    }
+
     function updateRegularResult(id, cmValue, mstFactor, rcnFactor, ciFactor, digits) {
-        document.getElementById('res-' + id).innerText = (cmValue / mstFactor).toLocaleString('en-US', {maximumFractionDigits: digits});
-        let rcn = (cmValue / rcnFactor).toLocaleString('en-US', {maximumFractionDigits: digits});
-        let ci = (cmValue / ciFactor).toLocaleString('en-US', {maximumFractionDigits: digits});
-        document.getElementById('tt-' + id).innerHTML = `<span class="tooltip-title">שיטות נוספות</span>לפי הגר"ח נאה: ${rcn}<br>לפי החזון איש: ${ci}`;
+        let mstVal = cmValue / mstFactor;
+        let rcnVal = cmValue / rcnFactor;
+        let ciVal = cmValue / ciFactor;
+        document.getElementById('res-' + id).innerText = formatCalcDisplay(mstVal, digits);
+        let exactRow = (mstVal > 0 && mstVal < 0.0001) ? `ערך מדויק: <span dir="ltr">${formatCalcExact(mstVal, digits)}</span><br>` : '';
+        let rcn = formatCalcExact(rcnVal, digits);
+        let ci = formatCalcExact(ciVal, digits);
+        document.getElementById('tt-' + id).innerHTML = `<span class="tooltip-title">שיטות נוספות</span>${exactRow}לפי הגר"ח נאה: <span dir="ltr">${rcn}</span><br>לפי החזון איש: <span dir="ltr">${ci}</span>`;
     }
 
     function calculateRegular() {
@@ -403,12 +471,12 @@
         let cmRcn = val * rcnFactor;
         let cmCi = val * ciFactor;
 
-        document.getElementById('res-cm').innerText = cmMst.toLocaleString('en-US', {maximumFractionDigits: 2});
-        document.getElementById('tt-cm').innerHTML = `<span class="tooltip-title">שיטות נוספות</span>לפי הגר"ח נאה: ${cmRcn.toLocaleString('en-US', {maximumFractionDigits: 2})} ס"מ<br>לפי החזון איש: ${cmCi.toLocaleString('en-US', {maximumFractionDigits: 2})} ס"מ`;
-        document.getElementById('res-m').innerText = (cmMst / 100).toLocaleString('en-US', {maximumFractionDigits: 4});
-        document.getElementById('tt-m').innerHTML = `<span class="tooltip-title">שיטות נוספות</span>לפי הגר"ח נאה: ${(cmRcn / 100).toLocaleString('en-US', {maximumFractionDigits: 4})} מטר<br>לפי החזון איש: ${(cmCi / 100).toLocaleString('en-US', {maximumFractionDigits: 4})} מטר`;
-        document.getElementById('res-km').innerText = (cmMst / 100000).toLocaleString('en-US', {maximumFractionDigits: 6});
-        document.getElementById('tt-km').innerHTML = `<span class="tooltip-title">שיטות נוספות</span>לפי הגר"ח נאה: ${(cmRcn / 100000).toLocaleString('en-US', {maximumFractionDigits: 6})} ק"מ<br>לפי החזון איש: ${(cmCi / 100000).toLocaleString('en-US', {maximumFractionDigits: 6})} ק"מ`;
+        document.getElementById('res-cm').innerText = formatCalcDisplay(cmMst, 2);
+        document.getElementById('tt-cm').innerHTML = `<span class="tooltip-title">שיטות נוספות</span>לפי הגר"ח נאה: ${formatCalcDisplay(cmRcn, 2)} ס"מ<br>לפי החזון איש: ${formatCalcDisplay(cmCi, 2)} ס"מ`;
+        document.getElementById('res-m').innerText = formatCalcDisplay(cmMst / 100, 4);
+        document.getElementById('tt-m').innerHTML = `<span class="tooltip-title">שיטות נוספות</span>לפי הגר"ח נאה: ${formatCalcDisplay(cmRcn / 100, 4)} מטר<br>לפי החזון איש: ${formatCalcDisplay(cmCi / 100, 4)} מטר`;
+        document.getElementById('res-km').innerText = formatCalcDisplay(cmMst / 100000, 6);
+        document.getElementById('tt-km').innerHTML = `<span class="tooltip-title">שיטות נוספות</span>לפי הגר"ח נאה: ${formatCalcDisplay(cmRcn / 100000, 6)} ק"מ<br>לפי החזון איש: ${formatCalcDisplay(cmCi / 100000, 6)} ק"מ`;
     }
 
     function calculateReverse() {
@@ -423,6 +491,6 @@
         if (unit === 'parsa') updateReverseResult(val, 366400, 384000, 460800);
     }
     
-    window.onload = function() { calculateRegular(); calculateReverse(); };
+    window.onload = function() { initAccessibleCalcTooltips(); calculateRegular(); calculateReverse(); };
 </script>
 {% endblock %}

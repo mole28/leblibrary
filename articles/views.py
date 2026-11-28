@@ -22,7 +22,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.http import Http404, HttpResponseForbidden, JsonResponse
@@ -350,15 +350,85 @@ def _build_clean_excerpt(html_content, max_words=25):
         return text
     return ' '.join(words[:max_words]) + '…'
 
+def _search_qa_items(query):
+    q = (query or '').strip()
+    if not q:
+        return []
+    q_clean = re.sub(r'[\u0591-\u05C7]', '', q).lower()
+    q_vars = generate_word_variations(q_clean) if len(q_clean) >= 2 else [q_clean]
+    qs = list(QA.objects.all().order_by('-created_at', '-id'))
+    matched = []
+    for item in qs:
+        q_txt = re.sub(r'[\u0591-\u05C7]', '', (item.question or '')).lower()
+        cat_txt = re.sub(r'[\u0591-\u05C7]', '', (item.category or '')).lower()
+        ans_txt = re.sub(r'[\u0591-\u05C7]', '', strip_tags(item.answer or '')).lower()
+        hay = f"{q_txt} {ans_txt} {cat_txt}"
+        if any(v in hay for v in q_vars):
+            in_q = 0 if any(v in q_txt for v in q_vars) else 1
+            cat_key = (item.category or 'כללי').strip() or 'כללי'
+            matched.append((cat_key, in_q, -(item.pk or 0), item))
+    matched.sort(key=lambda row: (row[0], row[1], row[2]))
+    return [row[3] for row in matched]
+
+
+def _search_books_items(query):
+    q = (query or '').strip()
+    if not q:
+        return []
+    books_qs = Book.objects.all().order_by('order', 'title')
+    direct_hits = list(smart_hebrew_search(books_qs, q, ['title', 'author', 'summary']))
+    seen_ids = {b.pk for b in direct_hits}
+    q_clean = re.sub(r'[\u0591-\u05C7]', '', q).lower()
+    q_vars = generate_word_variations(q_clean) if len(q_clean) >= 2 else [q_clean]
+    chapter_q = Q()
+    for v in q_vars:
+        chapter_q |= Q(chapters__title__icontains=v) | Q(chapters__sections__title__icontains=v)
+    if chapter_q:
+        extra_hits = books_qs.filter(chapter_q).exclude(pk__in=seen_ids).distinct()
+        direct_hits.extend(list(extra_hits))
+    return direct_hits
+
+
+def _get_mida_book_pair():
+    mida_qs = Book.objects.filter(title__icontains='מידה')
+    reading_book = (
+        mida_qs.filter(is_for_sale=False).annotate(ch_cnt=Count('chapters')).order_by('-ch_cnt', 'order', 'pk').first()
+        or mida_qs.annotate(ch_cnt=Count('chapters')).order_by('-ch_cnt', 'order', 'pk').first()
+    )
+    sale_book = mida_qs.filter(is_for_sale=True).order_by('order', 'pk').first()
+    if sale_book and reading_book and sale_book.pk == reading_book.pk:
+        sale_book = None
+    return reading_book, sale_book
+
+
 def article_list(request):
     query = request.GET.get('q')
 
     if query:
         query = query.strip()[:120]
         published_articles = Article.objects.filter(is_published=True).order_by('-created_at')
-        articles = smart_hebrew_search(published_articles, query, ['title', 'content'])
+        articles = list(smart_hebrew_search(published_articles, query, ['title', 'content']))
+        search_books = _search_books_items(query)
+        search_qas = _search_qa_items(query)
+
+        requested_tab = (request.GET.get('tab') or '').strip().lower()
+        if requested_tab in ('articles', 'books', 'qa'):
+            active_tab = requested_tab
+        elif articles:
+            active_tab = 'articles'
+        elif search_books:
+            active_tab = 'books'
+        elif search_qas:
+            active_tab = 'qa'
+        else:
+            active_tab = 'articles'
+
         return render(request, 'articles/article_list.html', {
-            'articles': articles, 'latest_articles': None, 'reading_books': None, 'sale_books': None,
+            'articles': articles,
+            'search_books': search_books,
+            'search_qas': search_qas,
+            'active_search_tab': active_tab,
+            'latest_articles': None, 'reading_books': None, 'sale_books': None,
             'parasha_article': None, 'jewish_cal': None, 'query': query, 'current_page': 'home',
         })
 
@@ -680,16 +750,16 @@ def contact(request):
     return render(request, 'articles/contact.html', {'current_page': 'contact'})
 
 def calculator(request):
-    mida_book = Book.objects.filter(title__icontains='מידה').first()
-    return render(request, 'articles/calculator.html', {'current_page': 'calculator', 'mida_book': mida_book})
+    mida_book, mida_sale_book = _get_mida_book_pair()
+    return render(request, 'articles/calculator.html', {'current_page': 'calculator', 'mida_book': mida_book, 'mida_sale_book': mida_sale_book})
 
 def volume_calculator(request):
-    mida_book = Book.objects.filter(title__icontains='מידה').first()
-    return render(request, 'articles/volume_calculator.html', {'current_page': 'calculator', 'mida_book': mida_book})
+    mida_book, mida_sale_book = _get_mida_book_pair()
+    return render(request, 'articles/volume_calculator.html', {'current_page': 'calculator', 'mida_book': mida_book, 'mida_sale_book': mida_sale_book})
 
 def weight_calculator(request):
-    mida_book = Book.objects.filter(title__icontains='מידה').first()
-    return render(request, 'articles/weight_calculator.html', {'current_page': 'calculator', 'mida_book': mida_book})
+    mida_book, mida_sale_book = _get_mida_book_pair()
+    return render(request, 'articles/weight_calculator.html', {'current_page': 'calculator', 'mida_book': mida_book, 'mida_sale_book': mida_sale_book})
 
 @cache_page(60 * 60 * 24)
 def about(request):
@@ -926,11 +996,15 @@ def live_search(request):
     books_res = smart_hebrew_search(books_qs, q, ['title', 'author']).only('id', 'title')[:3]
     articles_res = smart_hebrew_search(articles_qs, q, ['title', 'content']).only('id', 'title', 'slug')[:4]
 
+    qa_res = _search_qa_items(q)[:3]
+
     results = []
     for book in books_res:
         results.append({'title': book.title, 'type': 'ספר שלם', 'icon': 'bi-journal-bookmark-fill', 'url': reverse('articles:book_detail', args=[book.id])})
     for article in articles_res:
         results.append({'title': article.title, 'type': 'מאמר', 'icon': 'bi-file-earmark-text', 'url': reverse('articles:detail', args=[article.slug])})
+    for qa_item in qa_res:
+        results.append({'title': qa_item.question, 'type': 'שו״ת', 'icon': 'bi-chat-left-quote-fill', 'url': reverse('articles:qa_detail', args=[qa_item.id])})
 
     cache.set(cache_key, results, timeout=300)
     return JsonResponse({'results': results})

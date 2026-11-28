@@ -253,42 +253,165 @@
 <div class="home-dashboard container-fluid px-2 px-xl-0 mb-5">
 
     {% if request.GET.q %}
-        <div class="alert alert-warning shadow-sm border-0 mb-5 d-flex justify-content-between align-items-center" style="background: #fdfbf7; border-right: 5px solid #d4af37 !important; border-radius: 12px;">
-            <div>
-                <h4 class="fw-bold mb-1" style="color: #a67c52;"><i class="bi bi-search me-2"></i>תוצאות חיפוש עבור: "{{ request.GET.q }}"</h4>
-                <p class="mb-0 text-muted">אנו מציגים כרגע תוצאות מתוך המאמרים. לחץ על הלשוניות השונות למעלה (ספרים / שו"ת) לחיפוש ספציפי שם.</p>
+        <div class="shadow-sm border-0 mb-4 p-4" style="background: #fdfbf7; border-right: 5px solid #d4af37 !important; border-radius: 14px;">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                <div>
+                    <h4 class="fw-bold mb-1" style="color: #a67c52;"><i class="bi bi-search me-2" aria-hidden="true"></i>תוצאות חיפוש עבור: "{{ query|default:request.GET.q }}"</h4>
+                    <p class="mb-0 text-muted small">בחר לשונית למעבר מיידי בין מאמרים, ספרים ושו״ת התואמים לשאילתה.</p>
+                </div>
+                <a href="{% url 'articles:list' %}" class="btn btn-outline-dark rounded-pill px-4">חזור לדף הבית</a>
             </div>
-            <a href="{% url 'articles:list' %}" class="btn btn-outline-dark rounded-pill px-4">חזור לדף הבית</a>
+
+            <div class="d-flex flex-wrap gap-2 pt-2 border-top" style="border-color: rgba(212,175,55,0.28) !important;" role="tablist" aria-label="סינון תוצאות חיפוש לפי מדור">
+                <a href="{% url 'articles:list' %}?q={{ query|urlencode }}&amp;tab=articles"
+                   role="tab"
+                   id="search-tab-articles"
+                   aria-controls="search-panel-articles"
+                   aria-selected="{% if active_search_tab == 'articles' %}true{% else %}false{% endif %}"
+                   class="btn rounded-pill px-4 fw-bold d-inline-flex align-items-center gap-2 {% if active_search_tab == 'articles' %}text-white shadow-sm{% else %}btn-outline-secondary bg-white{% endif %}"
+                   style="{% if active_search_tab == 'articles' %}background: linear-gradient(135deg, #1a252f, #2c3e50); border: 1px solid #d4af37;{% else %}border-color: #d8ccb8; color: #3b2f14;{% endif %}">
+                    <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+                    <span>מאמרים</span>
+                    <span class="badge rounded-pill" style="background: #d4af37; color: #1a252f;">{{ articles|length }}</span>
+                </a>
+                <a href="{% url 'articles:list' %}?q={{ query|urlencode }}&amp;tab=books"
+                   role="tab"
+                   id="search-tab-books"
+                   aria-controls="search-panel-books"
+                   aria-selected="{% if active_search_tab == 'books' %}true{% else %}false{% endif %}"
+                   class="btn rounded-pill px-4 fw-bold d-inline-flex align-items-center gap-2 {% if active_search_tab == 'books' %}text-white shadow-sm{% else %}btn-outline-secondary bg-white{% endif %}"
+                   style="{% if active_search_tab == 'books' %}background: linear-gradient(135deg, #1a252f, #2c3e50); border: 1px solid #d4af37;{% else %}border-color: #d8ccb8; color: #3b2f14;{% endif %}">
+                    <i class="bi bi-journal-bookmark-fill" aria-hidden="true"></i>
+                    <span>ספרים</span>
+                    <span class="badge rounded-pill" style="background: #d4af37; color: #1a252f;">{{ search_books|length }}</span>
+                </a>
+                <a href="{% url 'articles:list' %}?q={{ query|urlencode }}&amp;tab=qa"
+                   role="tab"
+                   id="search-tab-qa"
+                   aria-controls="search-panel-qa"
+                   aria-selected="{% if active_search_tab == 'qa' %}true{% else %}false{% endif %}"
+                   class="btn rounded-pill px-4 fw-bold d-inline-flex align-items-center gap-2 {% if active_search_tab == 'qa' %}text-white shadow-sm{% else %}btn-outline-secondary bg-white{% endif %}"
+                   style="{% if active_search_tab == 'qa' %}background: linear-gradient(135deg, #1a252f, #2c3e50); border: 1px solid #d4af37;{% else %}border-color: #d8ccb8; color: #3b2f14;{% endif %}">
+                    <i class="bi bi-chat-left-quote-fill" aria-hidden="true"></i>
+                    <span>שו״ת</span>
+                    <span class="badge rounded-pill" style="background: #d4af37; color: #1a252f;">{{ search_qas|length }}</span>
+                </a>
+            </div>
         </div>
 
-        <div class="row g-4 mb-5">
-            {% for article in articles %}
-            <div class="col-md-6 col-lg-4">
-                <div class="premium-card p-4">
-                    <div class="text-muted small mb-2 d-flex justify-content-between">
-                        {% if article.display_hebrew_date %}<span><i class="bi bi-calendar3 ms-1" aria-hidden="true"></i>פורסם: <time {% if article.created_at %}datetime="{{ article.created_at|date:'Y-m-d' }}"{% endif %}>{{ article.display_hebrew_date }}</time></span>{% endif %}
-                    </div>
-                    <h4 class="fw-bold mb-3" style="color: #1a252f;">
-                        <a href="{% url 'articles:detail' article.slug %}" class="text-decoration-none text-dark">
-                            {{ article.title|striptags }}
-                            {% if article.is_new %}
-                                <span class="ms-1" style="color: #dc3545; font-size: 0.8em; font-weight: 800; display: inline-block; animation: pulse 1.5s infinite;">(חדש)</span>
+        {% if active_search_tab == 'books' %}
+        <div id="search-panel-books" role="tabpanel" aria-labelledby="search-tab-books">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0" style="color: #1a252f;">ספרים וקונטרסים תואמים ({{ search_books|length }})</h5>
+                <a href="{% url 'articles:books' %}?q={{ query|urlencode }}" class="small fw-bold text-decoration-none" style="color: #a67c52;">
+                    צפייה בקטלוג הספרים המלא <i class="bi bi-arrow-left-short" aria-hidden="true"></i>
+                </a>
+            </div>
+            <div class="row g-4 mb-5">
+                {% for book in search_books %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="premium-card p-4 h-100 d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge rounded-pill" style="background: #f5efe3; color: #7a4f16; border: 1px solid rgba(166,124,82,0.3);">
+                                {% if book.is_for_sale %}מהדורה מודפסת לרכישה{% else %}מהדורה לקריאה מקוונת{% endif %}
+                            </span>
+                            {% if book.is_for_sale and book.price %}
+                            <span class="small fw-bold" style="color: #a67c52;">{{ book.price|floatformat:0 }} ₪</span>
                             {% endif %}
-                        </a>
-                    </h4>
-                    <p class="text-muted flex-grow-1">{{ article.short_excerpt }}</p>
-                    <div class="mt-3">
-                        <a href="{% url 'articles:detail' article.slug %}" class="btn-gold-outline d-inline-block text-center w-100">קרא מאמר מלא</a>
+                        </div>
+                        <h4 class="fw-bold mb-2" style="color: #1a252f;">
+                            <a href="{% url 'articles:book_detail' book.pk %}" class="text-decoration-none text-dark">{{ book.title|striptags }}</a>
+                        </h4>
+                        {% if book.summary %}
+                        <p class="text-muted flex-grow-1">{{ book.summary|striptags|truncatewords:28 }}</p>
+                        {% else %}
+                        <p class="text-muted flex-grow-1">ספר עיון מלא מתוך ספריית לייבוביץ.</p>
+                        {% endif %}
+                        <div class="mt-3">
+                            <a href="{% url 'articles:book_detail' book.pk %}" class="btn-gold-outline d-inline-block text-center w-100">
+                                {% if book.is_for_sale %}לפרטי הספר ורכישה{% else %}פתח ספר לקריאה{% endif %}
+                            </a>
+                        </div>
                     </div>
                 </div>
+                {% empty %}
+                <div class="col-12 text-center py-5">
+                    <i class="bi bi-book" style="font-size: 4rem; color: #d1c8bc;" aria-hidden="true"></i>
+                    <h3 class="mt-3 text-muted">לא נמצאו ספרים התואמים לחיפוש.</h3>
+                </div>
+                {% endfor %}
             </div>
-            {% empty %}
-            <div class="col-12 text-center py-5">
-                <i class="bi bi-journal-x" style="font-size: 4rem; color: #d1c8bc;"></i>
-                <h3 class="mt-3 text-muted">לא נמצאו מאמרים התואמים לחיפוש.</h3>
-            </div>
-            {% endfor %}
         </div>
+
+        {% elif active_search_tab == 'qa' %}
+        <div id="search-panel-qa" role="tabpanel" aria-labelledby="search-tab-qa">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0" style="color: #1a252f;">שאלות ותשובות תואמות — ממוין לפי נושא ({{ search_qas|length }})</h5>
+                <a href="{% url 'articles:qa' %}?q={{ query|urlencode }}" class="small fw-bold text-decoration-none" style="color: #a67c52;">
+                    פתיחה במדור השו״ת המלא <i class="bi bi-arrow-left-short" aria-hidden="true"></i>
+                </a>
+            </div>
+            <div class="d-flex flex-column gap-3 mb-5">
+                {% for qa in search_qas %}
+                <div class="premium-card p-4">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                        {% if qa.category %}
+                        <a href="{% url 'articles:qa' %}?category={{ qa.category|urlencode }}" class="badge rounded-pill text-decoration-none" style="background: #f5efe3; color: #7a4f16; border: 1px solid rgba(166,124,82,0.3); font-size: 0.85rem;">
+                            {{ qa.category }}
+                        </a>
+                        {% else %}
+                        <span class="badge rounded-pill" style="background: #f5efe3; color: #7a4f16;">כללי</span>
+                        {% endif %}
+                    </div>
+                    <h4 class="fw-bold mb-2" style="color: #b36b00;">
+                        <a href="{% url 'articles:qa_detail' pk=qa.id %}" class="text-decoration-none" style="color: inherit;">{{ qa.question }}</a>
+                    </h4>
+                    <p class="text-muted mb-3">{{ qa.answer|striptags|truncatewords:36 }}</p>
+                    <div>
+                        <a href="{% url 'articles:qa_detail' pk=qa.id %}" class="btn-gold-outline d-inline-block px-4">לצפייה בתשובה המלאה</a>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-5">
+                    <i class="bi bi-chat-left-dots" style="font-size: 4rem; color: #d1c8bc;" aria-hidden="true"></i>
+                    <h3 class="mt-3 text-muted">לא נמצאו שאלות ותשובות התואמות לחיפוש.</h3>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% else %}
+        <div id="search-panel-articles" role="tabpanel" aria-labelledby="search-tab-articles">
+            <div class="row g-4 mb-5">
+                {% for article in articles %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="premium-card p-4">
+                        <div class="text-muted small mb-2 d-flex justify-content-between">
+                            {% if article.display_hebrew_date %}<span><i class="bi bi-calendar3 ms-1" aria-hidden="true"></i>פורסם: <time {% if article.created_at %}datetime="{{ article.created_at|date:'Y-m-d' }}"{% endif %}>{{ article.display_hebrew_date }}</time></span>{% endif %}
+                        </div>
+                        <h4 class="fw-bold mb-3" style="color: #1a252f;">
+                            <a href="{% url 'articles:detail' article.slug %}" class="text-decoration-none text-dark">
+                                {{ article.title|striptags }}
+                                {% if article.is_new %}
+                                    <span class="ms-1" style="color: #dc3545; font-size: 0.8em; font-weight: 800; display: inline-block; animation: pulse 1.5s infinite;">(חדש)</span>
+                                {% endif %}
+                            </a>
+                        </h4>
+                        <p class="text-muted flex-grow-1">{{ article.short_excerpt }}</p>
+                        <div class="mt-3">
+                            <a href="{% url 'articles:detail' article.slug %}" class="btn-gold-outline d-inline-block text-center w-100">קרא מאמר מלא</a>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12 text-center py-5">
+                    <i class="bi bi-journal-x" style="font-size: 4rem; color: #d1c8bc;" aria-hidden="true"></i>
+                    <h3 class="mt-3 text-muted">לא נמצאו מאמרים התואמים לחיפוש.</h3>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
 
     {% else %}
         <div class="row g-4 g-xl-5 align-items-stretch" style="position: relative;">
