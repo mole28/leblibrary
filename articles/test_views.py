@@ -238,3 +238,36 @@ class ArticleFootnotesPreservationTest(TestCase):
         self.assertNotIn('class_=', art.content)
         self.assertIn('href="/article/first/"', art.content)
         self.assertIn('href="/article/second/"', art.content)
+
+    def test_normalize_footnotes_merges_split_flex_children_with_links(self):
+        from bs4 import BeautifulSoup
+        from articles.models import normalize_article_footnotes_html
+
+        # מדמה HTML שפוצל ע"י CKEditor כאשר יש קישור בתוך הערת שוליים
+        split_html = (
+            '<p>טקסט<a class="footnote-ref" href="#footnote-7" id="footnote-ref-7"><sup>[7]</sup></a></p>'
+            '<div class="custom-footnotes-container">'
+            '<div id="footnote-7" style="align-items:flex-start;display:flex;margin-bottom:15px;">'
+            '<span style="color:#d4af37;"><span style="flex-shrink:0;min-width:35px;"><strong>7.</strong></span></span>'
+            '<span style="flex-grow:1;"> באם הבנים שמחה וע"ע במאמר \'</span>'
+            '<a href="/article/house/"><span style="flex-grow:1;">שהחיינו על בית חדש בארץ ישראל</span></a>'
+            '<span style="flex-grow:1;">\' שהעלנו שיש לברך.</span>'
+            '</div></div>'
+        )
+        out1 = normalize_article_footnotes_html(split_html)
+        out2 = normalize_article_footnotes_html(out1)
+
+        soup = BeautifulSoup(out2, 'html.parser')
+        fn = soup.find('div', id='footnote-7')
+        self.assertIsNotNone(fn)
+        direct_tags = [c for c in fn.contents if getattr(c, 'name', None)]
+        # בדיוק 3 אלמנטים ישירים ב-flex: מספר, גוף מאוחד אחד, וחץ חזרה
+        self.assertEqual(len(direct_tags), 3)
+        bodies = fn.find_all('div', class_='footnote-body')
+        self.assertEqual(len(bodies), 1)
+        link = bodies[0].find('a', href='/article/house/')
+        self.assertIsNotNone(link)
+        self.assertIn('באם הבנים שמחה', bodies[0].get_text())
+        self.assertIn('שהעלנו שיש לברך', bodies[0].get_text())
+        self.assertIn('flex-shrink: 0', direct_tags[0].get('style', ''))
+        self.assertEqual(len(fn.find_all('a', class_='footnote-backref')), 1)

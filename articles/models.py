@@ -305,6 +305,80 @@ def normalize_article_footnotes_html(html_content):
                     back_a.string = '↩'
                     target_el.append(back_a)
 
+        fn_num_re = re.compile(r'^[\[\(]?\d+[\.\]\)]*$')
+        for target_el in fn_target_divs.values():
+            if target_el.name != 'div':
+                continue
+            style_l = (target_el.get('style') or '').lower()
+            is_flex_fn = ('display:flex' in style_l.replace(' ', '')) or (
+                target_el.find_parent('div', class_='custom-footnotes-container') is not None
+            )
+            if not is_flex_fn:
+                continue
+
+            backrefs = []
+            direct_nodes = []
+            for child in list(target_el.contents):
+                if getattr(child, 'name', None) == 'a' and 'footnote-backref' in (child.get('class') or []):
+                    backrefs.append(child.extract())
+                else:
+                    direct_nodes.append(child)
+
+            num_el = None
+            body_nodes = []
+            for node in direct_nodes:
+                if num_el is None and not body_nodes:
+                    if getattr(node, 'name', None) is None and not str(node).strip():
+                        continue
+                    if (
+                        getattr(node, 'name', None) in ('span', 'strong', 'b')
+                        and not node.find('a')
+                        and fn_num_re.match(node.get_text(strip=True))
+                    ):
+                        num_el = node
+                        continue
+                body_nodes.append(node)
+
+            if num_el is not None:
+                n_style = (num_el.get('style') or '').strip()
+                n_style_compact = n_style.lower().replace(' ', '')
+                extra_s = []
+                if 'flex-shrink:' not in n_style_compact:
+                    extra_s.append('flex-shrink: 0')
+                if 'min-width:' not in n_style_compact:
+                    extra_s.append('min-width: 35px')
+                if extra_s:
+                    sep = '; ' if (n_style and not n_style.endswith(';')) else (' ' if n_style else '')
+                    num_el['style'] = f"{n_style}{sep}{'; '.join(extra_s)};"
+
+            sig_body = [n for n in body_nodes if getattr(n, 'name', None) is not None or str(n).strip()]
+            already_wrapped = (
+                len(sig_body) == 1
+                and getattr(sig_body[0], 'name', None) == 'div'
+                and 'footnote-body' in (sig_body[0].get('class') or [])
+            )
+
+            if sig_body and not already_wrapped:
+                body_div = soup.new_tag(
+                    'div',
+                    attrs={'class': 'footnote-body', 'style': 'flex: 1 1 0%; min-width: 0;'},
+                )
+                for node in body_nodes:
+                    extracted = node.extract()
+                    if getattr(extracted, 'name', None) == 'div' and 'footnote-body' in (extracted.get('class') or []):
+                        for inner in list(extracted.contents):
+                            body_div.append(inner.extract())
+                    else:
+                        body_div.append(extracted)
+                target_el.append(body_div)
+
+            for br in backrefs:
+                br_style = (br.get('style') or '').strip()
+                if 'flex-shrink:' not in br_style.lower().replace(' ', ''):
+                    sep = '; ' if (br_style and not br_style.endswith(';')) else (' ' if br_style else '')
+                    br['style'] = f"{br_style}{sep}flex-shrink: 0;"
+                target_el.append(br)
+
     return str(soup)
 
 
@@ -354,7 +428,7 @@ def process_mammoth_html(raw_html):
             num_span = soup.new_tag('span', style='font-weight:bold; color:#d4af37; min-width: 35px; flex-shrink: 0;')
             num_span.string = f"{num}."
 
-            content_span = soup.new_tag('span', style='flex-grow: 1;')
+            content_span = soup.new_tag('div', attrs={'class': 'footnote-body', 'style': 'flex: 1 1 0%; min-width: 0;'})
             for child in list(li_tag.contents):
                 content_span.append(child)
 
@@ -529,7 +603,7 @@ def clean_word_html(html_content):
             div['id'] = f"footnote-{fn['num']}"
             num_span = soup.new_tag('span', style='font-weight:bold; color:#d4af37; min-width: 35px; flex-shrink: 0;')
             num_span.string = f"{fn['num']}."
-            content_span = soup.new_tag('span', style='flex-grow: 1;')
+            content_span = soup.new_tag('div', attrs={'class': 'footnote-body', 'style': 'flex: 1 1 0%; min-width: 0;'})
             for el in fn['elements']:
                 if el.name == 'p':
                     el.unwrap()
