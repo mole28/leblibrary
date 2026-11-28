@@ -69,3 +69,37 @@ class ResponsiveDesignTest(TestCase):
             # 4. Check for dynamic base font size in media queries
             self.assertTrue('html { font-size:' in content or '@media' in content, 
                             "Missing media queries or dynamic base font sizing for responsive typography.")
+
+
+class SEOBrandingConsistencyTest(TestCase):
+    def test_templates_have_consistent_brand_titles_and_no_known_typos(self):
+        import os, re
+        base_dir = os.path.join("articles", "templates")
+        bad_title_re = re.compile(r"(\|\s*הספרייה\s*\{%\s*endblock|-\s*הספרייה התורנית\s*\{%\s*endblock)")
+        for root, _, files in os.walk(base_dir):
+            for fn in files:
+                if not fn.endswith(".html"):
+                    continue
+                p = os.path.join(root, fn)
+                content = open(p, encoding="utf-8").read()
+                self.assertNotIn("המדוייק", content, f"Typo 'המדוייק' found in {p}")
+                self.assertNotIn("והברכותיה", content, f"Typo 'והברכותיה' found in {p}")
+                self.assertIsNone(bad_title_re.search(content), f"Inconsistent title brand in {p}")
+
+    def test_public_subpages_define_dedicated_meta_descriptions(self):
+        import os
+        required_templates = [
+            "articles/templates/articles/calculator.html",
+            "articles/templates/articles/volume_calculator.html",
+            "articles/templates/articles/weight_calculator.html",
+            "articles/templates/articles/advanced_search.html",
+            "articles/templates/articles/aramaic_translator.html",
+            "articles/templates/articles/about.html",
+            "articles/templates/articles/contact.html",
+            "articles/templates/articles/parasha_list.html",
+            "articles/templates/articles/books_list.html",
+            "articles/templates/articles/qa_list.html",
+        ]
+        for path in required_templates:
+            content = open(path, encoding="utf-8").read()
+            self.assertIn("block meta_description", content, f"Missing dedicated meta_description in {path}")
