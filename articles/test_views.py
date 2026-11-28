@@ -117,3 +117,45 @@ class SQLitePragmaConfigTest(TestCase):
             self.assertEqual(cursor.fetchone()[0], -16000)
             cursor.execute('PRAGMA temp_store;')
             self.assertEqual(cursor.fetchone()[0], 2)
+
+
+class VisitorLogPruneCommandTest(TestCase):
+    def test_prune_visitor_logs_removes_only_bots_and_noise(self):
+        from io import StringIO
+        from django.core.management import call_command
+        from articles.models import VisitorLog
+
+        VisitorLog.objects.create(ip_address='1.2.3.4', path='/', user_agent='Mozilla/5.0 (Windows NT 10.0)')
+        VisitorLog.objects.create(ip_address='5.6.7.8', path='/', user_agent='SentryUptimeBot/1.0')
+        VisitorLog.objects.create(ip_address='127.0.0.1', path='/', user_agent='Mozilla/5.0')
+        VisitorLog.objects.create(ip_address='9.9.9.9', path='/sw.js', user_agent='Mozilla/5.0')
+        VisitorLog.objects.create(ip_address='8.8.8.8', path='/', user_agent='')
+
+        out = StringIO()
+        call_command('prune_visitor_logs', '--dry-run', stdout=out)
+        self.assertEqual(VisitorLog.objects.count(), 5)
+        self.assertIn('matching_noise=4', out.getvalue())
+
+        call_command('prune_visitor_logs', stdout=StringIO())
+        remaining = list(VisitorLog.objects.values_list('ip_address', flat=True))
+        self.assertEqual(remaining, ['1.2.3.4'])
+
+
+class VisitorMiddlewareFilterTest(TestCase):
+    def test_middleware_skips_bots_empty_ua_and_localhost(self):
+        from django.http import HttpResponse
+        from django.test import RequestFactory
+        from articles.middleware import VisitorTrackingMiddleware
+        from articles.models import VisitorLog
+
+        rf = RequestFactory()
+        mw = VisitorTrackingMiddleware(lambda req: HttpResponse('ok'))
+
+        mw(rf.get('/', REMOTE_ADDR='203.0.113.10', HTTP_USER_AGENT='Mozilla/5.0 (Windows NT 10.0)'))
+        mw(rf.get('/', REMOTE_ADDR='203.0.113.11', HTTP_USER_AGENT=''))
+        mw(rf.get('/', REMOTE_ADDR='127.0.0.1', HTTP_USER_AGENT='Mozilla/5.0'))
+        mw(rf.get('/', REMOTE_ADDR='203.0.113.12', HTTP_USER_AGENT='SentryUptimeBot/1.0'))
+        mw(rf.get('/manifest.json', REMOTE_ADDR='203.0.113.13', HTTP_USER_AGENT='Mozilla/5.0'))
+
+        logged_ips = list(VisitorLog.objects.values_list('ip_address', flat=True))
+        self.assertEqual(logged_ips, ['203.0.113.10'])

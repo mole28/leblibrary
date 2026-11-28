@@ -23,8 +23,11 @@ _SKIP_EXACT = {
     '/llms-full.txt',
     '/openapi.json',
 }
+_SKIP_IPS = {'127.0.0.1', '::1'}
 _BOT_UA_RE = re.compile(
-    r'(?:bot|crawler|spider|slurp|bingpreview|facebookexternalhit|headless|scrapy|curl|wget|python-urllib|gptbot|claudebot|perplexitybot)',
+    r'(?:bot|crawler|spider|slurp|bingpreview|facebookexternalhit|headless|scrapy|'
+    r'curl|wget|python-urllib|python-requests|httpx|go-http-client|uptime|sentry|'
+    r'gptbot|claudebot|perplexitybot|leblibrary-audit)',
     re.IGNORECASE,
 )
 
@@ -56,15 +59,17 @@ class VisitorTrackingMiddleware:
 
     def __call__(self, request):
         path = request.path or ''
-        user_agent = (request.META.get('HTTP_USER_AGENT') or '')[:500]
+        user_agent = (request.META.get('HTTP_USER_AGENT') or '').strip()[:500]
+        ip = _extract_valid_client_ip(request)
         should_log = (
-            path not in _SKIP_EXACT
+            bool(user_agent)
+            and ip not in _SKIP_IPS
+            and path not in _SKIP_EXACT
             and not path.startswith(_SKIP_PREFIXES)
-            and not (user_agent and _BOT_UA_RE.search(user_agent))
+            and not _BOT_UA_RE.search(user_agent)
         )
         if should_log:
             try:
-                ip = _extract_valid_client_ip(request)
                 user = request.user if (hasattr(request, 'user') and request.user.is_authenticated) else None
                 VisitorLog.objects.create(
                     ip_address=ip,
