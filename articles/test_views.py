@@ -195,3 +195,46 @@ class ArticleFootnotesPreservationTest(TestCase):
         self.assertIn('class="custom-footnotes-container"', restored)
         self.assertLess(restored.index('<hr'), restored.index('הערות שוליים'))
         self.assertLess(restored.index('הערות שוליים'), restored.index('id="footnote-1"'))
+
+    def test_process_mammoth_html_emits_valid_class_and_survives_edit(self):
+        from articles.models import process_mammoth_html, clean_word_html
+
+        raw_word_html = (
+            '<p>פסקת תוכן עם הפניה<sup><a href="#footnote-1" id="footnote-ref-1">1</a></sup>.</p>'
+            '<ol><li id="footnote-1"><p>מקור בהערה <a href="#footnote-ref-1">↑</a></p></li></ol>'
+        )
+        from_word = process_mammoth_html(raw_word_html)
+        self.assertIn('<hr', from_word)
+        self.assertIn('הערות שוליים', from_word)
+        self.assertIn('class="custom-footnotes-container"', from_word)
+        self.assertNotIn('class_=', from_word)
+
+        # מדמה עריכה ידנית ושמירה חוזרת לאחר העלאה מ-Word
+        after_edit = clean_word_html(from_word)
+        self.assertEqual(after_edit.count('<hr'), 1)
+        self.assertEqual(after_edit.count('הערות שוליים'), 1)
+        self.assertIn('class="custom-footnotes-container"', after_edit)
+        self.assertNotIn('class_=', after_edit)
+
+    def test_article_save_roundtrip_is_idempotent_and_preserves_links(self):
+        from articles.models import Article
+
+        content = (
+            '<p>עי\' במאמר <a href="/article/first/">מאמר ראשון</a>'
+            '<a class="footnote-ref" href="#footnote-1" id="footnote-ref-1"><sup>[1]</sup></a>.</p>'
+            '<div class_="custom-footnotes-container">'
+            '<div id="footnote-1"><span>1.</span><span>ועי\' <a href="/article/second/">מאמר שני</a>.</span></div>'
+            '</div>'
+        )
+        art = Article.objects.create(title='בדיקת שימור הערות שוליים', content=content)
+        art.refresh_from_db()
+        # שמירה חוזרת (מדמה עריכה שנייה של אותו מאמר)
+        art.save()
+        art.refresh_from_db()
+
+        self.assertEqual(art.content.count('<hr'), 1)
+        self.assertEqual(art.content.count('הערות שוליים'), 1)
+        self.assertIn('class="custom-footnotes-container"', art.content)
+        self.assertNotIn('class_=', art.content)
+        self.assertIn('href="/article/first/"', art.content)
+        self.assertIn('href="/article/second/"', art.content)
