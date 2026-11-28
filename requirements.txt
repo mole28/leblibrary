@@ -5,7 +5,6 @@ psycopg2-binary
 dj-database-url
 python-dotenv
 google-genai
-google-generativeai
 django-ckeditor-5
 django-sslserver
 django-ratelimit

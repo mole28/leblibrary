@@ -12,3 +12,12 @@ chroma_db/
 *.txt
 !requirements.txt
 datadump.json
+
+# Local one-off import/export scratch files
+tanakh_data.csv
+real_data.json
+zmani.html
+zmani_clean.html
+my_book_final.html
+full_book_output.html
+zariz2_clean.html

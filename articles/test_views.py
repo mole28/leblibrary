@@ -103,3 +103,17 @@ class SEOBrandingConsistencyTest(TestCase):
         for path in required_templates:
             content = open(path, encoding="utf-8").read()
             self.assertIn("block meta_description", content, f"Missing dedicated meta_description in {path}")
+
+
+class SQLitePragmaConfigTest(TestCase):
+    def test_sqlite_connection_applies_performance_pragmas(self):
+        from django.db import connection
+        if connection.vendor != 'sqlite':
+            self.skipTest('SQLite-only pragma check')
+        with connection.cursor() as cursor:
+            cursor.execute('PRAGMA busy_timeout;')
+            self.assertEqual(cursor.fetchone()[0], 20000)
+            cursor.execute('PRAGMA cache_size;')
+            self.assertEqual(cursor.fetchone()[0], -16000)
+            cursor.execute('PRAGMA temp_store;')
+            self.assertEqual(cursor.fetchone()[0], 2)
